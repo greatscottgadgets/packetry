@@ -1,0 +1,11 @@
+[package]
+name = "luna-analyzer-rust"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+#gtk = { path = "../gtk4-rs/gtk4/", package = "gtk4" }
+gtk = { version = "*", package = "gtk4" }
+once_cell = "1.5"
