@@ -13,6 +13,9 @@ use gtk::{
 };
 use row_data::RowData;
 
+mod capture;
+mod file_vec;
+
 fn main() {
     let application = gtk::Application::new(
         Some("com.greatscottgadgets.luna-analyzer-rust"),
