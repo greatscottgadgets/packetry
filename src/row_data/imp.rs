@@ -3,14 +3,13 @@ use gtk::{
     glib::{self, ParamSpec, Value},
     prelude::*,
 };
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 
 // The actual data structure that stores our values. This is not accessible
 // directly from the outside.
 #[derive(Default)]
 pub struct RowData {
     name: RefCell<Option<String>>,
-    count: Cell<u32>,
 }
 
 // Basic declaration of our type for the GObject type system
@@ -32,19 +31,10 @@ impl ObjectImpl for RowData {
         static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| {
             vec![
                 glib::ParamSpecString::new(
-                    "name",
-                    "Name",
-                    "Name",
+                    "text",
+                    "Text",
+                    "Text",
                     None, // Default value
-                    glib::ParamFlags::READWRITE,
-                ),
-                glib::ParamSpecUInt::new(
-                    "count",
-                    "Count",
-                    "Count",
-                    0,
-                    1000000,
-                    0, // Allowed range and default value
                     glib::ParamFlags::READWRITE,
                 ),
             ]
@@ -55,13 +45,9 @@ impl ObjectImpl for RowData {
 
     fn set_property(&self, _obj: &Self::Type, _id: usize, value: &Value, pspec: &ParamSpec) {
         match pspec.name() {
-            "name" => {
+            "text" => {
                 let name = value.get().unwrap();
                 self.name.replace(name);
-            }
-            "count" => {
-                let count = value.get().unwrap();
-                self.count.replace(count);
             }
             _ => unimplemented!(),
         }
@@ -69,8 +55,7 @@ impl ObjectImpl for RowData {
 
     fn property(&self, _obj: &Self::Type, _id: usize, pspec: &ParamSpec) -> Value {
         match pspec.name() {
-            "name" => self.name.borrow().to_value(),
-            "count" => self.count.get().to_value(),
+            "text" => self.name.borrow().to_value(),
             _ => unimplemented!(),
         }
     }

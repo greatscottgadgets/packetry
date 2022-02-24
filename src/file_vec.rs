@@ -2,7 +2,9 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::io::SeekFrom;
 use std::marker::PhantomData;
+use std::ops::Range;
 
+use bufreaderwriter::BufReaderWriter;
 use bytemuck::{bytes_of, bytes_of_mut, Pod};
 use tempfile::tempfile;
 use thiserror::Error;
@@ -15,8 +17,9 @@ pub enum FileVecError {
 
 pub struct FileVec<T> where T: Pod + Default {
     _marker: PhantomData<T>,
-    file: File,
+    file: BufReaderWriter<File>,
     file_length: u64,
+    item_count: u64,
 }
 
 impl<T: Pod + Default> FileVec<T> {
@@ -24,16 +27,17 @@ impl<T: Pod + Default> FileVec<T> {
         let file = tempfile()?;
         Ok(Self{
             _marker: PhantomData,
-            file: file,
+            file: BufReaderWriter::new_writer(file),
             file_length: 0,
+            item_count: 0,
         })
     }
 
     pub fn push(&mut self, item: &T) -> Result<(), FileVecError> where T: Pod {
         let data= bytes_of(item);
         self.file.write_all(data)?;
-        self.file.flush()?;
         self.file_length += data.len() as u64;
+        self.item_count += 1;
         Ok(())
     }
 
@@ -43,7 +47,7 @@ impl<T: Pod + Default> FileVec<T> {
             self.file.write_all(data)?;
             self.file_length += data.len() as u64;
         }
-        self.file.flush()?;
+        self.item_count += items.len() as u64;
         Ok(())
     }
 
@@ -54,6 +58,23 @@ impl<T: Pod + Default> FileVec<T> {
         self.file.read_exact(bytes_of_mut(&mut result))?;
         self.file.seek(SeekFrom::Start(self.file_length))?;
         Ok(result)
+    }
+
+    pub fn get_range(&mut self, range: Range<u64>) -> Result<Vec<T>, FileVecError> {
+        let mut buf: T = Default::default();
+        let mut result = Vec::new();
+        let start = range.start * std::mem::size_of::<T>() as u64;
+        self.file.seek(SeekFrom::Start(start as u64))?;
+        for _ in range {
+            self.file.read_exact(bytes_of_mut(&mut buf))?;
+            result.push(buf);
+        }
+        self.file.seek(SeekFrom::Start(self.file_length))?;
+        Ok(result)
+    }
+
+    pub fn len(&self) -> u64 {
+        self.item_count
     }
 }
 
@@ -94,7 +115,7 @@ mod tests {
         file_vec.append(&data.as_slice()).unwrap();
 
         // and check
-        let vec: Vec<_> = (0..100).map(|x| file_vec.get(x).unwrap()).collect();
+        let vec: Vec<_> = file_vec.get_range(0..100).unwrap();
         assert!(vec == data);
     }
 }

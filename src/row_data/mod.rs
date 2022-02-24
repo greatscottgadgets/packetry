@@ -17,7 +17,7 @@ glib::wrapper! {
 // Constructor for new instances. This simply calls glib::Object::new() with
 // initial values for our two properties and then returns the new instance
 impl RowData {
-    pub fn new(name: &str, count: u32) -> RowData {
-        glib::Object::new(&[("name", &name), ("count", &count)]).expect("Failed to create row data")
+    pub fn new(text: &str) -> RowData {
+        glib::Object::new(&[("text", &text)]).expect("Failed to create row data")
     }
 }
