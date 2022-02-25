@@ -42,8 +42,7 @@ fn main() {
             .build();
 
         // Create the model and connect the Capture to it
-        let mut model = model::Model::new();
-        model.set_capture(capture.clone());
+        let model = model::Model::new(capture.clone());
 
         let treemodel = TreeListModel::new(&model, false, false, |o| {
             return None;

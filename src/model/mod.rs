@@ -16,20 +16,13 @@ glib::wrapper! {
 
 // Constructor for new instances. This simply calls glib::Object::new()
 impl Model {
-    pub fn new() -> Model {
-        glib::Object::new(&[]).expect("Failed to create Model")
+    pub fn new(capture: Arc<Mutex<Capture>>) -> Model {
+        let mut model: Model = glib::Object::new(&[]).expect("Failed to create Model");
+        model.set_capture(capture);
+        model
     }
 
-    pub fn set_capture(&mut self, capture: Arc<Mutex<Capture>>) {
-        let removed = self.imp().0.borrow().lock().unwrap().packet_count();
-        let added = capture.lock().unwrap().packet_count();
+    fn set_capture(&mut self, capture: Arc<Mutex<Capture>>) {
         self.imp().0.replace(capture);
-        self.items_changed(0, removed as u32, added as u32);
-    }
-}
-
-impl Default for Model {
-    fn default() -> Self {
-        Self::new()
     }
 }
