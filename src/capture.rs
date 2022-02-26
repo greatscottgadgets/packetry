@@ -54,13 +54,15 @@ impl From<u8> for PID {
 #[derive(Copy, Clone, Debug)]
 #[repr(u8)]
 enum ItemType {
-    Packet,
+    Packet = 0,
+    Transaction = 1,
 }
 impl From<u8> for ItemType {
     fn from(num: u8) -> Self {
         use ItemType::*;
         match num {
             0 => Packet,
+            1 => Transaction,
             _ => panic!("Cannot convert {} to ItemType", num),
         }
     }
@@ -81,6 +83,29 @@ pub struct Packet {
     pub pid: u8,
 }
 
+#[derive(Copy, Clone, Debug)]
+#[repr(u8)]
+enum TransactionType {
+    SOF,
+}
+impl From<u8> for TransactionType {
+    fn from(num: u8) -> Self {
+        use TransactionType::*;
+        match num {
+            0 => SOF,
+            _ => panic!("Cannot convert {} to TransactionType", num),
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
+#[repr(C, packed)]
+pub struct Transaction {
+    pub packet_start: u64,
+    pub packet_count: u64,
+    pub transaction_type: u8,
+}
+
 impl std::fmt::Display for Packet {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{:?} packet", PID::from(self.pid))
@@ -91,6 +116,8 @@ pub struct Capture {
     items: FileVec<Item>,
     packets: FileVec<Packet>,
     packet_data: FileVec<u8>,
+    transactions: FileVec<Transaction>,
+    sof_transaction_in_progress: bool,
 }
 
 impl Default for Capture {
@@ -105,6 +132,8 @@ impl Capture {
             items: FileVec::new().unwrap(),
             packets: FileVec::new().unwrap(),
             packet_data: FileVec::new().unwrap(),
+            transactions: FileVec::new().unwrap(),
+            sof_transaction_in_progress: false,
         }
     }
 
@@ -112,28 +141,74 @@ impl Capture {
         let usb_packet = Packet{
             data_start: self.packet_data.len(),
             data_end: self.packet_data.len() + packet.len() as u64,
-            pid: packet[0].into(),
+            pid: packet[0],
         };
-        let item = Item {
-            item_type: ItemType::Packet as u8,
-            index: self.packets.len(),
+
+        match PID::from(usb_packet.pid) {
+            // Group consecutive SOF packets into a transaction
+            PID::SOF => {
+                if !self.sof_transaction_in_progress {
+                    // If this is the first SOF, create the Transaction & the top-level Item
+                    self.sof_transaction_in_progress = true;
+                    let item = Item {
+                        item_type: ItemType::Transaction as u8,
+                        index: self.transactions.len(),
+                    };
+                    let transaction = Transaction {
+                        transaction_type: TransactionType::SOF as u8,
+                        packet_start: self.packets.len(),
+                        packet_count: 1,
+                    };
+                    self.transactions.push(&transaction).unwrap();
+                    self.items.push(&item).unwrap();
+                } else {
+                    // Otheriwse, update the packet count
+                    let index = self.transactions.len()-1;
+                    let mut transaction = self.transactions.get(index).unwrap();
+                    transaction.packet_count += 1;
+                    self.transactions.insert(&transaction, index).unwrap();
+                }
+            },
+            // For other packets, add them to the top-level
+            _ => {
+                self.sof_transaction_in_progress = false;
+                let item = Item {
+                    item_type: ItemType::Packet as u8,
+                    index: self.packets.len(),
+                };
+                self.items.push(&item).unwrap();
+            }
         };
         self.packet_data.append(packet).unwrap();
         self.packets.push(&usb_packet).unwrap();
-        self.items.push(&item).unwrap();
     }
 
     pub fn get_item(&mut self, parent: &Option<Item>, index: u64) -> Item {
         match parent {
             None => self.items.get(index).unwrap(),
-            _ => panic!("not supported yet"),
+            Some(parent) => match ItemType::from(parent.item_type) {
+                ItemType::Transaction => {
+                    let packet_start = self.transactions.get(parent.index).unwrap().packet_start;
+                    Item {
+                        item_type: ItemType::Packet as u8,
+                        index: packet_start + index,
+                    }
+                }
+                _ => panic!("not supported yet"),
+            }
         }
     }
 
     pub fn item_count(&mut self, parent: &Option<Item>) -> u64 {
+        use ItemType::*;
         match parent {
             None => self.items.len(),
-            _ => 0,
+            Some(parent) => match ItemType::from(parent.item_type) {
+                Packet => 0,
+                Transaction => {
+                    self.transactions.get(parent.index).unwrap().packet_count
+                }
+            }
         }
     }
 
@@ -143,6 +218,9 @@ impl Capture {
                 let packet = self.packets.get(item.index).unwrap();
                 let data = self.get_packet_data(packet.data_start..packet.data_end);
                 format!("{}\t{:02X?}", packet, data)
+            },
+            ItemType::Transaction => {
+                format!("{} SOFs", self.item_count(&Some(*item)))
             },
         }
     }

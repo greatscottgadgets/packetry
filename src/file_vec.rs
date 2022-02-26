@@ -51,6 +51,15 @@ impl<T: Pod + Default> FileVec<T> {
         Ok(())
     }
 
+    pub fn insert(&mut self, item: &T, index: u64) -> Result<(), FileVecError> where T: Pod {
+        let start = index * std::mem::size_of::<T>() as u64;
+        let data= bytes_of(item);
+        self.file.seek(SeekFrom::Start(start as u64))?;
+        self.file.write_all(data)?;
+        self.file.seek(SeekFrom::Start(self.file_length))?;
+        Ok(())
+    }
+
     pub fn get(&mut self, index: u64) -> Result<T, FileVecError> {
         let mut result: T = Default::default();
         let start = index * std::mem::size_of::<T>() as u64;
