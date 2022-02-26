@@ -3,6 +3,7 @@ pub mod row_data;
 
 use std::sync::{Arc, Mutex};
 
+use gtk::gio::ListModel;
 use gtk::{
     prelude::*,
     Label,
@@ -41,20 +42,21 @@ fn main() {
             .title("luna-analyzer-rust")
             .build();
 
-        // Create the model and connect the Capture to it
-        let model = model::Model::new(capture.clone());
+        // Create the top-level model
+        let cap = capture.clone();
+        let model = model::Model::new(cap, None);
 
-        let treemodel = TreeListModel::new(&model, false, false, |o| {
-            return None;
-            /*if !o.property::<String>("name").starts_with("test") {
-                return None
+        let cap = capture.clone();
+        let treemodel = TreeListModel::new(&model, false, false, move |o| {
+            let row = o.downcast_ref::<RowData>().unwrap();
+            let parent_item = row.get_item();
+            match cap.lock().unwrap().item_count(&parent_item) {
+                0 => None,
+                _ => Some(
+                    model::Model::new(cap.clone(), parent_item)
+                        .upcast::<ListModel>()
+                )
             }
-            let model = model::Model::new();
-            let mut data = Vec::new();
-            for i in 0..1_000_000 {
-                data.push(format!("child {}", i));
-            }
-            Some(model.upcast::<ListModel>())*/
         });
         let selection_model = SingleSelection::new(Some(&treemodel));
 

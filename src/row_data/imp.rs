@@ -4,12 +4,14 @@ use gtk::{
     prelude::*,
 };
 use std::cell::RefCell;
+use crate::capture;
 
 // The actual data structure that stores our values. This is not accessible
 // directly from the outside.
 #[derive(Default)]
 pub struct RowData {
     name: RefCell<Option<String>>,
+    pub(super) item: RefCell<Option<capture::Item>>,
 }
 
 // Basic declaration of our type for the GObject type system

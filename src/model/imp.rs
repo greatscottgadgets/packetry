@@ -3,14 +3,17 @@
 use gio::subclass::prelude::*;
 use gtk::{gio, glib, prelude::*};
 
-use crate::Capture;
+use crate::capture::{self, Capture};
 
 use std::cell::RefCell;
 use std::sync::{Arc, Mutex};
 use crate::row_data::RowData;
 
 #[derive(Default)]
-pub struct Model(pub(super) RefCell<Arc<Mutex<Capture>>>);
+pub struct Model {
+    pub(super) capture: RefCell<Arc<Mutex<Capture>>>,
+    pub(super) parent: RefCell<Option<capture::Item>>,
+}
 
 /// Basic declaration of our type for the GObject type system
 #[glib::object_subclass]
@@ -28,13 +31,13 @@ impl ListModelImpl for Model {
         RowData::static_type()
     }
     fn n_items(&self, _list_model: &Self::Type) -> u32 {
-        self.0.borrow().lock().unwrap().packet_count() as u32
+        self.capture.borrow().lock().unwrap().item_count(&self.parent.borrow()) as u32
     }
     fn item(&self, _list_model: &Self::Type, position: u32) -> Option<glib::Object> {
-        let arc = self.0.borrow();
+        let arc = self.capture.borrow();
         let mut cap = arc.lock().unwrap();
-        let packet = cap.get_packet(position as u64);
-        let data = cap.get_packet_data(packet.data_start..packet.data_end);
-        Some(RowData::new(&format!("{}\t{:02X?}", packet, data)).upcast::<glib::Object>())
+        let item = cap.get_item(&self.parent.borrow(), position as u64);
+        let summary = cap.get_summary(&item);
+        Some(RowData::new(Some(item), &summary).upcast::<glib::Object>())
     }
 }
