@@ -2,11 +2,11 @@ use std::ops::Range;
 
 use crate::file_vec::FileVec;
 use bytemuck_derive::{Pod, Zeroable};
+use num_enum::{IntoPrimitive, FromPrimitive, TryFromPrimitive};
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, IntoPrimitive, FromPrimitive)]
 #[repr(u8)]
 enum PID {
-	NONE  = 0x00,
 	RSVD  = 0xF0,
 	OUT	  = 0xE1,
 	ACK	  = 0xD2,
@@ -23,49 +23,15 @@ enum PID {
 	SETUP = 0x2D,
 	STALL = 0x1E,
 	MDATA = 0x0F,
-    Malformed,
+    #[default]
+    Malformed = 0,
 }
 
-impl From<u8> for PID {
-    fn from(num: u8) -> Self {
-        use PID::*;
-        match num {
-            0xF0 => RSVD,
-            0xE1 => OUT,
-            0xD2 => ACK,
-            0xC3 => DATA0,
-            0xB4 => PING,
-            0xA5 => SOF,
-            0x96 => NYET,
-            0x87 => DATA2,
-            0x78 => SPLIT,
-            0x69 => IN,
-            0x5A => NAK,
-            0x4B => DATA1,
-            0x3C => ERR,
-            0x2D => SETUP,
-            0x1E => STALL,
-            0x0F => MDATA,
-            _ => Malformed,
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, IntoPrimitive, TryFromPrimitive)]
 #[repr(u8)]
 enum ItemType {
     Packet = 0,
     Transaction = 1,
-}
-impl From<u8> for ItemType {
-    fn from(num: u8) -> Self {
-        use ItemType::*;
-        match num {
-            0 => Packet,
-            1 => Transaction,
-            _ => panic!("Cannot convert {} to ItemType", num),
-        }
-    }
 }
 
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
@@ -83,19 +49,10 @@ pub struct Packet {
     pub pid: u8,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, IntoPrimitive, TryFromPrimitive)]
 #[repr(u8)]
 enum TransactionType {
     SOF,
-}
-impl From<u8> for TransactionType {
-    fn from(num: u8) -> Self {
-        use TransactionType::*;
-        match num {
-            0 => SOF,
-            _ => panic!("Cannot convert {} to TransactionType", num),
-        }
-    }
 }
 
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
@@ -186,7 +143,7 @@ impl Capture {
     pub fn get_item(&mut self, parent: &Option<Item>, index: u64) -> Item {
         match parent {
             None => self.items.get(index).unwrap(),
-            Some(parent) => match ItemType::from(parent.item_type) {
+            Some(parent) => match ItemType::try_from(parent.item_type).unwrap() {
                 ItemType::Transaction => {
                     let packet_start = self.transactions.get(parent.index).unwrap().packet_start;
                     Item {
@@ -203,7 +160,7 @@ impl Capture {
         use ItemType::*;
         match parent {
             None => self.items.len(),
-            Some(parent) => match ItemType::from(parent.item_type) {
+            Some(parent) => match ItemType::try_from(parent.item_type).unwrap() {
                 Packet => 0,
                 Transaction => {
                     self.transactions.get(parent.index).unwrap().packet_count
@@ -213,7 +170,7 @@ impl Capture {
     }
 
     pub fn get_summary(&mut self, item: &Item) -> String {
-        match ItemType::from(item.item_type) {
+        match ItemType::try_from(item.item_type).unwrap() {
             ItemType::Packet => {
                 let packet = self.packets.get(item.index).unwrap();
                 let data = self.get_packet_data(packet.data_start..packet.data_end);
