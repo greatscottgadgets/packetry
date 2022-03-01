@@ -7,7 +7,7 @@ WIP USB analysis frontend for LUNA
 ### Prereqs
 
  * Rust - https://www.rust-lang.org/tools/install
- * GTK4 - This is still relatively new, but is included in Ubuntu 21.04+ and Debian unstable
+ * GTK4 - This is still relatively new, but is included in Ubuntu 21.04+ and Debian testing.
 
 ### Build/run
 
