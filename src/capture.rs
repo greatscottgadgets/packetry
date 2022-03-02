@@ -2,6 +2,7 @@ use std::ops::Range;
 
 use crate::file_vec::FileVec;
 use bytemuck_derive::{Pod, Zeroable};
+use bytemuck::pod_read_unaligned;
 use num_enum::{IntoPrimitive, FromPrimitive, TryFromPrimitive};
 
 #[derive(Copy, Clone, Debug, IntoPrimitive, FromPrimitive, PartialEq)]
@@ -53,12 +54,59 @@ pub struct Item {
     item_type: u8,
 }
 
-#[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
+bitfield! {
+    #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
+    #[repr(C)]
+    pub struct SOFFields(u16);
+    u16, frame_number, _: 10, 0;
+    u8, crc, _: 15, 11;
+}
+
+bitfield! {
+    #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
+    #[repr(C)]
+    pub struct TokenFields(u16);
+    u8, device_address, _: 6, 0;
+    u8, endpoint_number, _: 10, 7;
+    u8, crc, _: 15, 11;
+}
+
+#[derive(Copy, Clone, Debug, Pod, Zeroable)]
+#[repr(C)]
+pub struct DataFields {
+    pub crc: u16,
+}
+
+#[derive(Copy, Clone, Debug, Pod, Zeroable)]
+#[repr(C)]
+pub struct NoFields {}
+
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub union PacketFields {
+    pub sof: SOFFields,
+    pub token: TokenFields,
+    pub data: DataFields,
+    pub none: NoFields,
+}
+
+impl Default for PacketFields {
+    fn default() -> Self { PacketFields {none: NoFields {} } }
+}
+
+unsafe impl bytemuck::Zeroable for PacketFields {
+    fn zeroed() -> Self { PacketFields {none: NoFields {} } }
+}
+
+unsafe impl bytemuck::Pod for PacketFields {}
+
+#[derive(Copy, Clone, Default, Pod, Zeroable)]
 #[repr(C, packed)]
 pub struct Packet {
     pub data_start: u64,
     pub length: u16,
     pub pid: u8,
+    pub fields: PacketFields,
 }
 
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
@@ -145,9 +193,25 @@ impl Capture {
     }
 
     pub fn handle_raw_packet(&mut self, packet: &[u8]) {
+        use PID::*;
         self.current_packet.data_start = self.packet_data.len();
         self.current_packet.length = packet.len() as u16;
         self.current_packet.pid = packet[0];
+        let pid = PID::from(self.current_packet.pid);
+        self.current_packet.fields = match pid {
+            SOF => PacketFields {
+                sof: pod_read_unaligned::<SOFFields>(
+                    &packet[1..3])
+            },
+            SETUP | IN | OUT => PacketFields {
+                token: pod_read_unaligned::<TokenFields>(
+                    &packet[1..3])
+            },
+            DATA0 | DATA1 => PacketFields {
+                data: pod_read_unaligned::<DataFields>(
+                    &packet[(packet.len() - 2)..packet.len()])},
+            _ => PacketFields { none: NoFields {} }
+        };
         self.transaction_update();
         self.packet_data.append(packet).unwrap();
         self.packets.push(&self.current_packet).unwrap();
@@ -241,16 +305,38 @@ impl Capture {
     pub fn get_summary(&mut self, item: &Item) -> String {
         match ItemType::try_from(item.item_type).unwrap() {
             ItemType::Packet => {
+                use PID::*;
                 let packet = self.packets.get(item.index).unwrap();
                 let end = packet.data_start + packet.length as u64;
                 let data = self.get_packet_data(packet.data_start..end);
-                format!("{} packet \t{:02X?}", PID::from(packet.pid), data)
+                let pid = PID::from(packet.pid);
+                format!("{} packet{}: {:02X?}",
+                    pid,
+                    unsafe {
+                        match pid {
+                            SOF => format!(
+                                " with frame number {}, CRC {:02X}",
+                                packet.fields.sof.frame_number(),
+                                packet.fields.sof.crc()),
+                            SETUP | IN | OUT => format!(
+                                " on {}.{}, CRC {:02X}",
+                                packet.fields.token.device_address(),
+                                packet.fields.token.endpoint_number(),
+                                packet.fields.token.crc()),
+                            DATA0 | DATA1 => format!(
+                                " with CRC {:04X}",
+                                packet.fields.data.crc),
+                            _ => format!("")
+                        }
+                    },
+                    data)
             },
             ItemType::Transaction => {
                 let transaction = self.transactions.get(item.index).unwrap();
                 let packet = self.packets.get(transaction.packet_start).unwrap();
                 let count = transaction.packet_count;
-                format!("{} transaction, {} packets", PID::from(packet.pid), count)
+                let pid = PID::from(packet.pid);
+                format!("{} transaction, {} packets", pid, count)
             },
         }
     }
