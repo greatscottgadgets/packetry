@@ -1,5 +1,6 @@
 use crate::file_vec::FileVec;
 use bytemuck_derive::{Pod, Zeroable};
+use bytemuck::pod_read_unaligned;
 use num_enum::{IntoPrimitive, FromPrimitive, TryFromPrimitive};
 
 #[derive(Copy, Clone, Debug, IntoPrimitive, FromPrimitive, PartialEq)]
@@ -49,6 +50,53 @@ enum ItemType {
 pub struct Item {
     index: u64,
     item_type: u8,
+}
+
+bitfield! {
+    #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
+    #[repr(C)]
+    pub struct SOFFields(u16);
+    u16, frame_number, _: 10, 0;
+    u8, crc, _: 15, 11;
+}
+
+bitfield! {
+    #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
+    #[repr(C)]
+    pub struct TokenFields(u16);
+    u8, device_address, _: 6, 0;
+    u8, endpoint_number, _: 10, 7;
+    u8, crc, _: 15, 11;
+}
+
+#[derive(Copy, Clone, Debug, Pod, Zeroable)]
+#[repr(C)]
+pub struct DataFields {
+    pub crc: u16,
+}
+
+pub enum PacketFields {
+    SOF(SOFFields),
+    Token(TokenFields),
+    Data(DataFields),
+    None
+}
+
+impl PacketFields {
+    fn from_packet(packet: &Vec<u8>) -> Self {
+        use PID::*;
+        match PID::from(packet[0]) {
+            SOF => PacketFields::SOF(
+                pod_read_unaligned::<SOFFields>(&packet[1..3])),
+            SETUP | IN | OUT => PacketFields::Token(
+                pod_read_unaligned::<TokenFields>(&packet[1..3])),
+            DATA0 | DATA1 => PacketFields::Data({
+                let end = packet.len();
+                let start = end - 2;
+                pod_read_unaligned::<DataFields>(&packet[start..end])}),
+            _ => PacketFields::None
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
@@ -233,7 +281,25 @@ impl Capture {
         match ItemType::try_from(item.item_type).unwrap() {
             ItemType::Packet => {
                 let packet = self.get_packet(item.index);
-                format!("{} packet \t{:02X?}", PID::from(packet[0]), packet)
+                let pid = PID::from(packet[0]);
+                format!("{} packet{}: {:02X?}",
+                    pid,
+                    match PacketFields::from_packet(&packet) {
+                        PacketFields::SOF(sof) => format!(
+                            " with frame number {}, CRC {:02X}",
+                            sof.frame_number(),
+                            sof.crc()),
+                        PacketFields::Token(token) => format!(
+                            " on {}.{}, CRC {:02X}",
+                            token.device_address(),
+                            token.endpoint_number(),
+                            token.crc()),
+                        PacketFields::Data(data) => format!(
+                            " with CRC {:04X}",
+                            data.crc),
+                        PacketFields::None => "".to_string()
+                    },
+                    packet)
             },
             ItemType::Transaction => {
                 let transaction = self.transactions.get(item.index).unwrap();
