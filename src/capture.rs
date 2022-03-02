@@ -99,84 +99,35 @@ enum DecodeStatus {
 
 impl TransactionState {
     pub fn status(&self, next: PID) -> DecodeStatus {
-        match next {
-            PID::SETUP | PID::IN | PID::OUT => {
-                return DecodeStatus::NEW;
-            }
-            _ => {
-                match self.last {
-                    PID::Malformed => {
-                        if next == PID::SOF {
-                            return DecodeStatus::NEW;
-                        }
-                    },
-                    PID::SOF => {
-                        if next == PID::SOF {
-                            return DecodeStatus::CONTINUE;
-                        }
-                    },
-                    PID::SETUP => {
-                        if next == PID::DATA0 {
-                            return DecodeStatus::CONTINUE;
-                        }
-                    },
-                    PID::IN => {
-                        match next {
-                            PID::DATA0 | PID::DATA1 => {
-                                return DecodeStatus::CONTINUE;
-                            },
-                            PID::STALL | PID::NAK => {
-                                return DecodeStatus::DONE;
-                            },
-                            _ => {
-                                return DecodeStatus::INVALID;
-                            }
-                        }
-                    },
-                    PID::OUT => {
-                        match next {
-                            PID::DATA0 | PID::DATA1 => {
-                                return DecodeStatus::CONTINUE;
-                            }
-                            _ => {
-                                return DecodeStatus::INVALID;
-                            }
-                        }
-                    },
-                    PID::DATA0 | PID::DATA1 => {
-                        match self.first {
-                            PID::SETUP => {
-                                if self.last == PID::DATA0 && next == PID::ACK {
-                                    return DecodeStatus::DONE;
-                                }
-                            },
-                            PID::IN => {
-                                if next == PID::ACK {
-                                    return DecodeStatus::DONE;
-                                }
-                            },
-                            PID::OUT => {
-                                match next {
-                                    PID::ACK | PID::NAK | PID::STALL => {
-                                        return DecodeStatus::DONE;
-                                    }
-                                    _ => {
-                                        return DecodeStatus::INVALID;
-                                    }
-                                }
-                            },
-                            _ => {
-                                return DecodeStatus::INVALID;
-                            }
-                        }
-                    },
-                    _ => {
-                        return DecodeStatus::INVALID;
-                    }
-                }
-            }
-        };
-        return DecodeStatus::INVALID;
+        use PID::*;
+        match (self.first, self.last, next) {
+
+            // SETUP, IN or OUT always start a new transaction.
+            (_, _, SETUP | IN | OUT) => DecodeStatus::NEW,
+
+            // SOF when there is no existing transaction starts a new
+            // "transaction" representing an idle period on the bus.
+            (_, Malformed, SOF) => DecodeStatus::NEW,
+            // Additional SOFs extend this "transaction", more may follow.
+            (_, SOF, SOF) => DecodeStatus::CONTINUE,
+
+            // SETUP must be followed by DATA0, wait for ACK to follow.
+            (_, SETUP, DATA0) => DecodeStatus::CONTINUE,
+            // ACK then completes the transaction.
+            (SETUP, DATA0, ACK) => DecodeStatus::DONE,
+
+            // IN may be followed by NAK or STALL, completing transaction.
+            (_, IN, NAK | STALL) => DecodeStatus::DONE,
+            // IN or OUT may be followed by DATA0 or DATA1, wait for status.
+            (_, IN | OUT, DATA0 | DATA1) => DecodeStatus::CONTINUE,
+            // An ACK then completes the transaction.
+            (IN | OUT, DATA0 | DATA1, ACK) => DecodeStatus::DONE,
+            // OUT may also be completed by NAK or STALL.
+            (OUT, DATA0 | DATA1, NAK | STALL) => DecodeStatus::DONE,
+
+            // Any other case is not a valid part of a transaction.
+            _ => DecodeStatus::INVALID,
+        }
     }
 }
 
