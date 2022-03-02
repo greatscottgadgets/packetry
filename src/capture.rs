@@ -57,7 +57,7 @@ pub struct Item {
 #[repr(C, packed)]
 pub struct Packet {
     pub data_start: u64,
-    pub data_end: u64,
+    pub length: u16,
     pub pid: u8,
 }
 
@@ -146,7 +146,7 @@ impl Capture {
 
     pub fn handle_raw_packet(&mut self, packet: &[u8]) {
         self.current_packet.data_start = self.packet_data.len();
-        self.current_packet.data_end = self.packet_data.len() + packet.len() as u64;
+        self.current_packet.length = packet.len() as u16;
         self.current_packet.pid = packet[0];
         self.transaction_update();
         self.packet_data.append(packet).unwrap();
@@ -242,7 +242,8 @@ impl Capture {
         match ItemType::try_from(item.item_type).unwrap() {
             ItemType::Packet => {
                 let packet = self.packets.get(item.index).unwrap();
-                let data = self.get_packet_data(packet.data_start..packet.data_end);
+                let end = packet.data_start + packet.length as u64;
+                let data = self.get_packet_data(packet.data_start..end);
                 format!("{} packet \t{:02X?}", PID::from(packet.pid), data)
             },
             ItemType::Transaction => {
