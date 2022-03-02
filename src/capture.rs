@@ -323,28 +323,26 @@ impl Capture {
                 let pid = PID::from(packet.pid);
                 format!("{} packet{}",
                     pid,
-                    unsafe {
-                        match pid {
-                            SOF => format!(
-                                " with frame number {}, CRC {:02X}",
-                                packet.fields.sof.frame_number(),
-                                packet.fields.sof.crc()),
-                            SETUP | IN | OUT => format!(
-                                " on {}.{}, CRC {:02X}",
-                                packet.fields.token.device_address(),
-                                packet.fields.token.endpoint_number(),
-                                packet.fields.token.crc()),
-                            DATA0 | DATA1 => {
-                                let start = packet.data_start;
-                                let end = start + packet.data_length() as u64;
-                                let data = self.get_packet_data(start..end);
-                                format!(
-                                    " with CRC {:04X}, data {:02X?}",
-                                    packet.fields.data.crc,
-                                    data)
-                            },
-                            _ => format!("")
-                        }
+                    match pid {
+                        SOF => format!(
+                            " with frame number {}, CRC {:02X}",
+                            unsafe { packet.fields.sof.frame_number() },
+                            unsafe { packet.fields.sof.crc() }),
+                        SETUP | IN | OUT => format!(
+                            " on {}.{}, CRC {:02X}",
+                            unsafe { packet.fields.token.device_address() },
+                            unsafe { packet.fields.token.endpoint_number() },
+                            unsafe { packet.fields.token.crc() }),
+                        DATA0 | DATA1 => {
+                            let start = packet.data_start;
+                            let end = start + packet.data_length() as u64;
+                            let data = self.get_packet_data(start..end);
+                            format!(
+                                " with CRC {:04X}, data {:02X?}",
+                                unsafe { packet.fields.data.crc },
+                                data)
+                        },
+                        _ => format!("")
                     }
                 )
             },
