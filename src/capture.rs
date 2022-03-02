@@ -109,6 +109,16 @@ pub struct Packet {
     pub fields: PacketFields,
 }
 
+impl Packet {
+    pub fn data_length(&self) -> u16 {
+        use PID::*;
+        match PID::from(self.pid) {
+            DATA0 | DATA1 => self.length - 3,
+            _ => 0
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
 #[repr(C, packed)]
 pub struct Transaction {
@@ -207,13 +217,16 @@ impl Capture {
                 token: pod_read_unaligned::<TokenFields>(
                     &packet[1..3])
             },
-            DATA0 | DATA1 => PacketFields {
-                data: pod_read_unaligned::<DataFields>(
-                    &packet[(packet.len() - 2)..packet.len()])},
+            DATA0 | DATA1 => {
+                self.packet_data.append(&packet[1..(packet.len() - 2)]).unwrap();
+                PacketFields {
+                    data: pod_read_unaligned::<DataFields>(
+                        &packet[(packet.len() - 2)..packet.len()])
+                }
+            },
             _ => PacketFields { none: NoFields {} }
         };
         self.transaction_update();
-        self.packet_data.append(packet).unwrap();
         self.packets.push(&self.current_packet).unwrap();
     }
 
@@ -307,10 +320,8 @@ impl Capture {
             ItemType::Packet => {
                 use PID::*;
                 let packet = self.packets.get(item.index).unwrap();
-                let end = packet.data_start + packet.length as u64;
-                let data = self.get_packet_data(packet.data_start..end);
                 let pid = PID::from(packet.pid);
-                format!("{} packet{}: {:02X?}",
+                format!("{} packet{}",
                     pid,
                     unsafe {
                         match pid {
@@ -323,13 +334,19 @@ impl Capture {
                                 packet.fields.token.device_address(),
                                 packet.fields.token.endpoint_number(),
                                 packet.fields.token.crc()),
-                            DATA0 | DATA1 => format!(
-                                " with CRC {:04X}",
-                                packet.fields.data.crc),
+                            DATA0 | DATA1 => {
+                                let start = packet.data_start;
+                                let end = start + packet.data_length() as u64;
+                                let data = self.get_packet_data(start..end);
+                                format!(
+                                    " with CRC {:04X}, data {:02X?}",
+                                    packet.fields.data.crc,
+                                    data)
+                            },
                             _ => format!("")
                         }
-                    },
-                    data)
+                    }
+                )
             },
             ItemType::Transaction => {
                 let transaction = self.transactions.get(item.index).unwrap();
