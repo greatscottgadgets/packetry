@@ -188,17 +188,18 @@ impl Capture {
     }
 
     fn transaction_end(&mut self) {
-        if self.current_transaction.packet_count > 0 {
-            if !(self.transaction_state.first == PID::SOF &&
-                 self.current_transaction.packet_count == 1)
-            {
-                self.add_item(ItemType::Transaction, self.transactions.len());
-                self.transactions.push(&self.current_transaction).unwrap();
-            }
-        }
+        self.add_transaction();
         self.current_transaction.packet_count = 0;
         self.transaction_state.first = PID::Malformed;
         self.transaction_state.last = PID::Malformed;
+    }
+
+    fn add_transaction(&mut self) {
+        if self.current_transaction.packet_count == 0 { return }
+        if self.transaction_state.first == PID::SOF &&
+            self.current_transaction.packet_count == 1 { return }
+        self.add_item(ItemType::Transaction, self.transactions.len());
+        self.transactions.push(&self.current_transaction).unwrap();
     }
 
     fn add_item(&mut self, item_type: ItemType, index: u64) {
