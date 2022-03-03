@@ -324,15 +324,21 @@ impl Capture {
                 format!("{} packet{}",
                     pid,
                     match pid {
-                        SOF => format!(
-                            " with frame number {}, CRC {:02X}",
-                            unsafe { packet.fields.sof.frame_number() },
-                            unsafe { packet.fields.sof.crc() }),
-                        SETUP | IN | OUT => format!(
+                        SOF => {
+                            let sof = unsafe { &packet.fields.sof };
+                            format!(
+                                " with frame number {}, CRC {:02X}",
+                                sof.frame_number(),
+                                sof.crc())
+                        },
+                        SETUP | IN | OUT => {
+                            let token = unsafe { &packet.fields.token };
+                            format!(
                             " on {}.{}, CRC {:02X}",
-                            unsafe { packet.fields.token.device_address() },
-                            unsafe { packet.fields.token.endpoint_number() },
-                            unsafe { packet.fields.token.crc() }),
+                            token.device_address(),
+                            token.endpoint_number(),
+                            token.crc())
+                        },
                         DATA0 | DATA1 => {
                             let start = packet.data_start;
                             let end = start + packet.data_length() as u64;
