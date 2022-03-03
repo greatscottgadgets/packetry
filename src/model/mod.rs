@@ -5,10 +5,9 @@ mod imp;
 use std::sync::{Arc, Mutex};
 
 use gtk::subclass::prelude::*;
-use gtk::{gio, glib, prelude::*};
+use gtk::{gio, glib};
 
 use crate::capture::{self, Capture};
-use crate::row_data::RowData;
 
 // Public part of the Model type.
 glib::wrapper! {
