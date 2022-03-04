@@ -168,7 +168,7 @@ impl Capture {
             },
             DecodeStatus::INVALID => {
                 self.transaction_end();
-                self.add_item(ItemType::Packet, self.packets.len());
+                self.add_item(ItemType::Packet);
             },
         };
     }
@@ -198,14 +198,17 @@ impl Capture {
         if self.current_transaction.packet_count == 0 { return }
         if self.transaction_state.first == PID::SOF &&
             self.current_transaction.packet_count == 1 { return }
-        self.add_item(ItemType::Transaction, self.transactions.len());
+        self.add_item(ItemType::Transaction);
         self.transactions.push(&self.current_transaction).unwrap();
     }
 
-    fn add_item(&mut self, item_type: ItemType, index: u64) {
+    fn add_item(&mut self, item_type: ItemType) {
         let item = Item {
             item_type: item_type as u8,
-            index: index,
+            index: match item_type {
+                ItemType::Packet => self.packets.len(),
+                ItemType::Transaction => self.transactions.len(),
+            }
         };
         self.items.push(&item).unwrap();
     }
