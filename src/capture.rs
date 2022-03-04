@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use crate::file_vec::FileVec;
 use bytemuck_derive::{Pod, Zeroable};
 use bytemuck::pod_read_unaligned;
@@ -169,6 +171,25 @@ impl TransactionState {
     }
 }
 
+fn get_index_range<T>(index: &mut FileVec<u64>,
+                      target: &FileVec<T>,
+                      idx: u64) -> Range<u64>
+    where T: bytemuck::Pod + Default
+{
+    match index.get_range(idx..(idx + 2)) {
+        Ok(vec) => {
+            let start = vec[0];
+            let end = vec[1];
+            start..end
+        }
+        Err(_) => {
+            let start = index.get(idx).unwrap();
+            let end = target.len();
+            start..end
+        }
+    }
+}
+
 impl Capture {
     pub fn new() -> Self {
         Capture{
@@ -311,18 +332,8 @@ impl Capture {
     }
 
     fn get_packet(&mut self, index: u64) -> Vec<u8> {
-        let range = match self.packet_index.get_range(index..(index + 2)) {
-            Ok(vec) => {
-                let start = vec[0];
-                let end = vec[1];
-                start..end
-            }
-            Err(_) => {
-                let start = self.packet_index.get(index).unwrap();
-                let end = self.packet_data.len();
-                start..end
-            }
-        };
+        let range = get_index_range(&mut self.packet_index,
+                                    &self.packet_data, index);
         self.packet_data.get_range(range).unwrap()
     }
 
