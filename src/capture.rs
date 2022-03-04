@@ -101,27 +101,21 @@ impl PacketFields {
     }
 }
 
-#[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
-#[repr(C, packed)]
-pub struct Transaction {
-    pub packet_start: u64,
-    pub packet_count: u64,
-}
-
 #[derive(Copy, Clone, Debug, Default)]
 struct TransactionState {
     first: PID,
     last: PID,
+    start: u64,
+    count: u64,
 }
 
 pub struct Capture {
     items: FileVec<Item>,
     packet_index: FileVec<u64>,
     packet_data: FileVec<u8>,
-    transactions: FileVec<Transaction>,
+    transaction_index: FileVec<u64>,
     transaction_state: TransactionState,
     current_pid: PID,
-    current_transaction: Transaction,
 }
 
 impl Default for Capture {
@@ -196,10 +190,9 @@ impl Capture {
             items: FileVec::new().unwrap(),
             packet_index: FileVec::new().unwrap(),
             packet_data: FileVec::new().unwrap(),
-            transactions: FileVec::new().unwrap(),
+            transaction_index: FileVec::new().unwrap(),
             transaction_state: TransactionState::default(),
             current_pid: PID::Malformed,
-            current_transaction: Transaction::default(),
         }
     }
 
@@ -232,28 +225,28 @@ impl Capture {
     }
 
     fn transaction_start(&mut self) {
-        self.current_transaction.packet_start = self.packet_index.len();
-        self.current_transaction.packet_count = 1;
+        self.transaction_state.start = self.packet_index.len();
+        self.transaction_state.count = 1;
         self.transaction_state.first = self.current_pid;
         self.transaction_state.last = self.current_pid;
     }
 
     fn transaction_append(&mut self) {
-        self.current_transaction.packet_count += 1;
+        self.transaction_state.count += 1;
         self.transaction_state.last = self.current_pid;
     }
 
     fn transaction_end(&mut self) {
         self.add_transaction();
-        self.current_transaction.packet_count = 0;
+        self.transaction_state.count = 0;
         self.transaction_state.first = PID::Malformed;
         self.transaction_state.last = PID::Malformed;
     }
 
     fn add_transaction(&mut self) {
-        if self.current_transaction.packet_count == 0 { return }
+        if self.transaction_state.count == 0 { return }
         self.add_item(ItemType::Transaction);
-        self.transactions.push(&self.current_transaction).unwrap();
+        self.transaction_index.push(&self.transaction_state.start).unwrap();
     }
 
     fn add_item(&mut self, item_type: ItemType) {
@@ -261,7 +254,7 @@ impl Capture {
             item_type: item_type as u8,
             index: match item_type {
                 ItemType::Packet => self.packet_index.len(),
-                ItemType::Transaction => self.transactions.len(),
+                ItemType::Transaction => self.transaction_index.len(),
             }
         };
         self.items.push(&item).unwrap();
@@ -272,7 +265,8 @@ impl Capture {
             None => self.items.get(index).unwrap(),
             Some(parent) => match ItemType::try_from(parent.item_type).unwrap() {
                 ItemType::Transaction => {
-                    let packet_start = self.transactions.get(parent.index).unwrap().packet_start;
+                    let packet_start =
+                        self.transaction_index.get(parent.index).unwrap();
                     Item {
                         item_type: ItemType::Packet as u8,
                         index: packet_start + index,
@@ -290,7 +284,9 @@ impl Capture {
             Some(parent) => match ItemType::try_from(parent.item_type).unwrap() {
                 Packet => 0,
                 Transaction => {
-                    self.transactions.get(parent.index).unwrap().packet_count
+                    let range = get_index_range(&mut self.transaction_index,
+                                                &self.packet_index, parent.index);
+                    range.end - range.start
                 }
             }
         }
@@ -321,9 +317,10 @@ impl Capture {
                     packet)
             },
             ItemType::Transaction => {
-                let transaction = self.transactions.get(item.index).unwrap();
-                let pid = self.get_packet_pid(transaction.packet_start);
-                let count = transaction.packet_count;
+                let range = get_index_range(&mut self.transaction_index,
+                                            &self.packet_index, item.index);
+                let count = range.end - range.start;
+                let pid = self.get_packet_pid(range.start);
                 format!("{} transaction, {} packets", pid, count)
             },
         }
