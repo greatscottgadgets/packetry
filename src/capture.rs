@@ -7,22 +7,22 @@ use num_enum::{IntoPrimitive, FromPrimitive, TryFromPrimitive};
 #[derive(Copy, Clone, Debug, IntoPrimitive, FromPrimitive, PartialEq)]
 #[repr(u8)]
 enum PID {
-	RSVD  = 0xF0,
-	OUT	  = 0xE1,
-	ACK	  = 0xD2,
-	DATA0 = 0xC3,
-	PING  = 0xB4,
-	SOF   = 0xA5,
-	NYET  = 0x96,
-	DATA2 = 0x87,
-	SPLIT = 0x78,
-	IN    = 0x69,
-	NAK   = 0x5A,
-	DATA1 = 0x4B,
-	ERR   = 0x3C,
-	SETUP = 0x2D,
-	STALL = 0x1E,
-	MDATA = 0x0F,
+    RSVD  = 0xF0,
+    OUT   = 0xE1,
+    ACK   = 0xD2,
+    DATA0 = 0xC3,
+    PING  = 0xB4,
+    SOF   = 0xA5,
+    NYET  = 0x96,
+    DATA2 = 0x87,
+    SPLIT = 0x78,
+    IN    = 0x69,
+    NAK   = 0x5A,
+    DATA1 = 0x4B,
+    ERR   = 0x3C,
+    SETUP = 0x2D,
+    STALL = 0x1E,
+    MDATA = 0x0F,
     #[default]
     Malformed = 0,
 }
@@ -168,7 +168,7 @@ impl Capture {
             },
             DecodeStatus::INVALID => {
                 self.transaction_end();
-                self.add_item(ItemType::Packet, self.packets.len());
+                self.add_item(ItemType::Packet);
             },
         };
     }
@@ -188,23 +188,27 @@ impl Capture {
     }
 
     fn transaction_end(&mut self) {
-        if self.current_transaction.packet_count > 0 {
-            if !(self.transaction_state.first == PID::SOF &&
-                 self.current_transaction.packet_count == 1)
-            {
-                self.add_item(ItemType::Transaction, self.transactions.len());
-                self.transactions.push(&self.current_transaction).unwrap();
-            }
-        }
+        self.add_transaction();
         self.current_transaction.packet_count = 0;
         self.transaction_state.first = PID::Malformed;
         self.transaction_state.last = PID::Malformed;
     }
 
-    fn add_item(&mut self, item_type: ItemType, index: u64) {
+    fn add_transaction(&mut self) {
+        if self.current_transaction.packet_count == 0 { return }
+        if self.transaction_state.first == PID::SOF &&
+            self.current_transaction.packet_count == 1 { return }
+        self.add_item(ItemType::Transaction);
+        self.transactions.push(&self.current_transaction).unwrap();
+    }
+
+    fn add_item(&mut self, item_type: ItemType) {
         let item = Item {
             item_type: item_type as u8,
-            index: index,
+            index: match item_type {
+                ItemType::Packet => self.packets.len(),
+                ItemType::Transaction => self.transactions.len(),
+            }
         };
         self.items.push(&item).unwrap();
     }
