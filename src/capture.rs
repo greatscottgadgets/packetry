@@ -252,8 +252,6 @@ impl Capture {
 
     fn add_transaction(&mut self) {
         if self.current_transaction.packet_count == 0 { return }
-        if self.transaction_state.first == PID::SOF &&
-            self.current_transaction.packet_count == 1 { return }
         self.add_item(ItemType::Transaction);
         self.transactions.push(&self.current_transaction).unwrap();
     }
