@@ -169,6 +169,13 @@ impl EndpointData {
             (Normal, IN, IN) => DecodeStatus::CONTINUE,
             (Normal, OUT, OUT) => DecodeStatus::CONTINUE,
 
+            // A SOF group starts a special transfer, unless
+            // one is already in progress.
+            (Special, Malformed, SOF) => DecodeStatus::NEW,
+
+            // Further SOF groups continue this transfer.
+            (Special, SOF, SOF) => DecodeStatus::CONTINUE,
+
             // Any other case is not a valid part of a transfer.
             _ => DecodeStatus::INVALID
         }
@@ -320,6 +327,9 @@ impl Capture {
         state.first = PID::from(packet[0]);
         state.last = state.first;
         match PacketFields::from_packet(&packet.to_vec()) {
+            PacketFields::SOF(_) => {
+                self.transaction_state.endpoint_id = 0;
+            },
             PacketFields::Token(token) => {
                 let addr = token.device_address() as usize;
                 let num = token.endpoint_number() as usize;
@@ -351,12 +361,7 @@ impl Capture {
 
     fn add_transaction(&mut self) {
         if self.transaction_state.count == 0 { return }
-        use PID::*;
-        match self.transaction_state.first {
-            SETUP | IN | OUT => self.transfer_update(),
-            SOF => self.add_item(ItemType::Transaction),
-            _ => {}
-        };
+        self.transfer_update();
         self.transaction_index.push(&self.transaction_state.start).unwrap();
     }
 
