@@ -129,6 +129,7 @@ struct TransactionState {
 enum EndpointType {
     Control,
     Normal,
+    Special,
 }
 
 struct EndpointData {
@@ -264,7 +265,7 @@ fn get_index_range<T>(index: &mut FileVec<u64>,
 
 impl Capture {
     pub fn new() -> Self {
-        Capture {
+        let mut capture = Capture {
             items: FileVec::new().unwrap(),
             packet_index: FileVec::new().unwrap(),
             packet_data: FileVec::new().unwrap(),
@@ -274,7 +275,9 @@ impl Capture {
             endpoint_data: Vec::new(),
             endpoint_index: [[-1; USB_MAX_ENDPOINTS]; USB_MAX_DEVICES],
             transaction_state: TransactionState::default(),
-        }
+        };
+        capture.add_endpoint(0xFF, 0xFF);
+        capture
     }
 
     pub fn handle_raw_packet(&mut self, packet: &[u8]) {
@@ -360,7 +363,7 @@ impl Capture {
     fn add_endpoint(&mut self, addr: usize, num: usize) {
         use EndpointType::*;
         let ep_data = EndpointData {
-            ep_type: if num == 0 { Control } else { Normal },
+            ep_type: match num {0 => Control, 0xFF => Special, _ => Normal},
             transaction_ids: FileVec::new().unwrap(),
             transfer_index: FileVec::new().unwrap(),
             transaction_start: 0,
@@ -557,6 +560,7 @@ impl Capture {
                         match ep_data.ep_type {
                             EndpointType::Control => "Control",
                             EndpointType::Normal => "Bulk",
+                            EndpointType::Special => "Special",
                         },
                         endpoint.device_address,
                         endpoint.endpoint_number,
