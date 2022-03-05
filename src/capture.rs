@@ -115,7 +115,6 @@ pub struct Capture {
     packet_data: FileVec<u8>,
     transaction_index: FileVec<u64>,
     transaction_state: TransactionState,
-    current_pid: PID,
 }
 
 impl Default for Capture {
@@ -192,29 +191,27 @@ impl Capture {
             packet_data: FileVec::new().unwrap(),
             transaction_index: FileVec::new().unwrap(),
             transaction_state: TransactionState::default(),
-            current_pid: PID::Malformed,
         }
     }
 
     pub fn handle_raw_packet(&mut self, packet: &[u8]) {
-        let index = self.packet_data.len();
+        self.transaction_update(packet);
+        self.packet_index.push(&self.packet_data.len()).unwrap();
         self.packet_data.append(packet).unwrap();
-        self.current_pid = PID::from(packet[0]);
-        self.transaction_update();
-        self.packet_index.push(&index).unwrap();
     }
 
-    fn transaction_update(&mut self) {
-        match self.transaction_state.status(self.current_pid) {
+    fn transaction_update(&mut self, packet: &[u8]) {
+        let pid = PID::from(packet[0]);
+        match self.transaction_state.status(pid) {
             DecodeStatus::NEW => {
                 self.transaction_end();
-                self.transaction_start();
+                self.transaction_start(packet);
             },
             DecodeStatus::CONTINUE => {
-                self.transaction_append();
+                self.transaction_append(pid);
             },
             DecodeStatus::DONE => {
-                self.transaction_append();
+                self.transaction_append(pid);
                 self.transaction_end();
             },
             DecodeStatus::INVALID => {
@@ -224,23 +221,26 @@ impl Capture {
         };
     }
 
-    fn transaction_start(&mut self) {
-        self.transaction_state.start = self.packet_index.len();
-        self.transaction_state.count = 1;
-        self.transaction_state.first = self.current_pid;
-        self.transaction_state.last = self.current_pid;
+    fn transaction_start(&mut self, packet: &[u8]) {
+        let state = &mut self.transaction_state;
+        state.start = self.packet_index.len();
+        state.count = 1;
+        state.first = PID::from(packet[0]);
+        state.last = state.first;
     }
 
-    fn transaction_append(&mut self) {
-        self.transaction_state.count += 1;
-        self.transaction_state.last = self.current_pid;
+    fn transaction_append(&mut self, pid: PID) {
+        let state = &mut self.transaction_state;
+        state.count += 1;
+        state.last = pid;
     }
 
     fn transaction_end(&mut self) {
         self.add_transaction();
-        self.transaction_state.count = 0;
-        self.transaction_state.first = PID::Malformed;
-        self.transaction_state.last = PID::Malformed;
+        let state = &mut self.transaction_state;
+        state.count = 0;
+        state.first = PID::Malformed;
+        state.last = PID::Malformed;
     }
 
     fn add_transaction(&mut self) {
