@@ -549,7 +549,10 @@ impl Capture {
                                             &self.packet_index, item.index);
                 let count = range.end - range.start;
                 let pid = self.get_packet_pid(range.start);
-                format!("{} transaction, {} packets", pid, count)
+                match pid {
+                    PID::SOF => format!("{} SOF packets", count),
+                    _ => format!("{} transaction, {} packets", pid, count)
+                }
             },
             ItemType::Transfer => {
                 let entry = self.transfer_index.get(item.index).unwrap();
@@ -561,15 +564,16 @@ impl Capture {
                     &ep_data.transaction_ids,
                     entry.transfer_id());
                 let count = range.end - range.start;
-                format!("{} transfer on {}.{}, {} transactions",
-                        match ep_data.ep_type {
-                            EndpointType::Control => "Control",
-                            EndpointType::Normal => "Bulk",
-                            EndpointType::Special => "Special",
-                        },
-                        endpoint.device_address,
-                        endpoint.endpoint_number,
-                        count)
+                match ep_data.ep_type {
+                    EndpointType::Special => format!(
+                        "{} SOF groups", count),
+                    EndpointType::Control => format!(
+                        "Control transfer with {} transactions on device {}",
+                        count, endpoint.device_address),
+                    EndpointType::Normal => format!(
+                        "Bulk transfer with {} transactions on endpoint {}.{}",
+                        count, endpoint.device_address, endpoint.endpoint_number)
+                }
             },
         }
     }
