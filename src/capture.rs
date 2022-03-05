@@ -126,8 +126,13 @@ struct TransactionState {
     endpoint_id: usize,
 }
 
+enum EndpointType {
+    Control,
+    Normal,
+}
+
 struct EndpointData {
-    control: bool,
+    ep_type: EndpointType,
     transaction_ids: FileVec<u64>,
     transfer_index: FileVec<u64>,
     transaction_start: u64,
@@ -138,29 +143,30 @@ struct EndpointData {
 impl EndpointData {
     fn status(&self, next: PID) -> DecodeStatus {
         use PID::*;
-        match (self.control, self.last, next) {
+        use EndpointType::*;
+        match (&self.ep_type, self.last, next) {
 
             // A SETUP transaction starts a new control transfer.
-            (true, _, SETUP) => DecodeStatus::NEW,
+            (Control, _, SETUP) => DecodeStatus::NEW,
 
             // SETUP may be followed by IN or OUT at data stage.
-            (true, SETUP, IN | OUT) => DecodeStatus::CONTINUE,
+            (Control, SETUP, IN | OUT) => DecodeStatus::CONTINUE,
 
             // IN or OUT may then be repeated during data stage.
-            (true, IN, IN) => DecodeStatus::CONTINUE,
-            (true, OUT, OUT) => DecodeStatus::CONTINUE,
+            (Control, IN, IN) => DecodeStatus::CONTINUE,
+            (Control, OUT, OUT) => DecodeStatus::CONTINUE,
 
             // The opposite direction at status stage ends the transfer.
-            (true, IN, OUT) => DecodeStatus::DONE,
-            (true, OUT, IN) => DecodeStatus::DONE,
+            (Control, IN, OUT) => DecodeStatus::DONE,
+            (Control, OUT, IN) => DecodeStatus::DONE,
 
             // An IN or OUT transaction on a non-control endpoint,
             // with no transfer in progress, starts a bulk transfer.
-            (false, Malformed, IN | OUT) => DecodeStatus::NEW,
+            (Normal, Malformed, IN | OUT) => DecodeStatus::NEW,
 
             // IN or OUT may then be repeated.
-            (false, IN, IN) => DecodeStatus::CONTINUE,
-            (false, OUT, OUT) => DecodeStatus::CONTINUE,
+            (Normal, IN, IN) => DecodeStatus::CONTINUE,
+            (Normal, OUT, OUT) => DecodeStatus::CONTINUE,
 
             // Any other case is not a valid part of a transfer.
             _ => DecodeStatus::INVALID
@@ -317,8 +323,9 @@ impl Capture {
                 if self.endpoint_index[addr][num] < 0 {
                     let endpoint_id = self.endpoints.len() as i16;
                     self.endpoint_index[addr][num] = endpoint_id;
+                    use EndpointType::*;
                     let ep_data = EndpointData {
-                        control: num == 0,
+                        ep_type: if num == 0 { Control } else { Normal },
                         transaction_ids: FileVec::new().unwrap(),
                         transfer_index: FileVec::new().unwrap(),
                         transaction_start: 0,
@@ -542,7 +549,10 @@ impl Capture {
                     entry.transfer_id());
                 let count = range.end - range.start;
                 format!("{} transfer on {}.{}, {} transactions",
-                        if ep_data.control { "Control" } else { "Bulk" },
+                        match ep_data.ep_type {
+                            EndpointType::Control => "Control",
+                            EndpointType::Normal => "Bulk",
+                        },
                         endpoint.device_address,
                         endpoint.endpoint_number,
                         count)
