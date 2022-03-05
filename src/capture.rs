@@ -323,23 +323,10 @@ impl Capture {
                 if self.endpoint_index[addr][num] < 0 {
                     let endpoint_id = self.endpoints.len() as i16;
                     self.endpoint_index[addr][num] = endpoint_id;
-                    use EndpointType::*;
-                    let ep_data = EndpointData {
-                        ep_type: if num == 0 { Control } else { Normal },
-                        transaction_ids: FileVec::new().unwrap(),
-                        transfer_index: FileVec::new().unwrap(),
-                        transaction_start: 0,
-                        transaction_count: 0,
-                        last: PID::Malformed,
-                    };
-                    self.endpoint_data.push(ep_data);
-                    let endpoint = Endpoint {
-                        device_address: addr as u8,
-                        endpoint_number: num as u8,
-                    };
-                    self.endpoints.push(&endpoint).unwrap();
+                    self.add_endpoint(addr, num);
                 }
-                state.endpoint_id = self.endpoint_index[addr][num] as usize;
+                self.transaction_state.endpoint_id =
+                    self.endpoint_index[addr][num] as usize;
             },
             _ => {}
         }
@@ -368,6 +355,24 @@ impl Capture {
             _ => {}
         };
         self.transaction_index.push(&self.transaction_state.start).unwrap();
+    }
+
+    fn add_endpoint(&mut self, addr: usize, num: usize) {
+        use EndpointType::*;
+        let ep_data = EndpointData {
+            ep_type: if num == 0 { Control } else { Normal },
+            transaction_ids: FileVec::new().unwrap(),
+            transfer_index: FileVec::new().unwrap(),
+            transaction_start: 0,
+            transaction_count: 0,
+            last: PID::Malformed,
+        };
+        self.endpoint_data.push(ep_data);
+        let endpoint = Endpoint {
+            device_address: addr as u8,
+            endpoint_number: num as u8,
+        };
+        self.endpoints.push(&endpoint).unwrap();
     }
 
     fn transfer_update(&mut self) {
