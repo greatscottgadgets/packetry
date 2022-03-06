@@ -44,6 +44,7 @@ impl std::fmt::Display for PID {
 enum ItemType {
     Packet = 0,
     Transaction = 1,
+    Transfer = 2,
 }
 
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
@@ -82,7 +83,7 @@ pub enum PacketFields {
 }
 
 impl PacketFields {
-    fn from_packet(packet: &Vec<u8>) -> Self {
+    fn from_packet(packet: &[u8]) -> Self {
         let end = packet.len();
         use PID::*;
         match PID::from(packet[0]) {
@@ -101,19 +102,104 @@ impl PacketFields {
     }
 }
 
+#[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
+#[repr(C)]
+pub struct Endpoint {
+    pub device_address: u8,
+    pub endpoint_number: u8,
+}
+
+bitfield! {
+    #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
+    #[repr(C)]
+    pub struct TransferIndexEntry(u64);
+    u64, transfer_id, set_transfer_id: 52, 0;
+    u16, endpoint_id, set_endpoint_id: 63, 53;
+}
+
 #[derive(Copy, Clone, Debug, Default)]
 struct TransactionState {
     first: PID,
     last: PID,
     start: u64,
     count: u64,
+    endpoint_id: usize,
 }
+
+enum EndpointType {
+    Control,
+    Normal,
+    Special,
+}
+
+struct EndpointData {
+    ep_type: EndpointType,
+    transaction_ids: FileVec<u64>,
+    transfer_index: FileVec<u64>,
+    transaction_start: u64,
+    transaction_count: u64,
+    last: PID,
+}
+
+impl EndpointData {
+    fn status(&self, next: PID) -> DecodeStatus {
+        use PID::*;
+        use EndpointType::*;
+        match (&self.ep_type, self.last, next) {
+
+            // A SETUP transaction starts a new control transfer.
+            (Control, _, SETUP) => DecodeStatus::NEW,
+
+            // SETUP may be followed by IN or OUT at data stage.
+            (Control, SETUP, IN | OUT) => DecodeStatus::CONTINUE,
+
+            // IN or OUT may then be repeated during data stage.
+            (Control, IN, IN) => DecodeStatus::CONTINUE,
+            (Control, OUT, OUT) => DecodeStatus::CONTINUE,
+
+            // The opposite direction at status stage ends the transfer.
+            (Control, IN, OUT) => DecodeStatus::DONE,
+            (Control, OUT, IN) => DecodeStatus::DONE,
+
+            // An IN or OUT transaction on a non-control endpoint,
+            // with no transfer in progress, starts a bulk transfer.
+            (Normal, Malformed, IN | OUT) => DecodeStatus::NEW,
+
+            // IN or OUT may then be repeated.
+            (Normal, IN, IN) => DecodeStatus::CONTINUE,
+            (Normal, OUT, OUT) => DecodeStatus::CONTINUE,
+
+            // A SOF group starts a special transfer, unless
+            // one is already in progress.
+            (Special, Malformed, SOF) => DecodeStatus::NEW,
+
+            // Further SOF groups continue this transfer.
+            (Special, SOF, SOF) => DecodeStatus::CONTINUE,
+
+            // Any other case is not a valid part of a transfer.
+            _ => DecodeStatus::INVALID
+        }
+    }
+
+    fn finish(&mut self) {
+        if self.transaction_count > 0 {
+            self.transfer_index.push(&self.transaction_start).unwrap();
+        }
+    }
+}
+
+const USB_MAX_DEVICES: usize = 128;
+const USB_MAX_ENDPOINTS: usize = 16;
 
 pub struct Capture {
     items: FileVec<Item>,
     packet_index: FileVec<u64>,
     packet_data: FileVec<u8>,
     transaction_index: FileVec<u64>,
+    transfer_index: FileVec<TransferIndexEntry>,
+    endpoint_index: [[i16; USB_MAX_ENDPOINTS]; USB_MAX_DEVICES],
+    endpoints: FileVec<Endpoint>,
+    endpoint_data: Vec<EndpointData>,
     transaction_state: TransactionState,
 }
 
@@ -123,6 +209,7 @@ impl Default for Capture {
     }
 }
 
+#[derive(PartialEq)]
 enum DecodeStatus {
     NEW,
     CONTINUE,
@@ -185,19 +272,31 @@ fn get_index_range<T>(index: &mut FileVec<u64>,
 
 impl Capture {
     pub fn new() -> Self {
-        Capture{
+        let mut capture = Capture {
             items: FileVec::new().unwrap(),
             packet_index: FileVec::new().unwrap(),
             packet_data: FileVec::new().unwrap(),
             transaction_index: FileVec::new().unwrap(),
+            transfer_index: FileVec::new().unwrap(),
+            endpoints: FileVec::new().unwrap(),
+            endpoint_data: Vec::new(),
+            endpoint_index: [[-1; USB_MAX_ENDPOINTS]; USB_MAX_DEVICES],
             transaction_state: TransactionState::default(),
-        }
+        };
+        capture.add_endpoint(0xFF, 0xFF);
+        capture
     }
 
     pub fn handle_raw_packet(&mut self, packet: &[u8]) {
         self.transaction_update(packet);
         self.packet_index.push(&self.packet_data.len()).unwrap();
         self.packet_data.append(packet).unwrap();
+    }
+
+    pub fn finish(&mut self) {
+        for i in 0..self.endpoints.len() as usize {
+            self.endpoint_data[i].finish()
+        }
     }
 
     fn transaction_update(&mut self, packet: &[u8]) {
@@ -227,6 +326,23 @@ impl Capture {
         state.count = 1;
         state.first = PID::from(packet[0]);
         state.last = state.first;
+        match PacketFields::from_packet(&packet) {
+            PacketFields::SOF(_) => {
+                self.transaction_state.endpoint_id = 0;
+            },
+            PacketFields::Token(token) => {
+                let addr = token.device_address() as usize;
+                let num = token.endpoint_number() as usize;
+                if self.endpoint_index[addr][num] < 0 {
+                    let endpoint_id = self.endpoints.len() as i16;
+                    self.endpoint_index[addr][num] = endpoint_id;
+                    self.add_endpoint(addr, num);
+                }
+                self.transaction_state.endpoint_id =
+                    self.endpoint_index[addr][num] as usize;
+            },
+            _ => {}
+        }
     }
 
     fn transaction_append(&mut self, pid: PID) {
@@ -245,8 +361,94 @@ impl Capture {
 
     fn add_transaction(&mut self) {
         if self.transaction_state.count == 0 { return }
-        self.add_item(ItemType::Transaction);
+        self.transfer_update();
         self.transaction_index.push(&self.transaction_state.start).unwrap();
+    }
+
+    fn add_endpoint(&mut self, addr: usize, num: usize) {
+        use EndpointType::*;
+        let ep_data = EndpointData {
+            ep_type: match num {0 => Control, 0xFF => Special, _ => Normal},
+            transaction_ids: FileVec::new().unwrap(),
+            transfer_index: FileVec::new().unwrap(),
+            transaction_start: 0,
+            transaction_count: 0,
+            last: PID::Malformed,
+        };
+        self.endpoint_data.push(ep_data);
+        let endpoint = Endpoint {
+            device_address: addr as u8,
+            endpoint_number: num as u8,
+        };
+        self.endpoints.push(&endpoint).unwrap();
+    }
+
+    fn transfer_update(&mut self) {
+        let endpoint_id = self.transaction_state.endpoint_id;
+        let ep_data = &mut self.endpoint_data[endpoint_id];
+        let status = ep_data.status(self.transaction_state.first);
+        let completed =
+            self.transaction_state.count == 3 &&
+            self.transaction_state.last == PID::ACK;
+        let retry_needed =
+            ep_data.transaction_count > 0 &&
+            status != DecodeStatus::INVALID &&
+            !completed;
+        if retry_needed {
+            self.transfer_append(false);
+            return
+        }
+        match status {
+            DecodeStatus::NEW => {
+                self.transfer_end();
+                self.add_item(ItemType::Transfer);
+                self.transfer_start();
+                self.transfer_append(true);
+            },
+            DecodeStatus::CONTINUE => {
+                self.transfer_append(true);
+            },
+            DecodeStatus::DONE => {
+                self.transfer_append(true);
+                self.transfer_end();
+            },
+            DecodeStatus::INVALID => {
+                self.transfer_end();
+                self.add_item(ItemType::Transaction);
+            }
+        }
+    }
+
+    fn transfer_start(&mut self) {
+        let endpoint_id = self.transaction_state.endpoint_id;
+        let ep_data = &mut self.endpoint_data[endpoint_id];
+        let mut entry = TransferIndexEntry::default();
+        entry.set_endpoint_id(self.transaction_state.endpoint_id as u16);
+        entry.set_transfer_id(ep_data.transfer_index.len());
+        self.transfer_index.push(&entry).unwrap();
+        ep_data.transaction_start = ep_data.transaction_ids.len();
+        ep_data.transaction_count = 0;
+    }
+
+    fn transfer_append(&mut self, success: bool) {
+        let endpoint_id = self.transaction_state.endpoint_id;
+        let ep_data = &mut self.endpoint_data[endpoint_id];
+        ep_data.transaction_ids.push(&self.transaction_index.len()).unwrap();
+        ep_data.transaction_count += 1;
+        if success {
+            ep_data.last = self.transaction_state.first;
+        }
+    }
+
+    fn transfer_end(&mut self) {
+        let endpoint_id = self.transaction_state.endpoint_id;
+        let ep_data = &mut self.endpoint_data[endpoint_id];
+        if ep_data.transaction_count > 0 {
+            ep_data.transfer_index.push(
+                &ep_data.transaction_start).unwrap();
+        }
+        ep_data.transaction_count = 0;
+        ep_data.last = PID::Malformed;
     }
 
     fn add_item(&mut self, item_type: ItemType) {
@@ -255,6 +457,7 @@ impl Capture {
             index: match item_type {
                 ItemType::Packet => self.packet_index.len(),
                 ItemType::Transaction => self.transaction_index.len(),
+                ItemType::Transfer => self.transfer_index.len(),
             }
         };
         self.items.push(&item).unwrap();
@@ -271,6 +474,21 @@ impl Capture {
                         item_type: ItemType::Packet as u8,
                         index: packet_start + index,
                     }
+                },
+                ItemType::Transfer => {
+                    let entry = self.transfer_index.get(parent.index).unwrap();
+                    let endpoint_id = entry.endpoint_id() as usize;
+                    let ep_data = &mut self.endpoint_data[endpoint_id];
+                    let range = get_index_range(
+                        &mut ep_data.transfer_index,
+                        &ep_data.transaction_ids,
+                        entry.transfer_id());
+                    let transaction_id =
+                        ep_data.transaction_ids.get(range.start + index).unwrap();
+                    Item {
+                        item_type: ItemType::Transaction as u8,
+                        index: transaction_id,
+                    }
                 }
                 _ => panic!("not supported yet"),
             }
@@ -286,6 +504,16 @@ impl Capture {
                 Transaction => {
                     let range = get_index_range(&mut self.transaction_index,
                                                 &self.packet_index, parent.index);
+                    range.end - range.start
+                },
+                Transfer => {
+                    let entry = self.transfer_index.get(parent.index).unwrap();
+                    let endpoint_id = entry.endpoint_id() as usize;
+                    let ep_data = &mut self.endpoint_data[endpoint_id];
+                    let range = get_index_range(
+                        &mut ep_data.transfer_index,
+                        &ep_data.transaction_ids,
+                        entry.transfer_id());
                     range.end - range.start
                 }
             }
@@ -321,7 +549,31 @@ impl Capture {
                                             &self.packet_index, item.index);
                 let count = range.end - range.start;
                 let pid = self.get_packet_pid(range.start);
-                format!("{} transaction, {} packets", pid, count)
+                match pid {
+                    PID::SOF => format!("{} SOF packets", count),
+                    _ => format!("{} transaction, {} packets", pid, count)
+                }
+            },
+            ItemType::Transfer => {
+                let entry = self.transfer_index.get(item.index).unwrap();
+                let endpoint_id = entry.endpoint_id();
+                let endpoint = self.endpoints.get(endpoint_id as u64).unwrap();
+                let ep_data = &mut self.endpoint_data[endpoint_id as usize];
+                let range = get_index_range(
+                    &mut ep_data.transfer_index,
+                    &ep_data.transaction_ids,
+                    entry.transfer_id());
+                let count = range.end - range.start;
+                match ep_data.ep_type {
+                    EndpointType::Special => format!(
+                        "{} SOF groups", count),
+                    EndpointType::Control => format!(
+                        "Control transfer with {} transactions on device {}",
+                        count, endpoint.device_address),
+                    EndpointType::Normal => format!(
+                        "Bulk transfer with {} transactions on endpoint {}.{}",
+                        count, endpoint.device_address, endpoint.endpoint_number)
+                }
             },
         }
     }
