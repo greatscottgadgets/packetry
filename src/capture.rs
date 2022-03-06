@@ -2,7 +2,6 @@ use std::ops::Range;
 
 use crate::file_vec::FileVec;
 use bytemuck_derive::{Pod, Zeroable};
-use bytemuck::pod_read_unaligned;
 use num_enum::{IntoPrimitive, FromPrimitive, TryFromPrimitive};
 
 #[derive(Copy, Clone, Debug, IntoPrimitive, FromPrimitive, PartialEq)]
@@ -86,16 +85,19 @@ pub enum PacketFields {
 
 impl PacketFields {
     fn from_packet(packet: &Vec<u8>) -> Self {
+        let end = packet.len();
         use PID::*;
         match PID::from(packet[0]) {
             SOF => PacketFields::SOF(
-                pod_read_unaligned::<SOFFields>(&packet[1..3])),
+                SOFFields(
+                    u16::from_le_bytes([packet[1], packet[2]]))),
             SETUP | IN | OUT => PacketFields::Token(
-                pod_read_unaligned::<TokenFields>(&packet[1..3])),
-            DATA0 | DATA1 => PacketFields::Data({
-                let end = packet.len();
-                let start = end - 2;
-                pod_read_unaligned::<DataFields>(&packet[start..end])}),
+                TokenFields(
+                    u16::from_le_bytes([packet[1], packet[2]]))),
+            DATA0 | DATA1 => PacketFields::Data(
+                DataFields{
+                    crc: u16::from_le_bytes(
+                        [packet[end - 2], packet[end - 1]])}),
             _ => PacketFields::None
         }
     }
