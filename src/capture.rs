@@ -54,22 +54,26 @@ pub struct Item {
 }
 
 bitfield! {
+    #[derive(Debug)]
     pub struct SOFFields(u16);
     u16, frame_number, _: 10, 0;
     u8, crc, _: 15, 11;
 }
 
 bitfield! {
+    #[derive(Debug)]
     pub struct TokenFields(u16);
     u8, device_address, _: 6, 0;
     u8, endpoint_number, _: 10, 7;
     u8, crc, _: 15, 11;
 }
 
+#[derive(Debug)]
 pub struct DataFields {
     pub crc: u16,
 }
 
+#[derive(Debug)]
 pub enum PacketFields {
     SOF(SOFFields),
     Token(TokenFields),
@@ -333,3 +337,57 @@ impl Capture {
         PID::from(self.packet_data.get(offset).unwrap())
     }
 }
+
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_sof() {
+        let p = PacketFields::from_packet(&vec![0xa5, 0xde, 0x1e]);
+        if let PacketFields::SOF(sof) = p {
+            assert!(sof.frame_number() == 1758);
+            assert!(sof.crc() == 0x03);
+        } else {
+            panic!("Expected SOF but got {:?}", p);
+        }
+
+    }
+
+    #[test]
+    fn test_parse_setup() {
+        let p = PacketFields::from_packet(&vec![0x2d, 0x02, 0xa8]);
+        if let PacketFields::Token(tok) = p {
+            assert!(tok.device_address() == 2);
+            assert!(tok.endpoint_number() == 0);
+            assert!(tok.crc() == 0x15);
+        } else {
+            panic!("Expected Token but got {:?}", p);
+        }
+
+    }
+
+    #[test]
+    fn test_parse_in() {
+        let p = PacketFields::from_packet(&vec![0x69, 0x82, 0x18]);
+        if let PacketFields::Token(tok) = p {
+            assert!(tok.device_address() == 2);
+            assert!(tok.endpoint_number() == 1);
+            assert!(tok.crc() == 0x03);
+        } else {
+            panic!("Expected Token but got {:?}", p);
+        }
+
+    }
+
+    #[test]
+    fn test_parse_data() {
+        let p = PacketFields::from_packet(&vec![0xc3, 0x40, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xaa, 0xd5]);
+        if let PacketFields::Data(data) = p {
+            assert!(data.crc == 0xd5aa);
+        } else {
+            panic!("Expected Data but got {:?}", p);
+        }
+
+    }
+}
+
