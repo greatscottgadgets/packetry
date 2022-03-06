@@ -54,24 +54,18 @@ pub struct Item {
 }
 
 bitfield! {
-    #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
-    #[repr(C)]
     pub struct SOFFields(u16);
     u16, frame_number, _: 10, 0;
     u8, crc, _: 15, 11;
 }
 
 bitfield! {
-    #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
-    #[repr(C)]
     pub struct TokenFields(u16);
     u8, device_address, _: 6, 0;
     u8, endpoint_number, _: 10, 7;
     u8, crc, _: 15, 11;
 }
 
-#[derive(Copy, Clone, Debug, Pod, Zeroable)]
-#[repr(C)]
 pub struct DataFields {
     pub crc: u16,
 }
