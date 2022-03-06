@@ -83,7 +83,7 @@ pub enum PacketFields {
 }
 
 impl PacketFields {
-    fn from_packet(packet: &Vec<u8>) -> Self {
+    fn from_packet(packet: &[u8]) -> Self {
         let end = packet.len();
         use PID::*;
         match PID::from(packet[0]) {
@@ -326,7 +326,7 @@ impl Capture {
         state.count = 1;
         state.first = PID::from(packet[0]);
         state.last = state.first;
-        match PacketFields::from_packet(&packet.to_vec()) {
+        match PacketFields::from_packet(&packet) {
             PacketFields::SOF(_) => {
                 self.transaction_state.endpoint_id = 0;
             },
