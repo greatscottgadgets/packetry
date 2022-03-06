@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 bufreaderwriter = "0.1.2"
-bytemuck = { version = "1.7.3", features = ["extern_crate_alloc"] }
+bytemuck = { version = "1.8.0", features = ["extern_crate_alloc"] }
 bytemuck_derive = "1.0.1"
 gtk = { version = "*", package = "gtk4" }
 memmap2 = "0.5.3"
@@ -16,3 +16,4 @@ once_cell = "1.5"
 pcap = "0.9.1"
 tempfile = "3.3.0"
 thiserror = "1.0.30"
+bitfield = "0.13.2"

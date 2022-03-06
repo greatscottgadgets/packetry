@@ -53,35 +53,68 @@ pub struct Item {
     item_type: u8,
 }
 
-#[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
-#[repr(C, packed)]
-pub struct Packet {
-    pub data_start: u64,
-    pub data_end: u64,
-    pub pid: u8,
+bitfield! {
+    #[derive(Debug)]
+    pub struct SOFFields(u16);
+    u16, frame_number, _: 10, 0;
+    u8, crc, _: 15, 11;
 }
 
-#[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
-#[repr(C, packed)]
-pub struct Transaction {
-    pub packet_start: u64,
-    pub packet_count: u64,
+bitfield! {
+    #[derive(Debug)]
+    pub struct TokenFields(u16);
+    u8, device_address, _: 6, 0;
+    u8, endpoint_number, _: 10, 7;
+    u8, crc, _: 15, 11;
+}
+
+#[derive(Debug)]
+pub struct DataFields {
+    pub crc: u16,
+}
+
+#[derive(Debug)]
+pub enum PacketFields {
+    SOF(SOFFields),
+    Token(TokenFields),
+    Data(DataFields),
+    None
+}
+
+impl PacketFields {
+    fn from_packet(packet: &Vec<u8>) -> Self {
+        let end = packet.len();
+        use PID::*;
+        match PID::from(packet[0]) {
+            SOF => PacketFields::SOF(
+                SOFFields(
+                    u16::from_le_bytes([packet[1], packet[2]]))),
+            SETUP | IN | OUT => PacketFields::Token(
+                TokenFields(
+                    u16::from_le_bytes([packet[1], packet[2]]))),
+            DATA0 | DATA1 => PacketFields::Data(
+                DataFields{
+                    crc: u16::from_le_bytes(
+                        [packet[end - 2], packet[end - 1]])}),
+            _ => PacketFields::None
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, Default)]
 struct TransactionState {
     first: PID,
     last: PID,
+    start: u64,
+    count: u64,
 }
 
 pub struct Capture {
     items: FileVec<Item>,
-    packets: FileVec<Packet>,
+    packet_index: FileVec<u64>,
     packet_data: FileVec<u8>,
-    transactions: FileVec<Transaction>,
+    transaction_index: FileVec<u64>,
     transaction_state: TransactionState,
-    current_packet: Packet,
-    current_transaction: Transaction,
 }
 
 impl Default for Capture {
@@ -131,39 +164,54 @@ impl TransactionState {
     }
 }
 
+fn get_index_range<T>(index: &mut FileVec<u64>,
+                      target: &FileVec<T>,
+                      idx: u64) -> Range<u64>
+    where T: bytemuck::Pod + Default
+{
+    match index.get_range(idx..(idx + 2)) {
+        Ok(vec) => {
+            let start = vec[0];
+            let end = vec[1];
+            start..end
+        }
+        Err(_) => {
+            let start = index.get(idx).unwrap();
+            let end = target.len();
+            start..end
+        }
+    }
+}
+
 impl Capture {
     pub fn new() -> Self {
         Capture{
             items: FileVec::new().unwrap(),
-            packets: FileVec::new().unwrap(),
+            packet_index: FileVec::new().unwrap(),
             packet_data: FileVec::new().unwrap(),
-            transactions: FileVec::new().unwrap(),
+            transaction_index: FileVec::new().unwrap(),
             transaction_state: TransactionState::default(),
-            current_packet: Packet::default(),
-            current_transaction: Transaction::default(),
         }
     }
 
     pub fn handle_raw_packet(&mut self, packet: &[u8]) {
-        self.current_packet.data_start = self.packet_data.len();
-        self.current_packet.data_end = self.packet_data.len() + packet.len() as u64;
-        self.current_packet.pid = packet[0];
-        self.transaction_update();
+        self.transaction_update(packet);
+        self.packet_index.push(&self.packet_data.len()).unwrap();
         self.packet_data.append(packet).unwrap();
-        self.packets.push(&self.current_packet).unwrap();
     }
 
-    fn transaction_update(&mut self) {
-        match self.transaction_state.status(PID::from(self.current_packet.pid)) {
+    fn transaction_update(&mut self, packet: &[u8]) {
+        let pid = PID::from(packet[0]);
+        match self.transaction_state.status(pid) {
             DecodeStatus::NEW => {
                 self.transaction_end();
-                self.transaction_start();
+                self.transaction_start(packet);
             },
             DecodeStatus::CONTINUE => {
-                self.transaction_append();
+                self.transaction_append(pid);
             },
             DecodeStatus::DONE => {
-                self.transaction_append();
+                self.transaction_append(pid);
                 self.transaction_end();
             },
             DecodeStatus::INVALID => {
@@ -173,41 +221,40 @@ impl Capture {
         };
     }
 
-    fn transaction_start(&mut self) {
-        self.current_transaction.packet_start = self.packets.len();
-        self.current_transaction.packet_count = 1;
-        let pid = PID::from(self.current_packet.pid);
-        self.transaction_state.first = pid;
-        self.transaction_state.last = pid;
+    fn transaction_start(&mut self, packet: &[u8]) {
+        let state = &mut self.transaction_state;
+        state.start = self.packet_index.len();
+        state.count = 1;
+        state.first = PID::from(packet[0]);
+        state.last = state.first;
     }
 
-    fn transaction_append(&mut self) {
-        self.current_transaction.packet_count += 1;
-        let pid = PID::from(self.current_packet.pid);
-        self.transaction_state.last = pid;
+    fn transaction_append(&mut self, pid: PID) {
+        let state = &mut self.transaction_state;
+        state.count += 1;
+        state.last = pid;
     }
 
     fn transaction_end(&mut self) {
         self.add_transaction();
-        self.current_transaction.packet_count = 0;
-        self.transaction_state.first = PID::Malformed;
-        self.transaction_state.last = PID::Malformed;
+        let state = &mut self.transaction_state;
+        state.count = 0;
+        state.first = PID::Malformed;
+        state.last = PID::Malformed;
     }
 
     fn add_transaction(&mut self) {
-        if self.current_transaction.packet_count == 0 { return }
-        if self.transaction_state.first == PID::SOF &&
-            self.current_transaction.packet_count == 1 { return }
+        if self.transaction_state.count == 0 { return }
         self.add_item(ItemType::Transaction);
-        self.transactions.push(&self.current_transaction).unwrap();
+        self.transaction_index.push(&self.transaction_state.start).unwrap();
     }
 
     fn add_item(&mut self, item_type: ItemType) {
         let item = Item {
             item_type: item_type as u8,
             index: match item_type {
-                ItemType::Packet => self.packets.len(),
-                ItemType::Transaction => self.transactions.len(),
+                ItemType::Packet => self.packet_index.len(),
+                ItemType::Transaction => self.transaction_index.len(),
             }
         };
         self.items.push(&item).unwrap();
@@ -218,7 +265,8 @@ impl Capture {
             None => self.items.get(index).unwrap(),
             Some(parent) => match ItemType::try_from(parent.item_type).unwrap() {
                 ItemType::Transaction => {
-                    let packet_start = self.transactions.get(parent.index).unwrap().packet_start;
+                    let packet_start =
+                        self.transaction_index.get(parent.index).unwrap();
                     Item {
                         item_type: ItemType::Packet as u8,
                         index: packet_start + index,
@@ -236,7 +284,9 @@ impl Capture {
             Some(parent) => match ItemType::try_from(parent.item_type).unwrap() {
                 Packet => 0,
                 Transaction => {
-                    self.transactions.get(parent.index).unwrap().packet_count
+                    let range = get_index_range(&mut self.transaction_index,
+                                                &self.packet_index, parent.index);
+                    range.end - range.start
                 }
             }
         }
@@ -245,20 +295,99 @@ impl Capture {
     pub fn get_summary(&mut self, item: &Item) -> String {
         match ItemType::try_from(item.item_type).unwrap() {
             ItemType::Packet => {
-                let packet = self.packets.get(item.index).unwrap();
-                let data = self.get_packet_data(packet.data_start..packet.data_end);
-                format!("{} packet \t{:02X?}", PID::from(packet.pid), data)
+                let packet = self.get_packet(item.index);
+                let pid = PID::from(packet[0]);
+                format!("{} packet{}: {:02X?}",
+                    pid,
+                    match PacketFields::from_packet(&packet) {
+                        PacketFields::SOF(sof) => format!(
+                            " with frame number {}, CRC {:02X}",
+                            sof.frame_number(),
+                            sof.crc()),
+                        PacketFields::Token(token) => format!(
+                            " on {}.{}, CRC {:02X}",
+                            token.device_address(),
+                            token.endpoint_number(),
+                            token.crc()),
+                        PacketFields::Data(data) => format!(
+                            " with CRC {:04X}",
+                            data.crc),
+                        PacketFields::None => "".to_string()
+                    },
+                    packet)
             },
             ItemType::Transaction => {
-                let transaction = self.transactions.get(item.index).unwrap();
-                let packet = self.packets.get(transaction.packet_start).unwrap();
-                let count = transaction.packet_count;
-                format!("{} transaction, {} packets", PID::from(packet.pid), count)
+                let range = get_index_range(&mut self.transaction_index,
+                                            &self.packet_index, item.index);
+                let count = range.end - range.start;
+                let pid = self.get_packet_pid(range.start);
+                format!("{} transaction, {} packets", pid, count)
             },
         }
     }
 
-    fn get_packet_data(&mut self, range: Range<u64>) -> Vec<u8> {
+    fn get_packet(&mut self, index: u64) -> Vec<u8> {
+        let range = get_index_range(&mut self.packet_index,
+                                    &self.packet_data, index);
         self.packet_data.get_range(range).unwrap()
     }
+
+    fn get_packet_pid(&mut self, index: u64) -> PID {
+        let offset = self.packet_index.get(index).unwrap();
+        PID::from(self.packet_data.get(offset).unwrap())
+    }
 }
+
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_sof() {
+        let p = PacketFields::from_packet(&vec![0xa5, 0xde, 0x1e]);
+        if let PacketFields::SOF(sof) = p {
+            assert!(sof.frame_number() == 1758);
+            assert!(sof.crc() == 0x03);
+        } else {
+            panic!("Expected SOF but got {:?}", p);
+        }
+
+    }
+
+    #[test]
+    fn test_parse_setup() {
+        let p = PacketFields::from_packet(&vec![0x2d, 0x02, 0xa8]);
+        if let PacketFields::Token(tok) = p {
+            assert!(tok.device_address() == 2);
+            assert!(tok.endpoint_number() == 0);
+            assert!(tok.crc() == 0x15);
+        } else {
+            panic!("Expected Token but got {:?}", p);
+        }
+
+    }
+
+    #[test]
+    fn test_parse_in() {
+        let p = PacketFields::from_packet(&vec![0x69, 0x82, 0x18]);
+        if let PacketFields::Token(tok) = p {
+            assert!(tok.device_address() == 2);
+            assert!(tok.endpoint_number() == 1);
+            assert!(tok.crc() == 0x03);
+        } else {
+            panic!("Expected Token but got {:?}", p);
+        }
+
+    }
+
+    #[test]
+    fn test_parse_data() {
+        let p = PacketFields::from_packet(&vec![0xc3, 0x40, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xaa, 0xd5]);
+        if let PacketFields::Data(data) = p {
+            assert!(data.crc == 0xd5aa);
+        } else {
+            panic!("Expected Data but got {:?}", p);
+        }
+
+    }
+}
+

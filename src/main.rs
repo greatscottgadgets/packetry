@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate bitfield;
+
 mod model;
 pub mod row_data;
 
