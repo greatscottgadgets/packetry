@@ -221,6 +221,7 @@ pub struct Capture {
     endpoint_states: FileVec<u8>,
     endpoint_state_index: FileVec<u64>,
     last_endpoint_state: Vec<u8>,
+    last_item_endpoint: i16,
     transaction_state: TransactionState,
 }
 
@@ -305,6 +306,7 @@ impl Capture {
             endpoint_states: FileVec::new().unwrap(),
             endpoint_state_index: FileVec::new().unwrap(),
             last_endpoint_state: Vec::new(),
+            last_item_endpoint: -1,
             transaction_state: TransactionState::default(),
         };
         capture.add_endpoint(0, EndpointType::Invalid as usize);
@@ -320,7 +322,7 @@ impl Capture {
 
     pub fn finish(&mut self) {
         for i in 0..self.endpoints.len() as usize {
-            self.ep_transfer_end(i);
+            self.ep_transfer_end(i, false);
         }
     }
 
@@ -451,6 +453,7 @@ impl Capture {
     fn transfer_start(&mut self) {
         self.add_item(ItemType::Transfer);
         let endpoint_id = self.transaction_state.endpoint_id;
+        self.last_item_endpoint = endpoint_id as i16;
         self.add_transfer_entry(endpoint_id, true);
         let ep_data = &mut self.endpoint_data[endpoint_id];
         ep_data.transaction_start = ep_data.transaction_ids.len();
@@ -469,15 +472,19 @@ impl Capture {
 
     fn transfer_end(&mut self) {
         let endpoint_id = self.transaction_state.endpoint_id;
-        self.ep_transfer_end(endpoint_id);
+        let add_item = self.last_item_endpoint != (endpoint_id as i16);
+        self.ep_transfer_end(endpoint_id, add_item);
     }
 
-    fn ep_transfer_end(&mut self, endpoint_id: usize) {
+    fn ep_transfer_end(&mut self, endpoint_id: usize, add_item: bool) {
         let ep_data = &mut self.endpoint_data[endpoint_id];
         if ep_data.transaction_count > 0 {
             let start = &ep_data.transaction_start;
             ep_data.transfer_index.push(start).unwrap();
-            self.add_item(ItemType::Transfer);
+            if add_item {
+                self.add_item(ItemType::Transfer);
+                self.last_item_endpoint = endpoint_id as i16;
+            }
             self.add_transfer_entry(endpoint_id, false);
         }
         let ep_data = &mut self.endpoint_data[endpoint_id];
@@ -672,7 +679,7 @@ impl Capture {
                 for i in 0..state_length {
                     use EndpointState::*;
                     let state = EndpointState::from(endpoint_state[i]);
-                    thru |= state == Starting;
+                    thru |= match state { Starting | Ending => true, _ => false};
                     connectors.push(
                         match state {
                             Idle     => ' ',
