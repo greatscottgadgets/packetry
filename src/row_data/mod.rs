@@ -19,8 +19,12 @@ glib::wrapper! {
 // Constructor for new instances. This simply calls glib::Object::new() with
 // initial values for our two properties and then returns the new instance
 impl RowData {
-    pub fn new(item: Option<capture::Item>, text: &str) -> RowData {
-        let mut row: RowData = glib::Object::new(&[("text", &text)]).expect("Failed to create row data");
+    pub fn new(item: Option<capture::Item>, text: &str, conn: &str) -> RowData {
+        let mut row: RowData = glib::Object::new(
+            &[
+                ("text", &text),
+                ("conn", &conn),
+            ]).expect("Failed to create row data");
         row.set_item(item);
         row
     }
