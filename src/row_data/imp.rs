@@ -10,7 +10,8 @@ use crate::capture;
 // directly from the outside.
 #[derive(Default)]
 pub struct RowData {
-    name: RefCell<Option<String>>,
+    text: RefCell<Option<String>>,
+    conn: RefCell<Option<String>>,
     pub(super) item: RefCell<Option<capture::Item>>,
 }
 
@@ -39,6 +40,13 @@ impl ObjectImpl for RowData {
                     None, // Default value
                     glib::ParamFlags::READWRITE,
                 ),
+                glib::ParamSpecString::new(
+                    "conn",
+                    "Connectors",
+                    "Connectors",
+                    None, // Default value
+                    glib::ParamFlags::READWRITE,
+                ),
             ]
         });
 
@@ -48,8 +56,12 @@ impl ObjectImpl for RowData {
     fn set_property(&self, _obj: &Self::Type, _id: usize, value: &Value, pspec: &ParamSpec) {
         match pspec.name() {
             "text" => {
-                let name = value.get().unwrap();
-                self.name.replace(name);
+                let text = value.get().unwrap();
+                self.text.replace(text);
+            }
+            "conn" => {
+                let conn = value.get().unwrap();
+                self.conn.replace(conn);
             }
             _ => unimplemented!(),
         }
@@ -57,7 +69,8 @@ impl ObjectImpl for RowData {
 
     fn property(&self, _obj: &Self::Type, _id: usize, pspec: &ParamSpec) -> Value {
         match pspec.name() {
-            "text" => self.name.borrow().to_value(),
+            "text" => self.text.borrow().to_value(),
+            "conn" => self.conn.borrow().to_value(),
             _ => unimplemented!(),
         }
     }

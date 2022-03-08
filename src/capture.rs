@@ -589,6 +589,15 @@ impl Capture {
         }
     }
 
+    pub fn get_connectors(&mut self, parent: &Option<Item>, index: u64) -> String {
+        let endpoint_count = self.endpoints.len() as usize;
+        let mut connectors = String::with_capacity(endpoint_count);
+        for _ in 0..endpoint_count {
+            connectors.push('│');
+        };
+        connectors
+    }
+
     fn get_packet(&mut self, index: u64) -> Vec<u8> {
         let range = get_index_range(&mut self.packet_index,
                                     &self.packet_data, index);
