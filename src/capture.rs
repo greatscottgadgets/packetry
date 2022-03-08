@@ -180,12 +180,6 @@ impl EndpointData {
             _ => DecodeStatus::INVALID
         }
     }
-
-    fn finish(&mut self) {
-        if self.transaction_count > 0 {
-            self.transfer_index.push(&self.transaction_start).unwrap();
-        }
-    }
 }
 
 const USB_MAX_DEVICES: usize = 128;
@@ -295,7 +289,7 @@ impl Capture {
 
     pub fn finish(&mut self) {
         for i in 0..self.endpoints.len() as usize {
-            self.endpoint_data[i].finish()
+            self.ep_transfer_end(i);
         }
     }
 
@@ -442,6 +436,10 @@ impl Capture {
 
     fn transfer_end(&mut self) {
         let endpoint_id = self.transaction_state.endpoint_id;
+        self.ep_transfer_end(endpoint_id);
+    }
+
+    fn ep_transfer_end(&mut self, endpoint_id: usize) {
         let ep_data = &mut self.endpoint_data[endpoint_id];
         if ep_data.transaction_count > 0 {
             ep_data.transfer_index.push(
