@@ -668,6 +668,7 @@ impl Capture {
     }
 
     pub fn get_connectors(&mut self, parent: &Option<Item>, index: u64) -> String {
+        use EndpointState::*;
         let item = self.get_item(parent, index);
         let endpoint_count = self.endpoints.len() as usize;
         let mut connectors = String::with_capacity(endpoint_count);
@@ -677,7 +678,6 @@ impl Capture {
                 let state_length = endpoint_state.len();
                 let mut thru = false;
                 for i in 0..state_length {
-                    use EndpointState::*;
                     let state = EndpointState::from(endpoint_state[i]);
                     thru |= match state { Starting | Ending => true, _ => false};
                     connectors.push(
@@ -697,6 +697,29 @@ impl Capture {
                     connectors.push(if thru {'─'} else {' '});
                 };
             },
+            ItemType::Transaction => {
+                let parent_index = parent.unwrap().index;
+                let endpoint_state = self.get_endpoint_state(parent_index);
+                let state_length = endpoint_state.len();
+                let entry = self.transfer_index.get(parent_index).unwrap();
+                let endpoint_id = entry.endpoint_id() as usize;
+                let mut thru = false;
+                for i in 0..state_length {
+                    let same = i == endpoint_id;
+                    let active = endpoint_state[i] != 0;
+                    connectors.push(
+                        match (same, active, thru) {
+                            (true, _, _) => {thru = true; '├'},
+                            (false, false, false) => ' ',
+                            (false, false, true ) => '─',
+                            (false, true,  false) => '│',
+                            (false, true,  true ) => '┼',
+                        });
+                }
+                for _ in state_length..endpoint_count {
+                    connectors.push(if thru {'─'} else {' '});
+                };
+            }
             _ => {
                 for _ in 0..endpoint_count {
                     connectors.push('?');
