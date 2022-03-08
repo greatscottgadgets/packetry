@@ -648,7 +648,7 @@ impl Capture {
         let mut connectors = String::with_capacity(endpoint_count);
         match ItemType::try_from(item.item_type).unwrap() {
             ItemType::Transfer => {
-                let endpoint_state = self.get_endpoint_state(&item);
+                let endpoint_state = self.get_endpoint_state(item.index);
                 let state_length = endpoint_state.len();
                 let mut thru = false;
                 for i in 0..state_length {
@@ -658,7 +658,12 @@ impl Capture {
                     connectors.push(
                         match state {
                             Idle     => ' ',
-                            Starting => '┌',
+                            Starting =>
+                                if self.transfer_extended(item.index) {
+                                    '┌'
+                                } else {
+                                    '╺'
+                                },
                             Ongoing  => if thru {'┼'} else {'│'},
                             Ending   => '└',
                         })
@@ -676,11 +681,24 @@ impl Capture {
         connectors
     }
 
-    fn get_endpoint_state(&mut self, item: &Item) -> Vec<u8> {
+    fn transfer_extended(&mut self, index: u64) -> bool {
+        let entry = self.transfer_index.get(index).unwrap();
+        let endpoint_id = entry.endpoint_id() as usize;
+        let state = self.get_endpoint_state(index + 1);
+        if endpoint_id >= state.len() {
+            return false
+        }
+        use EndpointState::*;
+        match EndpointState::from(state[endpoint_id]) {
+            Ongoing => true,
+            _ => false,
+        }
+    }
+
+    fn get_endpoint_state(&mut self, index: u64) -> Vec<u8> {
         let range = get_index_range(
             &mut self.endpoint_state_index,
-            &self.endpoint_states,
-            item.index);
+            &self.endpoint_states, index);
         self.endpoint_states.get_range(range).unwrap()
     }
 
