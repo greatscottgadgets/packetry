@@ -452,6 +452,11 @@ impl Capture {
         if ep_data.transaction_count > 0 {
             ep_data.transfer_index.push(
                 &ep_data.transaction_start).unwrap();
+            let mut entry = TransferIndexEntry::default();
+            entry.set_endpoint_id(endpoint_id as u16);
+            entry.set_transfer_id(ep_data.transfer_index.len());
+            entry.set_is_start(false);
+            self.transfer_index.push(&entry).unwrap();
         }
         ep_data.transaction_count = 0;
         ep_data.last = PID::Malformed;
