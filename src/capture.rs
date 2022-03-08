@@ -703,13 +703,23 @@ impl Capture {
                 let state_length = endpoint_state.len();
                 let entry = self.transfer_index.get(parent_index).unwrap();
                 let endpoint_id = entry.endpoint_id() as usize;
+                let ep_data = &mut self.endpoint_data[endpoint_id];
+                let range = get_index_range(
+                    &mut ep_data.transfer_index,
+                    &ep_data.transaction_ids,
+                    entry.transfer_id());
+                let count = range.end - range.start;
+                let last = index == count - 1;
                 let mut thru = false;
                 for i in 0..state_length {
                     let same = i == endpoint_id;
                     let active = endpoint_state[i] != 0;
                     connectors.push(
                         match (same, active, thru) {
-                            (true, _, _) => {thru = true; '├'},
+                            (true, _, _) => {
+                                thru = true;
+                                if last {'└'} else {'├'}
+                            },
                             (false, false, false) => ' ',
                             (false, false, true ) => '─',
                             (false, true,  false) => '│',
