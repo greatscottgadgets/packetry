@@ -113,8 +113,15 @@ bitfield! {
     #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
     #[repr(C)]
     pub struct TransferIndexEntry(u64);
-    u64, transfer_id, set_transfer_id: 52, 0;
-    u16, endpoint_id, set_endpoint_id: 63, 53;
+    u64, transfer_id, set_transfer_id: 51, 0;
+    u16, endpoint_id, set_endpoint_id: 62, 52;
+    u8, _is_start, _set_is_start: 63, 63;
+}
+
+impl TransferIndexEntry {
+    fn set_is_start(&mut self, value: bool) {
+        self._set_is_start(value as u8)
+    }
 }
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -419,6 +426,7 @@ impl Capture {
         let mut entry = TransferIndexEntry::default();
         entry.set_endpoint_id(self.transaction_state.endpoint_id as u16);
         entry.set_transfer_id(ep_data.transfer_index.len());
+        entry.set_is_start(true);
         self.transfer_index.push(&entry).unwrap();
         ep_data.transaction_start = ep_data.transaction_ids.len();
         ep_data.transaction_count = 0;
