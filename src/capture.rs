@@ -426,7 +426,6 @@ impl Capture {
         match status {
             DecodeStatus::NEW => {
                 self.transfer_end();
-                self.add_item(ItemType::Transfer);
                 self.transfer_start();
                 self.transfer_append(true);
             },
@@ -439,7 +438,6 @@ impl Capture {
             },
             DecodeStatus::INVALID => {
                 self.transfer_end();
-                self.add_item(ItemType::Transfer);
                 self.transfer_start();
                 self.transfer_append(false);
                 self.transfer_end();
@@ -448,6 +446,7 @@ impl Capture {
     }
 
     fn transfer_start(&mut self) {
+        self.add_item(ItemType::Transfer);
         let endpoint_id = self.transaction_state.endpoint_id;
         self.add_transfer_entry(endpoint_id, true);
         let ep_data = &mut self.endpoint_data[endpoint_id];
