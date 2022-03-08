@@ -133,10 +133,14 @@ struct TransactionState {
     endpoint_id: usize,
 }
 
+#[derive(FromPrimitive)]
+#[repr(u8)]
 enum EndpointType {
-    Control,
+    Control = 0,
+    #[default]
     Normal,
-    Special,
+    Framing = 0xFE,
+    Invalid = 0xFF,
 }
 
 struct EndpointData {
@@ -178,10 +182,10 @@ impl EndpointData {
 
             // A SOF group starts a special transfer, unless
             // one is already in progress.
-            (Special, Malformed, SOF) => DecodeStatus::NEW,
+            (Framing, Malformed, SOF) => DecodeStatus::NEW,
 
             // Further SOF groups continue this transfer.
-            (Special, SOF, SOF) => DecodeStatus::CONTINUE,
+            (Framing, SOF, SOF) => DecodeStatus::CONTINUE,
 
             // Any other case is not a valid part of a transfer.
             _ => DecodeStatus::INVALID
@@ -284,7 +288,8 @@ impl Capture {
             endpoint_index: [[-1; USB_MAX_ENDPOINTS]; USB_MAX_DEVICES],
             transaction_state: TransactionState::default(),
         };
-        capture.add_endpoint(0xFF, 0xFF);
+        capture.add_endpoint(0, EndpointType::Invalid as usize);
+        capture.add_endpoint(0, EndpointType::Framing as usize);
         capture
     }
 
@@ -316,7 +321,8 @@ impl Capture {
             },
             DecodeStatus::INVALID => {
                 self.transaction_end();
-                self.add_item(ItemType::Packet);
+                self.transaction_start(packet);
+                self.transaction_end();
             },
         };
     }
@@ -329,7 +335,7 @@ impl Capture {
         state.last = state.first;
         match PacketFields::from_packet(&packet) {
             PacketFields::SOF(_) => {
-                self.transaction_state.endpoint_id = 0;
+                self.transaction_state.endpoint_id = 1;
             },
             PacketFields::Token(token) => {
                 let addr = token.device_address() as usize;
@@ -342,7 +348,9 @@ impl Capture {
                 self.transaction_state.endpoint_id =
                     self.endpoint_index[addr][num] as usize;
             },
-            _ => {}
+            _ => {
+                self.transaction_state.endpoint_id = 0;
+            }
         }
     }
 
@@ -367,9 +375,8 @@ impl Capture {
     }
 
     fn add_endpoint(&mut self, addr: usize, num: usize) {
-        use EndpointType::*;
         let ep_data = EndpointData {
-            ep_type: match num {0 => Control, 0xFF => Special, _ => Normal},
+            ep_type: EndpointType::from(num as u8),
             transaction_ids: FileVec::new().unwrap(),
             transfer_index: FileVec::new().unwrap(),
             transaction_start: 0,
@@ -415,7 +422,10 @@ impl Capture {
             },
             DecodeStatus::INVALID => {
                 self.transfer_end();
-                self.add_item(ItemType::Transaction);
+                self.add_item(ItemType::Transfer);
+                self.transfer_start();
+                self.transfer_append(false);
+                self.transfer_end();
             }
         }
     }
@@ -576,7 +586,9 @@ impl Capture {
                     entry.transfer_id());
                 let count = range.end - range.start;
                 match ep_data.ep_type {
-                    EndpointType::Special => format!(
+                    EndpointType::Invalid => format!(
+                        "{} invalid groups", count),
+                    EndpointType::Framing => format!(
                         "{} SOF groups", count),
                     EndpointType::Control => format!(
                         "Control transfer with {} transactions on device {}",
