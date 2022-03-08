@@ -432,12 +432,8 @@ impl Capture {
 
     fn transfer_start(&mut self) {
         let endpoint_id = self.transaction_state.endpoint_id;
+        self.add_transfer_entry(endpoint_id, true);
         let ep_data = &mut self.endpoint_data[endpoint_id];
-        let mut entry = TransferIndexEntry::default();
-        entry.set_endpoint_id(self.transaction_state.endpoint_id as u16);
-        entry.set_transfer_id(ep_data.transfer_index.len());
-        entry.set_is_start(true);
-        self.transfer_index.push(&entry).unwrap();
         ep_data.transaction_start = ep_data.transaction_ids.len();
         ep_data.transaction_count = 0;
     }
@@ -460,16 +456,22 @@ impl Capture {
     fn ep_transfer_end(&mut self, endpoint_id: usize) {
         let ep_data = &mut self.endpoint_data[endpoint_id];
         if ep_data.transaction_count > 0 {
-            ep_data.transfer_index.push(
-                &ep_data.transaction_start).unwrap();
-            let mut entry = TransferIndexEntry::default();
-            entry.set_endpoint_id(endpoint_id as u16);
-            entry.set_transfer_id(ep_data.transfer_index.len());
-            entry.set_is_start(false);
-            self.transfer_index.push(&entry).unwrap();
+            let start = &ep_data.transaction_start;
+            ep_data.transfer_index.push(start).unwrap();
+            self.add_transfer_entry(endpoint_id, false);
         }
+        let ep_data = &mut self.endpoint_data[endpoint_id];
         ep_data.transaction_count = 0;
         ep_data.last = PID::Malformed;
+    }
+
+    fn add_transfer_entry(&mut self, endpoint_id: usize, start: bool) {
+        let ep_data = &mut self.endpoint_data[endpoint_id];
+        let mut entry = TransferIndexEntry::default();
+        entry.set_endpoint_id(endpoint_id as u16);
+        entry.set_transfer_id(ep_data.transfer_index.len());
+        entry.set_is_start(start);
+        self.transfer_index.push(&entry).unwrap();
     }
 
     fn add_item(&mut self, item_type: ItemType) {
