@@ -205,6 +205,9 @@ pub struct Capture {
     endpoint_index: [[i16; USB_MAX_ENDPOINTS]; USB_MAX_DEVICES],
     endpoints: FileVec<Endpoint>,
     endpoint_data: Vec<EndpointData>,
+    endpoint_states: FileVec<u8>,
+    endpoint_state_index: FileVec<u64>,
+    last_endpoint_state: Vec<u8>,
     transaction_state: TransactionState,
 }
 
@@ -286,6 +289,9 @@ impl Capture {
             endpoints: FileVec::new().unwrap(),
             endpoint_data: Vec::new(),
             endpoint_index: [[-1; USB_MAX_ENDPOINTS]; USB_MAX_DEVICES],
+            endpoint_states: FileVec::new().unwrap(),
+            endpoint_state_index: FileVec::new().unwrap(),
+            last_endpoint_state: Vec::new(),
             transaction_state: TransactionState::default(),
         };
         capture.add_endpoint(0, EndpointType::Invalid as usize);
@@ -472,6 +478,20 @@ impl Capture {
         entry.set_transfer_id(ep_data.transfer_index.len());
         entry.set_is_start(start);
         self.transfer_index.push(&entry).unwrap();
+        self.add_endpoint_state(endpoint_id, start);
+    }
+
+    fn add_endpoint_state(&mut self, endpoint_id: usize, state: bool) {
+        let endpoint_count = self.endpoints.len() as usize;
+        if self.last_endpoint_state.len() < endpoint_count {
+            self.last_endpoint_state.push(state as u8);
+        } else {
+            self.last_endpoint_state[endpoint_id] = state as u8;
+        }
+        let last_state = &self.last_endpoint_state.as_slice();
+        let state_offset = &self.endpoint_states.len();
+        self.endpoint_states.append(last_state).unwrap();
+        self.endpoint_state_index.push(state_offset).unwrap();
     }
 
     fn add_item(&mut self, item_type: ItemType) {
