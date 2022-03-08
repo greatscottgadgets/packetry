@@ -119,6 +119,9 @@ bitfield! {
 }
 
 impl TransferIndexEntry {
+    fn is_start(&self) -> bool {
+        self._is_start() != 0
+    }
     fn set_is_start(&mut self, value: bool) {
         self._set_is_start(value as u8)
     }
@@ -474,6 +477,7 @@ impl Capture {
         if ep_data.transaction_count > 0 {
             let start = &ep_data.transaction_start;
             ep_data.transfer_index.push(start).unwrap();
+            self.add_item(ItemType::Transfer);
             self.add_transfer_entry(endpoint_id, false);
         }
         let ep_data = &mut self.endpoint_data[endpoint_id];
@@ -569,6 +573,9 @@ impl Capture {
                 },
                 Transfer => {
                     let entry = self.transfer_index.get(parent.index).unwrap();
+                    if !entry.is_start() {
+                        return 0;
+                    }
                     let endpoint_id = entry.endpoint_id() as usize;
                     let ep_data = &mut self.endpoint_data[endpoint_id];
                     let range = get_index_range(
@@ -620,6 +627,18 @@ impl Capture {
                 let endpoint_id = entry.endpoint_id();
                 let endpoint = self.endpoints.get(endpoint_id as u64).unwrap();
                 let ep_data = &mut self.endpoint_data[endpoint_id as usize];
+                if !entry.is_start() {
+                    return format!("End of {}", match ep_data.ep_type {
+                        EndpointType::Invalid => "invalid groups".to_string(),
+                        EndpointType::Framing => "SOF groups".to_string(),
+                        EndpointType::Control => format!(
+                            "control transfer on device {}",
+                            endpoint.device_address),
+                        EndpointType::Normal => format!(
+                            "bulk transfer on endpoint {}.{}",
+                            endpoint.device_address, endpoint.endpoint_number)
+                    });
+                }
                 let range = get_index_range(
                     &mut ep_data.transfer_index,
                     &ep_data.transaction_ids,
