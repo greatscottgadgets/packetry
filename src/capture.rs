@@ -133,6 +133,16 @@ struct TransactionState {
     endpoint_id: usize,
 }
 
+#[derive(IntoPrimitive, FromPrimitive, PartialEq)]
+#[repr(u8)]
+enum EndpointState {
+    #[default]
+    Idle = 0,
+    Starting = 1,
+    Ongoing = 2,
+    Ending = 3,
+}
+
 #[derive(FromPrimitive)]
 #[repr(u8)]
 enum EndpointType {
@@ -395,6 +405,7 @@ impl Capture {
             endpoint_number: num as u8,
         };
         self.endpoints.push(&endpoint).unwrap();
+        self.last_endpoint_state.push(EndpointState::Idle as u8);
     }
 
     fn transfer_update(&mut self) {
@@ -481,14 +492,22 @@ impl Capture {
         self.add_endpoint_state(endpoint_id, start);
     }
 
-    fn add_endpoint_state(&mut self, endpoint_id: usize, state: bool) {
+    fn add_endpoint_state(&mut self, endpoint_id: usize, start: bool) {
         let endpoint_count = self.endpoints.len() as usize;
-        if self.last_endpoint_state.len() < endpoint_count {
-            self.last_endpoint_state.push(state as u8);
-        } else {
-            self.last_endpoint_state[endpoint_id] = state as u8;
+        for i in 0..endpoint_count {
+            use EndpointState::*;
+            self.last_endpoint_state[i] = {
+                let same = endpoint_id == i;
+                let last = EndpointState::from(self.last_endpoint_state[i]);
+                match (same, start, last) {
+                    (true, true,  _)               => Starting,
+                    (true, false, _)               => Ending,
+                    (false, _, Starting | Ongoing) => Ongoing,
+                    (false, _, Ending | Idle)      => Idle,
+                }
+            } as u8;
         }
-        let last_state = &self.last_endpoint_state.as_slice();
+        let last_state = self.last_endpoint_state.as_slice();
         let state_offset = &self.endpoint_states.len();
         self.endpoint_states.append(last_state).unwrap();
         self.endpoint_state_index.push(state_offset).unwrap();
@@ -624,12 +643,45 @@ impl Capture {
     }
 
     pub fn get_connectors(&mut self, parent: &Option<Item>, index: u64) -> String {
+        let item = self.get_item(parent, index);
         let endpoint_count = self.endpoints.len() as usize;
         let mut connectors = String::with_capacity(endpoint_count);
-        for _ in 0..endpoint_count {
-            connectors.push('│');
+        match ItemType::try_from(item.item_type).unwrap() {
+            ItemType::Transfer => {
+                let endpoint_state = self.get_endpoint_state(&item);
+                let state_length = endpoint_state.len();
+                let mut thru = false;
+                for i in 0..state_length {
+                    use EndpointState::*;
+                    let state = EndpointState::from(endpoint_state[i]);
+                    thru |= state == Starting;
+                    connectors.push(
+                        match state {
+                            Idle     => ' ',
+                            Starting => '┌',
+                            Ongoing  => if thru {'┼'} else {'│'},
+                            Ending   => '└',
+                        })
+                }
+                for _ in state_length..endpoint_count {
+                    connectors.push(if thru {'─'} else {' '});
+                };
+            },
+            _ => {
+                for _ in 0..endpoint_count {
+                    connectors.push('?');
+                }
+            }
         };
         connectors
+    }
+
+    fn get_endpoint_state(&mut self, item: &Item) -> Vec<u8> {
+        let range = get_index_range(
+            &mut self.endpoint_state_index,
+            &self.endpoint_states,
+            item.index);
+        self.endpoint_states.get_range(range).unwrap()
     }
 
     fn get_packet(&mut self, index: u64) -> Vec<u8> {

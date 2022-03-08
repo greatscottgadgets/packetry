@@ -114,9 +114,9 @@ fn main() {
                 .downcast::<Label>()
                 .expect("The child must be a Label.");
 
-            let conn = row.property::<String>("conn");
+            let conn = format!("<tt>{}</tt>", row.property::<String>("conn"));
             let text = row.property::<String>("text");
-            conn_label.set_label(&conn);
+            conn_label.set_markup(&conn);
             text_label.set_label(&text);
             expander.set_list_row(Some(&treelistrow));
         });
