@@ -531,7 +531,7 @@ impl Capture {
             Some(Transaction(transfer_index_id, transaction_id)) =>
                 Packet(*transfer_index_id, *transaction_id, {
                     self.transaction_index.get(*transaction_id).unwrap() + index}),
-            Some(Packet(_, _, _)) => panic!("packets do not have children"),
+            Some(Packet(..)) => panic!("packets do not have children"),
         }
     }
 
@@ -583,7 +583,7 @@ impl Capture {
     pub fn get_summary(&mut self, item: &Item) -> String {
         use Item::*;
         match item {
-            Packet(_, _, packet_id) => {
+            Packet(.., packet_id) => {
                 let packet = self.get_packet(*packet_id);
                 let pid = PID::from(packet[0]);
                 format!("{} packet{}: {:02X?}",
@@ -605,7 +605,7 @@ impl Capture {
                     },
                     packet)
             },
-            Transaction(_, _) => {
+            Transaction(..) => {
                 let range = self.item_range(&item);
                 let count = range.end - range.start;
                 let pid = self.get_packet_pid(range.start);
@@ -658,7 +658,7 @@ impl Capture {
         let transfer_index_id = match item {
             Transfer(i) => i,
             Transaction(i, _) => i,
-            Packet(i, _, _) => i
+            Packet(i, ..) => i
         };
         let entry = self.transfer_index.get(*transfer_index_id).unwrap();
         let endpoint_id = entry.endpoint_id() as usize;
@@ -703,7 +703,7 @@ impl Capture {
                         (Ending,   _,     _    ) => '└',
                     }
                 },
-                Transaction(_, _) | Packet(_, _, _) => {
+                Transaction(..) | Packet(..) => {
                     match (on_endpoint, active, thru, last) {
                         (false, false, false, _    ) => ' ',
                         (false, false, true,  _    ) => '─',
