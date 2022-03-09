@@ -284,15 +284,6 @@ fn get_index_range<T>(index: &mut FileVec<u64>,
     }
 }
 
-fn get_index_count<T>(index: &mut FileVec<u64>,
-                      target: &FileVec<T>,
-                      id: u64) -> u64
-    where T: bytemuck::Pod + Default
-{
-    let range = get_index_range(index, target, id);
-    range.end - range.start
-}
-
 impl Capture {
     pub fn new() -> Self {
         let mut capture = Capture {
@@ -544,23 +535,48 @@ impl Capture {
         }
     }
 
-    pub fn item_count(&mut self, parent: &Option<Item>) -> u64 {
+    fn item_range(&mut self, item: &Item) -> Range<u64> {
         use Item::*;
-        match parent {
-            None => self.item_index.len(),
-            Some(Transfer(transfer_index_id)) => {
+        match item {
+            Transfer(transfer_index_id) => {
                 let entry = self.transfer_index.get(*transfer_index_id).unwrap();
                 let endpoint_id = entry.endpoint_id() as usize;
                 let transfer_id = entry.transfer_id();
                 let ep_data = &mut self.endpoint_data[endpoint_id];
-                get_index_count(&mut ep_data.transfer_index,
+                get_index_range(&mut ep_data.transfer_index,
                     &ep_data.transaction_ids, transfer_id)
             },
-            Some(Transaction(_, transaction_id)) => {
-                get_index_count(&mut self.transaction_index,
+            Transaction(_, transaction_id) => {
+                get_index_range(&mut self.transaction_index,
                     &self.packet_index, *transaction_id)
+            },
+            Packet(.., packet_id) => {
+                get_index_range(&mut self.packet_index,
+                    &self.packet_data, *packet_id)
+            },
+        }
+    }
+
+    pub fn item_count(&mut self, parent: &Option<Item>) -> u64 {
+        use Item::*;
+        match parent {
+            None => self.item_index.len(),
+            Some(item) => match item {
+                Transfer(id) => {
+                    let entry = self.transfer_index.get(*id).unwrap();
+                    if entry.is_start() {
+                        let range = self.item_range(&item);
+                        range.end - range.start
+                    } else {
+                        0
+                    }
+                },
+                Transaction(..) => {
+                    let range = self.item_range(&item);
+                    range.end - range.start
+                },
+                Packet(..) => 0,
             }
-            Some(Packet(_, _, _)) => 0,
         }
     }
 
@@ -589,9 +605,8 @@ impl Capture {
                     },
                     packet)
             },
-            Transaction(_, transaction_id) => {
-                let range = get_index_range(&mut self.transaction_index,
-                    &self.packet_index, *transaction_id);
+            Transaction(_, _) => {
+                let range = self.item_range(&item);
                 let count = range.end - range.start;
                 let pid = self.get_packet_pid(range.start);
                 match pid {
@@ -603,8 +618,8 @@ impl Capture {
                 let entry = self.transfer_index.get(*transfer_index_id).unwrap();
                 let endpoint_id = entry.endpoint_id();
                 let endpoint = self.endpoints.get(endpoint_id as u64).unwrap();
-                let ep_data = &mut self.endpoint_data[endpoint_id as usize];
                 if !entry.is_start() {
+                    let ep_data = &mut self.endpoint_data[endpoint_id as usize];
                     return format!("End of {}", match ep_data.ep_type {
                         EndpointType::Invalid => "invalid groups".to_string(),
                         EndpointType::Framing => "SOF groups".to_string(),
@@ -616,10 +631,9 @@ impl Capture {
                             endpoint.device_address, endpoint.endpoint_number)
                     });
                 }
-                let count = get_index_count(
-                    &mut ep_data.transfer_index,
-                    &ep_data.transaction_ids,
-                    entry.transfer_id());
+                let range = self.item_range(&item);
+                let count = range.end - range.start;
+                let ep_data = &mut self.endpoint_data[endpoint_id as usize];
                 match ep_data.ep_type {
                     EndpointType::Invalid => format!(
                         "{} invalid groups", count),
