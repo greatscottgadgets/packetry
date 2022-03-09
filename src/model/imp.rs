@@ -38,7 +38,7 @@ impl ListModelImpl for Model {
         let mut cap = arc.lock().unwrap();
         let item = cap.get_item(&self.parent.borrow(), position as u64);
         let summary = cap.get_summary(&item);
-        let connectors = cap.get_connectors(&self.parent.borrow(), position as u64);
+        let connectors = cap.get_connectors(&item);
         Some(RowData::new(Some(item), &summary, &connectors).upcast::<glib::Object>())
     }
 }
