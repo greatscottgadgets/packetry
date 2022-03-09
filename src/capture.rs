@@ -654,7 +654,9 @@ impl Capture {
         use EndpointState::*;
         use Item::*;
         let endpoint_count = self.endpoints.len() as usize;
-        let mut connectors = String::with_capacity(endpoint_count);
+        const MIN_LEN: usize = "[+][+]".len();
+        let string_length = MIN_LEN + endpoint_count;
+        let mut connectors = String::with_capacity(string_length);
         let transfer_index_id = match item {
             Transfer(i) => i,
             Transaction(i, _) => i,
@@ -664,60 +666,100 @@ impl Capture {
         let endpoint_id = entry.endpoint_id() as usize;
         let endpoint_state = self.get_endpoint_state(*transfer_index_id);
         let state_length = endpoint_state.len();
-        let last = match item {
-            Transfer(_) => false,
+        let extended = self.transfer_extended(endpoint_id, *transfer_index_id);
+        match item {
+            Transfer(_) => {
+                let mut thru = false;
+                for i in 0..state_length {
+                    let state = EndpointState::from(endpoint_state[i]);
+                    thru |= match state {
+                        Starting | Ending => true,
+                        _ => false
+                    };
+                    connectors.push(
+                        match (state, extended, thru) {
+                            (Idle,     _,     _    ) => ' ',
+                            (Starting, false, _    ) => '◊',
+                            (Starting, true,  _    ) => '┌',
+                            (Ongoing,  _,     false) => '│',
+                            (Ongoing,  _,     true ) => '┼',
+                            (Ending,   _,     _    ) => '└',
+                        }
+                    );
+                };
+                for _ in state_length..endpoint_count {
+                    connectors.push('─');
+                }
+                if entry.is_start() {
+                    connectors.push_str("[+]");
+                } else {
+                    connectors.push_str("─○ ");
+                }
+            },
             Transaction(_, transaction_id) => {
                 let ep_data = &mut self.endpoint_data[endpoint_id];
                 let range = get_index_range(&mut ep_data.transfer_index,
                         &ep_data.transaction_ids, entry.transfer_id());
-                *transaction_id ==
-                    ep_data.transaction_ids.get(range.end - 1).unwrap()
+                let last = *transaction_id ==
+                    ep_data.transaction_ids.get(range.end - 1).unwrap();
+                for i in 0..state_length {
+                    let state = EndpointState::from(endpoint_state[i]);
+                    let active = state != Idle;
+                    let on_endpoint = i == endpoint_id;
+                    connectors.push(
+                        match (active, on_endpoint, extended) {
+                            (true,  false, _    ) => '│',
+                            (_,     true,  true ) => '│',
+                            (_,     true,  false) => ' ',
+                            (false, _,     _    ) => ' ',
+                        }
+                    );
+                };
+                for _ in state_length..endpoint_count {
+                    connectors.push(' ');
+                }
+                if last {
+                    connectors.push_str(" └─[+]");
+                } else {
+                    connectors.push_str(" ├─[+]");
+                }
             },
             Packet(_, transaction_id, packet_id) => {
+                let ep_data = &mut self.endpoint_data[endpoint_id];
+                let range = get_index_range(&mut ep_data.transfer_index,
+                    &ep_data.transaction_ids, entry.transfer_id());
+                let last_transaction = *transaction_id ==
+                    ep_data.transaction_ids.get(range.end - 1).unwrap();
                 let range = get_index_range(&mut self.transaction_index,
                     &self.packet_index, *transaction_id);
-                *packet_id == range.end - 1
-            }
-        };
-        let mut thru = false;
-        for i in 0..state_length {
-            let state = EndpointState::from(endpoint_state[i]);
-            let on_endpoint = i == endpoint_id;
-            let active = state != Idle;
-            thru |= match item {
-                Transfer(_) => match state {
-                    Starting | Ending => true,
-                    _ => false
-                },
-                _ => on_endpoint,
-            };
-            connectors.push(match item {
-                Transfer(transfer_index_id) => {
-                    let extended = self.transfer_extended(
-                        endpoint_id, *transfer_index_id);
-                    match (state, extended, thru) {
-                        (Idle,     _,     _    ) => ' ',
-                        (Starting, false, _    ) => '╺',
-                        (Starting, true,  _    ) => '┌',
-                        (Ongoing,  _,     false) => '│',
-                        (Ongoing,  _,     true ) => '┼',
-                        (Ending,   _,     _    ) => '└',
-                    }
-                },
-                Transaction(..) | Packet(..) => {
-                    match (on_endpoint, active, thru, last) {
-                        (false, false, false, _    ) => ' ',
-                        (false, false, true,  _    ) => '─',
-                        (false, true,  false, _    ) => '│',
-                        (false, true,  true,  _    ) => '┼',
-                        (true,  _,     _,     false) => '├',
-                        (true,  _,     _,     true ) => '└'
-                    }
+                let last_packet = *packet_id == range.end - 1;
+                for i in 0..state_length {
+                    let state = EndpointState::from(endpoint_state[i]);
+                    let active = state != Idle;
+                    let on_endpoint = i == endpoint_id;
+                    connectors.push(
+                        match (active, on_endpoint, extended) {
+                            (true,  false, _    ) => '│',
+                            (_,     true,  true ) => '│',
+                            (_,     true,  false) => ' ',
+                            (false, _,     _    ) => ' ',
+                        }
+                    );
+                };
+                for _ in state_length..endpoint_count {
+                    connectors.push(' ');
                 }
-            });
-        };
-        for _ in state_length..endpoint_count {
-            connectors.push(if thru {'─'} else {' '});
+                if last_transaction {
+                    connectors.push_str("   ");
+                } else {
+                    connectors.push_str(" │ ");
+                }
+                if last_packet {
+                    connectors.push_str(" └─");
+                } else {
+                    connectors.push_str(" ├─");
+                }
+            }
         };
         connectors
     }
