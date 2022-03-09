@@ -698,10 +698,34 @@ impl Capture {
                     connectors.push(if thru {'─'} else {' '});
                 };
             }
-            _ => {
-                for _ in 0..endpoint_count {
-                    connectors.push('?');
+            Packet(transfer_index_id, transaction_id, packet_id) => {
+                let endpoint_state = self.get_endpoint_state(*transfer_index_id);
+                let state_length = endpoint_state.len();
+                let entry = self.transfer_index.get(*transfer_index_id).unwrap();
+                let endpoint_id = entry.endpoint_id() as usize;
+                let range = get_index_range(&mut self.transaction_index,
+                    &self.packet_index, *transaction_id);
+                let last_id = range.end - 1;
+                let last = *packet_id == last_id;
+                let mut thru = false;
+                for i in 0..state_length {
+                    let same = i == endpoint_id;
+                    let active = endpoint_state[i] != 0;
+                    connectors.push(
+                        match (same, active, thru) {
+                            (true, _, _) => {
+                                thru = true;
+                                if last {'└'} else {'├'}
+                            },
+                            (false, false, false) => ' ',
+                            (false, false, true ) => '─',
+                            (false, true,  false) => '│',
+                            (false, true,  true ) => '┼',
+                        });
                 }
+                for _ in state_length..endpoint_count {
+                    connectors.push(if thru {'─'} else {' '});
+                };
             }
         };
         connectors
