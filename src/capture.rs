@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use crate::file_vec::FileVec;
 use bytemuck_derive::{Pod, Zeroable};
-use num_enum::{IntoPrimitive, FromPrimitive, TryFromPrimitive};
+use num_enum::{IntoPrimitive, FromPrimitive};
 
 #[derive(Copy, Clone, Debug, IntoPrimitive, FromPrimitive, PartialEq)]
 #[repr(u8)]
@@ -39,19 +39,11 @@ impl std::fmt::Display for PID {
     }
 }
 
-#[derive(Copy, Clone, Debug, IntoPrimitive, TryFromPrimitive)]
-#[repr(u8)]
-enum ItemType {
-    Packet = 0,
-    Transaction = 1,
-    Transfer = 2,
-}
-
-#[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
-#[repr(C, packed)]
-pub struct Item {
-    index: u64,
-    item_type: u8,
+#[derive(Clone)]
+pub enum Item {
+    Transfer(u64),
+    Transaction(u64, u64),
+    Packet(u64, u64, u64),
 }
 
 bitfield! {
@@ -210,7 +202,7 @@ const USB_MAX_DEVICES: usize = 128;
 const USB_MAX_ENDPOINTS: usize = 16;
 
 pub struct Capture {
-    items: FileVec<Item>,
+    item_index: FileVec<u64>,
     packet_index: FileVec<u64>,
     packet_data: FileVec<u8>,
     transaction_index: FileVec<u64>,
@@ -275,27 +267,36 @@ impl TransactionState {
 
 fn get_index_range<T>(index: &mut FileVec<u64>,
                       target: &FileVec<T>,
-                      idx: u64) -> Range<u64>
+                      id: u64) -> Range<u64>
     where T: bytemuck::Pod + Default
 {
-    match index.get_range(idx..(idx + 2)) {
+    match index.get_range(id..(id + 2)) {
         Ok(vec) => {
             let start = vec[0];
             let end = vec[1];
             start..end
         }
         Err(_) => {
-            let start = index.get(idx).unwrap();
+            let start = index.get(id).unwrap();
             let end = target.len();
             start..end
         }
     }
 }
 
+fn get_index_count<T>(index: &mut FileVec<u64>,
+                      target: &FileVec<T>,
+                      id: u64) -> u64
+    where T: bytemuck::Pod + Default
+{
+    let range = get_index_range(index, target, id);
+    range.end - range.start
+}
+
 impl Capture {
     pub fn new() -> Self {
         let mut capture = Capture {
-            items: FileVec::new().unwrap(),
+            item_index: FileVec::new().unwrap(),
             packet_index: FileVec::new().unwrap(),
             packet_data: FileVec::new().unwrap(),
             transaction_index: FileVec::new().unwrap(),
@@ -451,7 +452,7 @@ impl Capture {
     }
 
     fn transfer_start(&mut self) {
-        self.add_item(ItemType::Transfer);
+        self.item_index.push(&self.transfer_index.len()).unwrap();
         let endpoint_id = self.transaction_state.endpoint_id;
         self.last_item_endpoint = endpoint_id as i16;
         self.add_transfer_entry(endpoint_id, true);
@@ -482,7 +483,7 @@ impl Capture {
             let start = &ep_data.transaction_start;
             ep_data.transfer_index.push(start).unwrap();
             if add_item {
-                self.add_item(ItemType::Transfer);
+                self.item_index.push(&self.transfer_index.len()).unwrap();
                 self.last_item_endpoint = endpoint_id as i16;
             }
             self.add_transfer_entry(endpoint_id, false);
@@ -523,82 +524,51 @@ impl Capture {
         self.endpoint_state_index.push(state_offset).unwrap();
     }
 
-    fn add_item(&mut self, item_type: ItemType) {
-        let item = Item {
-            item_type: item_type as u8,
-            index: match item_type {
-                ItemType::Packet => self.packet_index.len(),
-                ItemType::Transaction => self.transaction_index.len(),
-                ItemType::Transfer => self.transfer_index.len(),
-            }
-        };
-        self.items.push(&item).unwrap();
-    }
-
     pub fn get_item(&mut self, parent: &Option<Item>, index: u64) -> Item {
+        use Item::*;
         match parent {
-            None => self.items.get(index).unwrap(),
-            Some(parent) => match ItemType::try_from(parent.item_type).unwrap() {
-                ItemType::Transaction => {
-                    let packet_start =
-                        self.transaction_index.get(parent.index).unwrap();
-                    Item {
-                        item_type: ItemType::Packet as u8,
-                        index: packet_start + index,
-                    }
-                },
-                ItemType::Transfer => {
-                    let entry = self.transfer_index.get(parent.index).unwrap();
+            None => Transfer(self.item_index.get(index).unwrap()),
+            Some(Transfer(transfer_index_id)) =>
+                Transaction(*transfer_index_id, {
+                    let entry = self.transfer_index.get(*transfer_index_id).unwrap();
                     let endpoint_id = entry.endpoint_id() as usize;
+                    let transfer_id = entry.transfer_id();
                     let ep_data = &mut self.endpoint_data[endpoint_id];
-                    let range = get_index_range(
-                        &mut ep_data.transfer_index,
-                        &ep_data.transaction_ids,
-                        entry.transfer_id());
-                    let transaction_id =
-                        ep_data.transaction_ids.get(range.start + index).unwrap();
-                    Item {
-                        item_type: ItemType::Transaction as u8,
-                        index: transaction_id,
-                    }
-                }
-                _ => panic!("not supported yet"),
-            }
+                    let offset = ep_data.transfer_index.get(transfer_id).unwrap();
+                    ep_data.transaction_ids.get(offset + index).unwrap()
+                }),
+            Some(Transaction(transfer_index_id, transaction_id)) =>
+                Packet(*transfer_index_id, *transaction_id, {
+                    self.transaction_index.get(*transaction_id).unwrap() + index}),
+            Some(Packet(_, _, _)) => panic!("packets do not have children"),
         }
     }
 
     pub fn item_count(&mut self, parent: &Option<Item>) -> u64 {
-        use ItemType::*;
+        use Item::*;
         match parent {
-            None => self.items.len(),
-            Some(parent) => match ItemType::try_from(parent.item_type).unwrap() {
-                Packet => 0,
-                Transaction => {
-                    let range = get_index_range(&mut self.transaction_index,
-                                                &self.packet_index, parent.index);
-                    range.end - range.start
-                },
-                Transfer => {
-                    let entry = self.transfer_index.get(parent.index).unwrap();
-                    if !entry.is_start() {
-                        return 0;
-                    }
-                    let endpoint_id = entry.endpoint_id() as usize;
-                    let ep_data = &mut self.endpoint_data[endpoint_id];
-                    let range = get_index_range(
-                        &mut ep_data.transfer_index,
-                        &ep_data.transaction_ids,
-                        entry.transfer_id());
-                    range.end - range.start
-                }
+            None => self.item_index.len(),
+            Some(Transfer(transfer_index_id)) => {
+                let entry = self.transfer_index.get(*transfer_index_id).unwrap();
+                let endpoint_id = entry.endpoint_id() as usize;
+                let transfer_id = entry.transfer_id();
+                let ep_data = &mut self.endpoint_data[endpoint_id];
+                get_index_count(&mut ep_data.transfer_index,
+                    &ep_data.transaction_ids, transfer_id)
+            },
+            Some(Transaction(_, transaction_id)) => {
+                get_index_count(&mut self.transaction_index,
+                    &self.packet_index, *transaction_id)
             }
+            Some(Packet(_, _, _)) => 0,
         }
     }
 
     pub fn get_summary(&mut self, item: &Item) -> String {
-        match ItemType::try_from(item.item_type).unwrap() {
-            ItemType::Packet => {
-                let packet = self.get_packet(item.index);
+        use Item::*;
+        match item {
+            Packet(_, _, packet_id) => {
+                let packet = self.get_packet(*packet_id);
                 let pid = PID::from(packet[0]);
                 format!("{} packet{}: {:02X?}",
                     pid,
@@ -619,9 +589,9 @@ impl Capture {
                     },
                     packet)
             },
-            ItemType::Transaction => {
+            Transaction(_, transaction_id) => {
                 let range = get_index_range(&mut self.transaction_index,
-                                            &self.packet_index, item.index);
+                    &self.packet_index, *transaction_id);
                 let count = range.end - range.start;
                 let pid = self.get_packet_pid(range.start);
                 match pid {
@@ -629,8 +599,8 @@ impl Capture {
                     _ => format!("{} transaction, {} packets", pid, count)
                 }
             },
-            ItemType::Transfer => {
-                let entry = self.transfer_index.get(item.index).unwrap();
+            Transfer(transfer_index_id) => {
+                let entry = self.transfer_index.get(*transfer_index_id).unwrap();
                 let endpoint_id = entry.endpoint_id();
                 let endpoint = self.endpoints.get(endpoint_id as u64).unwrap();
                 let ep_data = &mut self.endpoint_data[endpoint_id as usize];
@@ -646,11 +616,10 @@ impl Capture {
                             endpoint.device_address, endpoint.endpoint_number)
                     });
                 }
-                let range = get_index_range(
+                let count = get_index_count(
                     &mut ep_data.transfer_index,
                     &ep_data.transaction_ids,
                     entry.transfer_id());
-                let count = range.end - range.start;
                 match ep_data.ep_type {
                     EndpointType::Invalid => format!(
                         "{} invalid groups", count),
@@ -663,18 +632,18 @@ impl Capture {
                         "Bulk transfer with {} transactions on endpoint {}.{}",
                         count, endpoint.device_address, endpoint.endpoint_number)
                 }
-            },
+            }
         }
     }
 
-    pub fn get_connectors(&mut self, parent: &Option<Item>, index: u64) -> String {
+    pub fn get_connectors(&mut self, item: &Item) -> String {
         use EndpointState::*;
-        let item = self.get_item(parent, index);
+        use Item::*;
         let endpoint_count = self.endpoints.len() as usize;
         let mut connectors = String::with_capacity(endpoint_count);
-        match ItemType::try_from(item.item_type).unwrap() {
-            ItemType::Transfer => {
-                let endpoint_state = self.get_endpoint_state(item.index);
+        match item {
+            Transfer(transfer_index_id) => {
+                let endpoint_state = self.get_endpoint_state(*transfer_index_id);
                 let state_length = endpoint_state.len();
                 let mut thru = false;
                 for i in 0..state_length {
@@ -684,7 +653,7 @@ impl Capture {
                         match state {
                             Idle     => ' ',
                             Starting =>
-                                if self.transfer_extended(item.index) {
+                                if self.transfer_extended(*transfer_index_id) {
                                     '┌'
                                 } else {
                                     '╺'
@@ -697,19 +666,18 @@ impl Capture {
                     connectors.push(if thru {'─'} else {' '});
                 };
             },
-            ItemType::Transaction => {
-                let parent_index = parent.unwrap().index;
-                let endpoint_state = self.get_endpoint_state(parent_index);
+            Transaction(transfer_index_id, transaction_id) => {
+                let endpoint_state = self.get_endpoint_state(*transfer_index_id);
                 let state_length = endpoint_state.len();
-                let entry = self.transfer_index.get(parent_index).unwrap();
+                let entry = self.transfer_index.get(*transfer_index_id).unwrap();
                 let endpoint_id = entry.endpoint_id() as usize;
                 let ep_data = &mut self.endpoint_data[endpoint_id];
                 let range = get_index_range(
                     &mut ep_data.transfer_index,
                     &ep_data.transaction_ids,
                     entry.transfer_id());
-                let count = range.end - range.start;
-                let last = index == count - 1;
+                let last_id = ep_data.transaction_ids.get(range.end - 1).unwrap();
+                let last = *transaction_id == last_id;
                 let mut thru = false;
                 for i in 0..state_length {
                     let same = i == endpoint_id;
@@ -740,16 +708,21 @@ impl Capture {
     }
 
     fn transfer_extended(&mut self, index: u64) -> bool {
+        use EndpointState::*;
+        let count = self.transfer_index.len();
+        if index + 1 >= count {
+            return false;
+        };
         let entry = self.transfer_index.get(index).unwrap();
         let endpoint_id = entry.endpoint_id() as usize;
         let state = self.get_endpoint_state(index + 1);
         if endpoint_id >= state.len() {
-            return false
-        }
-        use EndpointState::*;
-        match EndpointState::from(state[endpoint_id]) {
-            Ongoing => true,
-            _ => false,
+            false
+        } else {
+            match EndpointState::from(state[endpoint_id]) {
+                Ongoing => true,
+                _ => false,
+            }
         }
     }
 
