@@ -678,16 +678,16 @@ impl Capture {
                 _ => on_endpoint,
             };
             connectors.push(match item {
-                Transfer(transfer_index_id) => match state {
-                    Idle     => ' ',
-                    Starting =>
-                        if self.transfer_extended(*transfer_index_id) {
-                            '┌'
-                        } else {
-                            '╺'
-                        },
-                    Ongoing  => if thru {'┼'} else {'│'},
-                    Ending   => '└',
+                Transfer(transfer_index_id) => {
+                    let extended = self.transfer_extended(*transfer_index_id);
+                    match (state, extended, thru) {
+                        (Idle,     _,     _    ) => ' ',
+                        (Starting, false, _    ) => '╺',
+                        (Starting, true,  _    ) => '┌',
+                        (Ongoing,  _,     false) => '│',
+                        (Ongoing,  _,     true ) => '┼',
+                        (Ending,   _,     _    ) => '└',
+                    }
                 },
                 Transaction(_, _) | Packet(_, _, _) => {
                     match (on_endpoint, active, thru, last) {
