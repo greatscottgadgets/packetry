@@ -667,6 +667,7 @@ impl Capture {
         let endpoint_state = self.get_endpoint_state(*transfer_index_id);
         let state_length = endpoint_state.len();
         let extended = self.transfer_extended(endpoint_id, *transfer_index_id);
+        let ep_data = &mut self.endpoint_data[endpoint_id];
         match item {
             Transfer(_) => {
                 let mut thru = false;
@@ -687,21 +688,8 @@ impl Capture {
                         }
                     );
                 };
-                for _ in state_length..endpoint_count {
-                    connectors.push('─');
-                }
-                if entry.is_start() {
-                    connectors.push_str("[+]");
-                } else {
-                    connectors.push_str("─○ ");
-                }
             },
-            Transaction(_, transaction_id) => {
-                let ep_data = &mut self.endpoint_data[endpoint_id];
-                let range = get_index_range(&mut ep_data.transfer_index,
-                        &ep_data.transaction_ids, entry.transfer_id());
-                let last = *transaction_id ==
-                    ep_data.transaction_ids.get(range.end - 1).unwrap();
+            Transaction(..) | Packet(..) => {
                 for i in 0..state_length {
                     let state = EndpointState::from(endpoint_state[i]);
                     let active = state != Idle;
@@ -715,17 +703,34 @@ impl Capture {
                         }
                     );
                 };
-                for _ in state_length..endpoint_count {
-                    connectors.push(' ');
-                }
-                if last {
-                    connectors.push_str(" └─[+]");
+            }
+        };
+        for _ in state_length..endpoint_count {
+            connectors.push(match item {
+                Transfer(_) => '─',
+                _           => ' ',
+            });
+        };
+        connectors.push_str(match item {
+            Transfer(_) => {
+                if entry.is_start() {
+                    "[+]"
                 } else {
-                    connectors.push_str(" ├─[+]");
+                    "─○ "
+                }
+            },
+            Transaction(_, transaction_id) => {
+                let range = get_index_range(&mut ep_data.transfer_index,
+                        &ep_data.transaction_ids, entry.transfer_id());
+                let last = *transaction_id ==
+                    ep_data.transaction_ids.get(range.end - 1).unwrap();
+                if last {
+                    " └─[+]"
+                } else {
+                    " ├─[+]"
                 }
             },
             Packet(_, transaction_id, packet_id) => {
-                let ep_data = &mut self.endpoint_data[endpoint_id];
                 let range = get_index_range(&mut ep_data.transfer_index,
                     &ep_data.transaction_ids, entry.transfer_id());
                 let last_transaction = *transaction_id ==
@@ -733,34 +738,14 @@ impl Capture {
                 let range = get_index_range(&mut self.transaction_index,
                     &self.packet_index, *transaction_id);
                 let last_packet = *packet_id == range.end - 1;
-                for i in 0..state_length {
-                    let state = EndpointState::from(endpoint_state[i]);
-                    let active = state != Idle;
-                    let on_endpoint = i == endpoint_id;
-                    connectors.push(
-                        match (active, on_endpoint, extended) {
-                            (true,  false, _    ) => '│',
-                            (_,     true,  true ) => '│',
-                            (_,     true,  false) => ' ',
-                            (false, _,     _    ) => ' ',
-                        }
-                    );
-                };
-                for _ in state_length..endpoint_count {
-                    connectors.push(' ');
-                }
-                if last_transaction {
-                    connectors.push_str("   ");
-                } else {
-                    connectors.push_str(" │ ");
-                }
-                if last_packet {
-                    connectors.push_str(" └─");
-                } else {
-                    connectors.push_str(" ├─");
+                match (last_transaction, last_packet) {
+                    (false, false) => " │  ├─",
+                    (false, true ) => " │  └─",
+                    (true,  false) => "    ├─",
+                    (true,  true ) => "    └─",
                 }
             }
-        };
+        });
         connectors
     }
 
