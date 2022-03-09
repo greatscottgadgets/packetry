@@ -641,92 +641,68 @@ impl Capture {
         use Item::*;
         let endpoint_count = self.endpoints.len() as usize;
         let mut connectors = String::with_capacity(endpoint_count);
-        match item {
-            Transfer(transfer_index_id) => {
-                let endpoint_state = self.get_endpoint_state(*transfer_index_id);
-                let state_length = endpoint_state.len();
-                let mut thru = false;
-                for i in 0..state_length {
-                    let state = EndpointState::from(endpoint_state[i]);
-                    thru |= match state { Starting | Ending => true, _ => false};
-                    connectors.push(
-                        match state {
-                            Idle     => ' ',
-                            Starting =>
-                                if self.transfer_extended(*transfer_index_id) {
-                                    '┌'
-                                } else {
-                                    '╺'
-                                },
-                            Ongoing  => if thru {'┼'} else {'│'},
-                            Ending   => '└',
-                        })
-                }
-                for _ in state_length..endpoint_count {
-                    connectors.push(if thru {'─'} else {' '});
-                };
-            },
-            Transaction(transfer_index_id, transaction_id) => {
-                let endpoint_state = self.get_endpoint_state(*transfer_index_id);
-                let state_length = endpoint_state.len();
-                let entry = self.transfer_index.get(*transfer_index_id).unwrap();
-                let endpoint_id = entry.endpoint_id() as usize;
+        let transfer_index_id = match item {
+            Transfer(i) => i,
+            Transaction(i, _) => i,
+            Packet(i, _, _) => i
+        };
+        let entry = self.transfer_index.get(*transfer_index_id).unwrap();
+        let endpoint_id = entry.endpoint_id() as usize;
+        let endpoint_state = self.get_endpoint_state(*transfer_index_id);
+        let state_length = endpoint_state.len();
+        let last = match item {
+            Transfer(_) => false,
+            Transaction(_, transaction_id) => {
                 let ep_data = &mut self.endpoint_data[endpoint_id];
-                let range = get_index_range(
-                    &mut ep_data.transfer_index,
-                    &ep_data.transaction_ids,
-                    entry.transfer_id());
-                let last_id = ep_data.transaction_ids.get(range.end - 1).unwrap();
-                let last = *transaction_id == last_id;
-                let mut thru = false;
-                for i in 0..state_length {
-                    let same = i == endpoint_id;
-                    let active = endpoint_state[i] != 0;
-                    connectors.push(
-                        match (same, active, thru) {
-                            (true, _, _) => {
-                                thru = true;
-                                if last {'└'} else {'├'}
-                            },
-                            (false, false, false) => ' ',
-                            (false, false, true ) => '─',
-                            (false, true,  false) => '│',
-                            (false, true,  true ) => '┼',
-                        });
-                }
-                for _ in state_length..endpoint_count {
-                    connectors.push(if thru {'─'} else {' '});
-                };
-            }
-            Packet(transfer_index_id, transaction_id, packet_id) => {
-                let endpoint_state = self.get_endpoint_state(*transfer_index_id);
-                let state_length = endpoint_state.len();
-                let entry = self.transfer_index.get(*transfer_index_id).unwrap();
-                let endpoint_id = entry.endpoint_id() as usize;
+                let range = get_index_range(&mut ep_data.transfer_index,
+                        &ep_data.transaction_ids, entry.transfer_id());
+                *transaction_id ==
+                    ep_data.transaction_ids.get(range.end - 1).unwrap()
+            },
+            Packet(_, transaction_id, packet_id) => {
                 let range = get_index_range(&mut self.transaction_index,
                     &self.packet_index, *transaction_id);
-                let last_id = range.end - 1;
-                let last = *packet_id == last_id;
-                let mut thru = false;
-                for i in 0..state_length {
-                    let same = i == endpoint_id;
-                    let active = endpoint_state[i] != 0;
-                    connectors.push(
-                        match (same, active, thru) {
-                            (true, _, _) => {
-                                thru = true;
-                                if last {'└'} else {'├'}
-                            },
-                            (false, false, false) => ' ',
-                            (false, false, true ) => '─',
-                            (false, true,  false) => '│',
-                            (false, true,  true ) => '┼',
-                        });
-                }
-                for _ in state_length..endpoint_count {
-                    connectors.push(if thru {'─'} else {' '});
-                };
+                *packet_id == range.end - 1
             }
+        };
+        let mut thru = false;
+        for i in 0..state_length {
+            let state = EndpointState::from(endpoint_state[i]);
+            let on_endpoint = i == endpoint_id;
+            let active = state != Idle;
+            thru |= match item {
+                Transfer(_) => match state {
+                    Starting | Ending => true,
+                    _ => false
+                },
+                _ => on_endpoint,
+            };
+            connectors.push(match item {
+                Transfer(transfer_index_id) => match state {
+                    Idle     => ' ',
+                    Starting =>
+                        if self.transfer_extended(*transfer_index_id) {
+                            '┌'
+                        } else {
+                            '╺'
+                        },
+                    Ongoing  => if thru {'┼'} else {'│'},
+                    Ending   => '└',
+                },
+                Transaction(_, _) | Packet(_, _, _) => {
+                    match (on_endpoint, active, thru, last) {
+                        (false, false, false, _    ) => ' ',
+                        (false, false, true,  _    ) => '─',
+                        (false, true,  false, _    ) => '│',
+                        (false, true,  true,  _    ) => '┼',
+                        (true,  _,     _,     false) => '├',
+                        (true,  _,     _,     true ) => '└'
+                    }
+                }
+            });
+        };
+        for _ in state_length..endpoint_count {
+            connectors.push(if thru {'─'} else {' '});
         };
         connectors
     }
