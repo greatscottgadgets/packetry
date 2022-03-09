@@ -693,7 +693,8 @@ impl Capture {
             };
             connectors.push(match item {
                 Transfer(transfer_index_id) => {
-                    let extended = self.transfer_extended(*transfer_index_id);
+                    let extended = self.transfer_extended(
+                        endpoint_id, *transfer_index_id);
                     match (state, extended, thru) {
                         (Idle,     _,     _    ) => ' ',
                         (Starting, false, _    ) => '╺',
@@ -721,14 +722,12 @@ impl Capture {
         connectors
     }
 
-    fn transfer_extended(&mut self, index: u64) -> bool {
+    fn transfer_extended(&mut self, endpoint_id: usize, index: u64) -> bool {
         use EndpointState::*;
         let count = self.transfer_index.len();
         if index + 1 >= count {
             return false;
         };
-        let entry = self.transfer_index.get(index).unwrap();
-        let endpoint_id = entry.endpoint_id() as usize;
         let state = self.get_endpoint_state(index + 1);
         if endpoint_id >= state.len() {
             false
