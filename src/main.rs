@@ -97,7 +97,7 @@ fn main() {
                 .downcast::<Label>()
                 .expect("The child must be a Label.");
 
-            let text = row.property::<String>("text");
+            let text = row.get_fields().unwrap().summary;
             label.set_label(&text);
             expander.set_list_row(Some(&treelistrow));
         });

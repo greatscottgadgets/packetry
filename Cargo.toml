@@ -6,6 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+derive_macro = { path = "derive_macro" }
+
 bufreaderwriter = "0.1.2"
 bytemuck = { version = "1.8.0", features = ["extern_crate_alloc"] }
 bytemuck_derive = "1.0.1"
