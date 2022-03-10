@@ -128,7 +128,7 @@ struct TransactionState {
     endpoint_id: usize,
 }
 
-#[derive(IntoPrimitive, FromPrimitive, PartialEq)]
+#[derive(Copy, Clone, IntoPrimitive, FromPrimitive, PartialEq)]
 #[repr(u8)]
 enum EndpointState {
     #[default]
@@ -682,62 +682,46 @@ impl Capture {
                 *packet_id == range.end - 1
             }, _ => false
         };
-        match item {
-            Transfer(_) => {
-                let mut thru = false;
-                for i in 0..state_length {
-                    let state = EndpointState::from(endpoint_state[i]);
-                    thru |= match state {
-                        Starting | Ending => true,
-                        _ => false
-                    };
-                    connectors.push(
-                        match (state, thru) {
-                            (Idle,     _    ) => ' ',
-                            (Starting, _    ) => '○',
-                            (Ongoing,  false) => '│',
-                            (Ongoing,  true ) => '┼',
-                            (Ending,   _    ) => '└',
-                        }
-                    );
-                };
-            },
-            Transaction(..) => {
-                let last = last_transaction && !extended;
-                let mut thru = false;
-                for i in 0..state_length {
-                    let state = EndpointState::from(endpoint_state[i]);
-                    let active = state != Idle;
-                    let on_endpoint = i == endpoint_id;
-                    thru |= on_endpoint;
-                    connectors.push(
-                        match (on_endpoint, active, thru, last) {
-                            (false, false, false, _    ) => ' ',
-                            (false, false, true,  _    ) => '─',
-                            (false, true,  false, _    ) => '│',
-                            (false, true,  true,  _    ) => '┼',
-                            (true,  _,     _,     false) => '├',
-                            (true,  _,     _,     true ) => '└',
-                        }
-                    );
-                };
-            },
-            Packet(..) => {
-                let last = last_transaction && !extended;
-                for i in 0..state_length {
-                    let state = EndpointState::from(endpoint_state[i]);
-                    let active = state != Idle;
-                    let on_endpoint = i == endpoint_id;
-                    connectors.push(
-                        match (on_endpoint, active, last) {
-                            (false, false, _    ) => ' ',
-                            (false, true,  _    ) => '│',
-                            (true,  _,     false) => '│',
-                            (true,  _,     true ) => ' ',
-                        }
-                    );
-                };
-            }
+        let last = last_transaction && !extended;
+        let mut thru = false;
+        for i in 0..state_length {
+            let state = EndpointState::from(endpoint_state[i]);
+            let active = state != Idle;
+            let on_endpoint = i == endpoint_id;
+            thru |= match (item, state, on_endpoint) {
+                (Transfer(..), Starting | Ending, _) => true,
+                (Transaction(..) | Packet(..), _, true) => on_endpoint,
+                _ => false,
+            };
+            connectors.push(match item {
+                Transfer(..) => {
+                    match (state, thru) {
+                        (Idle,     _    ) => ' ',
+                        (Starting, _    ) => '○',
+                        (Ongoing,  false) => '│',
+                        (Ongoing,  true ) => '┼',
+                        (Ending,   _    ) => '└',
+                    }
+                },
+                Transaction(..) => {
+                    match (on_endpoint, active, thru, last) {
+                        (false, false, false, _    ) => ' ',
+                        (false, false, true,  _    ) => '─',
+                        (false, true,  false, _    ) => '│',
+                        (false, true,  true,  _    ) => '┼',
+                        (true,  _,     _,     false) => '├',
+                        (true,  _,     _,     true ) => '└',
+                    }
+                },
+                Packet(..) => {
+                    match (on_endpoint, active, last) {
+                        (false, false, _    ) => ' ',
+                        (false, true,  _    ) => '│',
+                        (true,  _,     false) => '│',
+                        (true,  _,     true ) => ' ',
+                    }
+                }
+            });
         };
         connectors.push_str(
             match (item, last_packet) {
