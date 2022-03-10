@@ -37,7 +37,7 @@ impl ListModelImpl for Model {
         let arc = self.capture.borrow();
         let mut cap = arc.lock().unwrap();
         let item = cap.get_item(&self.parent.borrow(), position as u64);
-        let summary = cap.get_summary(&item);
-        Some(RowData::new(Some(item), &summary).upcast::<glib::Object>())
+        let summary = cap.get_fields(&item);
+        Some(RowData::new(Some(item), Some(summary)).upcast::<glib::Object>())
     }
 }

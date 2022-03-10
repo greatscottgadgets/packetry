@@ -9,6 +9,7 @@ mod imp;
 use gtk::glib;
 use gtk::subclass::prelude::*;
 use crate::capture;
+use std::rc::Rc;
 
 // Public part of the RowData type. This behaves like a normal gtk-rs-style GObject
 // binding
@@ -19,9 +20,10 @@ glib::wrapper! {
 // Constructor for new instances. This simply calls glib::Object::new() with
 // initial values for our two properties and then returns the new instance
 impl RowData {
-    pub fn new(item: Option<capture::Item>, text: &str) -> RowData {
-        let mut row: RowData = glib::Object::new(&[("text", &text)]).expect("Failed to create row data");
+    pub fn new(item: Option<capture::Item>, fields: Option<capture::ItemFields>) -> RowData {
+        let mut row: RowData = glib::Object::new(&[]).expect("Failed to create row data");
         row.set_item(item);
+        row.set_fields(fields);
         row
     }
 
@@ -31,5 +33,18 @@ impl RowData {
 
     pub fn get_item(&self) -> Option<capture::Item> {
         self.imp().item.borrow().clone()
+    }
+
+    pub fn set_fields(&mut self, fields: Option<capture::ItemFields>) {
+        self.imp().fields.replace(
+            match fields {
+                Some(f) => Some(Rc::new(f)),
+                None => None,
+            }
+        );
+    }
+
+    pub fn get_fields(&self) -> Option<Rc<capture::ItemFields>> {
+        self.imp().fields.borrow().clone()
     }
 }
