@@ -9,6 +9,8 @@ use std::sync::{Arc, Mutex};
 use gtk::gio::ListModel;
 use gtk::{
     prelude::*,
+    ColumnView,
+    ColumnViewColumn,
     Label,
     TreeExpander,
     TreeListModel,
@@ -64,46 +66,70 @@ fn main() {
         });
         let selection_model = SingleSelection::new(Some(&treemodel));
 
-        // Create factory for binding row data -> list item widgets
-        let factory = SignalListItemFactory::new();
-        factory.connect_setup(move |_, list_item| {
-            let label = Label::new(None);
-            let expander = TreeExpander::new();
-            expander.set_child(Some(&label));
-            list_item.set_child(Some(&expander));
-        });
-        factory.connect_bind(move |_, list_item| {
-            let treelistrow = list_item
-                .item()
-                .expect("The item has to exist.")
-                .downcast::<TreeListRow>()
-                .expect("The item has to be a TreeListRow.");
+        let column_view = ColumnView::new(Some(&selection_model));
 
-            let row = treelistrow
-                .item()
-                .expect("The item has to exist.")
-                .downcast::<RowData>()
-                .expect("The item has to be RowData.");
+        // For each field in the Capture, add a column & factory for it.
+        for i in 0..capture::ItemFields::field_names().len() {
+            // Create factory for binding row data -> list item widgets
+            let factory = SignalListItemFactory::new();
+            factory.connect_setup(move |_, list_item| {
+                let label = Label::new(None);
+                if capture::ItemFields::expanders()[i] {
+                    let expander = TreeExpander::new();
+                    expander.set_child(Some(&label));
+                    list_item.set_child(Some(&expander));
+                } else {
+                    list_item.set_child(Some(&label));
+                }
+            });
+            factory.connect_bind(move |_, list_item| {
+                let treelistrow = list_item
+                    .item()
+                    .expect("The item has to exist.")
+                    .downcast::<TreeListRow>()
+                    .expect("The item has to be a TreeListRow.");
 
-            let expander = list_item
-                .child()
-                .expect("The child has to exist")
-                .downcast::<TreeExpander>()
-                .expect("The child must be a TreeExpander.");
+                let row = treelistrow
+                    .item()
+                    .expect("The item has to exist.")
+                    .downcast::<RowData>()
+                    .expect("The item has to be RowData.");
 
-            let label = expander
-                .child()
-                .expect("The child has to exist")
-                .downcast::<Label>()
-                .expect("The child must be a Label.");
+                let item_fields = row.get_fields().unwrap();
+                let text = item_fields.fields()[i];
+                if capture::ItemFields::expanders()[i] {
+                    let expander = list_item
+                        .child()
+                        .expect("The child has to exist")
+                        .downcast::<TreeExpander>()
+                        .expect("The child must be a TreeExpander.");
 
-            let text = row.get_fields().unwrap().summary;
-            label.set_label(&text);
-            expander.set_list_row(Some(&treelistrow));
-        });
+                    let label = expander
+                        .child()
+                        .expect("The child has to exist")
+                        .downcast::<Label>()
+                        .expect("The child must be a Label.");
+                    label.set_label(text);
+                    expander.set_list_row(Some(&treelistrow));
+                } else {
+                    let label = list_item
+                        .child()
+                        .expect("The child has to exist")
+                        .downcast::<Label>()
+                        .expect("The child must be a Label.");
+                    label.set_label(text);
+                }
 
-        // Finally, create a view around the model/factory
-        let listview = gtk::ListView::new(Some(&selection_model), Some(&factory));
+            });
+            let summary_column = ColumnViewColumn::builder()
+                .title(capture::ItemFields::field_names()[i])
+                .factory(&factory)
+                // NB: this sets whether the column should expand to fill the window width.
+                // It is not related to the TreeExpander, but it's appropriate to make the "expander" field wide anyway.
+                .expand(capture::ItemFields::expanders()[i])
+                .build();
+            column_view.append_column(&summary_column.clone());
+        }
 
         let scrolled_window = gtk::ScrolledWindow::builder()
             .hscrollbar_policy(gtk::PolicyType::Automatic) // Disable horizontal scrolling
@@ -111,7 +137,7 @@ fn main() {
             .min_content_width(360)
             .build();
 
-        scrolled_window.set_child(Some(&listview));
+        scrolled_window.set_child(Some(&column_view));
         window.set_child(Some(&scrolled_window));
         window.show();
     });
