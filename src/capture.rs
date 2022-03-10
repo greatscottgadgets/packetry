@@ -694,7 +694,7 @@ impl Capture {
                     connectors.push(
                         match (state, thru) {
                             (Idle,     _    ) => ' ',
-                            (Starting, _    ) => '▷',
+                            (Starting, _    ) => '○',
                             (Ongoing,  false) => '│',
                             (Ongoing,  true ) => '┼',
                             (Ending,   _    ) => '└',
@@ -741,7 +741,7 @@ impl Capture {
         };
         connectors.push_str(
             match (item, last_packet) {
-                (Transfer(_), _) if entry.is_start() => "",
+                (Transfer(_), _) if entry.is_start() => "─▷",
                 (Transfer(_), _)                     => "─□",
                 (Transaction(..), _)                 => "─▷",
                 (Packet(..), false)                  => " ├─",
