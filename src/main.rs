@@ -25,7 +25,7 @@ mod file_vec;
 
 fn main() {
     let application = gtk::Application::new(
-        Some("com.greatscottgadgets.luna-analyzer-rust"),
+        Some("com.greatscottgadgets.packetry"),
         Default::default(),
     );
 
@@ -43,7 +43,7 @@ fn main() {
             .default_width(320)
             .default_height(480)
             .application(application)
-            .title("luna-analyzer-rust")
+            .title("Packetry")
             .build();
 
         // Create the top-level model

@@ -482,7 +482,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "luna-analyzer-rust"
+name = "packetry"
 version = "0.1.0"
 dependencies = [
  "bitfield",

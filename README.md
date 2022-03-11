@@ -1,4 +1,4 @@
-# luna-analyzer-rust
+# Packetry
 
 WIP USB analysis frontend for LUNA
 
