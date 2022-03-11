@@ -2,6 +2,7 @@ use std::ops::Range;
 
 use crate::file_vec::FileVec;
 use bytemuck_derive::{Pod, Zeroable};
+use derive_macro::ItemFields;
 use num_enum::{IntoPrimitive, FromPrimitive, TryFromPrimitive};
 
 #[derive(Copy, Clone, Debug, IntoPrimitive, FromPrimitive, PartialEq)]
@@ -52,6 +53,13 @@ enum ItemType {
 pub struct Item {
     index: u64,
     item_type: u8,
+}
+
+#[derive(Clone, ItemFields)]
+pub struct ItemFields {
+    #[name = "Summary"]
+    #[expander]
+    pub summary: String,
 }
 
 bitfield! {
@@ -520,7 +528,13 @@ impl Capture {
         }
     }
 
-    pub fn get_summary(&mut self, item: &Item) -> String {
+    pub fn get_fields(&mut self, item: &Item) -> ItemFields {
+        ItemFields {
+            summary: self.get_summary(item),
+        }
+    }
+
+    fn get_summary(&mut self, item: &Item) -> String {
         match ItemType::try_from(item.item_type).unwrap() {
             ItemType::Packet => {
                 let packet = self.get_packet(item.index);

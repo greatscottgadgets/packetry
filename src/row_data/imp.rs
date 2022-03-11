@@ -1,17 +1,17 @@
 use glib::subclass::prelude::*;
 use gtk::{
     glib::{self, ParamSpec, Value},
-    prelude::*,
 };
 use std::cell::RefCell;
+use std::rc::Rc;
 use crate::capture;
 
 // The actual data structure that stores our values. This is not accessible
 // directly from the outside.
 #[derive(Default)]
 pub struct RowData {
-    name: RefCell<Option<String>>,
     pub(super) item: RefCell<Option<capture::Item>>,
+    pub(super) fields: RefCell<Option<Rc<capture::ItemFields>>>,
 }
 
 // Basic declaration of our type for the GObject type system
@@ -30,35 +30,15 @@ impl ObjectSubclass for RowData {
 impl ObjectImpl for RowData {
     fn properties() -> &'static [ParamSpec] {
         use once_cell::sync::Lazy;
-        static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| {
-            vec![
-                glib::ParamSpecString::new(
-                    "text",
-                    "Text",
-                    "Text",
-                    None, // Default value
-                    glib::ParamFlags::READWRITE,
-                ),
-            ]
-        });
-
+        static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| vec![]);
         PROPERTIES.as_ref()
     }
 
-    fn set_property(&self, _obj: &Self::Type, _id: usize, value: &Value, pspec: &ParamSpec) {
-        match pspec.name() {
-            "text" => {
-                let name = value.get().unwrap();
-                self.name.replace(name);
-            }
-            _ => unimplemented!(),
-        }
+    fn set_property(&self, _obj: &Self::Type, _id: usize, _value: &Value, _pspec: &ParamSpec) {
+        unimplemented!()
     }
 
-    fn property(&self, _obj: &Self::Type, _id: usize, pspec: &ParamSpec) -> Value {
-        match pspec.name() {
-            "text" => self.name.borrow().to_value(),
-            _ => unimplemented!(),
-        }
+    fn property(&self, _obj: &Self::Type, _id: usize, _pspec: &ParamSpec) -> Value {
+        unimplemented!()
     }
 }
