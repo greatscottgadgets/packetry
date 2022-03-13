@@ -1,6 +1,7 @@
 use std::ops::Range;
 
 use crate::file_vec::FileVec;
+use crate::hybrid_index::HybridIndex;
 use bytemuck_derive::{Pod, Zeroable};
 use num_enum::{IntoPrimitive, FromPrimitive};
 use num_format::{Locale, ToFormattedString};
@@ -152,8 +153,8 @@ enum EndpointType {
 
 struct EndpointData {
     ep_type: EndpointType,
-    transaction_ids: FileVec<u64>,
-    transfer_index: FileVec<u64>,
+    transaction_ids: HybridIndex,
+    transfer_index: HybridIndex,
     transaction_start: u64,
     transaction_count: u64,
     last: PID,
@@ -204,16 +205,16 @@ const USB_MAX_DEVICES: usize = 128;
 const USB_MAX_ENDPOINTS: usize = 16;
 
 pub struct Capture {
-    item_index: FileVec<u64>,
-    packet_index: FileVec<u64>,
+    item_index: HybridIndex,
+    packet_index: HybridIndex,
     packet_data: FileVec<u8>,
-    transaction_index: FileVec<u64>,
+    transaction_index: HybridIndex,
     transfer_index: FileVec<TransferIndexEntry>,
     endpoint_index: [[i16; USB_MAX_ENDPOINTS]; USB_MAX_DEVICES],
     endpoints: FileVec<Endpoint>,
     endpoint_data: Vec<EndpointData>,
     endpoint_states: FileVec<u8>,
-    endpoint_state_index: FileVec<u64>,
+    endpoint_state_index: HybridIndex,
     last_endpoint_state: Vec<u8>,
     last_item_endpoint: i16,
     transaction_state: TransactionState,
@@ -267,7 +268,7 @@ impl TransactionState {
     }
 }
 
-fn get_index_range(index: &mut FileVec<u64>,
+fn get_index_range(index: &mut HybridIndex,
                       length: u64,
                       id: u64) -> Range<u64>
 {
@@ -297,19 +298,26 @@ pub fn fmt_vec<T>(vec: &FileVec<T>) -> String
     format!("{} entries, {}", fmt_count(vec.len()), fmt_size(vec.size()))
 }
 
+pub fn fmt_index(idx: &HybridIndex) -> String {
+    format!("{} values in {} entries, {}",
+            fmt_count(idx.len()),
+            fmt_count(idx.entry_count()),
+            fmt_size(idx.size()))
+}
+
 impl Capture {
     pub fn new() -> Self {
         let mut capture = Capture {
-            item_index: FileVec::new().unwrap(),
-            packet_index: FileVec::new().unwrap(),
+            item_index: HybridIndex::new().unwrap(),
+            packet_index: HybridIndex::new().unwrap(),
             packet_data: FileVec::new().unwrap(),
-            transaction_index: FileVec::new().unwrap(),
+            transaction_index: HybridIndex::new().unwrap(),
             transfer_index: FileVec::new().unwrap(),
             endpoints: FileVec::new().unwrap(),
             endpoint_data: Vec::new(),
             endpoint_index: [[-1; USB_MAX_ENDPOINTS]; USB_MAX_DEVICES],
             endpoint_states: FileVec::new().unwrap(),
-            endpoint_state_index: FileVec::new().unwrap(),
+            endpoint_state_index: HybridIndex::new().unwrap(),
             last_endpoint_state: Vec::new(),
             last_item_endpoint: -1,
             transaction_state: TransactionState::default(),
@@ -321,7 +329,7 @@ impl Capture {
 
     pub fn handle_raw_packet(&mut self, packet: &[u8]) {
         self.transaction_update(packet);
-        self.packet_index.push(&self.packet_data.len()).unwrap();
+        self.packet_index.push(self.packet_data.len()).unwrap();
         self.packet_data.append(packet).unwrap();
     }
 
@@ -338,16 +346,20 @@ impl Capture {
             self.transfer_index.size() +
             self.endpoint_states.size() +
             self.endpoint_state_index.size();
-        let mut ep_trx_count = 0;
-        let mut ep_trx_size = 0;
-        let mut ep_xfr_count = 0;
-        let mut ep_xfr_size = 0;
+        let mut trx_count = 0;
+        let mut trx_entries = 0;
+        let mut trx_size = 0;
+        let mut xfr_count = 0;
+        let mut xfr_entries = 0;
+        let mut xfr_size = 0;
         for ep_data in &self.endpoint_data {
-            ep_trx_count += ep_data.transaction_ids.len();
-            ep_trx_size += ep_data.transaction_ids.size();
-            ep_xfr_count += ep_data.transfer_index.len();
-            ep_xfr_size += ep_data.transfer_index.size();
-            overhead += ep_trx_size + ep_xfr_size;
+            trx_count += ep_data.transaction_ids.len();
+            trx_entries += ep_data.transaction_ids.entry_count();
+            trx_size += ep_data.transaction_ids.size();
+            xfr_count += ep_data.transfer_index.len();
+            xfr_entries += ep_data.transfer_index.entry_count();
+            xfr_size += ep_data.transfer_index.size();
+            overhead += trx_size + xfr_size;
         }
         let ratio = (overhead as f32) / (self.packet_data.size() as f32);
         let percentage = ratio * 100.0;
@@ -359,17 +371,17 @@ impl Capture {
             "  Transfer index: {}\n",
             "  Endpoint states: {}\n",
             "  Endpoint state index: {}\n",
-            "  Endpoint transaction indices: {} entries, {}\n",
-            "  Endpoint transfer indices: {} entries, {}\n",
+            "  Endpoint transaction indices: {} values in {} entries, {}\n",
+            "  Endpoint transfer indices: {} values in {} entries, {}\n",
             "Total overhead: {:.1}% ({})\n"),
             fmt_size(self.packet_data.size()),
-            fmt_vec(&self.packet_index),
-            fmt_vec(&self.transaction_index),
+            fmt_index(&self.packet_index),
+            fmt_index(&self.transaction_index),
             fmt_vec(&self.transfer_index),
             fmt_vec(&self.endpoint_states),
-            fmt_vec(&self.endpoint_state_index),
-            fmt_count(ep_trx_count), fmt_size(ep_trx_size),
-            fmt_count(ep_xfr_count), fmt_size(ep_xfr_size),
+            fmt_index(&self.endpoint_state_index),
+            fmt_count(trx_count), fmt_count(trx_entries), fmt_size(trx_size),
+            fmt_count(xfr_count), fmt_count(xfr_entries), fmt_size(xfr_size),
             percentage, fmt_size(overhead),
         )
     }
@@ -440,14 +452,14 @@ impl Capture {
     fn add_transaction(&mut self) {
         if self.transaction_state.count == 0 { return }
         self.transfer_update();
-        self.transaction_index.push(&self.transaction_state.start).unwrap();
+        self.transaction_index.push(self.transaction_state.start).unwrap();
     }
 
     fn add_endpoint(&mut self, addr: usize, num: usize) {
         let ep_data = EndpointData {
             ep_type: EndpointType::from(num as u8),
-            transaction_ids: FileVec::new().unwrap(),
-            transfer_index: FileVec::new().unwrap(),
+            transaction_ids: HybridIndex::new().unwrap(),
+            transfer_index: HybridIndex::new().unwrap(),
             transaction_start: 0,
             transaction_count: 0,
             last: PID::Malformed,
@@ -499,7 +511,7 @@ impl Capture {
     }
 
     fn transfer_start(&mut self) {
-        self.item_index.push(&self.transfer_index.len()).unwrap();
+        self.item_index.push(self.transfer_index.len()).unwrap();
         let endpoint_id = self.transaction_state.endpoint_id;
         self.last_item_endpoint = endpoint_id as i16;
         self.add_transfer_entry(endpoint_id, true);
@@ -511,7 +523,7 @@ impl Capture {
     fn transfer_append(&mut self, success: bool) {
         let endpoint_id = self.transaction_state.endpoint_id;
         let ep_data = &mut self.endpoint_data[endpoint_id];
-        ep_data.transaction_ids.push(&self.transaction_index.len()).unwrap();
+        ep_data.transaction_ids.push(self.transaction_index.len()).unwrap();
         ep_data.transaction_count += 1;
         if success {
             ep_data.last = self.transaction_state.first;
@@ -527,10 +539,10 @@ impl Capture {
     fn ep_transfer_end(&mut self, endpoint_id: usize, add_item: bool) {
         let ep_data = &mut self.endpoint_data[endpoint_id];
         if ep_data.transaction_count > 0 {
-            let start = &ep_data.transaction_start;
+            let start = ep_data.transaction_start;
             ep_data.transfer_index.push(start).unwrap();
             if add_item {
-                self.item_index.push(&self.transfer_index.len()).unwrap();
+                self.item_index.push(self.transfer_index.len()).unwrap();
                 self.last_item_endpoint = endpoint_id as i16;
             }
             self.add_transfer_entry(endpoint_id, false);
@@ -566,7 +578,7 @@ impl Capture {
             } as u8;
         }
         let last_state = self.last_endpoint_state.as_slice();
-        let state_offset = &self.endpoint_states.len();
+        let state_offset = self.endpoint_states.len();
         self.endpoint_states.append(last_state).unwrap();
         self.endpoint_state_index.push(state_offset).unwrap();
     }
