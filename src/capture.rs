@@ -3,6 +3,8 @@ use std::ops::Range;
 use crate::file_vec::FileVec;
 use bytemuck_derive::{Pod, Zeroable};
 use num_enum::{IntoPrimitive, FromPrimitive};
+use num_format::{Locale, ToFormattedString};
+use humansize::{FileSize, file_size_opts as options};
 
 #[derive(Copy, Clone, Debug, IntoPrimitive, FromPrimitive, PartialEq)]
 #[repr(u8)]
@@ -284,6 +286,20 @@ fn get_index_range<T>(index: &mut FileVec<u64>,
     }
 }
 
+pub fn fmt_count(count: u64) -> String {
+    count.to_formatted_string(&Locale::en)
+}
+
+pub fn fmt_size(size: u64) -> String {
+    size.file_size(options::BINARY).unwrap()
+}
+
+pub fn fmt_vec<T>(vec: &FileVec<T>) -> String
+    where T: bytemuck::Pod + Default
+{
+    format!("{} entries, {}", fmt_count(vec.len()), fmt_size(vec.size()))
+}
+
 impl Capture {
     pub fn new() -> Self {
         let mut capture = Capture {
@@ -316,6 +332,49 @@ impl Capture {
         for i in 0..self.endpoints.len() as usize {
             self.ep_transfer_end(i, false);
         }
+    }
+
+    pub fn print_storage_summary(&self) {
+        let mut overhead: u64 =
+            self.packet_index.size() +
+            self.transaction_index.size() +
+            self.transfer_index.size() +
+            self.endpoint_states.size() +
+            self.endpoint_state_index.size();
+        let mut ep_trx_count = 0;
+        let mut ep_trx_size = 0;
+        let mut ep_xfr_count = 0;
+        let mut ep_xfr_size = 0;
+        for ep_data in &self.endpoint_data {
+            ep_trx_count += ep_data.transaction_ids.len();
+            ep_trx_size += ep_data.transaction_ids.size();
+            ep_xfr_count += ep_data.transfer_index.len();
+            ep_xfr_size += ep_data.transfer_index.size();
+            overhead += ep_trx_size + ep_xfr_size;
+        }
+        let ratio = (overhead as f32) / (self.packet_data.size() as f32);
+        let percentage = ratio * 100.0;
+        print!(concat!(
+            "Storage summary:\n",
+            "  Packet data: {}\n",
+            "  Packet index: {}\n",
+            "  Transaction index: {}\n",
+            "  Transfer index: {}\n",
+            "  Endpoint states: {}\n",
+            "  Endpoint state index: {}\n",
+            "  Endpoint transaction indices: {} entries, {}\n",
+            "  Endpoint transfer indices: {} entries, {}\n",
+            "Total overhead: {:.1}% ({})\n"),
+            fmt_size(self.packet_data.size()),
+            fmt_vec(&self.packet_index),
+            fmt_vec(&self.transaction_index),
+            fmt_vec(&self.transfer_index),
+            fmt_vec(&self.endpoint_states),
+            fmt_vec(&self.endpoint_state_index),
+            fmt_count(ep_trx_count), fmt_size(ep_trx_size),
+            fmt_count(ep_xfr_count), fmt_size(ep_xfr_size),
+            percentage, fmt_size(overhead),
+        )
     }
 
     fn transaction_update(&mut self, packet: &[u8]) {
