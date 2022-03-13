@@ -308,16 +308,16 @@ pub fn fmt_index(idx: &HybridIndex) -> String {
 impl Capture {
     pub fn new() -> Self {
         let mut capture = Capture {
-            item_index: HybridIndex::new().unwrap(),
-            packet_index: HybridIndex::new().unwrap(),
+            item_index: HybridIndex::new(1).unwrap(),
+            packet_index: HybridIndex::new(2).unwrap(),
             packet_data: FileVec::new().unwrap(),
-            transaction_index: HybridIndex::new().unwrap(),
+            transaction_index: HybridIndex::new(1).unwrap(),
             transfer_index: FileVec::new().unwrap(),
             endpoints: FileVec::new().unwrap(),
             endpoint_data: Vec::new(),
             endpoint_index: [[-1; USB_MAX_ENDPOINTS]; USB_MAX_DEVICES],
             endpoint_states: FileVec::new().unwrap(),
-            endpoint_state_index: HybridIndex::new().unwrap(),
+            endpoint_state_index: HybridIndex::new(1).unwrap(),
             last_endpoint_state: Vec::new(),
             last_item_endpoint: -1,
             transaction_state: TransactionState::default(),
@@ -458,8 +458,8 @@ impl Capture {
     fn add_endpoint(&mut self, addr: usize, num: usize) {
         let ep_data = EndpointData {
             ep_type: EndpointType::from(num as u8),
-            transaction_ids: HybridIndex::new().unwrap(),
-            transfer_index: HybridIndex::new().unwrap(),
+            transaction_ids: HybridIndex::new(1).unwrap(),
+            transfer_index: HybridIndex::new(1).unwrap(),
             transaction_start: 0,
             transaction_count: 0,
             last: PID::Malformed,
