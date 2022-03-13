@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::io::SeekFrom;
 use std::ops::Range;
-use std::cmp::min;
+use std::cmp::{min, max};
 
 use bufreaderwriter::BufReaderWriter;
 use tempfile::tempfile;
@@ -28,6 +28,7 @@ struct Entry {
 }
 
 pub struct HybridIndex {
+    min_width: u8,
     file: BufReaderWriter<File>,
     file_length: u64,
     total_count: u64,
@@ -38,9 +39,10 @@ pub struct HybridIndex {
 }
 
 impl HybridIndex {
-    pub fn new() -> Result<Self, HybridIndexError> {
+    pub fn new(min_width: u8) -> Result<Self, HybridIndexError> {
         let file = tempfile()?;
         Ok(Self{
+            min_width: min_width,
             file: BufReaderWriter::new_writer(file),
             file_length: 0,
             total_count: 0,
@@ -63,7 +65,7 @@ impl HybridIndex {
         } else {
             let last_entry = self.entries.last_mut().unwrap();
             let increment = value - last_entry.base_value;
-            let width = byte_width(increment);
+            let width = max(byte_width(increment), self.min_width);
             let count = last_entry.increments.count();
             if count > 0 && width > last_entry.increments.width() {
                 let new_entry = Entry {
@@ -188,7 +190,7 @@ mod tests {
 
     #[test]
     fn test_hybrid_index() {
-        let mut v = HybridIndex::new().unwrap();
+        let mut v = HybridIndex::new(1).unwrap();
         let mut expected = Vec::<u64>::new();
         let mut x = 10;
         let n = 321;
