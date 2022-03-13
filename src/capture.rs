@@ -271,17 +271,15 @@ fn get_index_range(index: &mut FileVec<u64>,
                       length: u64,
                       id: u64) -> Range<u64>
 {
-    match index.get_range(id..(id + 2)) {
-        Ok(vec) => {
-            let start = vec[0];
-            let end = vec[1];
-            start..end
-        }
-        Err(_) => {
-            let start = index.get(id).unwrap();
-            let end = length;
-            start..end
-        }
+    if id + 2 > index.len() {
+        let start = index.get(id).unwrap();
+        let end = length;
+        start..end
+    } else {
+        let vec = index.get_range(id..(id + 2)).unwrap();
+        let start = vec[0];
+        let end = vec[1];
+        start..end
     }
 }
 
