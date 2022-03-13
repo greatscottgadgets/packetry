@@ -267,10 +267,9 @@ impl TransactionState {
     }
 }
 
-fn get_index_range<T>(index: &mut FileVec<u64>,
-                      target: &FileVec<T>,
+fn get_index_range(index: &mut FileVec<u64>,
+                      length: u64,
                       id: u64) -> Range<u64>
-    where T: bytemuck::Pod + Default
 {
     match index.get_range(id..(id + 2)) {
         Ok(vec) => {
@@ -280,7 +279,7 @@ fn get_index_range<T>(index: &mut FileVec<u64>,
         }
         Err(_) => {
             let start = index.get(id).unwrap();
-            let end = target.len();
+            let end = length;
             start..end
         }
     }
@@ -603,15 +602,15 @@ impl Capture {
                 let transfer_id = entry.transfer_id();
                 let ep_data = &mut self.endpoint_data[endpoint_id];
                 get_index_range(&mut ep_data.transfer_index,
-                    &ep_data.transaction_ids, transfer_id)
+                    ep_data.transaction_ids.len(), transfer_id)
             },
             Transaction(_, transaction_id) => {
                 get_index_range(&mut self.transaction_index,
-                    &self.packet_index, *transaction_id)
+                    self.packet_index.len(), *transaction_id)
             },
             Packet(.., packet_id) => {
                 get_index_range(&mut self.packet_index,
-                    &self.packet_data, *packet_id)
+                    self.packet_data.len(), *packet_id)
             },
         }
     }
@@ -728,7 +727,7 @@ impl Capture {
         let last_transaction = match item {
             Transaction(_, transaction_id) | Packet(_, transaction_id, _) => {
                 let range = get_index_range(&mut ep_data.transfer_index,
-                    &ep_data.transaction_ids, entry.transfer_id());
+                    ep_data.transaction_ids.len(), entry.transfer_id());
                 let last_transaction_id =
                     ep_data.transaction_ids.get(range.end - 1).unwrap();
                 *transaction_id == last_transaction_id
@@ -737,7 +736,7 @@ impl Capture {
         let last_packet = match item {
             Packet(_, transaction_id, packet_id) => {
                 let range = get_index_range(&mut self.transaction_index,
-                    &self.packet_index, *transaction_id);
+                    self.packet_index.len(), *transaction_id);
                 *packet_id == range.end - 1
             }, _ => false
         };
@@ -814,13 +813,13 @@ impl Capture {
     fn get_endpoint_state(&mut self, index: u64) -> Vec<u8> {
         let range = get_index_range(
             &mut self.endpoint_state_index,
-            &self.endpoint_states, index);
+            self.endpoint_states.len(), index);
         self.endpoint_states.get_range(range).unwrap()
     }
 
     fn get_packet(&mut self, index: u64) -> Vec<u8> {
         let range = get_index_range(&mut self.packet_index,
-                                    &self.packet_data, index);
+                                    self.packet_data.len(), index);
         self.packet_data.get_range(range).unwrap()
     }
 
