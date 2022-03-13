@@ -23,6 +23,7 @@ mod capture;
 use capture::Capture;
 
 mod file_vec;
+mod hybrid_index;
 
 fn main() {
     let application = gtk::Application::new(
