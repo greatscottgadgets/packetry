@@ -37,6 +37,7 @@ fn main() {
         cap.handle_raw_packet(&packet);
     }
     cap.finish();
+    cap.print_storage_summary();
     let capture = Arc::new(Mutex::new(cap));
 
     application.connect_activate(move |application| {
