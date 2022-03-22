@@ -76,6 +76,10 @@ impl<T: Pod + Default> FileVec<T> {
     pub fn len(&self) -> u64 {
         self.item_count
     }
+
+    pub fn size(&self) -> u64 {
+       self.file_length
+    }
 }
 
 #[cfg(test)]

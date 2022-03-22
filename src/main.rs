@@ -15,6 +15,7 @@ use gtk::{
     TreeListRow,
     SignalListItemFactory,
     SingleSelection,
+    Orientation,
 };
 use row_data::RowData;
 
@@ -22,6 +23,7 @@ mod capture;
 use capture::Capture;
 
 mod file_vec;
+mod hybrid_index;
 
 fn main() {
     let application = gtk::Application::new(
@@ -36,6 +38,7 @@ fn main() {
         cap.handle_raw_packet(&packet);
     }
     cap.finish();
+    cap.print_storage_summary();
     let capture = Arc::new(Mutex::new(cap));
 
     application.connect_activate(move |application| {
@@ -67,10 +70,14 @@ fn main() {
         // Create factory for binding row data -> list item widgets
         let factory = SignalListItemFactory::new();
         factory.connect_setup(move |_, list_item| {
-            let label = Label::new(None);
+            let container = gtk::Box::new(Orientation::Horizontal, 5);
+            let conn_label = Label::new(None);
+            let text_label = Label::new(None);
             let expander = TreeExpander::new();
-            expander.set_child(Some(&label));
-            list_item.set_child(Some(&expander));
+            expander.set_child(Some(&text_label));
+            container.append(&conn_label);
+            container.append(&expander);
+            list_item.set_child(Some(&container));
         });
         factory.connect_bind(move |_, list_item| {
             let treelistrow = list_item
@@ -85,20 +92,34 @@ fn main() {
                 .downcast::<RowData>()
                 .expect("The item has to be RowData.");
 
-            let expander = list_item
+            let container = list_item
                 .child()
+                .expect("The child has to exist")
+                .downcast::<gtk::Box>()
+                .expect("The child must be a gtk::Box.");
+
+            let conn_label = container
+                .first_child()
+                .expect("The child has to exist")
+                .downcast::<Label>()
+                .expect("The child must be a Label.");
+
+            let expander = container
+                .last_child()
                 .expect("The child has to exist")
                 .downcast::<TreeExpander>()
                 .expect("The child must be a TreeExpander.");
 
-            let label = expander
+            let text_label = expander
                 .child()
                 .expect("The child has to exist")
                 .downcast::<Label>()
                 .expect("The child must be a Label.");
 
+            let conn = format!("<tt>{}</tt>", row.property::<String>("conn"));
             let text = row.property::<String>("text");
-            label.set_label(&text);
+            conn_label.set_markup(&conn);
+            text_label.set_label(&text);
             expander.set_list_row(Some(&treelistrow));
         });
 
