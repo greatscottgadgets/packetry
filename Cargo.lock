@@ -509,39 +509,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "packetry"
-version = "0.1.0"
-dependencies = [
- "bisection",
- "bitfield",
- "bufreaderwriter",
- "bytemuck",
- "bytemuck_derive",
- "gtk4",
- "humansize",
- "memmap2",
- "num-format",
- "num_enum",
- "once_cell",
- "pcap",
- "tempfile",
- "thiserror",
-]
-
-[[package]]
 name = "memchr"
 version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "308cc39be01b73d0d18f82a0e7b2a3df85245f84af96fdddc5d202d27e47b86a"
-
-[[package]]
-name = "memmap2"
-version = "0.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "057a3db23999c867821a7a59feb06a578fcb03685e983dff90daf9e7d24ac08f"
-dependencies = [
- "libc",
-]
 
 [[package]]
 name = "memoffset"
@@ -594,6 +565,25 @@ name = "once_cell"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da32515d9f6e6e489d7bc9d84c71b060db7247dc035bbe44eac88cf87486d8d5"
+
+[[package]]
+name = "packetry"
+version = "0.1.0"
+dependencies = [
+ "bisection",
+ "bitfield",
+ "bufreaderwriter",
+ "bytemuck",
+ "bytemuck_derive",
+ "gtk4",
+ "humansize",
+ "num-format",
+ "num_enum",
+ "once_cell",
+ "pcap",
+ "tempfile",
+ "thiserror",
+]
 
 [[package]]
 name = "pango"
