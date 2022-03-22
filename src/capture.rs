@@ -791,6 +791,13 @@ impl Capture {
                 }
             });
         };
+        for _ in state_length..endpoint_count {
+            connectors.push(match item {
+                Transfer(..)    => '─',
+                Transaction(..) => '─',
+                Packet(..)      => ' ',
+            });
+        }
         connectors.push_str(
             match (item, last_packet) {
                 (Transfer(_), _) if entry.is_start() => "─▷",
