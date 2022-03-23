@@ -333,12 +333,6 @@ impl Capture {
         self.packet_data.append(packet).unwrap();
     }
 
-    pub fn finish(&mut self) {
-        for i in 0..self.endpoints.len() as usize {
-            self.ep_transfer_end(i, false);
-        }
-    }
-
     pub fn print_storage_summary(&self) {
         let mut overhead: u64 =
             self.packet_index.size() +
