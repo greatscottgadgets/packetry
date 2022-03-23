@@ -527,14 +527,9 @@ impl Capture {
 
     fn transfer_end(&mut self) {
         let endpoint_id = self.transaction_state.endpoint_id;
-        let add_item = self.last_item_endpoint != (endpoint_id as i16);
-        self.ep_transfer_end(endpoint_id, add_item);
-    }
-
-    fn ep_transfer_end(&mut self, endpoint_id: usize, add_item: bool) {
-        let ep_data = &mut self.endpoint_data[endpoint_id];
+        let ep_data = &self.endpoint_data[endpoint_id];
         if ep_data.transaction_count > 0 {
-            if add_item {
+            if self.last_item_endpoint != (endpoint_id as i16) {
                 self.item_index.push(self.transfer_index.len()).unwrap();
                 self.last_item_endpoint = endpoint_id as i16;
             }
