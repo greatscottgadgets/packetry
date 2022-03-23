@@ -37,7 +37,6 @@ fn main() {
     while let Ok(packet) = pcap.next() {
         cap.handle_raw_packet(&packet);
     }
-    cap.finish();
     cap.print_storage_summary();
     let capture = Arc::new(Mutex::new(cap));
 

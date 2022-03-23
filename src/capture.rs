@@ -333,12 +333,6 @@ impl Capture {
         self.packet_data.append(packet).unwrap();
     }
 
-    pub fn finish(&mut self) {
-        for i in 0..self.endpoints.len() as usize {
-            self.ep_transfer_end(i, false);
-        }
-    }
-
     pub fn print_storage_summary(&self) {
         let mut overhead: u64 =
             self.packet_index.size() +
@@ -518,6 +512,7 @@ impl Capture {
         let ep_data = &mut self.endpoint_data[endpoint_id];
         ep_data.transaction_start = ep_data.transaction_ids.len();
         ep_data.transaction_count = 0;
+        ep_data.transfer_index.push(ep_data.transaction_start).unwrap();
     }
 
     fn transfer_append(&mut self, success: bool) {
@@ -532,16 +527,9 @@ impl Capture {
 
     fn transfer_end(&mut self) {
         let endpoint_id = self.transaction_state.endpoint_id;
-        let add_item = self.last_item_endpoint != (endpoint_id as i16);
-        self.ep_transfer_end(endpoint_id, add_item);
-    }
-
-    fn ep_transfer_end(&mut self, endpoint_id: usize, add_item: bool) {
-        let ep_data = &mut self.endpoint_data[endpoint_id];
+        let ep_data = &self.endpoint_data[endpoint_id];
         if ep_data.transaction_count > 0 {
-            let start = ep_data.transaction_start;
-            ep_data.transfer_index.push(start).unwrap();
-            if add_item {
+            if self.last_item_endpoint != (endpoint_id as i16) {
                 self.item_index.push(self.transfer_index.len()).unwrap();
                 self.last_item_endpoint = endpoint_id as i16;
             }
