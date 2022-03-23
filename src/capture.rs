@@ -518,6 +518,7 @@ impl Capture {
         let ep_data = &mut self.endpoint_data[endpoint_id];
         ep_data.transaction_start = ep_data.transaction_ids.len();
         ep_data.transaction_count = 0;
+        ep_data.transfer_index.push(ep_data.transaction_start).unwrap();
     }
 
     fn transfer_append(&mut self, success: bool) {
@@ -539,8 +540,6 @@ impl Capture {
     fn ep_transfer_end(&mut self, endpoint_id: usize, add_item: bool) {
         let ep_data = &mut self.endpoint_data[endpoint_id];
         if ep_data.transaction_count > 0 {
-            let start = ep_data.transaction_start;
-            ep_data.transfer_index.push(start).unwrap();
             if add_item {
                 self.item_index.push(self.transfer_index.len()).unwrap();
                 self.last_item_endpoint = endpoint_id as i16;
