@@ -788,11 +788,11 @@ impl Capture {
         }
         connectors.push_str(
             match (item, last_packet) {
-                (Transfer(_), _) if entry.is_start() => "─▷",
-                (Transfer(_), _)                     => "─□",
-                (Transaction(..), _)                 => "─▷",
-                (Packet(..), false)                  => " ├─",
-                (Packet(..), true)                   => " └─",
+                (Transfer(_), _) if entry.is_start() => "─",
+                (Transfer(_), _)                     => "──□ ",
+                (Transaction(..), _)                 => "───",
+                (Packet(..), false)                  => "    ├──",
+                (Packet(..), true)                   => "    └──",
             }
         );
         connectors
