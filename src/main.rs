@@ -10,7 +10,7 @@ use gtk::gio::ListModel;
 use gtk::{
     prelude::*,
     Label,
-    TreeExpander,
+    Expander,
     TreeListModel,
     TreeListRow,
     SignalListItemFactory,
@@ -72,10 +72,10 @@ fn main() {
             let container = gtk::Box::new(Orientation::Horizontal, 5);
             let conn_label = Label::new(None);
             let text_label = Label::new(None);
-            let expander = TreeExpander::new();
-            expander.set_child(Some(&text_label));
+            let expander = Expander::new(None);
             container.append(&conn_label);
             container.append(&expander);
+            container.append(&text_label);
             list_item.set_child(Some(&container));
         });
         factory.connect_bind(move |_, list_item| {
@@ -103,14 +103,14 @@ fn main() {
                 .downcast::<Label>()
                 .expect("The child must be a Label.");
 
-            let expander = container
-                .last_child()
+            let expander = conn_label
+                .next_sibling()
                 .expect("The child has to exist")
-                .downcast::<TreeExpander>()
-                .expect("The child must be a TreeExpander.");
+                .downcast::<Expander>()
+                .expect("The child must be a Expander.");
 
-            let text_label = expander
-                .child()
+            let text_label = container
+                .last_child()
                 .expect("The child has to exist")
                 .downcast::<Label>()
                 .expect("The child must be a Label.");
@@ -118,8 +118,11 @@ fn main() {
             let conn = format!("<tt>{}</tt>", row.property::<String>("conn"));
             let text = row.property::<String>("text");
             conn_label.set_markup(&conn);
-            text_label.set_label(&text);
-            expander.set_list_row(Some(&treelistrow));
+            text_label.set_text(&text);
+            expander.set_visible(treelistrow.is_expandable());
+            expander.connect_expanded_notify(move |expander| {
+                treelistrow.set_expanded(expander.is_expanded());
+            });
         });
 
         // Finally, create a view around the model/factory
