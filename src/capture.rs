@@ -847,17 +847,17 @@ impl Capture {
                     packet)
             },
             Transaction(_, transaction_id) => {
-                let (pid, range, payload_size) =
+                let (pid, packet_id_range, payload) =
                     self.get_transaction_stats(transaction_id);
-                let count = range.end - range.start;
-                match (pid, payload_size) {
+                let count = packet_id_range.end - packet_id_range.start;
+                match (pid, payload) {
                     (PID::SOF, _) => format!(
                         "{} SOF packets", count),
                     (_, None) => format!(
                         "{} transaction, {} packets", pid, count),
-                    (_, Some(size)) => format!(
+                    (_, Some(range)) => format!(
                         "{} transaction, {} packets with {} data bytes",
-                        pid, count, size)
+                        pid, count, range.end - range.start)
                 }
             },
             Transfer(transfer_index_id) => {
@@ -906,15 +906,24 @@ impl Capture {
                             In => "reading",
                             Out => "writing"
                         };
-                        let data_size = transaction_ids.iter().map(|id| {
+                        let mut transfer_data: Vec<u8> = Vec::new();
+                        for id in transaction_ids {
                             let (pid, _, payload) =
-                                self.get_transaction_stats(id);
+                                self.get_transaction_stats(&id);
                             match (direction, pid, payload) {
-                                (In, IN, Some(size)) => size,
-                                (Out, OUT, Some(size)) => size,
-                                (..) => 0,
-                            }
-                        }).sum();
+                                (In, IN, Some(range)) => {
+                                    transfer_data.extend_from_slice(
+                                        &self.packet_data.get_range(range)
+                                                         .unwrap())
+                                },
+                                (Out, OUT, Some(range)) => {
+                                    transfer_data.extend_from_slice(
+                                        &self.packet_data.get_range(range)
+                                                         .unwrap())
+                                },
+                                (..) => {}
+                            };
+                        };
                         format!(
                             "{} for {}{}",
                             match request_type {
@@ -945,7 +954,7 @@ impl Capture {
                                              endpoint.device_address,
                                              fields.index)
                             },
-                            match (fields.length, data_size) {
+                            match (fields.length, transfer_data.len()) {
                                 (0, 0) => "".to_string(),
                                 (len, size) if size == len as usize => format!(
                                     ", {} {} bytes", action, len),
@@ -1091,25 +1100,30 @@ impl Capture {
     }
 
     fn get_transaction_stats(&mut self, index: &u64) ->
-        (PID, Range<u64>, Option<usize>)
+        (PID, Range<u64>, Option<Range<u64>>)
     {
-        let range = get_index_range(&mut self.transaction_index,
-                                    self.packet_index.len(), *index);
-        let packet_count = range.end - range.start;
-        let pid = self.get_packet_pid(range.start);
+        let packet_id_range = get_index_range(&mut self.transaction_index,
+                                              self.packet_index.len(), *index);
+        let packet_count = packet_id_range.end - packet_id_range.start;
+        let pid = self.get_packet_pid(packet_id_range.start);
         use PID::*;
-        let payload_size = match pid {
+        let payload = match pid {
             IN | OUT if packet_count >= 2 => {
-                let data_packet_id = range.start + 1;
-                let data_packet = self.get_packet(data_packet_id);
-                match PID::from(data_packet[0]) {
-                    DATA0 | DATA1 => Some(data_packet.len() - 3),
+                let data_packet_id = packet_id_range.start + 1;
+                let packet_byte_range = get_index_range(
+                    &mut self.packet_index,
+                    self.packet_data.len(), data_packet_id);
+                let pid = self.packet_data.get(packet_byte_range.start).unwrap();
+                match PID::from(pid) {
+                    DATA0 | DATA1 => Some({
+                        packet_byte_range.start + 1 .. packet_byte_range.end - 2
+                    }),
                     _ => None
                 }
             },
             _ => None
         };
-        (pid, range, payload_size)
+        (pid, packet_id_range, payload)
     }
 }
 
