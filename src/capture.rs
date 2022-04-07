@@ -805,16 +805,35 @@ impl Capture {
                     EndpointType::Framing => format!(
                         "{} SOF groups", count),
                     EndpointType::Control => {
-                        let setup_transaction_id = ep_data.transaction_ids.get(range.start).unwrap();
-                        let setup_packet_id = self.transaction_index.get(setup_transaction_id).unwrap();
+                        use RequestType::*;
+                        use Recipient::*;
+                        use Direction::*;
+                        use PID::*;
+                        let transaction_ids =
+                            ep_data.transaction_ids.get_range(range).unwrap();
+                        let setup_transaction_id = transaction_ids[0];
+                        let setup_packet_id =
+                            self.transaction_index.get(setup_transaction_id)
+                                                  .unwrap();
                         let data_packet_id = setup_packet_id + 1;
                         let data_packet = self.get_packet(data_packet_id);
                         let fields = SetupFields::from_data_packet(&data_packet);
                         let request_type = fields.type_fields.request_type();
+                        let direction = fields.type_fields.direction();
                         let request = fields.request;
-                        use RequestType::*;
-                        use Recipient::*;
-                        use Direction::*;
+                        let action = match direction {
+                            In => "reading",
+                            Out => "writing"
+                        };
+                        let data_size = transaction_ids.iter().map(|id| {
+                            let (range, payload) = self.get_transaction_stats(id);
+                            let pid = self.get_packet_pid(range.start);
+                            match (direction, pid, payload) {
+                                (In, IN, Some(size)) => size,
+                                (Out, OUT, Some(size)) => size,
+                                (..) => 0,
+                            }
+                        }).sum();
                         format!(
                             "{} for {}, value {}{}",
                             match request_type {
@@ -839,13 +858,13 @@ impl Capture {
                                              fields.index)
                             },
                             fields.value,
-                            match fields.length {
-                                0 => "".to_string(),
-                                len => format!(", {} {} bytes",
-                                    match fields.type_fields.direction() {
-                                        In => "reading",
-                                        Out => "writing"
-                                    }, len)
+                            match (fields.length, data_size) {
+                                (0, 0) => "".to_string(),
+                                (len, size) if size == len as usize => format!(
+                                    ", {} {} bytes", action, len),
+                                (len, size) => format!(
+                                    ", {} {} of {} requested bytes",
+                                    action, size, len)
                             }
                         )
                     },
