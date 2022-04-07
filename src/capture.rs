@@ -764,25 +764,19 @@ impl Capture {
                     },
                     packet)
             },
-            Transaction(..) => {
-                let range = self.item_range(&item);
-                let count = range.end - range.start;
+            Transaction(_, transaction_id) => {
+                let (range, payload_size) =
+                    self.get_transaction_stats(transaction_id);
                 let pid = self.get_packet_pid(range.start);
-                use PID::*;
-                match pid {
-                    IN | OUT if count >= 2 => {
-                        let data_packet_id = range.start + 1;
-                        let data_packet = self.get_packet(data_packet_id);
-                        match PID::from(data_packet[0]) {
-                            DATA0 | DATA1 => format!(
-                                "{} transaction, {} packets with {} data bytes",
-                                pid, count, data_packet.len() - 3),
-                            _ => format!(
-                                "{} transaction, {} packets", pid, count),
-                        }
-                    },
-                    SOF => format!("{} SOF packets", count),
-                    _ => format!("{} transaction, {} packets", pid, count)
+                let count = range.end - range.start;
+                match (pid, payload_size) {
+                    (PID::SOF, _) => format!(
+                        "{} SOF packets", count),
+                    (_, None) => format!(
+                        "{} transaction, {} packets", pid, count),
+                    (_, Some(size)) => format!(
+                        "{} transaction, {} packets with {} data bytes",
+                        pid, count, size)
                 }
             },
             Transfer(transfer_index_id) => {
@@ -988,6 +982,26 @@ impl Capture {
     fn get_packet_pid(&mut self, index: u64) -> PID {
         let offset = self.packet_index.get(index).unwrap();
         PID::from(self.packet_data.get(offset).unwrap())
+    }
+
+    fn get_transaction_stats(&mut self, index: &u64) -> (Range<u64>, Option<usize>) {
+        let range = get_index_range(&mut self.transaction_index,
+                                    self.packet_index.len(), *index);
+        let packet_count = range.end - range.start;
+        let pid = self.get_packet_pid(range.start);
+        use PID::*;
+        let payload_size = match pid {
+            IN | OUT if packet_count >= 2 => {
+                let data_packet_id = range.start + 1;
+                let data_packet = self.get_packet(data_packet_id);
+                match PID::from(data_packet[0]) {
+                    DATA0 | DATA1 => Some(data_packet.len() - 3),
+                    _ => None
+                }
+            },
+            _ => None
+        };
+        (range, payload_size)
     }
 }
 
