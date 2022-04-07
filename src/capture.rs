@@ -797,9 +797,51 @@ impl Capture {
                         "{} invalid groups", count),
                     EndpointType::Framing => format!(
                         "{} SOF groups", count),
-                    EndpointType::Control => format!(
-                        "Control transfer with {} transactions on device {}",
-                        count, endpoint.device_address),
+                    EndpointType::Control => {
+                        let setup_transaction_id = ep_data.transaction_ids.get(range.start).unwrap();
+                        let setup_packet_id = self.transaction_index.get(setup_transaction_id).unwrap();
+                        let data_packet_id = setup_packet_id + 1;
+                        let data_packet = self.get_packet(data_packet_id);
+                        let fields = SetupFields::from_data_packet(&data_packet);
+                        let request_type = fields.type_fields.request_type();
+                        let request = fields.request;
+                        use RequestType::*;
+                        use Recipient::*;
+                        use Direction::*;
+                        format!(
+                            "{} for {}, value {}{}",
+                            match request_type {
+                                Standard => {
+                                    let std_req = StandardRequest::from(request);
+                                    std_req.description().to_string()
+                                },
+                                _ => format!("{:?} request #{}",
+                                             request_type, request)
+                            },
+                            match fields.type_fields.recipient() {
+                                Device => format!("device {}",
+                                                  endpoint.device_address),
+                                Interface => format!("interface {}.{}",
+                                                     endpoint.device_address,
+                                                     fields.index),
+                                Endpoint => format!("endpoint {}.{}",
+                                                    endpoint.device_address,
+                                                    fields.index),
+                                _ => format!("device {}, index {}",
+                                             endpoint.device_address,
+                                             fields.index)
+                            },
+                            fields.value,
+                            match fields.length {
+                                0 => "".to_string(),
+                                len => format!(", {} {} bytes",
+                                    match fields.type_fields.direction() {
+                                        In => "reading",
+                                        Out => "writing"
+                                    }, len)
+                            }
+                        )
+                    },
                     EndpointType::Normal => format!(
                         "Bulk transfer with {} transactions on endpoint {}.{}",
                         count, endpoint.device_address, endpoint.endpoint_number)
