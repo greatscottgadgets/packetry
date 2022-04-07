@@ -186,7 +186,7 @@ impl StandardRequest {
             GetStatus => format!("Getting status"),
             ClearFeature => format!("Clearing feature"),
             SetFeature => format!("Setting feature"),
-            SetAddress => format!("Setting address"),
+            SetAddress => format!("Setting address to {}", fields.value),
             GetDescriptor | SetDescriptor => format!(
                 "{} {} descriptor #{}",
                 match self {
@@ -198,9 +198,10 @@ impl StandardRequest {
                 fields.value & 0xFF
             ),
             GetConfiguration => format!("Getting configuration"),
-            SetConfiguration => format!("Setting configuration"),
-            GetInterface => format!("Getting interface"),
-            SetInterface => format!("Setting interface"),
+            SetConfiguration => format!("Setting configuration {}", fields.value),
+            GetInterface => format!("Getting interface {}", fields.index),
+            SetInterface => format!("Setting interface {} to {}",
+                                    fields.index, fields.value),
             SynchFrame => format!("Synchronising frame"),
             Unknown => format!("Unknown standard request"),
         }
