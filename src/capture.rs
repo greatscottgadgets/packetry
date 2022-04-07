@@ -757,7 +757,8 @@ impl Capture {
                             token.endpoint_number(),
                             token.crc()),
                         PacketFields::Data(data) => format!(
-                            " with CRC {:04X}",
+                            " with {} data bytes and CRC {:04X}",
+                            packet.len() - 3,
                             data.crc),
                         PacketFields::None => "".to_string()
                     },
