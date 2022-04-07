@@ -97,6 +97,70 @@ impl PacketFields {
     }
 }
 
+#[derive(Copy, Clone, Debug, FromPrimitive)]
+#[repr(u8)]
+pub enum RequestType {
+    Standard = 0,
+    Class = 1,
+    Vendor = 2,
+    #[default]
+    Reserved = 3,
+}
+
+#[derive(Copy, Clone, Debug, FromPrimitive)]
+#[repr(u8)]
+pub enum Recipient {
+    Device = 0,
+    Interface = 1,
+    Endpoint = 2,
+    Other = 3,
+    #[default]
+    Reserved = 4,
+}
+
+#[derive(Copy, Clone, Debug, FromPrimitive)]
+#[repr(u8)]
+pub enum Direction {
+    #[default]
+    Out = 0,
+    In = 1,
+}
+
+bitfield! {
+    #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
+    #[repr(C)]
+    pub struct RequestTypeFields(u8);
+    u8, _recipient, _: 4, 0;
+    u8, _type, _: 6, 5;
+    u8, _direction, _: 7, 7;
+}
+
+impl RequestTypeFields {
+    pub fn recipient(&self) -> Recipient { Recipient::from(self._recipient()) }
+    pub fn request_type(&self) -> RequestType { RequestType::from(self._type()) }
+    pub fn direction(&self) -> Direction { Direction::from(self._direction()) }
+}
+
+pub struct SetupFields {
+    type_fields: RequestTypeFields,
+    request: u8,
+    value: u16,
+    index: u16,
+    length: u16,
+}
+
+impl SetupFields {
+    fn from_data_packet(packet: &[u8]) -> Self {
+        SetupFields {
+            type_fields: RequestTypeFields(packet[1]),
+            request: packet[2],
+            value: u16::from_le_bytes([packet[3], packet[4]]),
+            index: u16::from_le_bytes([packet[5], packet[6]]),
+            length: u16::from_le_bytes([packet[7], packet[8]]),
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
 #[repr(C)]
 pub struct Endpoint {
