@@ -161,6 +161,44 @@ impl SetupFields {
     }
 }
 
+#[derive(Debug, FromPrimitive)]
+#[repr(u8)]
+pub enum StandardRequest {
+    GetStatus = 0,
+    ClearFeature = 1,
+    SetFeature = 3,
+    SetAddress = 5,
+    GetDescriptor = 6,
+    SetDescriptor = 7,
+    GetConfiguration = 8,
+    SetConfiguration = 9,
+    GetInterface = 10,
+    SetInterface = 11,
+    SynchFrame = 12,
+    #[default]
+    Unknown = 13,
+}
+
+impl StandardRequest {
+    pub fn description(&self) -> &str {
+        use StandardRequest::*;
+        match self {
+            GetStatus => "Getting status",
+            ClearFeature => "Clearing feature",
+            SetFeature => "Setting feature",
+            SetAddress => "Setting address",
+            GetDescriptor => "Getting descriptor",
+            SetDescriptor => "Setting descriptor",
+            GetConfiguration => "Getting configuration",
+            SetConfiguration => "Setting configuration",
+            GetInterface => "Getting interface",
+            SetInterface => "Setting interface",
+            SynchFrame => "Synchronising frame",
+            Unknown => "Unknown standard request",
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
 #[repr(C)]
 pub struct Endpoint {
