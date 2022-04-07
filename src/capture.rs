@@ -847,9 +847,8 @@ impl Capture {
                     packet)
             },
             Transaction(_, transaction_id) => {
-                let (range, payload_size) =
+                let (pid, range, payload_size) =
                     self.get_transaction_stats(transaction_id);
-                let pid = self.get_packet_pid(range.start);
                 let count = range.end - range.start;
                 match (pid, payload_size) {
                     (PID::SOF, _) => format!(
@@ -908,8 +907,8 @@ impl Capture {
                             Out => "writing"
                         };
                         let data_size = transaction_ids.iter().map(|id| {
-                            let (range, payload) = self.get_transaction_stats(id);
-                            let pid = self.get_packet_pid(range.start);
+                            let (pid, _, payload) =
+                                self.get_transaction_stats(id);
                             match (direction, pid, payload) {
                                 (In, IN, Some(size)) => size,
                                 (Out, OUT, Some(size)) => size,
@@ -1091,7 +1090,9 @@ impl Capture {
         PID::from(self.packet_data.get(offset).unwrap())
     }
 
-    fn get_transaction_stats(&mut self, index: &u64) -> (Range<u64>, Option<usize>) {
+    fn get_transaction_stats(&mut self, index: &u64) ->
+        (PID, Range<u64>, Option<usize>)
+    {
         let range = get_index_range(&mut self.transaction_index,
                                     self.packet_index.len(), *index);
         let packet_count = range.end - range.start;
@@ -1108,7 +1109,7 @@ impl Capture {
             },
             _ => None
         };
-        (range, payload_size)
+        (pid, range, payload_size)
     }
 }
 
