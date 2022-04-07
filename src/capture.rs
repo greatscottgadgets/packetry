@@ -180,21 +180,29 @@ pub enum StandardRequest {
 }
 
 impl StandardRequest {
-    pub fn description(&self) -> &str {
+    pub fn description(&self, fields: &SetupFields) -> String {
         use StandardRequest::*;
         match self {
-            GetStatus => "Getting status",
-            ClearFeature => "Clearing feature",
-            SetFeature => "Setting feature",
-            SetAddress => "Setting address",
-            GetDescriptor => "Getting descriptor",
-            SetDescriptor => "Setting descriptor",
-            GetConfiguration => "Getting configuration",
-            SetConfiguration => "Setting configuration",
-            GetInterface => "Getting interface",
-            SetInterface => "Setting interface",
-            SynchFrame => "Synchronising frame",
-            Unknown => "Unknown standard request",
+            GetStatus => format!("Getting status"),
+            ClearFeature => format!("Clearing feature"),
+            SetFeature => format!("Setting feature"),
+            SetAddress => format!("Setting address"),
+            GetDescriptor | SetDescriptor => format!(
+                "{} {} descriptor #{}",
+                match self {
+                    GetDescriptor => "Getting",
+                    SetDescriptor => "Setting",
+                    _ => ""
+                },
+                DescriptorType::from((fields.value >> 8) as u8).description(),
+                fields.value & 0xFF
+            ),
+            GetConfiguration => format!("Getting configuration"),
+            SetConfiguration => format!("Setting configuration"),
+            GetInterface => format!("Getting interface"),
+            SetInterface => format!("Setting interface"),
+            SynchFrame => format!("Synchronising frame"),
+            Unknown => format!("Unknown standard request"),
         }
     }
 }
@@ -212,6 +220,24 @@ pub enum DescriptorType {
     InterfacePower = 8,
     #[default]
     Unknown = 9
+}
+
+impl DescriptorType {
+    pub fn description(self) -> &'static str {
+        const STRINGS: [&str; 10] = [
+            "invalid",
+            "device",
+            "configuration",
+            "string",
+            "interface",
+            "endpoint",
+            "device qualifier",
+            "other speed configuration",
+            "interface power",
+            "unknown",
+        ];
+        STRINGS[self as usize]
+    }
 }
 
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
@@ -850,14 +876,14 @@ impl Capture {
                             }
                         }).sum();
                         format!(
-                            "{} for {}, value {}{}",
+                            "{} for {}{}",
                             match request_type {
                                 Standard => {
                                     let std_req = StandardRequest::from(request);
-                                    std_req.description().to_string()
+                                    std_req.description(&fields)
                                 },
-                                _ => format!("{:?} request #{}",
-                                             request_type, request)
+                                _ => format!("{:?} request #{}, value {}",
+                                             request_type, request, fields.value)
                             },
                             match fields.type_fields.recipient() {
                                 Device => format!("device {}",
@@ -872,7 +898,6 @@ impl Capture {
                                              endpoint.device_address,
                                              fields.index)
                             },
-                            fields.value,
                             match (fields.length, data_size) {
                                 (0, 0) => "".to_string(),
                                 (len, size) if size == len as usize => format!(
