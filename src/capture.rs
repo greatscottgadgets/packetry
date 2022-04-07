@@ -184,8 +184,17 @@ impl StandardRequest {
         use StandardRequest::*;
         match self {
             GetStatus => format!("Getting status"),
-            ClearFeature => format!("Clearing feature"),
-            SetFeature => format!("Setting feature"),
+            ClearFeature | SetFeature => {
+                let feature = StandardFeature::from(fields.value);
+                format!("{} {}",
+                    match self {
+                        ClearFeature => "Clearing",
+                        SetFeature => "Setting",
+                        _ => ""
+                    },
+                    feature.description()
+                )
+            },
             SetAddress => format!("Setting address to {}", fields.value),
             GetDescriptor | SetDescriptor => {
                 let descriptor_type =
@@ -245,6 +254,28 @@ impl DescriptorType {
             "other speed configuration",
             "interface power",
             "unknown",
+        ];
+        STRINGS[self as usize]
+    }
+}
+
+#[derive(Copy, Clone, Debug, FromPrimitive)]
+#[repr(u16)]
+pub enum StandardFeature {
+    EndpointHalt = 0,
+    DeviceRemoteWakeup = 1,
+    TestMode = 2,
+    #[default]
+    Unknown = 3
+}
+
+impl StandardFeature {
+    pub fn description(self) -> &'static str {
+        const STRINGS: [&str; 4] = [
+            "endpoint halt",
+            "device remote wakeup",
+            "test mode",
+            "unknown standard feature",
         ];
         STRINGS[self as usize]
     }
@@ -892,8 +923,10 @@ impl Capture {
                                     let std_req = StandardRequest::from(request);
                                     std_req.description(&fields)
                                 },
-                                _ => format!("{:?} request #{}, value {}",
-                                             request_type, request, fields.value)
+                                _ => format!(
+                                    "{:?} request #{}, index {}, value {}",
+                                    request_type, request,
+                                    fields.index, fields.value)
                             },
                             match fields.type_fields.recipient() {
                                 Device => format!("device {}",
@@ -901,9 +934,14 @@ impl Capture {
                                 Interface => format!("interface {}.{}",
                                                      endpoint.device_address,
                                                      fields.index),
-                                Endpoint => format!("endpoint {}.{}",
+                                Endpoint => format!("endpoint {}.{} {}",
                                                     endpoint.device_address,
-                                                    fields.index),
+                                                    fields.index & 0x7F,
+                                                    if (fields.index & 0x80) == 0 {
+                                                        "OUT"
+                                                    } else {
+                                                        "IN"
+                                                    }),
                                 _ => format!("device {}, index {}",
                                              endpoint.device_address,
                                              fields.index)
