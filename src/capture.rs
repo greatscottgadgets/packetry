@@ -768,8 +768,20 @@ impl Capture {
                 let range = self.item_range(&item);
                 let count = range.end - range.start;
                 let pid = self.get_packet_pid(range.start);
+                use PID::*;
                 match pid {
-                    PID::SOF => format!("{} SOF packets", count),
+                    IN | OUT if count >= 2 => {
+                        let data_packet_id = range.start + 1;
+                        let data_packet = self.get_packet(data_packet_id);
+                        match PID::from(data_packet[0]) {
+                            DATA0 | DATA1 => format!(
+                                "{} transaction, {} packets with {} data bytes",
+                                pid, count, data_packet.len() - 3),
+                            _ => format!(
+                                "{} transaction, {} packets", pid, count),
+                        }
+                    },
+                    SOF => format!("{} SOF packets", count),
                     _ => format!("{} transaction, {} packets", pid, count)
                 }
             },
