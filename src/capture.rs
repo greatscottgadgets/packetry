@@ -6,6 +6,7 @@ use bytemuck_derive::{Pod, Zeroable};
 use num_enum::{IntoPrimitive, FromPrimitive};
 use num_format::{Locale, ToFormattedString};
 use humansize::{FileSize, file_size_opts as options};
+use utf16string::WString;
 
 #[derive(Copy, Clone, Debug, IntoPrimitive, FromPrimitive, PartialEq)]
 #[repr(u8)]
@@ -887,8 +888,9 @@ impl Capture {
                         "{} SOF groups", count),
                     EndpointType::Control => {
                         use RequestType::*;
-                        use Recipient::*;
                         use Direction::*;
+                        use StandardRequest::*;
+                        use DescriptorType::*;
                         use PID::*;
                         let transaction_ids =
                             ep_data.transaction_ids.get_range(range).unwrap();
@@ -902,6 +904,9 @@ impl Capture {
                         let request_type = fields.type_fields.request_type();
                         let direction = fields.type_fields.direction();
                         let request = fields.request;
+                        let std_req = StandardRequest::from(request);
+                        let descriptor_type =
+                            DescriptorType::from((fields.value >> 8) as u8);
                         let action = match direction {
                             In => "reading",
                             Out => "writing"
@@ -924,25 +929,23 @@ impl Capture {
                                 (..) => {}
                             };
                         };
+                        let size = transfer_data.len();
                         format!(
-                            "{} for {}{}",
+                            "{} for {}{}{}",
                             match request_type {
-                                Standard => {
-                                    let std_req = StandardRequest::from(request);
-                                    std_req.description(&fields)
-                                },
+                                Standard => std_req.description(&fields),
                                 _ => format!(
                                     "{:?} request #{}, index {}, value {}",
                                     request_type, request,
                                     fields.index, fields.value)
                             },
                             match fields.type_fields.recipient() {
-                                Device => format!("device {}",
+                                Recipient::Device => format!("device {}",
                                                   endpoint.device_address),
-                                Interface => format!("interface {}.{}",
+                                Recipient::Interface => format!("interface {}.{}",
                                                      endpoint.device_address,
                                                      fields.index),
-                                Endpoint => format!("endpoint {}.{} {}",
+                                Recipient::Endpoint => format!("endpoint {}.{} {}",
                                                     endpoint.device_address,
                                                     fields.index & 0x7F,
                                                     if (fields.index & 0x80) == 0 {
@@ -954,13 +957,23 @@ impl Capture {
                                              endpoint.device_address,
                                              fields.index)
                             },
-                            match (fields.length, transfer_data.len()) {
+                            match (fields.length, size) {
                                 (0, 0) => "".to_string(),
                                 (len, size) if size == len as usize => format!(
                                     ", {} {} bytes", action, len),
                                 (len, size) => format!(
                                     ", {} {} of {} requested bytes",
                                     action, size, len)
+                            },
+                            match (request_type, std_req, descriptor_type) {
+                                (Standard, GetDescriptor, String)
+                                    if size >= 4 && fields.index != 0 => format!(
+                                        ": '{}'",
+                                        WString::from_utf16le(
+                                            transfer_data[2..size].to_vec()
+                                        ).unwrap().to_utf8()
+                                ),
+                                (..) => "".to_string()
                             }
                         )
                     },
