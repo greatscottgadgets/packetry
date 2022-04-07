@@ -199,6 +199,21 @@ impl StandardRequest {
     }
 }
 
+#[derive(Debug, FromPrimitive)]
+#[repr(u8)]
+pub enum DescriptorType {
+    Device = 1,
+    Configuration = 2,
+    String = 3,
+    Interface = 4,
+    Endpoint = 5,
+    DeviceQualifier = 6,
+    OtherSpeedConfiguration = 7,
+    InterfacePower = 8,
+    #[default]
+    Unknown = 9
+}
+
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
 #[repr(C)]
 pub struct Endpoint {
