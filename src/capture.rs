@@ -187,16 +187,25 @@ impl StandardRequest {
             ClearFeature => format!("Clearing feature"),
             SetFeature => format!("Setting feature"),
             SetAddress => format!("Setting address to {}", fields.value),
-            GetDescriptor | SetDescriptor => format!(
-                "{} {} descriptor #{}",
-                match self {
-                    GetDescriptor => "Getting",
-                    SetDescriptor => "Setting",
-                    _ => ""
-                },
-                DescriptorType::from((fields.value >> 8) as u8).description(),
-                fields.value & 0xFF
-            ),
+            GetDescriptor | SetDescriptor => {
+                let descriptor_type =
+                    DescriptorType::from((fields.value >> 8) as u8);
+                format!(
+                    "{} {} descriptor #{}{}",
+                    match self {
+                        GetDescriptor => "Getting",
+                        SetDescriptor => "Setting",
+                        _ => ""
+                    },
+                    descriptor_type.description(),
+                    fields.value & 0xFF,
+                    match (descriptor_type, fields.index) {
+                        (DescriptorType::String, language) if language > 0 =>
+                            format!(", language 0x{:04x}", language),
+                        (..) => format!(""),
+                    }
+                )
+            },
             GetConfiguration => format!("Getting configuration"),
             SetConfiguration => format!("Setting configuration {}", fields.value),
             GetInterface => format!("Getting interface {}", fields.index),
@@ -208,7 +217,7 @@ impl StandardRequest {
     }
 }
 
-#[derive(Debug, FromPrimitive)]
+#[derive(Copy, Clone, Debug, FromPrimitive)]
 #[repr(u8)]
 pub enum DescriptorType {
     Device = 1,
