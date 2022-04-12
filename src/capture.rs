@@ -344,16 +344,22 @@ struct EndpointData {
     transaction_start: u64,
     transaction_count: u64,
     last: PID,
+    setup: Option<SetupFields>,
 }
 
 impl EndpointData {
-    fn status(&self, next: PID) -> DecodeStatus {
+    fn status(&mut self, transaction_state: &mut TransactionState) -> DecodeStatus {
+        let next = transaction_state.first;
         use PID::*;
         use EndpointType::*;
         match (&self.ep_type, self.last, next) {
 
             // A SETUP transaction starts a new control transfer.
-            (Control, _, SETUP) => DecodeStatus::NEW,
+            // Store the setup fields to interpret the request.
+            (Control, _, SETUP) => {
+                self.setup = transaction_state.setup.take();
+                DecodeStatus::NEW
+            },
 
             // SETUP may be followed by IN or OUT at data stage.
             (Control, SETUP, IN | OUT) => DecodeStatus::CONTINUE,
@@ -747,6 +753,7 @@ impl Capture {
             transaction_start: 0,
             transaction_count: 0,
             last: PID::Malformed,
+            setup: None,
         };
         self.endpoint_data.push(ep_data);
         let endpoint = Endpoint {
@@ -760,7 +767,7 @@ impl Capture {
     fn transfer_update(&mut self) {
         let endpoint_id = self.transaction_state.endpoint_id;
         let ep_data = &mut self.endpoint_data[endpoint_id];
-        let status = ep_data.status(self.transaction_state.first);
+        let status = ep_data.status(&mut self.transaction_state);
         let completed =
             self.transaction_state.count == 3 &&
             self.transaction_state.last == PID::ACK;
