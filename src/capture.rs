@@ -315,6 +315,7 @@ struct TransactionState {
     count: u64,
     endpoint_id: usize,
     setup: Option<SetupFields>,
+    payload: Vec<u8>,
 }
 
 #[derive(Copy, Clone, IntoPrimitive, FromPrimitive, PartialEq)]
@@ -345,6 +346,7 @@ struct EndpointData {
     transaction_count: u64,
     last: PID,
     setup: Option<SetupFields>,
+    payload: Vec<u8>,
 }
 
 impl EndpointData {
@@ -371,23 +373,26 @@ impl EndpointData {
                     let direction = fields.type_fields.direction();
                     match (direction, with_data, self.last, next) {
 
-                        // If there is data to transfer, setup stage is followed by
-                        // data stage in the specified direction; await status stage.
-                        (In,  true, SETUP, IN ) => DecodeStatus::CONTINUE,
-                        (Out, true, SETUP, OUT) => DecodeStatus::CONTINUE,
+                        // If there is data to transfer, setup stage is
+                        // followed by IN/OUT at data stage in the direction
+                        // of the request. IN/OUT may then be repeated.
+                        (In,  true, SETUP, IN ) |
+                        (Out, true, SETUP, OUT) |
+                        (In,  true, IN,    IN ) |
+                        (Out, true, OUT,   OUT) => {
+                            self.payload.extend(&transaction_state.payload);
+                            // Await status stage.
+                            DecodeStatus::CONTINUE
+                        },
 
-                        // If no data, setup stage is followed by status stage in the
-                        // opposite direction, ending the request.
-                        (In,  false, SETUP, OUT) => DecodeStatus::DONE,
-                        (Out, false, SETUP, IN ) => DecodeStatus::DONE,
-
-                        // IN/OUT at data stage may be repeated; await status stage.
-                        (In,  true, IN,  IN ) => DecodeStatus::CONTINUE,
-                        (Out, true, OUT, OUT) => DecodeStatus::CONTINUE,
-
-                        // IN/OUT at data stage may be ended by status stage.
-                        (In,  true, IN, OUT) => DecodeStatus::DONE,
-                        (Out, true, OUT, IN) => DecodeStatus::DONE,
+                        // If there is no data to transfer, setup stage is
+                        // followed by IN/OUT at status stage in the opposite
+                        // direction to the request. If there is data, then
+                        // the status stage follows the data stage.
+                        (In,  false, SETUP, OUT) |
+                        (Out, false, SETUP, IN ) |
+                        (In,  true,  IN,    OUT) |
+                        (Out, true,  OUT,   IN ) => DecodeStatus::DONE,
 
                         // Any other sequence is invalid.
                         (..) => DecodeStatus::INVALID
@@ -574,7 +579,15 @@ impl TransactionState {
             // IN may be followed by NAK or STALL, completing transaction.
             (_, IN, NAK | STALL) => DecodeStatus::DONE,
             // IN or OUT may be followed by DATA0 or DATA1, wait for status.
-            (_, IN | OUT, DATA0 | DATA1) => DecodeStatus::CONTINUE,
+            (_, IN | OUT, DATA0 | DATA1) => {
+                if packet.len() >= 3 {
+                    let range = 1 .. (packet.len() - 2);
+                    self.payload = packet[range].to_vec();
+                    DecodeStatus::CONTINUE
+                } else {
+                    DecodeStatus::INVALID
+                }
+            },
             // An ACK or NYET then completes the transaction.
             (IN | OUT, DATA0 | DATA1, ACK | NYET) => DecodeStatus::DONE,
             // OUT may also be completed by NAK or STALL.
@@ -787,6 +800,7 @@ impl Capture {
             transaction_count: 0,
             last: PID::Malformed,
             setup: None,
+            payload: Vec::new(),
         };
         self.endpoint_data.push(ep_data);
         let endpoint = Endpoint {
@@ -865,6 +879,7 @@ impl Capture {
         let ep_data = &mut self.endpoint_data[endpoint_id];
         ep_data.transaction_count = 0;
         ep_data.last = PID::Malformed;
+        ep_data.payload.clear();
     }
 
     fn add_transfer_entry(&mut self, endpoint_id: usize, start: bool) {
