@@ -552,13 +552,23 @@ impl TransactionState {
             (_, IN, NAK | STALL) => DecodeStatus::DONE,
             // IN or OUT may be followed by DATA0 or DATA1, wait for status.
             (_, IN | OUT, DATA0 | DATA1) => DecodeStatus::CONTINUE,
-            // An ACK then completes the transaction.
-            (IN | OUT, DATA0 | DATA1, ACK) => DecodeStatus::DONE,
+            // An ACK or NYET then completes the transaction.
+            (IN | OUT, DATA0 | DATA1, ACK | NYET) => DecodeStatus::DONE,
             // OUT may also be completed by NAK or STALL.
             (OUT, DATA0 | DATA1, NAK | STALL) => DecodeStatus::DONE,
 
             // Any other case is not a valid part of a transaction.
             _ => DecodeStatus::INVALID,
+        }
+    }
+
+    fn completed(&self) -> bool {
+        use PID::*;
+        // A transaction is completed if it has 3 valid packets and is
+        // acknowledged with an ACK or NYET handshake.
+        match (self.count, self.last) {
+            (3, ACK | NYET) => true,
+            (..)            => false
         }
     }
 }
@@ -768,13 +778,10 @@ impl Capture {
         let endpoint_id = self.transaction_state.endpoint_id;
         let ep_data = &mut self.endpoint_data[endpoint_id];
         let status = ep_data.status(&mut self.transaction_state);
-        let completed =
-            self.transaction_state.count == 3 &&
-            self.transaction_state.last == PID::ACK;
         let retry_needed =
             ep_data.transaction_count > 0 &&
             status != DecodeStatus::INVALID &&
-            !completed;
+            !self.transaction_state.completed();
         if retry_needed {
             self.transfer_append(false);
             return
