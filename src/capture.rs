@@ -1,8 +1,10 @@
 use std::ops::Range;
+use std::mem::size_of;
 
 use crate::file_vec::FileVec;
 use crate::hybrid_index::HybridIndex;
 use bytemuck_derive::{Pod, Zeroable};
+use bytemuck::pod_read_unaligned;
 use num_enum::{IntoPrimitive, FromPrimitive};
 use num_format::{Locale, ToFormattedString};
 use humansize::{FileSize, file_size_opts as options};
@@ -387,13 +389,36 @@ impl EndpointData {
 
                         // If there is no data to transfer, setup stage is
                         // followed by IN/OUT at status stage in the opposite
-                        // direction to the request. If there is data, then
-                        // the status stage follows the data stage.
+                        // direction to the request.
                         (In,  false, SETUP, OUT) |
-                        (Out, false, SETUP, IN ) |
-                        (In,  true,  IN,    OUT) |
-                        (Out, true,  OUT,   IN ) => DecodeStatus::DONE,
+                        (Out, false, SETUP, IN ) => DecodeStatus::DONE,
 
+                        // If there is data, then the status stage follows the
+                        // data stage.
+                        (In,  true,  IN,  OUT) |
+                        (Out, true,  OUT, IN ) => {
+                            let req_type = fields.type_fields.request_type();
+                            let recipient = fields.type_fields.recipient();
+                            let request = StandardRequest::from(fields.request);
+                            let desc_type =
+                                DescriptorType::from((fields.value >> 8) as u8);
+                            match (req_type, request, recipient, desc_type) {
+                                (RequestType::Standard,
+                                 StandardRequest::GetDescriptor,
+                                 Recipient::Device,
+                                 DescriptorType::Device) => {
+                                    let length = self.payload.len();
+                                    let size = size_of::<DeviceDescriptor>();
+                                    if length == size {
+                                        let descriptor =
+                                            DeviceDescriptor::from_bytes(
+                                                self.payload.as_slice());
+                                    }
+                                },
+                                _ => {}
+                            };
+                            DecodeStatus::DONE
+                        },
                         // Any other sequence is invalid.
                         (..) => DecodeStatus::INVALID
                     }
@@ -418,6 +443,31 @@ impl EndpointData {
             // Any other case is not a valid part of a transfer.
             _ => DecodeStatus::INVALID
         }
+    }
+}
+
+#[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
+#[repr(C)]
+struct DeviceDescriptor {
+    length: u8,
+    descriptor_type: u8,
+    usb: u16,
+    device_class: u8,
+    device_subclass: u8,
+    device_protocol: u8,
+    max_packet_size_0: u8,
+    vendor_id: u16,
+    product_id: u16,
+    device_version: u16,
+    manufacturer_str_id: u8,
+    product_str_id: u8,
+    serial_str_id: u8,
+    num_configurations: u8
+}
+
+impl DeviceDescriptor {
+    fn from_bytes(bytes: &[u8]) -> Self {
+        pod_read_unaligned::<DeviceDescriptor>(bytes)
     }
 }
 
