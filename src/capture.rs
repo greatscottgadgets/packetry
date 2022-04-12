@@ -352,6 +352,7 @@ impl EndpointData {
         let next = transaction_state.first;
         use PID::*;
         use EndpointType::*;
+        use Direction::*;
         match (&self.ep_type, self.last, next) {
 
             // A SETUP transaction starts a new control transfer.
@@ -361,16 +362,38 @@ impl EndpointData {
                 DecodeStatus::NEW
             },
 
-            // SETUP may be followed by IN or OUT at data stage.
-            (Control, SETUP, IN | OUT) => DecodeStatus::CONTINUE,
+            (Control, _, _) => match &self.setup {
+                // No control transaction is valid unless setup was done.
+                None => DecodeStatus::INVALID,
+                // If setup was done then valid transactions depend on setup fields.
+                Some(fields) => {
+                    let with_data = fields.length != 0;
+                    let direction = fields.type_fields.direction();
+                    match (direction, with_data, self.last, next) {
 
-            // IN or OUT may then be repeated during data stage.
-            (Control, IN, IN) => DecodeStatus::CONTINUE,
-            (Control, OUT, OUT) => DecodeStatus::CONTINUE,
+                        // If there is data to transfer, setup stage is followed by
+                        // data stage in the specified direction; await status stage.
+                        (In,  true, SETUP, IN ) => DecodeStatus::CONTINUE,
+                        (Out, true, SETUP, OUT) => DecodeStatus::CONTINUE,
 
-            // The opposite direction at status stage ends the transfer.
-            (Control, IN, OUT) => DecodeStatus::DONE,
-            (Control, OUT, IN) => DecodeStatus::DONE,
+                        // If no data, setup stage is followed by status stage in the
+                        // opposite direction, ending the request.
+                        (In,  false, SETUP, OUT) => DecodeStatus::DONE,
+                        (Out, false, SETUP, IN ) => DecodeStatus::DONE,
+
+                        // IN/OUT at data stage may be repeated; await status stage.
+                        (In,  true, IN,  IN ) => DecodeStatus::CONTINUE,
+                        (Out, true, OUT, OUT) => DecodeStatus::CONTINUE,
+
+                        // IN/OUT at data stage may be ended by status stage.
+                        (In,  true, IN, OUT) => DecodeStatus::DONE,
+                        (Out, true, OUT, IN) => DecodeStatus::DONE,
+
+                        // Any other sequence is invalid.
+                        (..) => DecodeStatus::INVALID
+                    }
+                }
+            },
 
             // An IN or OUT transaction on a non-control endpoint,
             // with no transfer in progress, starts a bulk transfer.
