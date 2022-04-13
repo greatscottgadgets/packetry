@@ -338,19 +338,22 @@ enum EndpointState {
     Ending = 3,
 }
 
-#[derive(FromPrimitive)]
+#[derive(Copy, Clone, Debug, FromPrimitive)]
 #[repr(u8)]
 enum EndpointType {
-    Control = 0,
+    Control       = 0x00,
+    Isochronous   = 0x01,
+    Bulk          = 0x02,
+    Interrupt     = 0x03,
     #[default]
-    Normal,
-    Framing = 0xFE,
-    Invalid = 0xFF,
+    Unidentified  = 0x04,
+    Framing       = 0x10,
+    Invalid       = 0x11,
 }
 
 struct EndpointData {
     device_id: usize,
-    ep_type: EndpointType,
+    number: usize,
     transaction_ids: HybridIndex,
     transfer_index: HybridIndex,
     transaction_start: u64,
@@ -492,6 +495,38 @@ struct DeviceData {
     device_descriptor: Option<DeviceDescriptor>,
     configurations: Vec<Option<Configuration>>,
     configuration_id: Option<usize>,
+    endpoint_types: Vec<EndpointType>,
+}
+
+impl DeviceData {
+    fn endpoint_type(&self, number: usize) -> EndpointType {
+        use EndpointType::*;
+        match number {
+            0 => Control,
+            0x10 => Framing,
+            0x11 => Invalid,
+            _ => self.endpoint_types[number],
+        }
+    }
+
+    fn update_endpoint_types(&mut self) {
+        match self.configuration_id {
+            Some(id) => match &self.configurations[id] {
+                Some(config) => {
+                    for iface in &config.interfaces {
+                        for ep_desc in &iface.endpoint_descriptors {
+                            let number = ep_desc.endpoint_address & 0x0F;
+                            let index = number as usize;
+                            self.endpoint_types[index] =
+                                EndpointType::from(ep_desc.attributes & 0x03);
+                        }
+                    }
+                },
+                None => {},
+            },
+            None => {},
+        }
+    }
 }
 
 const USB_MAX_DEVICES: usize = 128;
@@ -879,12 +914,14 @@ impl Capture {
                 device_descriptor: None,
                 configurations: Vec::new(),
                 configuration_id: None,
+                endpoint_types: vec![
+                    EndpointType::Unidentified; USB_MAX_ENDPOINTS],
             };
             self.device_data.push(dev_data);
         }
         let ep_data = EndpointData {
+            number: num as usize,
             device_id: self.device_index[addr] as usize,
-            ep_type: EndpointType::from(num as u8),
             transaction_ids: HybridIndex::new(1).unwrap(),
             transfer_index: HybridIndex::new(1).unwrap(),
             transaction_start: 0,
@@ -948,6 +985,7 @@ impl Capture {
                             configurations.push(None);
                         }
                         configurations[config_id] = Some(config);
+                        dev_data.update_endpoint_types();
                     }
                 }
             },
@@ -963,16 +1001,19 @@ impl Capture {
         let fields = ep_data.setup.as_ref().unwrap();
         let config_id = fields.value as usize;
         dev_data.configuration_id = Some(config_id);
+        dev_data.update_endpoint_types();
     }
 
     fn transfer_status(&mut self) -> DecodeStatus {
         let next = self.transaction_state.first;
         let endpoint_id = self.transaction_state.endpoint_id;
         let ep_data = &mut self.endpoint_data[endpoint_id];
+        let dev_data = &self.device_data[ep_data.device_id];
+        let ep_type = &dev_data.endpoint_type(ep_data.number);
         use PID::*;
         use EndpointType::*;
         use Direction::*;
-        match (&ep_data.ep_type, ep_data.last, next) {
+        match (ep_type, ep_data.last, next) {
 
             // A SETUP transaction starts a new control transfer.
             // Store the setup fields to interpret the request.
@@ -1022,12 +1063,12 @@ impl Capture {
             },
 
             // An IN or OUT transaction on a non-control endpoint,
-            // with no transfer in progress, starts a bulk transfer.
-            (Normal, Malformed, IN | OUT) => DecodeStatus::NEW,
+            // with no transfer in progress, starts a new transfer.
+            (_, Malformed, IN | OUT) => DecodeStatus::NEW,
 
             // IN or OUT may then be repeated.
-            (Normal, IN, IN) => DecodeStatus::CONTINUE,
-            (Normal, OUT, OUT) => DecodeStatus::CONTINUE,
+            (_, IN, IN) => DecodeStatus::CONTINUE,
+            (_, OUT, OUT) => DecodeStatus::CONTINUE,
 
             // A SOF group starts a special transfer, unless
             // one is already in progress.
@@ -1251,23 +1292,24 @@ impl Capture {
                 let entry = self.transfer_index.get(*transfer_index_id).unwrap();
                 let endpoint_id = entry.endpoint_id();
                 let endpoint = self.endpoints.get(endpoint_id as u64).unwrap();
+                let device_id = endpoint.device_id() as usize;
+                let dev_data = &self.device_data[device_id];
+                let num = endpoint.number() as usize;
+                let ep_type = dev_data.endpoint_type(num);
                 if !entry.is_start() {
-                    let ep_data = &mut self.endpoint_data[endpoint_id as usize];
-                    return format!("End of {}", match ep_data.ep_type {
-                        EndpointType::Invalid => "invalid groups".to_string(),
-                        EndpointType::Framing => "SOF groups".to_string(),
-                        EndpointType::Control => format!(
-                            "control transfer on device {}",
-                            endpoint.device_address()),
-                        EndpointType::Normal => format!(
-                            "bulk transfer on endpoint {}.{}",
-                            endpoint.device_address(), endpoint.number())
-                    });
+                    return match ep_type {
+                        EndpointType::Invalid =>
+                            "End of invalid groups".to_string(),
+                        EndpointType::Framing =>
+                            "End of SOF groups".to_string(),
+                        endpoint_type => format!(
+                            "{:?} transfer ending on endpoint {}.{}",
+                            endpoint_type, endpoint.device_address(), num)
+                    }
                 }
                 let range = self.item_range(&item);
                 let count = range.end - range.start;
-                let ep_data = &mut self.endpoint_data[endpoint_id as usize];
-                match ep_data.ep_type {
+                match ep_type {
                     EndpointType::Invalid => format!(
                         "{} invalid groups", count),
                     EndpointType::Framing => format!(
@@ -1277,9 +1319,10 @@ impl Capture {
                             endpoint.device_address(), endpoint_id, range);
                         transfer.summary()
                     },
-                    EndpointType::Normal => format!(
-                        "Bulk transfer with {} transactions on endpoint {}.{}",
-                        count, endpoint.device_address(), endpoint.number())
+                    endpoint_type => format!(
+                        "{:?} transfer with {} transactions on endpoint {}.{}",
+                        endpoint_type, count,
+                        endpoint.device_address(), endpoint.number())
                 }
             }
         }
