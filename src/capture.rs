@@ -766,6 +766,36 @@ impl Capture {
         self.last_endpoint_state.push(EndpointState::Idle as u8);
     }
 
+    fn decode_request(&mut self) {
+        let endpoint_id = self.transaction_state.endpoint_id;
+        let ep_data = &mut self.endpoint_data[endpoint_id];
+        match &ep_data.setup {
+            Some(fields) => {
+                let payload = ep_data.payload.as_slice();
+                let req_type = fields.type_fields.request_type();
+                let recipient = fields.type_fields.recipient();
+                let request = StandardRequest::from(fields.request);
+                let desc_type =
+                    DescriptorType::from((fields.value >> 8) as u8);
+                match (req_type, request, recipient, desc_type) {
+                    (RequestType::Standard,
+                     StandardRequest::GetDescriptor,
+                     Recipient::Device,
+                     DescriptorType::Device) => {
+                        let length = payload.len();
+                        let size = size_of::<DeviceDescriptor>();
+                        if length == size {
+                            let descriptor =
+                                DeviceDescriptor::from_bytes(payload);
+                        }
+                    },
+                    _ => {}
+                };
+            },
+            None => {}
+        }
+    }
+
     fn transfer_status(&mut self) -> DecodeStatus {
         let next = self.transaction_state.first;
         let endpoint_id = self.transaction_state.endpoint_id;
@@ -807,34 +837,13 @@ impl Capture {
 
                         // If there is no data to transfer, setup stage is
                         // followed by IN/OUT at status stage in the opposite
-                        // direction to the request.
+                        // direction to the request. If there is data, then
+                        // the status stage follows the data stage.
                         (In,  false, SETUP, OUT) |
-                        (Out, false, SETUP, IN ) => DecodeStatus::DONE,
-
-                        // If there is data, then the status stage follows the
-                        // data stage.
-                        (In,  true,  IN,  OUT) |
-                        (Out, true,  OUT, IN ) => {
-                            let req_type = fields.type_fields.request_type();
-                            let recipient = fields.type_fields.recipient();
-                            let request = StandardRequest::from(fields.request);
-                            let desc_type =
-                                DescriptorType::from((fields.value >> 8) as u8);
-                            match (req_type, request, recipient, desc_type) {
-                                (RequestType::Standard,
-                                 StandardRequest::GetDescriptor,
-                                 Recipient::Device,
-                                 DescriptorType::Device) => {
-                                    let length = ep_data.payload.len();
-                                    let size = size_of::<DeviceDescriptor>();
-                                    if length == size {
-                                        let descriptor =
-                                            DeviceDescriptor::from_bytes(
-                                                ep_data.payload.as_slice());
-                                    }
-                                },
-                                _ => {}
-                            };
+                        (Out, false, SETUP, IN ) |
+                        (In,  true,  IN,    OUT) |
+                        (Out, true,  OUT,   IN ) => {
+                            self.decode_request();
                             DecodeStatus::DONE
                         },
                         // Any other sequence is invalid.
