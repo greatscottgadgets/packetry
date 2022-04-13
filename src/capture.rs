@@ -396,16 +396,87 @@ struct ConfigDescriptor {
     max_power: u8
 }
 
-impl ConfigDescriptor {
+#[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
+#[repr(C, packed)]
+struct InterfaceDescriptor {
+    length: u8,
+    descriptor_type: u8,
+    interface_number: u8,
+    alternate_setting: u8,
+    num_endpoints: u8,
+    interface_class: u8,
+    interface_subclass: u8,
+    interface_protocol: u8,
+    interface_str_id: u8,
+}
+
+#[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
+#[repr(C, packed)]
+struct EndpointDescriptor {
+    length: u8,
+    descriptor_type: u8,
+    endpoint_address: u8,
+    attributes: u8,
+    max_packet_size: u16,
+    interval: u8,
+}
+
+struct Configuration {
+    descriptor: ConfigDescriptor,
+    interfaces: Vec<Interface>,
+}
+
+struct Interface {
+    descriptor: InterfaceDescriptor,
+    endpoint_descriptors: Vec<EndpointDescriptor>
+}
+
+impl Configuration {
     fn from_bytes(bytes: &[u8]) -> Self {
-        pod_read_unaligned::<ConfigDescriptor>(bytes)
+        let config_size = size_of::<ConfigDescriptor>();
+        let iface_size = size_of::<InterfaceDescriptor>();
+        let ep_size = size_of::<EndpointDescriptor>();
+        let config_bytes = &bytes[0 .. config_size];
+        let config_desc =
+            pod_read_unaligned::<ConfigDescriptor>(config_bytes);
+        let mut config = Configuration {
+            descriptor: config_desc,
+            interfaces:
+                Vec::with_capacity(config_desc.num_interfaces as usize),
+        };
+        let mut offset = config_size;
+        for _ in 0 .. config.descriptor.num_interfaces {
+            if offset + iface_size > bytes.len() {
+                break;
+            }
+            let iface_bytes = &bytes[offset .. offset + iface_size];
+            let iface_desc =
+                pod_read_unaligned::<InterfaceDescriptor>(iface_bytes);
+            let mut iface = Interface {
+                descriptor: iface_desc,
+                endpoint_descriptors:
+                    Vec::with_capacity(iface_desc.num_endpoints as usize),
+            };
+            offset += iface_size;
+            for _ in 0 .. iface.descriptor.num_endpoints {
+                if offset + ep_size > bytes.len() {
+                    break;
+                }
+                let ep_bytes = &bytes[offset .. offset + ep_size];
+                let ep_desc =
+                    pod_read_unaligned::<EndpointDescriptor>(ep_bytes);
+                iface.endpoint_descriptors.push(ep_desc);
+                offset += ep_size;
+            };
+            config.interfaces.push(iface);
+        };
+        config
     }
 }
 
-#[derive(Default)]
 struct DeviceData {
     device_descriptor: Option<DeviceDescriptor>,
-    config_descriptors: Vec<Option<ConfigDescriptor>>,
+    configurations: Vec<Option<Configuration>>,
 }
 
 const USB_MAX_DEVICES: usize = 128;
@@ -789,7 +860,10 @@ impl Capture {
             self.device_index[addr] = self.devices.size() as i8;
             let device = Device { address: addr as u8 };
             self.devices.push(&device).unwrap();
-            let dev_data = DeviceData::default();
+            let dev_data = DeviceData {
+                device_descriptor: None,
+                configurations: Vec::new(),
+            };
             self.device_data.push(dev_data);
         }
         let ep_data = EndpointData {
@@ -847,14 +921,14 @@ impl Capture {
                 if length >= size {
                     let device_id = ep_data.device_id;
                     let dev_data = &mut self.device_data[device_id];
-                    let descriptors = &mut dev_data.config_descriptors;
-                    let index = (fields.value & 0xFF) as usize;
-                    if descriptors.len() < index + 1 {
-                        descriptors.resize(index + 1, None);
+                    let configurations = &mut dev_data.configurations;
+                    let configuration = Configuration::from_bytes(&payload);
+                    let config_id =
+                        configuration.descriptor.config_value as usize;
+                    while configurations.len() <= config_id {
+                        configurations.push(None);
                     }
-                    let descriptor =
-                        ConfigDescriptor::from_bytes(&payload[0 .. size]);
-                    descriptors[index] = Some(descriptor);
+                    configurations[config_id] = Some(configuration);
                 }
             },
             _ => {}
