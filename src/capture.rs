@@ -229,7 +229,7 @@ impl StandardRequest {
     }
 }
 
-#[derive(Copy, Clone, Debug, FromPrimitive)]
+#[derive(Copy, Clone, Debug, FromPrimitive, PartialEq)]
 #[repr(u8)]
 pub enum DescriptorType {
     Device = 1,
@@ -434,13 +434,19 @@ struct Interface {
 }
 
 impl Configuration {
-    fn from_bytes(bytes: &[u8]) -> Self {
+    fn from_bytes(bytes: &[u8]) -> Option<Self> {
         let config_size = size_of::<ConfigDescriptor>();
         let iface_size = size_of::<InterfaceDescriptor>();
         let ep_size = size_of::<EndpointDescriptor>();
+        if bytes.len() < config_size {
+            return None;
+        }
         let config_bytes = &bytes[0 .. config_size];
         let config_desc =
             pod_read_unaligned::<ConfigDescriptor>(config_bytes);
+        if config_desc.descriptor_type != DescriptorType::Configuration as u8 {
+            return None;
+        }
         let mut config = Configuration {
             descriptor: config_desc,
             interfaces:
@@ -454,12 +460,15 @@ impl Configuration {
             let iface_bytes = &bytes[offset .. offset + iface_size];
             let iface_desc =
                 pod_read_unaligned::<InterfaceDescriptor>(iface_bytes);
+            offset += iface_size;
+            if iface_desc.descriptor_type != DescriptorType::Interface as u8{
+                break;
+            }
             let mut iface = Interface {
                 descriptor: iface_desc,
                 endpoint_descriptors:
                     Vec::with_capacity(iface_desc.num_endpoints as usize),
             };
-            offset += iface_size;
             for _ in 0 .. iface.descriptor.num_endpoints {
                 if offset + ep_size > bytes.len() {
                     break;
@@ -467,12 +476,15 @@ impl Configuration {
                 let ep_bytes = &bytes[offset .. offset + ep_size];
                 let ep_desc =
                     pod_read_unaligned::<EndpointDescriptor>(ep_bytes);
-                iface.endpoint_descriptors.push(ep_desc);
                 offset += ep_size;
+                if ep_desc.descriptor_type != DescriptorType::Endpoint as u8 {
+                    break;
+                }
+                iface.endpoint_descriptors.push(ep_desc);
             };
             config.interfaces.push(iface);
         };
-        config
+        Some(config)
     }
 }
 
@@ -929,12 +941,14 @@ impl Capture {
                     let dev_data = &mut self.device_data[device_id];
                     let configurations = &mut dev_data.configurations;
                     let configuration = Configuration::from_bytes(&payload);
-                    let config_id =
-                        configuration.descriptor.config_value as usize;
-                    while configurations.len() <= config_id {
-                        configurations.push(None);
+                    if let Some(config) = configuration {
+                        let config_id =
+                            config.descriptor.config_value as usize;
+                        while configurations.len() <= config_id {
+                            configurations.push(None);
+                        }
+                        configurations[config_id] = Some(config);
                     }
-                    configurations[config_id] = Some(configuration);
                 }
             },
             _ => {}
