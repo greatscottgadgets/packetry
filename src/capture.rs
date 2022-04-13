@@ -286,6 +286,12 @@ impl StandardFeature {
 
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
 #[repr(C)]
+pub struct Device {
+    pub address: u8,
+}
+
+#[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
+#[repr(C)]
 pub struct Endpoint {
     pub device_address: u8,
     pub endpoint_number: u8,
@@ -341,6 +347,7 @@ enum EndpointType {
 }
 
 struct EndpointData {
+    device_id: usize,
     ep_type: EndpointType,
     transaction_ids: HybridIndex,
     transfer_index: HybridIndex,
@@ -376,6 +383,11 @@ impl DeviceDescriptor {
     }
 }
 
+#[derive(Default)]
+struct DeviceData {
+    device_descriptor: Option<DeviceDescriptor>,
+}
+
 const USB_MAX_DEVICES: usize = 128;
 const USB_MAX_ENDPOINTS: usize = 16;
 
@@ -385,6 +397,9 @@ pub struct Capture {
     packet_data: FileVec<u8>,
     transaction_index: HybridIndex,
     transfer_index: FileVec<TransferIndexEntry>,
+    device_index: [i8; USB_MAX_DEVICES],
+    devices: FileVec<Device>,
+    device_data: Vec<DeviceData>,
     endpoint_index: [[i16; USB_MAX_ENDPOINTS]; USB_MAX_DEVICES],
     endpoints: FileVec<Endpoint>,
     endpoint_data: Vec<EndpointData>,
@@ -609,6 +624,9 @@ impl Capture {
             packet_data: FileVec::new().unwrap(),
             transaction_index: HybridIndex::new(1).unwrap(),
             transfer_index: FileVec::new().unwrap(),
+            device_index: [-1; USB_MAX_DEVICES],
+            devices: FileVec::new().unwrap(),
+            device_data: Vec::new(),
             endpoints: FileVec::new().unwrap(),
             endpoint_data: Vec::new(),
             endpoint_index: [[-1; USB_MAX_ENDPOINTS]; USB_MAX_DEVICES],
@@ -747,7 +765,15 @@ impl Capture {
     }
 
     fn add_endpoint(&mut self, addr: usize, num: usize) {
+        if self.device_index[addr] == -1 {
+            self.device_index[addr] = self.devices.size() as i8;
+            let device = Device { address: addr as u8 };
+            self.devices.push(&device).unwrap();
+            let dev_data = DeviceData::default();
+            self.device_data.push(dev_data);
+        }
         let ep_data = EndpointData {
+            device_id: self.device_index[addr] as usize,
             ep_type: EndpointType::from(num as u8),
             transaction_ids: HybridIndex::new(1).unwrap(),
             transfer_index: HybridIndex::new(1).unwrap(),
@@ -785,8 +811,10 @@ impl Capture {
                         let length = payload.len();
                         let size = size_of::<DeviceDescriptor>();
                         if length == size {
-                            let descriptor =
-                                DeviceDescriptor::from_bytes(payload);
+                            let device_id = ep_data.device_id;
+                            let dev_data = &mut self.device_data[device_id];
+                            dev_data.device_descriptor =
+                                Some(DeviceDescriptor::from_bytes(payload));
                         }
                     },
                     _ => {}
