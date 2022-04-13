@@ -290,11 +290,13 @@ pub struct Device {
     pub address: u8,
 }
 
-#[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
-#[repr(C)]
-pub struct Endpoint {
-    pub device_address: u8,
-    pub endpoint_number: u8,
+bitfield! {
+    #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
+    #[repr(C)]
+    pub struct Endpoint(u64);
+    u64, device_id, set_device_id: 51, 0;
+    u8, device_address, set_device_address: 58, 52;
+    u8, number, set_number: 63, 59;
 }
 
 bitfield! {
@@ -880,10 +882,10 @@ impl Capture {
             payload: Vec::new(),
         };
         self.endpoint_data.push(ep_data);
-        let endpoint = Endpoint {
-            device_address: addr as u8,
-            endpoint_number: num as u8,
-        };
+        let mut endpoint = Endpoint::default();
+        endpoint.set_device_id(self.device_index[addr] as u64);
+        endpoint.set_device_address(addr as u8);
+        endpoint.set_number(num as u8);
         self.endpoints.push(&endpoint).unwrap();
         self.last_endpoint_state.push(EndpointState::Idle as u8);
     }
@@ -1242,10 +1244,10 @@ impl Capture {
                         EndpointType::Framing => "SOF groups".to_string(),
                         EndpointType::Control => format!(
                             "control transfer on device {}",
-                            endpoint.device_address),
+                            endpoint.device_address()),
                         EndpointType::Normal => format!(
                             "bulk transfer on endpoint {}.{}",
-                            endpoint.device_address, endpoint.endpoint_number)
+                            endpoint.device_address(), endpoint.number())
                     });
                 }
                 let range = self.item_range(&item);
@@ -1258,12 +1260,12 @@ impl Capture {
                         "{} SOF groups", count),
                     EndpointType::Control => {
                         let transfer = self.get_control_transfer(
-                            endpoint.device_address, endpoint_id, range);
+                            endpoint.device_address(), endpoint_id, range);
                         transfer.summary()
                     },
                     EndpointType::Normal => format!(
                         "Bulk transfer with {} transactions on endpoint {}.{}",
-                        count, endpoint.device_address, endpoint.endpoint_number)
+                        count, endpoint.device_address(), endpoint.number())
                 }
             }
         }
