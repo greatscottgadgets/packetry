@@ -383,9 +383,29 @@ impl DeviceDescriptor {
     }
 }
 
+#[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
+#[repr(C, packed)]
+struct ConfigDescriptor {
+    length: u8,
+    descriptor_type: u8,
+    total_length: u16,
+    num_interfaces: u8,
+    config_value: u8,
+    config_str_id: u8,
+    attributes: u8,
+    max_power: u8
+}
+
+impl ConfigDescriptor {
+    fn from_bytes(bytes: &[u8]) -> Self {
+        pod_read_unaligned::<ConfigDescriptor>(bytes)
+    }
+}
+
 #[derive(Default)]
 struct DeviceData {
     device_descriptor: Option<DeviceDescriptor>,
+    config_descriptors: Vec<Option<ConfigDescriptor>>,
 }
 
 const USB_MAX_DEVICES: usize = 128;
@@ -820,6 +840,21 @@ impl Capture {
                     let dev_data = &mut self.device_data[device_id];
                     dev_data.device_descriptor =
                         Some(DeviceDescriptor::from_bytes(payload));
+                }
+            },
+            (Recipient::Device, DescriptorType::Configuration) => {
+                let size = size_of::<ConfigDescriptor>();
+                if length >= size {
+                    let device_id = ep_data.device_id;
+                    let dev_data = &mut self.device_data[device_id];
+                    let descriptors = &mut dev_data.config_descriptors;
+                    let index = (fields.value & 0xFF) as usize;
+                    if descriptors.len() < index + 1 {
+                        descriptors.resize(index + 1, None);
+                    }
+                    let descriptor =
+                        ConfigDescriptor::from_bytes(&payload[0 .. size]);
+                    descriptors[index] = Some(descriptor);
                 }
             },
             _ => {}
