@@ -351,101 +351,6 @@ struct EndpointData {
     payload: Vec<u8>,
 }
 
-impl EndpointData {
-    fn status(&mut self, transaction_state: &mut TransactionState) -> DecodeStatus {
-        let next = transaction_state.first;
-        use PID::*;
-        use EndpointType::*;
-        use Direction::*;
-        match (&self.ep_type, self.last, next) {
-
-            // A SETUP transaction starts a new control transfer.
-            // Store the setup fields to interpret the request.
-            (Control, _, SETUP) => {
-                self.setup = transaction_state.setup.take();
-                DecodeStatus::NEW
-            },
-
-            (Control, _, _) => match &self.setup {
-                // No control transaction is valid unless setup was done.
-                None => DecodeStatus::INVALID,
-                // If setup was done then valid transactions depend on setup fields.
-                Some(fields) => {
-                    let with_data = fields.length != 0;
-                    let direction = fields.type_fields.direction();
-                    match (direction, with_data, self.last, next) {
-
-                        // If there is data to transfer, setup stage is
-                        // followed by IN/OUT at data stage in the direction
-                        // of the request. IN/OUT may then be repeated.
-                        (In,  true, SETUP, IN ) |
-                        (Out, true, SETUP, OUT) |
-                        (In,  true, IN,    IN ) |
-                        (Out, true, OUT,   OUT) => {
-                            self.payload.extend(&transaction_state.payload);
-                            // Await status stage.
-                            DecodeStatus::CONTINUE
-                        },
-
-                        // If there is no data to transfer, setup stage is
-                        // followed by IN/OUT at status stage in the opposite
-                        // direction to the request.
-                        (In,  false, SETUP, OUT) |
-                        (Out, false, SETUP, IN ) => DecodeStatus::DONE,
-
-                        // If there is data, then the status stage follows the
-                        // data stage.
-                        (In,  true,  IN,  OUT) |
-                        (Out, true,  OUT, IN ) => {
-                            let req_type = fields.type_fields.request_type();
-                            let recipient = fields.type_fields.recipient();
-                            let request = StandardRequest::from(fields.request);
-                            let desc_type =
-                                DescriptorType::from((fields.value >> 8) as u8);
-                            match (req_type, request, recipient, desc_type) {
-                                (RequestType::Standard,
-                                 StandardRequest::GetDescriptor,
-                                 Recipient::Device,
-                                 DescriptorType::Device) => {
-                                    let length = self.payload.len();
-                                    let size = size_of::<DeviceDescriptor>();
-                                    if length == size {
-                                        let descriptor =
-                                            DeviceDescriptor::from_bytes(
-                                                self.payload.as_slice());
-                                    }
-                                },
-                                _ => {}
-                            };
-                            DecodeStatus::DONE
-                        },
-                        // Any other sequence is invalid.
-                        (..) => DecodeStatus::INVALID
-                    }
-                }
-            },
-
-            // An IN or OUT transaction on a non-control endpoint,
-            // with no transfer in progress, starts a bulk transfer.
-            (Normal, Malformed, IN | OUT) => DecodeStatus::NEW,
-
-            // IN or OUT may then be repeated.
-            (Normal, IN, IN) => DecodeStatus::CONTINUE,
-            (Normal, OUT, OUT) => DecodeStatus::CONTINUE,
-
-            // A SOF group starts a special transfer, unless
-            // one is already in progress.
-            (Framing, Malformed, SOF) => DecodeStatus::NEW,
-
-            // Further SOF groups continue this transfer.
-            (Framing, SOF, SOF) => DecodeStatus::CONTINUE,
-
-            // Any other case is not a valid part of a transfer.
-            _ => DecodeStatus::INVALID
-        }
-    }
-}
-
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
 #[repr(C)]
 struct DeviceDescriptor {
@@ -861,10 +766,107 @@ impl Capture {
         self.last_endpoint_state.push(EndpointState::Idle as u8);
     }
 
-    fn transfer_update(&mut self) {
+    fn transfer_status(&mut self) -> DecodeStatus {
+        let next = self.transaction_state.first;
         let endpoint_id = self.transaction_state.endpoint_id;
         let ep_data = &mut self.endpoint_data[endpoint_id];
-        let status = ep_data.status(&mut self.transaction_state);
+        use PID::*;
+        use EndpointType::*;
+        use Direction::*;
+        match (&ep_data.ep_type, ep_data.last, next) {
+
+            // A SETUP transaction starts a new control transfer.
+            // Store the setup fields to interpret the request.
+            (Control, _, SETUP) => {
+                ep_data.setup = self.transaction_state.setup.take();
+                DecodeStatus::NEW
+            },
+
+            (Control, _, _) => match &ep_data.setup {
+                // No control transaction is valid unless setup was done.
+                None => DecodeStatus::INVALID,
+                // If setup was done then valid transactions depend on the
+                // contents of the setup data packet.
+                Some(fields) => {
+                    let with_data = fields.length != 0;
+                    let direction = fields.type_fields.direction();
+                    match (direction, with_data, ep_data.last, next) {
+
+                        // If there is data to transfer, setup stage is
+                        // followed by IN/OUT at data stage in the direction
+                        // of the request. IN/OUT may then be repeated.
+                        (In,  true, SETUP, IN ) |
+                        (Out, true, SETUP, OUT) |
+                        (In,  true, IN,    IN ) |
+                        (Out, true, OUT,   OUT) => {
+                            ep_data.payload.extend(
+                                &self.transaction_state.payload);
+                            // Await status stage.
+                            DecodeStatus::CONTINUE
+                        },
+
+                        // If there is no data to transfer, setup stage is
+                        // followed by IN/OUT at status stage in the opposite
+                        // direction to the request.
+                        (In,  false, SETUP, OUT) |
+                        (Out, false, SETUP, IN ) => DecodeStatus::DONE,
+
+                        // If there is data, then the status stage follows the
+                        // data stage.
+                        (In,  true,  IN,  OUT) |
+                        (Out, true,  OUT, IN ) => {
+                            let req_type = fields.type_fields.request_type();
+                            let recipient = fields.type_fields.recipient();
+                            let request = StandardRequest::from(fields.request);
+                            let desc_type =
+                                DescriptorType::from((fields.value >> 8) as u8);
+                            match (req_type, request, recipient, desc_type) {
+                                (RequestType::Standard,
+                                 StandardRequest::GetDescriptor,
+                                 Recipient::Device,
+                                 DescriptorType::Device) => {
+                                    let length = ep_data.payload.len();
+                                    let size = size_of::<DeviceDescriptor>();
+                                    if length == size {
+                                        let descriptor =
+                                            DeviceDescriptor::from_bytes(
+                                                ep_data.payload.as_slice());
+                                    }
+                                },
+                                _ => {}
+                            };
+                            DecodeStatus::DONE
+                        },
+                        // Any other sequence is invalid.
+                        (..) => DecodeStatus::INVALID
+                    }
+                }
+            },
+
+            // An IN or OUT transaction on a non-control endpoint,
+            // with no transfer in progress, starts a bulk transfer.
+            (Normal, Malformed, IN | OUT) => DecodeStatus::NEW,
+
+            // IN or OUT may then be repeated.
+            (Normal, IN, IN) => DecodeStatus::CONTINUE,
+            (Normal, OUT, OUT) => DecodeStatus::CONTINUE,
+
+            // A SOF group starts a special transfer, unless
+            // one is already in progress.
+            (Framing, Malformed, SOF) => DecodeStatus::NEW,
+
+            // Further SOF groups continue this transfer.
+            (Framing, SOF, SOF) => DecodeStatus::CONTINUE,
+
+            // Any other case is not a valid part of a transfer.
+            _ => DecodeStatus::INVALID
+        }
+    }
+
+    fn transfer_update(&mut self) {
+        let status = self.transfer_status();
+        let endpoint_id = self.transaction_state.endpoint_id;
+        let ep_data = &mut self.endpoint_data[endpoint_id];
         let retry_needed =
             ep_data.transaction_count > 0 &&
             status != DecodeStatus::INVALID &&
