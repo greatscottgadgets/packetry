@@ -477,6 +477,7 @@ impl Configuration {
 struct DeviceData {
     device_descriptor: Option<DeviceDescriptor>,
     configurations: Vec<Option<Configuration>>,
+    configuration_id: Option<usize>,
 }
 
 const USB_MAX_DEVICES: usize = 128;
@@ -863,6 +864,7 @@ impl Capture {
             let dev_data = DeviceData {
                 device_descriptor: None,
                 configurations: Vec::new(),
+                configuration_id: None,
             };
             self.device_data.push(dev_data);
         }
@@ -895,6 +897,8 @@ impl Capture {
         match (req_type, request) {
             (RequestType::Standard, StandardRequest::GetDescriptor)
                 => self.decode_descriptor_read(),
+            (RequestType::Standard, StandardRequest::SetConfiguration)
+                => self.decode_configuration_set(),
             (..) => {}
         }
     }
@@ -933,6 +937,16 @@ impl Capture {
             },
             _ => {}
         }
+    }
+
+    fn decode_configuration_set(&mut self) {
+        let endpoint_id = self.transaction_state.endpoint_id;
+        let ep_data = &mut self.endpoint_data[endpoint_id];
+        let device_id = ep_data.device_id;
+        let dev_data = &mut self.device_data[device_id];
+        let fields = ep_data.setup.as_ref().unwrap();
+        let config_id = fields.value as usize;
+        dev_data.configuration_id = Some(config_id);
     }
 
     fn transfer_status(&mut self) -> DecodeStatus {
