@@ -794,33 +794,35 @@ impl Capture {
 
     fn decode_request(&mut self) {
         let endpoint_id = self.transaction_state.endpoint_id;
+        let ep_data = &self.endpoint_data[endpoint_id];
+        let fields = ep_data.setup.as_ref().unwrap();
+        let req_type = fields.type_fields.request_type();
+        let request = StandardRequest::from(fields.request);
+        match (req_type, request) {
+            (RequestType::Standard, StandardRequest::GetDescriptor)
+                => self.decode_descriptor_read(),
+            (..) => {}
+        }
+    }
+
+    fn decode_descriptor_read(&mut self) {
+        let endpoint_id = self.transaction_state.endpoint_id;
         let ep_data = &mut self.endpoint_data[endpoint_id];
-        match &ep_data.setup {
-            Some(fields) => {
-                let payload = ep_data.payload.as_slice();
-                let req_type = fields.type_fields.request_type();
-                let recipient = fields.type_fields.recipient();
-                let request = StandardRequest::from(fields.request);
-                let desc_type =
-                    DescriptorType::from((fields.value >> 8) as u8);
-                match (req_type, request, recipient, desc_type) {
-                    (RequestType::Standard,
-                     StandardRequest::GetDescriptor,
-                     Recipient::Device,
-                     DescriptorType::Device) => {
-                        let length = payload.len();
-                        let size = size_of::<DeviceDescriptor>();
-                        if length == size {
-                            let device_id = ep_data.device_id;
-                            let dev_data = &mut self.device_data[device_id];
-                            dev_data.device_descriptor =
-                                Some(DeviceDescriptor::from_bytes(payload));
-                        }
-                    },
-                    _ => {}
-                };
+        let fields = ep_data.setup.as_ref().unwrap();
+        let recipient = fields.type_fields.recipient();
+        let desc_type = DescriptorType::from((fields.value >> 8) as u8);
+        let payload = &ep_data.payload;
+        let length = payload.len();
+        match (recipient, desc_type) {
+            (Recipient::Device, DescriptorType::Device) => {
+                if length == size_of::<DeviceDescriptor>() {
+                    let device_id = ep_data.device_id;
+                    let dev_data = &mut self.device_data[device_id];
+                    dev_data.device_descriptor =
+                        Some(DeviceDescriptor::from_bytes(payload));
+                }
             },
-            None => {}
+            _ => {}
         }
     }
 
