@@ -575,6 +575,7 @@ dependencies = [
  "bufreaderwriter",
  "bytemuck",
  "bytemuck_derive",
+ "glib",
  "gtk4",
  "humansize",
  "num-format",

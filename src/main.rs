@@ -6,6 +6,8 @@ pub mod row_data;
 
 use std::sync::{Arc, Mutex};
 
+use glib::signal::{SignalHandlerId, signal_handler_disconnect};
+use glib::translate::FromGlib;
 use gtk::gio::ListModel;
 use gtk::{
     prelude::*,
@@ -120,9 +122,53 @@ fn main() {
             conn_label.set_markup(&conn);
             text_label.set_text(&text);
             expander.set_visible(treelistrow.is_expandable());
-            expander.connect_expanded_notify(move |expander| {
+            expander.set_expanded(treelistrow.is_expanded());
+            let handler = expander.connect_expanded_notify(move |expander| {
                 treelistrow.set_expanded(expander.is_expanded());
             });
+
+            // Store the SignalHandlerId on the expander for later removal.
+            unsafe {
+                expander.set_data("handler", handler.as_raw());
+            }
+        });
+        factory.connect_unbind(move |_, list_item| {
+            let container = list_item
+                .child()
+                .expect("The child has to exist")
+                .downcast::<gtk::Box>()
+                .expect("The child must be a gtk::Box.");
+
+            let conn_label = container
+                .first_child()
+                .expect("The child has to exist")
+                .downcast::<Label>()
+                .expect("The child must be a Label.");
+
+            let expander = conn_label
+                .next_sibling()
+                .expect("The child has to exist")
+                .downcast::<Expander>()
+                .expect("The child must be a Expander.");
+
+            // Retrieve the previously stashed SignalHandlerId.
+            let prev_handler = unsafe {
+                match expander.data("handler") {
+                    Some(nonnull) => Some(
+                        // SignalHandlerId is not Copy, but it is secretly
+                        // just a u64, so we can retrieve it as one and
+                        // then recreate using SignalHandlerId::from_glib.
+                        SignalHandlerId::from_glib(*nonnull.as_ptr())),
+                    None => None
+                }
+            };
+
+            // Now disconnect the previously connected handler.
+            match prev_handler {
+                Some(handler) =>
+                    signal_handler_disconnect(&expander, handler),
+                None => panic!("Signal handler was not set")
+            };
         });
 
         // Finally, create a view around the model/factory
