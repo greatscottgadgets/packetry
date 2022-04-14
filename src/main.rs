@@ -131,11 +131,27 @@ fn main() {
         let scrolled_window = gtk::ScrolledWindow::builder()
             .hscrollbar_policy(gtk::PolicyType::Automatic) // Disable horizontal scrolling
             .min_content_height(480)
-            .min_content_width(360)
+            .min_content_width(640)
             .build();
 
         scrolled_window.set_child(Some(&listview));
-        window.set_child(Some(&scrolled_window));
+
+        let device_tree = gtk::TreeView::new();
+        let device_window = gtk::ScrolledWindow::builder()
+            .hscrollbar_policy(gtk::PolicyType::Automatic)
+            .min_content_height(480)
+            .min_content_width(240)
+            .child(&device_tree)
+            .build();
+
+        let paned = gtk::Paned::builder()
+            .orientation(Orientation::Horizontal)
+            .wide_handle(true)
+            .start_child(&scrolled_window)
+            .end_child(&device_window)
+            .build();
+
+        window.set_child(Some(&paned));
         window.show();
     });
     application.run_with_args::<&str>(&[]);
