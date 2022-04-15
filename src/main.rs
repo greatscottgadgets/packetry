@@ -6,7 +6,6 @@ pub mod row_data;
 
 use std::sync::{Arc, Mutex};
 use std::cell::RefCell;
-use std::collections::HashMap;
 
 use glib::signal::SignalHandlerId;
 use gtk::gio::ListModel;
@@ -30,19 +29,13 @@ mod hybrid_index;
 
 struct ExpanderData {
     expander: Expander,
+    name: String,
     handler: Option<SignalHandlerId>,
 }
 
-struct Expanders {
-    data: RefCell<Vec<Box<ExpanderData>>>,
-    lookup: RefCell<HashMap<*const Expander, usize>>,
-}
-
 thread_local!(
-    static EXPANDERS: Expanders = Expanders {
-        data: RefCell::new(Vec::new()),
-        lookup: RefCell::new(HashMap::new()),
-    };
+    static EXPANDERS: RefCell<Vec<Box<ExpanderData>>> =
+        RefCell::new(Vec::new());
 );
 
 fn main() {
@@ -94,19 +87,16 @@ fn main() {
             let text_label = Label::new(None);
             container.append(&conn_label);
             EXPANDERS.with(|expanders| {
-                let index = {
-                    let mut data = expanders.data.borrow_mut();
-                    data.push(Box::new(ExpanderData {
-                        expander: Expander::new(None),
-                        handler: None
-                    }));
-                    data.len() - 1
+                let mut data = expanders.borrow_mut();
+                let index = data.len();
+                let entry = ExpanderData {
+                    expander: Expander::new(None),
+                    name: format!("{}", index),
+                    handler: None
                 };
-                expanders.lookup.borrow_mut().insert(
-                    &expanders.data.borrow()[index].expander as *const Expander,
-                    index
-                );
-                container.append(&expanders.data.borrow()[index].expander);
+                entry.expander.set_widget_name(&entry.name);
+                data.push(Box::new(entry));
+                container.append(&data[index].expander);
             });
             container.append(&text_label);
             list_item.set_child(Some(&container));
@@ -158,12 +148,13 @@ fn main() {
                 treelistrow.set_expanded(expander.is_expanded());
             });
             EXPANDERS.with(|expanders| {
-                let lookup = expanders.lookup.borrow();
-                let mut data = expanders.data.borrow_mut();
-                match lookup.get(&(&expander as *const Expander)) {
-                    Some(&index) => { data[index].handler = Some(handler) },
-                    None => {}
-                }
+                match expander.widget_name().parse::<usize>() {
+                    Ok(index) => {
+                        let mut data = expanders.borrow_mut();
+                        data[index].handler = Some(handler);
+                    },
+                    Err(err) => panic!("Could not parse index: {}", err)
+                };
             });
         });
         factory.connect_unbind(move |_, list_item| {
@@ -186,17 +177,18 @@ fn main() {
                 .expect("The child must be a Expander.");
 
             EXPANDERS.with(|expanders| {
-                let lookup = expanders.lookup.borrow();
-                let mut data = expanders.data.borrow_mut();
-                match lookup.get(&(&expander as *const Expander)) {
-                    Some(&index) => match data[index].handler.take() {
-                        Some(handler) => {
-                            expander.disconnect(handler);
-                        }
-                        None => {}
+                match expander.widget_name().parse::<usize>() {
+                    Ok(index) => {
+                        let mut data = expanders.borrow_mut();
+                        match data[index].handler.take() {
+                            Some(handler) => {
+                                expander.disconnect(handler);
+                            },
+                            None => panic!("Handler was not set")
+                        };
                     },
-                    None => {}
-                }
+                    Err(err) => panic!("Could not parse index: {}", err)
+                };
             });
         });
 
