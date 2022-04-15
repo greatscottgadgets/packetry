@@ -5,9 +5,10 @@ mod model;
 pub mod row_data;
 
 use std::sync::{Arc, Mutex};
+use std::cell::RefCell;
+use std::collections::HashMap;
 
-use glib::signal::{SignalHandlerId, signal_handler_disconnect};
-use glib::translate::FromGlib;
+use glib::signal::SignalHandlerId;
 use gtk::gio::ListModel;
 use gtk::{
     prelude::*,
@@ -26,6 +27,23 @@ use capture::Capture;
 
 mod file_vec;
 mod hybrid_index;
+
+struct ExpanderData {
+    expander: Expander,
+    handler: Option<SignalHandlerId>,
+}
+
+struct Expanders {
+    data: RefCell<Vec<Box<ExpanderData>>>,
+    lookup: RefCell<HashMap<*const Expander, usize>>,
+}
+
+thread_local!(
+    static EXPANDERS: Expanders = Expanders {
+        data: RefCell::new(Vec::new()),
+        lookup: RefCell::new(HashMap::new()),
+    };
+);
 
 fn main() {
     let application = gtk::Application::new(
@@ -74,9 +92,22 @@ fn main() {
             let container = gtk::Box::new(Orientation::Horizontal, 5);
             let conn_label = Label::new(None);
             let text_label = Label::new(None);
-            let expander = Expander::new(None);
             container.append(&conn_label);
-            container.append(&expander);
+            EXPANDERS.with(|expanders| {
+                let index = {
+                    let mut data = expanders.data.borrow_mut();
+                    data.push(Box::new(ExpanderData {
+                        expander: Expander::new(None),
+                        handler: None
+                    }));
+                    data.len() - 1
+                };
+                expanders.lookup.borrow_mut().insert(
+                    &expanders.data.borrow()[index].expander as *const Expander,
+                    index
+                );
+                container.append(&expanders.data.borrow()[index].expander);
+            });
             container.append(&text_label);
             list_item.set_child(Some(&container));
         });
@@ -126,11 +157,14 @@ fn main() {
             let handler = expander.connect_expanded_notify(move |expander| {
                 treelistrow.set_expanded(expander.is_expanded());
             });
-
-            // Store the SignalHandlerId on the expander for later removal.
-            unsafe {
-                expander.set_data("handler", handler.as_raw());
-            }
+            EXPANDERS.with(|expanders| {
+                let lookup = expanders.lookup.borrow();
+                let mut data = expanders.data.borrow_mut();
+                match lookup.get(&(&expander as *const Expander)) {
+                    Some(&index) => { data[index].handler = Some(handler) },
+                    None => {}
+                }
+            });
         });
         factory.connect_unbind(move |_, list_item| {
             let container = list_item
@@ -151,24 +185,19 @@ fn main() {
                 .downcast::<Expander>()
                 .expect("The child must be a Expander.");
 
-            // Retrieve the previously stashed SignalHandlerId.
-            let prev_handler = unsafe {
-                match expander.data("handler") {
-                    Some(nonnull) => Some(
-                        // SignalHandlerId is not Copy, but it is secretly
-                        // just a u64, so we can retrieve it as one and
-                        // then recreate using SignalHandlerId::from_glib.
-                        SignalHandlerId::from_glib(*nonnull.as_ptr())),
-                    None => None
+            EXPANDERS.with(|expanders| {
+                let lookup = expanders.lookup.borrow();
+                let mut data = expanders.data.borrow_mut();
+                match lookup.get(&(&expander as *const Expander)) {
+                    Some(&index) => match data[index].handler.take() {
+                        Some(handler) => {
+                            expander.disconnect(handler);
+                        }
+                        None => {}
+                    },
+                    None => {}
                 }
-            };
-
-            // Now disconnect the previously connected handler.
-            match prev_handler {
-                Some(handler) =>
-                    signal_handler_disconnect(&expander, handler),
-                None => panic!("Signal handler was not set")
-            };
+            });
         });
 
         // Finally, create a view around the model/factory
