@@ -1,24 +1,22 @@
 use glib::subclass::prelude::*;
 use gtk::{
     glib::{self, ParamSpec, Value},
-    prelude::*,
 };
 use std::cell::RefCell;
+use std::collections::HashMap;
 use crate::capture;
 
 // The actual data structure that stores our values. This is not accessible
 // directly from the outside.
 pub struct RowData<Item> {
-    text: RefCell<Option<String>>,
-    conn: RefCell<Option<String>>,
+    values: RefCell<HashMap<&'static str, Value>>,
     pub(super) item: RefCell<Option<Item>>,
 }
 
 impl<Item> Default for RowData<Item> {
     fn default() -> Self {
         RowData::<Item> {
-            text: RefCell::new(None),
-            conn: RefCell::new(None),
+            values: RefCell::new(HashMap::new()),
             item: RefCell::new(None),
         }
     }
@@ -97,24 +95,13 @@ impl<Item> ObjectImpl for RowData<Item>
     }
 
     fn set_property(&self, _obj: &Self::Type, _id: usize, value: &Value, pspec: &ParamSpec) {
-        match pspec.name() {
-            "text" => {
-                let text = value.get().unwrap();
-                self.text.replace(text);
-            }
-            "conn" => {
-                let conn = value.get().unwrap();
-                self.conn.replace(conn);
-            }
-            _ => unimplemented!(),
-        }
+        self.values.borrow_mut().insert(pspec.name(), value.clone());
     }
 
     fn property(&self, _obj: &Self::Type, _id: usize, pspec: &ParamSpec) -> Value {
-        match pspec.name() {
-            "text" => self.text.borrow().to_value(),
-            "conn" => self.conn.borrow().to_value(),
-            _ => unimplemented!(),
+        match self.values.borrow().get(pspec.name()) {
+            Some(value) => value.clone(),
+            None => panic!("Property was not set")
         }
     }
 }
