@@ -61,6 +61,8 @@ pub enum DeviceItem {
     ConfigurationDescriptor(u64, u8),
     ConfigurationDescriptorField(u64, u8, u8),
     Interface(u64, u8, u8),
+    InterfaceDescriptor(u64, u8, u8),
+    InterfaceDescriptorField(u64, u8, u8, u8),
     Endpoint(u64, u8, u8, u8)
 }
 
@@ -459,6 +461,22 @@ struct InterfaceDescriptor {
     interface_subclass: u8,
     interface_protocol: u8,
     interface_str_id: u8,
+}
+
+impl InterfaceDescriptor {
+    fn field_text(&self, id: u8) -> String {
+        match id {
+        0 => format!("Length: {} bytes", self.length),
+        1 => format!("Type: 0x{:02X}", self.descriptor_type),
+        2 => format!("Interface number: {}", self.interface_number),
+        3 => format!("Alternate setting: {}", self.alternate_setting),
+        4 => format!("Number of endpoints: {}", self.num_endpoints),
+        5 => format!("Class: 0x{:02X}", self.interface_class),
+        6 => format!("Subclass: 0x{:02X}", self.interface_subclass),
+        7 => format!("Protocol: 0x{:02X}", self.interface_protocol),
+        _ => panic!("Invalid field ID")
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
@@ -1591,8 +1609,12 @@ impl Capture {
             },
             Some(ConfigurationDescriptor(dev, conf)) =>
                 ConfigurationDescriptorField(*dev, *conf, index as u8),
-            Some(Interface(dev, conf, iface)) =>
-                Endpoint(*dev, *conf, *iface, index as u8),
+            Some(Interface(dev, conf, iface)) => match index {
+                0 => InterfaceDescriptor(*dev, *conf, *iface),
+                n => Endpoint(*dev, *conf, *iface, (n - 1).try_into().unwrap())
+            },
+            Some(InterfaceDescriptor(dev, conf, iface)) =>
+                InterfaceDescriptorField(*dev, *conf, *iface, index as u8),
             Some(_) => panic!("Item does not have children")
         }
     }
@@ -1633,10 +1655,11 @@ impl Capture {
                 match data[*dev as usize]
                     .configurations[*conf as usize].as_ref()
                 {
-                    Some(conf) => conf.interfaces[*iface as usize]
+                    Some(conf) => 1 + conf.interfaces[*iface as usize]
                         .endpoint_descriptors.len(),
                     None => 0
                 },
+            InterfaceDescriptor(..) => 8,
             _ => 0
         }) as u64
     }
@@ -1689,6 +1712,18 @@ impl Capture {
             },
             Interface(_, _, iface) => format!(
                 "Interface {}", iface),
+            InterfaceDescriptor(..) =>
+                "Interface descriptor".to_string(),
+            InterfaceDescriptorField(dev, conf, iface, field) => {
+                let data = &self.device_data[*dev as usize];
+                match &data.configurations[*conf as usize] {
+                    Some(config) => {
+                        let iface = &config.interfaces[*iface as usize];
+                        iface.descriptor.field_text(*field)
+                    },
+                    None => panic!("No configuration descriptor")
+                }
+            },
             Endpoint(_, _, _, ep) => format!(
                 "Endpoint {}", ep)
         }
