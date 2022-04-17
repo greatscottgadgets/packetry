@@ -13,6 +13,7 @@ use gtk::{
     ListView,
     Label,
     Expander,
+    TreeExpander,
     TreeListModel,
     TreeListRow,
     SignalListItemFactory,
@@ -28,7 +29,10 @@ use capture::Capture;
 mod file_vec;
 mod hybrid_index;
 
-fn create_view<Item, Model, RowData>(capture: &Arc<Mutex<Capture>>) -> ListView
+fn create_view<Item, Model, RowData>(
+        capture: &Arc<Mutex<Capture>>,
+        connectors: bool,
+    ) -> ListView
     where
         Model: GenericModel<Item> + IsA<ListModel>,
         RowData: GenericRowData<Item> + IsA<Object>
@@ -49,14 +53,20 @@ fn create_view<Item, Model, RowData>(capture: &Arc<Mutex<Capture>>) -> ListView
     let selection_model = SingleSelection::new(Some(&tree_model));
     let factory = SignalListItemFactory::new();
     factory.connect_setup(move |_, list_item| {
-        let container = gtk::Box::new(Orientation::Horizontal, 5);
-        let conn_label = Label::new(None);
         let text_label = Label::new(None);
-        let expander = Expander::new(None);
-        container.append(&conn_label);
-        container.append(&expander);
-        container.append(&text_label);
-        list_item.set_child(Some(&container));
+        if connectors {
+            let container = gtk::Box::new(Orientation::Horizontal, 5);
+            let conn_label = Label::new(None);
+            let expander = Expander::new(None);
+            container.append(&conn_label);
+            container.append(&expander);
+            container.append(&text_label);
+            list_item.set_child(Some(&container));
+        } else {
+            let expander = TreeExpander::new();
+            expander.set_child(Some(&text_label));
+            list_item.set_child(Some(&expander));
+        }
     });
     factory.connect_bind(move |_, list_item| {
         let treelistrow = list_item
@@ -73,21 +83,7 @@ fn create_view<Item, Model, RowData>(capture: &Arc<Mutex<Capture>>) -> ListView
 
         let container = list_item
             .child()
-            .expect("The child has to exist")
-            .downcast::<gtk::Box>()
-            .expect("The child must be a gtk::Box.");
-
-        let conn_label = container
-            .first_child()
-            .expect("The child has to exist")
-            .downcast::<Label>()
-            .expect("The child must be a Label.");
-
-        let expander = conn_label
-            .next_sibling()
-            .expect("The child has to exist")
-            .downcast::<Expander>()
-            .expect("The child must be a Expander.");
+            .expect("The child has to exist");
 
         let text_label = container
             .last_child()
@@ -95,14 +91,37 @@ fn create_view<Item, Model, RowData>(capture: &Arc<Mutex<Capture>>) -> ListView
             .downcast::<Label>()
             .expect("The child must be a Label.");
 
-        let conn = format!("<tt>{}</tt>", row.property::<String>("conn"));
         let text = row.property::<String>("text");
-        conn_label.set_markup(&conn);
         text_label.set_text(&text);
-        expander.set_visible(treelistrow.is_expandable());
-        expander.connect_expanded_notify(move |expander| {
-            treelistrow.set_expanded(expander.is_expanded());
-        });
+
+        if connectors {
+            let conn_label = container
+                .first_child()
+                .expect("The child has to exist")
+                .downcast::<Label>()
+                .expect("The child must be a Label.");
+
+            let expander = conn_label
+                .next_sibling()
+                .expect("The child has to exist")
+                .downcast::<Expander>()
+                .expect("The child must be a Expander.");
+
+            expander.set_visible(treelistrow.is_expandable());
+
+            let conn = format!("<tt>{}</tt>", row.property::<String>("conn"));
+            conn_label.set_markup(&conn);
+
+            expander.connect_expanded_notify(move |expander| {
+                treelistrow.set_expanded(expander.is_expanded());
+            });
+        } else {
+            let tree_expander = container
+                .downcast::<TreeExpander>()
+                .expect("The child must be a TreeExpander.");
+
+            tree_expander.set_list_row(Some(&treelistrow));
+        }
     });
     ListView::new(Some(&selection_model), Some(&factory))
 }
@@ -131,7 +150,7 @@ fn main() {
             .build();
 
         let listview = create_view::
-            <capture::Item, model::Model, row_data::RowData>(&capture);
+            <capture::Item, model::Model, row_data::RowData>(&capture, true);
 
         let scrolled_window = gtk::ScrolledWindow::builder()
             .hscrollbar_policy(gtk::PolicyType::Automatic) // Disable horizontal scrolling
@@ -143,7 +162,7 @@ fn main() {
 
         let device_tree = create_view::<capture::DeviceItem,
                                         model::DeviceModel,
-                                        row_data::DeviceRowData>(&capture);
+                                        row_data::DeviceRowData>(&capture, false);
         let device_window = gtk::ScrolledWindow::builder()
             .hscrollbar_policy(gtk::PolicyType::Automatic)
             .min_content_height(480)
