@@ -13,11 +13,14 @@ use crate::capture::{self, Capture};
 glib::wrapper! {
     pub struct Model(ObjectSubclass<imp::Model>) @implements gio::ListModel;
 }
+glib::wrapper! {
+    pub struct DeviceModel(ObjectSubclass<imp::DeviceModel>) @implements gio::ListModel;
+}
 
 pub trait GenericModel<Item> {
     fn new(capture: Arc<Mutex<Capture>>, parent: Option<Item>) -> Self;
     fn set_capture(&mut self, capture: Arc<Mutex<Capture>>);
-    fn set_parent(&mut self, parent: Option<capture::Item>);
+    fn set_parent(&mut self, parent: Option<Item>);
 }
 
 // Constructor for new instances. This simply calls glib::Object::new()
@@ -34,6 +37,26 @@ impl GenericModel<capture::Item> for Model {
     }
 
     fn set_parent(&mut self, parent: Option<capture::Item>) {
+        self.imp().parent.replace(parent);
+    }
+}
+
+impl GenericModel<capture::DeviceItem> for DeviceModel {
+    fn new(capture: Arc<Mutex<Capture>>, parent: Option<capture::DeviceItem>)
+        -> DeviceModel
+    {
+        let mut model: DeviceModel =
+            glib::Object::new(&[]).expect("Failed to create DeviceModel");
+        model.set_capture(capture);
+        model.set_parent(parent);
+        model
+    }
+
+    fn set_capture(&mut self, capture: Arc<Mutex<Capture>>) {
+        self.imp().capture.replace(capture);
+    }
+
+    fn set_parent(&mut self, parent: Option<capture::DeviceItem>) {
         self.imp().parent.replace(parent);
     }
 }

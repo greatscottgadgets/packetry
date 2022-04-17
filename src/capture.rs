@@ -1534,6 +1534,24 @@ impl Capture {
             data: data,
         }
     }
+
+    pub fn get_device_item(&mut self, _parent: &Option<DeviceItem>, _index: u64)
+        -> DeviceItem
+    {
+        todo!();
+    }
+
+    pub fn device_item_count(&mut self, _parent: &Option<DeviceItem>) -> u64 {
+        todo!();
+    }
+
+    pub fn get_device_summary(&mut self, _item: &DeviceItem) -> String {
+        todo!();
+    }
+
+    pub fn get_device_connectors(&mut self, _item: &DeviceItem) -> String {
+        todo!();
+    }
 }
 
 #[cfg(test)]
