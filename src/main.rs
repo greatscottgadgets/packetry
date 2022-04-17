@@ -19,6 +19,7 @@ use gtk::{
     Orientation,
 };
 use row_data::{RowData, GenericRowData};
+use model::GenericModel;
 
 mod capture;
 use capture::Capture;
