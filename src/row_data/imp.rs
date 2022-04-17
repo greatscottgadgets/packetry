@@ -34,6 +34,15 @@ impl ObjectSubclass for RowData<capture::DeviceItem> {
     type Type = super::DeviceRowData;
 }
 
+fn property(name: &'static str, desc: &'static str) -> ParamSpec
+{
+    glib::ParamSpecString::new(
+        name, desc, desc,
+        None, // Default value
+        glib::ParamFlags::READWRITE,
+    )
+}
+
 pub trait Properties {
     fn get_properties() -> &'static [ParamSpec];
 }
@@ -43,20 +52,8 @@ impl Properties for RowData<capture::Item> {
         use once_cell::sync::Lazy;
         static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| {
             vec![
-                glib::ParamSpecString::new(
-                    "text",
-                    "Text",
-                    "Text",
-                    None, // Default value
-                    glib::ParamFlags::READWRITE,
-                ),
-                glib::ParamSpecString::new(
-                    "conn",
-                    "Connectors",
-                    "Connectors",
-                    None, // Default value
-                    glib::ParamFlags::READWRITE,
-                ),
+                property("text", "Text"),
+                property("conn", "Connectors"),
             ]
         });
         PROPERTIES.as_ref()
@@ -68,13 +65,7 @@ impl Properties for RowData<capture::DeviceItem> {
         use once_cell::sync::Lazy;
         static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| {
             vec![
-                glib::ParamSpecString::new(
-                    "text",
-                    "Text",
-                    "Text",
-                    None, // Default value
-                    glib::ParamFlags::READWRITE,
-                ),
+                property("text", "Text"),
             ]
         });
         PROPERTIES.as_ref()
