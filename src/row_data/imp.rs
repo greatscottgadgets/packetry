@@ -36,14 +36,12 @@ impl ObjectSubclass for RowData<capture::DeviceItem> {
     type Type = super::DeviceRowData;
 }
 
-// The ObjectImpl trait provides the setters/getters for GObject properties.
-// Here we need to provide the values that are internally stored back to the
-// caller, or store whatever new value the caller is providing.
-//
-// This maps between the GObject properties and our internal storage of the
-// corresponding values of the properties.
-impl<Item> ObjectImpl for RowData<Item> where RowData<Item>: ObjectSubclass {
-    fn properties() -> &'static [ParamSpec] {
+pub trait Properties {
+    fn get_properties() -> &'static [ParamSpec];
+}
+
+impl Properties for RowData<capture::Item> {
+    fn get_properties() -> &'static [ParamSpec] {
         use once_cell::sync::Lazy;
         static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| {
             vec![
@@ -63,8 +61,46 @@ impl<Item> ObjectImpl for RowData<Item> where RowData<Item>: ObjectSubclass {
                 ),
             ]
         });
-
         PROPERTIES.as_ref()
+    }
+}
+
+impl Properties for RowData<capture::DeviceItem> {
+    fn get_properties() -> &'static [ParamSpec] {
+        use once_cell::sync::Lazy;
+        static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| {
+            vec![
+                glib::ParamSpecString::new(
+                    "text",
+                    "Text",
+                    "Text",
+                    None, // Default value
+                    glib::ParamFlags::READWRITE,
+                ),
+                glib::ParamSpecString::new(
+                    "conn",
+                    "Connectors",
+                    "Connectors",
+                    None, // Default value
+                    glib::ParamFlags::READWRITE,
+                ),
+            ]
+        });
+        PROPERTIES.as_ref()
+    }
+}
+
+// The ObjectImpl trait provides the setters/getters for GObject properties.
+// Here we need to provide the values that are internally stored back to the
+// caller, or store whatever new value the caller is providing.
+//
+// This maps between the GObject properties and our internal storage of the
+// corresponding values of the properties.
+impl<Item> ObjectImpl for RowData<Item>
+    where RowData<Item>: ObjectSubclass + Properties
+{
+    fn properties() -> &'static [ParamSpec] {
+        RowData::<Item>::get_properties()
     }
 
     fn set_property(&self, _obj: &Self::Type, _id: usize, value: &Value, pspec: &ParamSpec) {
