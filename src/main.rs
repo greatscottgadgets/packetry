@@ -7,6 +7,7 @@ pub mod row_data;
 use std::sync::{Arc, Mutex};
 
 use gtk::gio::ListModel;
+use gtk::glib::Object;
 use gtk::{
     prelude::*,
     ListView,
@@ -18,7 +19,7 @@ use gtk::{
     SingleSelection,
     Orientation,
 };
-use row_data::{RowData, GenericRowData};
+use row_data::GenericRowData;
 use model::GenericModel;
 
 mod capture;
@@ -27,18 +28,20 @@ use capture::Capture;
 mod file_vec;
 mod hybrid_index;
 
-fn create_view(capture: &Arc<Mutex<Capture>>) -> ListView
+fn create_view<Item, Model, RowData>(capture: &Arc<Mutex<Capture>>) -> ListView
+    where
+        Model: GenericModel<Item> + IsA<ListModel>,
+        RowData: GenericRowData<Item> + IsA<Object>
 {
     let cap = capture.clone();
-    let model = model::Model::new(cap, None);
+    let model = Model::new(cap, None);
     let cap = capture.clone();
     let tree_model = TreeListModel::new(&model, false, false, move |o| {
         let row = o.downcast_ref::<RowData>().unwrap();
-        let parent_item = row.get_item();
-        match cap.lock().unwrap().item_count(&parent_item) {
+        match row.child_count(&mut cap.lock().unwrap()) {
             0 => None,
             _ => Some(
-                model::Model::new(cap.clone(), parent_item)
+                Model::new(cap.clone(), row.get_item())
                     .upcast::<ListModel>()
             )
         }
@@ -127,7 +130,8 @@ fn main() {
             .title("Packetry")
             .build();
 
-        let listview = create_view(&capture);
+        let listview = create_view::
+            <capture::Item, model::Model, row_data::RowData>(&capture);
 
         let scrolled_window = gtk::ScrolledWindow::builder()
             .hscrollbar_policy(gtk::PolicyType::Automatic) // Disable horizontal scrolling
