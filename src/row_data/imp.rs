@@ -8,16 +8,25 @@ use crate::capture;
 
 // The actual data structure that stores our values. This is not accessible
 // directly from the outside.
-#[derive(Default)]
-pub struct RowData {
+pub struct RowData<Item> {
     text: RefCell<Option<String>>,
     conn: RefCell<Option<String>>,
-    pub(super) item: RefCell<Option<capture::Item>>,
+    pub(super) item: RefCell<Option<Item>>,
+}
+
+impl<Item> Default for RowData<Item> {
+    fn default() -> Self {
+        RowData::<Item> {
+            text: RefCell::new(None),
+            conn: RefCell::new(None),
+            item: RefCell::new(None),
+        }
+    }
 }
 
 // Basic declaration of our type for the GObject type system
 #[glib::object_subclass]
-impl ObjectSubclass for RowData {
+impl ObjectSubclass for RowData<capture::Item> {
     const NAME: &'static str = "RowData";
     type Type = super::RowData;
 }
@@ -28,7 +37,7 @@ impl ObjectSubclass for RowData {
 //
 // This maps between the GObject properties and our internal storage of the
 // corresponding values of the properties.
-impl ObjectImpl for RowData {
+impl<Item> ObjectImpl for RowData<Item> where RowData<Item>: ObjectSubclass {
     fn properties() -> &'static [ParamSpec] {
         use once_cell::sync::Lazy;
         static PROPERTIES: Lazy<Vec<ParamSpec>> = Lazy::new(|| {

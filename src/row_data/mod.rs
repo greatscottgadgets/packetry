@@ -13,8 +13,10 @@ use crate::capture;
 // Public part of the RowData type. This behaves like a normal gtk-rs-style GObject
 // binding
 glib::wrapper! {
-    pub struct RowData(ObjectSubclass<imp::RowData>);
+    pub struct RowData(ObjectSubclass<imp::RowData<capture::Item>>);
 }
+
+
 
 // Constructor for new instances. This simply calls glib::Object::new() with
 // initial values for our two properties and then returns the new instance
