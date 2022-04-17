@@ -7,7 +7,7 @@ use crate::capture::{self, Capture};
 
 use std::cell::RefCell;
 use std::sync::{Arc, Mutex};
-use crate::row_data::RowData;
+use crate::row_data::{RowData, GenericRowData};
 
 #[derive(Default)]
 pub struct Model {

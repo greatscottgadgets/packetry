@@ -18,7 +18,7 @@ use gtk::{
     SingleSelection,
     Orientation,
 };
-use row_data::RowData;
+use row_data::{RowData, GenericRowData};
 
 mod capture;
 use capture::Capture;

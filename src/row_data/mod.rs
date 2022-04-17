@@ -16,12 +16,17 @@ glib::wrapper! {
     pub struct RowData(ObjectSubclass<imp::RowData<capture::Item>>);
 }
 
+pub trait GenericRowData<Item> {
+    fn new(item: Option<Item>, text: &str, conn: &str) -> Self;
+    fn set_item(&mut self, item: Option<Item>);
+    fn get_item(&self) -> Option<Item>;
+}
 
 
 // Constructor for new instances. This simply calls glib::Object::new() with
 // initial values for our two properties and then returns the new instance
-impl RowData {
-    pub fn new(item: Option<capture::Item>, text: &str, conn: &str) -> RowData {
+impl GenericRowData<capture::Item> for RowData {
+    fn new(item: Option<capture::Item>, text: &str, conn: &str) -> RowData {
         let mut row: RowData = glib::Object::new(
             &[
                 ("text", &text),
@@ -35,7 +40,7 @@ impl RowData {
         self.imp().item.replace(item);
     }
 
-    pub fn get_item(&self) -> Option<capture::Item> {
+    fn get_item(&self) -> Option<capture::Item> {
         self.imp().item.borrow().clone()
     }
 }
