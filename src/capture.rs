@@ -1535,22 +1535,94 @@ impl Capture {
         }
     }
 
-    pub fn get_device_item(&mut self, _parent: &Option<DeviceItem>, _index: u64)
+    pub fn get_device_item(&mut self, parent: &Option<DeviceItem>, index: u64)
         -> DeviceItem
     {
-        todo!();
+        use DeviceItem::*;
+        match parent {
+            None => Device(index),
+            Some(Device(dev)) =>
+                Configuration(*dev, index as u8),
+            Some(Configuration(dev, conf)) =>
+                Interface(*dev, *conf, index as u8),
+            Some(Interface(dev, conf, iface)) =>
+                Endpoint(*dev, *conf, *iface, index as u8),
+            Some(Endpoint(..)) => panic!("Endpoints do not have children")
+        }
     }
 
-    pub fn device_item_count(&mut self, _parent: &Option<DeviceItem>) -> u64 {
-        todo!();
+    pub fn device_item_count(&mut self, parent: &Option<DeviceItem>) -> u64 {
+        match parent {
+            None => self.device_data.len() as u64,
+            Some(item) => self.device_child_count(item),
+        }
     }
 
-    pub fn get_device_summary(&mut self, _item: &DeviceItem) -> String {
-        todo!();
+    fn device_child_count(&self, item: &DeviceItem) -> u64 {
+        use DeviceItem::*;
+        let data = &self.device_data;
+        (match item {
+            Device(dev) =>
+                data[*dev as usize].configurations.len(),
+            Configuration(dev, conf) =>
+                match data[*dev as usize]
+                    .configurations[*conf as usize].as_ref()
+                {
+                    Some(conf) => conf.interfaces.len(),
+                    None => 0
+                },
+            Interface(dev, conf, iface) =>
+                match data[*dev as usize]
+                    .configurations[*conf as usize].as_ref()
+                {
+                    Some(conf) => conf.interfaces[*iface as usize]
+                        .endpoint_descriptors.len(),
+                    None => 0
+                },
+            Endpoint(..) => 0
+        }) as u64
     }
 
-    pub fn get_device_connectors(&mut self, _item: &DeviceItem) -> String {
-        todo!();
+    pub fn get_device_summary(&mut self, item: &DeviceItem) -> String {
+        use DeviceItem::*;
+        match item {
+            Device(dev) => {
+                let data = &self.device_data[*dev as usize];
+                format!("Device {}: {}", dev,
+                    match data.device_descriptor {
+                        Some(descriptor) => format!(
+                            "{:04X}:{:04X}",
+                            descriptor.vendor_id,
+                            descriptor.product_id
+                        ),
+                        None => format!("Unknown"),
+                    }
+                )
+            },
+            Configuration(_, conf) => format!(
+                "Configuration {}", conf),
+            Interface(_, _, iface) => format!(
+                "Interface {}", iface),
+            Endpoint(_, _, _, ep) => format!(
+                "Endpoint {}", ep)
+        }
+    }
+
+    pub fn get_device_connectors(&mut self, item: &DeviceItem) -> String {
+        use DeviceItem::*;
+        format!("{}{}",
+            match item {
+                Device(..)        => "",
+                Configuration(..) => " └─",
+                Interface(..)     => "    └─",
+                Endpoint(..)      => "       └─",
+            },
+            match (item, self.device_child_count(item)) {
+                (Endpoint(..), _) => "",
+                (_,            0) => "   ",
+                (_,            _) => "",
+            }
+        )
     }
 }
 

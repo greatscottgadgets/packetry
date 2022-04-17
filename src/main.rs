@@ -141,7 +141,9 @@ fn main() {
 
         scrolled_window.set_child(Some(&listview));
 
-        let device_tree = gtk::TreeView::new();
+        let device_tree = create_view::<capture::DeviceItem,
+                                        model::DeviceModel,
+                                        row_data::DeviceRowData>(&capture);
         let device_window = gtk::ScrolledWindow::builder()
             .hscrollbar_policy(gtk::PolicyType::Automatic)
             .min_content_height(480)
