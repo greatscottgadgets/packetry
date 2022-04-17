@@ -15,6 +15,9 @@ use crate::capture;
 glib::wrapper! {
     pub struct RowData(ObjectSubclass<imp::RowData<capture::Item>>);
 }
+glib::wrapper! {
+    pub struct DeviceRowData(ObjectSubclass<imp::RowData<capture::DeviceItem>>);
+}
 
 pub trait GenericRowData<Item> {
     fn new(item: Option<Item>, text: &str, conn: &str) -> Self;
@@ -41,6 +44,28 @@ impl GenericRowData<capture::Item> for RowData {
     }
 
     fn get_item(&self) -> Option<capture::Item> {
+        self.imp().item.borrow().clone()
+    }
+}
+
+impl GenericRowData<capture::DeviceItem> for DeviceRowData {
+    fn new(item: Option<capture::DeviceItem>, text: &str, conn: &str)
+        -> DeviceRowData
+    {
+        let mut row: DeviceRowData = glib::Object::new(
+            &[
+                ("text", &text),
+                ("conn", &conn),
+            ]).expect("Failed to create row data");
+        row.set_item(item);
+        row
+    }
+
+    fn set_item(&mut self, item: Option<capture::DeviceItem>) {
+        self.imp().item.replace(item);
+    }
+
+    fn get_item(&self) -> Option<capture::DeviceItem> {
         self.imp().item.borrow().clone()
     }
 }

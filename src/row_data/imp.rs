@@ -30,6 +30,11 @@ impl ObjectSubclass for RowData<capture::Item> {
     const NAME: &'static str = "RowData";
     type Type = super::RowData;
 }
+#[glib::object_subclass]
+impl ObjectSubclass for RowData<capture::DeviceItem> {
+    const NAME: &'static str = "DeviceRowData";
+    type Type = super::DeviceRowData;
+}
 
 // The ObjectImpl trait provides the setters/getters for GObject properties.
 // Here we need to provide the values that are internally stored back to the

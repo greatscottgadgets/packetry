@@ -52,6 +52,14 @@ pub enum Item {
     Packet(u64, u64, u64),
 }
 
+#[derive(Clone)]
+pub enum DeviceItem {
+    Device(u64),
+    Configuration(u64, u8),
+    Interface(u64, u8, u8),
+    Endpoint(u64, u8, u8, u8)
+}
+
 bitfield! {
     #[derive(Debug)]
     pub struct SOFFields(u16);
