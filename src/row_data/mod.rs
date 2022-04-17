@@ -23,6 +23,7 @@ pub trait GenericRowData<Item> {
     fn new(item: Option<Item>, text: &str, conn: &str) -> Self;
     fn set_item(&mut self, item: Option<Item>);
     fn get_item(&self) -> Option<Item>;
+    fn child_count(&self, capture: &mut capture::Capture) -> u64;
 }
 
 
@@ -46,6 +47,10 @@ impl GenericRowData<capture::Item> for RowData {
     fn get_item(&self) -> Option<capture::Item> {
         self.imp().item.borrow().clone()
     }
+
+    fn child_count(&self, capture: &mut capture::Capture) -> u64 {
+        capture.item_count(&self.imp().item.borrow())
+    }
 }
 
 impl GenericRowData<capture::DeviceItem> for DeviceRowData {
@@ -67,5 +72,9 @@ impl GenericRowData<capture::DeviceItem> for DeviceRowData {
 
     fn get_item(&self) -> Option<capture::DeviceItem> {
         self.imp().item.borrow().clone()
+    }
+
+    fn child_count(&self, capture: &mut capture::Capture) -> u64 {
+        capture.device_item_count(&self.imp().item.borrow())
     }
 }
