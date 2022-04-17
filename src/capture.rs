@@ -1610,31 +1610,38 @@ impl Capture {
     pub fn get_device_item(&mut self, parent: &Option<DeviceItem>, index: u64)
         -> DeviceItem
     {
-        use DeviceItem::*;
         match parent {
-            None => Device(index),
-            Some(Device(dev)) => match index {
+            None => DeviceItem::Device(index),
+            Some(item) => self.device_child(item, index)
+        }
+    }
+
+    fn device_child(&self, item: &DeviceItem, index: u64) -> DeviceItem {
+        use DeviceItem::*;
+        match item {
+            Device(dev) => match index {
                 0 => DeviceDescriptor(*dev),
                 conf => Configuration(*dev, conf as u8),
             },
-            Some(DeviceDescriptor(dev)) =>
+            DeviceDescriptor(dev) =>
                 DeviceDescriptorField(*dev, index as u8),
-            Some(Configuration(dev, conf)) => match index {
+            Configuration(dev, conf) => match index {
                 0 => ConfigurationDescriptor(*dev, *conf),
                 n => Interface(*dev, *conf, (n - 1).try_into().unwrap()),
             },
-            Some(ConfigurationDescriptor(dev, conf)) =>
+            ConfigurationDescriptor(dev, conf) =>
                 ConfigurationDescriptorField(*dev, *conf, index as u8),
-            Some(Interface(dev, conf, iface)) => match index {
+            Interface(dev, conf, iface) => match index {
                 0 => InterfaceDescriptor(*dev, *conf, *iface),
                 n => EndpointDescriptor(*dev, *conf, *iface,
                                         (n - 1).try_into().unwrap())
             },
-            Some(InterfaceDescriptor(dev, conf, iface)) =>
+            InterfaceDescriptor(dev, conf, iface) =>
                 InterfaceDescriptorField(*dev, *conf, *iface, index as u8),
-            Some(EndpointDescriptor(dev, conf, iface, ep)) =>
-                 EndpointDescriptorField(*dev, *conf, *iface, *ep, index as u8),
-            Some(_) => panic!("Item does not have children")
+            EndpointDescriptor(dev, conf, iface, ep) =>
+                 EndpointDescriptorField(*dev, *conf, *iface,
+                                         *ep, index as u8),
+            _ => panic!("Item does not have children")
         }
     }
 
@@ -1709,26 +1716,18 @@ impl Capture {
             },
             DeviceDescriptorField(dev, field) => {
                 let data = &self.device_data[*dev as usize];
-                match data.device_descriptor {
-                    Some(desc) => desc.field_text(*field),
-                    None => panic!("No device descriptor")
-                }
+                let desc = data.device_descriptor.unwrap();
+                desc.field_text(*field)
             },
             Configuration(_, conf) => format!(
                 "Configuration {}", conf),
-            ConfigurationDescriptor(dev, conf) => {
-                let data = &self.device_data[*dev as usize];
-                match data.configurations[*conf as usize].as_ref() {
-                    Some(_) => "Configuration descriptor",
-                    None => panic!("No configuration descriptor")
-                }.to_string()
-            },
+            ConfigurationDescriptor(..) =>
+                "Configuration descriptor".to_string(),
             ConfigurationDescriptorField(dev, conf, field) => {
                 let data = &self.device_data[*dev as usize];
-                match &data.configurations[*conf as usize] {
-                    Some(config) => config.descriptor.field_text(*field),
-                    None => panic!("No configuration descriptor")
-                }
+                let config = &data.configurations[*conf as usize];
+                let config = config.as_ref().unwrap();
+                config.descriptor.field_text(*field)
             },
             Interface(_, _, iface) => format!(
                 "Interface {}", iface),
@@ -1736,42 +1735,29 @@ impl Capture {
                 "Interface descriptor".to_string(),
             InterfaceDescriptorField(dev, conf, iface, field) => {
                 let data = &self.device_data[*dev as usize];
-                match &data.configurations[*conf as usize] {
-                    Some(config) => {
-                        let iface = &config.interfaces[*iface as usize];
-                        iface.descriptor.field_text(*field)
-                    },
-                    None => panic!("No configuration descriptor")
-                }
+                let config = &data.configurations[*conf as usize];
+                let config = config.as_ref().unwrap();
+                let iface = &config.interfaces[*iface as usize];
+                iface.descriptor.field_text(*field)
             },
             EndpointDescriptor(dev, conf, iface, ep) => {
                 let data = &self.device_data[*dev as usize];
-                match &data.configurations[*conf as usize] {
-                    Some(config) => {
-                        let iface = &config.interfaces[*iface as usize];
-                        let desc = iface.endpoint_descriptors[*ep as usize];
-                        format!("Endpoint {} {}",
-                            desc.endpoint_address & 0x7F,
-                            if desc.endpoint_address & 0x80 != 0 {
-                                "IN"
-                            } else {
-                                "OUT"
-                            }
-                        )
-                    },
-                    None => panic!("No configuration descriptor")
-                }
+                let config = &data.configurations[*conf as usize];
+                let config = config.as_ref().unwrap();
+                let iface = &config.interfaces[*iface as usize];
+                let desc = iface.endpoint_descriptors[*ep as usize];
+                format!("Endpoint {} {}",
+                    desc.endpoint_address & 0x7F,
+                    if desc.endpoint_address & 0x80 != 0 {"IN"} else {"OUT"}
+                )
             },
             EndpointDescriptorField(dev, conf, iface, ep, field) => {
                 let data = &self.device_data[*dev as usize];
-                match &data.configurations[*conf as usize] {
-                    Some(config) => {
-                        let iface = &config.interfaces[*iface as usize];
-                        let desc = iface.endpoint_descriptors[*ep as usize];
-                        desc.field_text(*field)
-                    },
-                    None => panic!("No configuration descriptor")
-                }
+                let config = &data.configurations[*conf as usize];
+                let config = config.as_ref().unwrap();
+                let iface = &config.interfaces[*iface as usize];
+                let desc = iface.endpoint_descriptors[*ep as usize];
+                desc.field_text(*field)
             }
         }
     }
