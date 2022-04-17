@@ -55,6 +55,8 @@ pub enum Item {
 #[derive(Clone)]
 pub enum DeviceItem {
     Device(u64),
+    DeviceDescriptor(u64),
+    DeviceDescriptorField(u64, u8),
     Configuration(u64, u8),
     Interface(u64, u8, u8),
     Endpoint(u64, u8, u8, u8)
@@ -393,6 +395,24 @@ struct DeviceDescriptor {
 impl DeviceDescriptor {
     fn from_bytes(bytes: &[u8]) -> Self {
         pod_read_unaligned::<DeviceDescriptor>(bytes)
+    }
+
+    fn field_text(&self, id: u8) -> String {
+        match id {
+        0 => format!("Length: {} bytes", self.length),
+        1 => format!("Type: 0x{:02X}", self.descriptor_type),
+        2 => format!("USB Version: {:X}.{:02X}",
+                     self.usb >> 8, self.usb & 0xFF),
+        3 => format!("Class: 0x{:02X}", self.device_class),
+        4 => format!("Subclass: 0x{:02X}", self.device_subclass),
+        5 => format!("Protocol: 0x{:02X}", self.device_protocol),
+        6 => format!("Max EP0 packet size: {} bytes", self.max_packet_size_0),
+        7 => format!("Vendor ID: 0x{:04X}", self.vendor_id),
+        8 => format!("Product ID: 0x{:04X}", self.product_id),
+        9 => format!("Version: {:X}.{:02X}",
+                     self.device_version >> 8, self.device_version & 0xFF),
+        _ => panic!("Invalid field ID")
+        }
     }
 }
 
@@ -1541,13 +1561,17 @@ impl Capture {
         use DeviceItem::*;
         match parent {
             None => Device(index),
-            Some(Device(dev)) =>
-                Configuration(*dev, index as u8),
+            Some(Device(dev)) => match index {
+                0 => DeviceDescriptor(*dev),
+                conf => Configuration(*dev, conf as u8),
+            },
+            Some(DeviceDescriptor(dev)) =>
+                DeviceDescriptorField(*dev, index as u8),
             Some(Configuration(dev, conf)) =>
                 Interface(*dev, *conf, index as u8),
             Some(Interface(dev, conf, iface)) =>
                 Endpoint(*dev, *conf, *iface, index as u8),
-            Some(Endpoint(..)) => panic!("Endpoints do not have children")
+            Some(_) => panic!("Item does not have children")
         }
     }
 
@@ -1564,6 +1588,11 @@ impl Capture {
         (match item {
             Device(dev) =>
                 data[*dev as usize].configurations.len(),
+            DeviceDescriptor(dev) =>
+                match data[*dev as usize].device_descriptor {
+                    Some(_) => 10,
+                    None => 0,
+                },
             Configuration(dev, conf) =>
                 match data[*dev as usize]
                     .configurations[*conf as usize].as_ref()
@@ -1579,7 +1608,7 @@ impl Capture {
                         .endpoint_descriptors.len(),
                     None => 0
                 },
-            Endpoint(..) => 0
+            _ => 0
         }) as u64
     }
 
@@ -1598,6 +1627,20 @@ impl Capture {
                         None => format!("Unknown"),
                     }
                 )
+            },
+            DeviceDescriptor(dev) => {
+                let data = &self.device_data[*dev as usize];
+                match data.device_descriptor {
+                    Some(_) => "Device descriptor",
+                    None => "No device descriptor"
+                }.to_string()
+            },
+            DeviceDescriptorField(dev, field) => {
+                let data = &self.device_data[*dev as usize];
+                match data.device_descriptor {
+                    Some(desc) => desc.field_text(*field),
+                    None => panic!("No device descriptor")
+                }
             },
             Configuration(_, conf) => format!(
                 "Configuration {}", conf),
