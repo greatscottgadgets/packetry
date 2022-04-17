@@ -1611,7 +1611,7 @@ impl Capture {
         -> DeviceItem
     {
         match parent {
-            None => DeviceItem::Device(index),
+            None => DeviceItem::Device(index + 1),
             Some(item) => self.device_child(item, index)
         }
     }
@@ -1647,7 +1647,7 @@ impl Capture {
 
     pub fn device_item_count(&mut self, parent: &Option<DeviceItem>) -> u64 {
         match parent {
-            None => self.device_data.len() as u64,
+            None => (self.device_data.len() - 1) as u64,
             Some(item) => self.device_child_count(item),
         }
     }
