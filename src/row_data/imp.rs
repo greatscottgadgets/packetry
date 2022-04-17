@@ -77,13 +77,6 @@ impl Properties for RowData<capture::DeviceItem> {
                     None, // Default value
                     glib::ParamFlags::READWRITE,
                 ),
-                glib::ParamSpecString::new(
-                    "conn",
-                    "Connectors",
-                    "Connectors",
-                    None, // Default value
-                    glib::ParamFlags::READWRITE,
-                ),
             ]
         });
         PROPERTIES.as_ref()

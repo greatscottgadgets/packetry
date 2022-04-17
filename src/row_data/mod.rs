@@ -7,6 +7,7 @@
 mod imp;
 
 use gtk::glib;
+use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use crate::capture;
 
@@ -20,7 +21,7 @@ glib::wrapper! {
 }
 
 pub trait GenericRowData<Item> {
-    fn new(item: Option<Item>, text: &str, conn: &str) -> Self;
+    fn new(item: Option<Item>, properties: &[(&str, &dyn ToValue)]) -> Self;
     fn set_item(&mut self, item: Option<Item>);
     fn get_item(&self) -> Option<Item>;
     fn child_count(&self, capture: &mut capture::Capture) -> u64;
@@ -30,12 +31,11 @@ pub trait GenericRowData<Item> {
 // Constructor for new instances. This simply calls glib::Object::new() with
 // initial values for our two properties and then returns the new instance
 impl GenericRowData<capture::Item> for RowData {
-    fn new(item: Option<capture::Item>, text: &str, conn: &str) -> RowData {
-        let mut row: RowData = glib::Object::new(
-            &[
-                ("text", &text),
-                ("conn", &conn),
-            ]).expect("Failed to create row data");
+    fn new(item: Option<capture::Item>,
+           properties: &[(&str, &dyn ToValue)]) -> RowData
+    {
+        let mut row: RowData =
+            glib::Object::new(properties).expect("Failed to create row data");
         row.set_item(item);
         row
     }
@@ -54,14 +54,11 @@ impl GenericRowData<capture::Item> for RowData {
 }
 
 impl GenericRowData<capture::DeviceItem> for DeviceRowData {
-    fn new(item: Option<capture::DeviceItem>, text: &str, conn: &str)
-        -> DeviceRowData
+    fn new(item: Option<capture::DeviceItem>,
+           properties: &[(&str, &dyn ToValue)]) -> DeviceRowData
     {
-        let mut row: DeviceRowData = glib::Object::new(
-            &[
-                ("text", &text),
-                ("conn", &conn),
-            ]).expect("Failed to create row data");
+        let mut row: DeviceRowData =
+            glib::Object::new(properties).expect("Failed to create row data");
         row.set_item(item);
         row
     }

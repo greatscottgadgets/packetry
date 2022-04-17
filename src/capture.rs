@@ -1607,23 +1607,6 @@ impl Capture {
                 "Endpoint {}", ep)
         }
     }
-
-    pub fn get_device_connectors(&mut self, item: &DeviceItem) -> String {
-        use DeviceItem::*;
-        format!("{}{}",
-            match item {
-                Device(..)        => "",
-                Configuration(..) => " └─",
-                Interface(..)     => "    └─",
-                Endpoint(..)      => "       └─",
-            },
-            match (item, self.device_child_count(item)) {
-                (Endpoint(..), _) => "",
-                (_,            0) => "   ",
-                (_,            _) => "",
-            }
-        )
-    }
 }
 
 #[cfg(test)]
