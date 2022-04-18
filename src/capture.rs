@@ -472,16 +472,19 @@ impl Configuration {
                 endpoint_descriptors:
                     Vec::with_capacity(iface_desc.num_endpoints as usize),
             };
-            for _ in 0 .. iface.descriptor.num_endpoints {
+            while iface.endpoint_descriptors.len() <
+                iface.descriptor.num_endpoints as usize
+            {
                 if offset + ep_size > bytes.len() {
                     break;
                 }
                 let ep_bytes = &bytes[offset .. offset + ep_size];
                 let ep_desc =
                     pod_read_unaligned::<EndpointDescriptor>(ep_bytes);
-                offset += ep_size;
+                offset += ep_desc.length as usize;
                 if ep_desc.descriptor_type != DescriptorType::Endpoint as u8 {
-                    break;
+                    // Could be HID or other class descriptor; skip over it.
+                    continue;
                 }
                 iface.endpoint_descriptors.push(ep_desc);
             };
