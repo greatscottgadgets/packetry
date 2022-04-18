@@ -1696,7 +1696,8 @@ impl Capture {
         match item {
             Device(dev) => {
                 let data = &self.device_data[*dev as usize];
-                format!("Device {}: {}", dev,
+                let device = self.devices.get(*dev).unwrap();
+                format!("Device {}: {}", device.address,
                     match data.device_descriptor {
                         Some(descriptor) => format!(
                             "{:04X}:{:04X}",
