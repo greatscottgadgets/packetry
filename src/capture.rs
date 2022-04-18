@@ -1039,8 +1039,10 @@ impl Capture {
                         (Out, true, SETUP, OUT) |
                         (In,  true, IN,    IN ) |
                         (Out, true, OUT,   OUT) => {
-                            ep_data.payload.extend(
-                                &self.transaction_state.payload);
+                            if self.transaction_state.completed() {
+                                ep_data.payload.extend(
+                                    &self.transaction_state.payload);
+                            }
                             // Await status stage.
                             DecodeStatus::CONTINUE
                         },
