@@ -6,6 +6,7 @@ use bytemuck_derive::{Pod, Zeroable};
 use num_enum::{IntoPrimitive, FromPrimitive};
 use num_format::{Locale, ToFormattedString};
 use humansize::{FileSize, file_size_opts as options};
+use utf16string::WString;
 
 #[derive(Copy, Clone, Debug, IntoPrimitive, FromPrimitive, PartialEq)]
 #[repr(u8)]
@@ -94,6 +95,190 @@ impl PacketFields {
                         [packet[end - 2], packet[end - 1]])}),
             _ => PacketFields::None
         }
+    }
+}
+
+#[derive(Copy, Clone, Debug, FromPrimitive)]
+#[repr(u8)]
+pub enum RequestType {
+    Standard = 0,
+    Class = 1,
+    Vendor = 2,
+    #[default]
+    Reserved = 3,
+}
+
+#[derive(Copy, Clone, Debug, FromPrimitive)]
+#[repr(u8)]
+pub enum Recipient {
+    Device = 0,
+    Interface = 1,
+    Endpoint = 2,
+    Other = 3,
+    #[default]
+    Reserved = 4,
+}
+
+#[derive(Copy, Clone, Debug, FromPrimitive)]
+#[repr(u8)]
+pub enum Direction {
+    #[default]
+    Out = 0,
+    In = 1,
+}
+
+bitfield! {
+    #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
+    #[repr(C)]
+    pub struct RequestTypeFields(u8);
+    u8, _recipient, _: 4, 0;
+    u8, _type, _: 6, 5;
+    u8, _direction, _: 7, 7;
+}
+
+impl RequestTypeFields {
+    pub fn recipient(&self) -> Recipient { Recipient::from(self._recipient()) }
+    pub fn request_type(&self) -> RequestType { RequestType::from(self._type()) }
+    pub fn direction(&self) -> Direction { Direction::from(self._direction()) }
+}
+
+pub struct SetupFields {
+    type_fields: RequestTypeFields,
+    request: u8,
+    value: u16,
+    index: u16,
+    length: u16,
+}
+
+impl SetupFields {
+    fn from_data_packet(packet: &[u8]) -> Self {
+        SetupFields {
+            type_fields: RequestTypeFields(packet[1]),
+            request: packet[2],
+            value: u16::from_le_bytes([packet[3], packet[4]]),
+            index: u16::from_le_bytes([packet[5], packet[6]]),
+            length: u16::from_le_bytes([packet[7], packet[8]]),
+        }
+    }
+}
+
+#[derive(Debug, FromPrimitive)]
+#[repr(u8)]
+pub enum StandardRequest {
+    GetStatus = 0,
+    ClearFeature = 1,
+    SetFeature = 3,
+    SetAddress = 5,
+    GetDescriptor = 6,
+    SetDescriptor = 7,
+    GetConfiguration = 8,
+    SetConfiguration = 9,
+    GetInterface = 10,
+    SetInterface = 11,
+    SynchFrame = 12,
+    #[default]
+    Unknown = 13,
+}
+
+impl StandardRequest {
+    pub fn description(&self, fields: &SetupFields) -> String {
+        use StandardRequest::*;
+        match self {
+            GetStatus => format!("Getting status"),
+            ClearFeature | SetFeature => {
+                let feature = StandardFeature::from(fields.value);
+                format!("{} {}",
+                    match self {
+                        ClearFeature => "Clearing",
+                        SetFeature => "Setting",
+                        _ => ""
+                    },
+                    feature.description()
+                )
+            },
+            SetAddress => format!("Setting address to {}", fields.value),
+            GetDescriptor | SetDescriptor => {
+                let descriptor_type =
+                    DescriptorType::from((fields.value >> 8) as u8);
+                format!(
+                    "{} {} descriptor #{}{}",
+                    match self {
+                        GetDescriptor => "Getting",
+                        SetDescriptor => "Setting",
+                        _ => ""
+                    },
+                    descriptor_type.description(),
+                    fields.value & 0xFF,
+                    match (descriptor_type, fields.index) {
+                        (DescriptorType::String, language) if language > 0 =>
+                            format!(", language 0x{:04x}", language),
+                        (..) => format!(""),
+                    }
+                )
+            },
+            GetConfiguration => format!("Getting configuration"),
+            SetConfiguration => format!("Setting configuration {}", fields.value),
+            GetInterface => format!("Getting interface {}", fields.index),
+            SetInterface => format!("Setting interface {} to {}",
+                                    fields.index, fields.value),
+            SynchFrame => format!("Synchronising frame"),
+            Unknown => format!("Unknown standard request"),
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, FromPrimitive)]
+#[repr(u8)]
+pub enum DescriptorType {
+    Device = 1,
+    Configuration = 2,
+    String = 3,
+    Interface = 4,
+    Endpoint = 5,
+    DeviceQualifier = 6,
+    OtherSpeedConfiguration = 7,
+    InterfacePower = 8,
+    #[default]
+    Unknown = 9
+}
+
+impl DescriptorType {
+    pub fn description(self) -> &'static str {
+        const STRINGS: [&str; 10] = [
+            "invalid",
+            "device",
+            "configuration",
+            "string",
+            "interface",
+            "endpoint",
+            "device qualifier",
+            "other speed configuration",
+            "interface power",
+            "unknown",
+        ];
+        STRINGS[self as usize]
+    }
+}
+
+#[derive(Copy, Clone, Debug, FromPrimitive)]
+#[repr(u16)]
+pub enum StandardFeature {
+    EndpointHalt = 0,
+    DeviceRemoteWakeup = 1,
+    TestMode = 2,
+    #[default]
+    Unknown = 3
+}
+
+impl StandardFeature {
+    pub fn description(self) -> &'static str {
+        const STRINGS: [&str; 4] = [
+            "endpoint halt",
+            "device remote wakeup",
+            "test mode",
+            "unknown standard feature",
+        ];
+        STRINGS[self as usize]
     }
 }
 
@@ -223,6 +408,97 @@ pub struct Capture {
 impl Default for Capture {
     fn default() -> Self {
         Capture::new()
+    }
+}
+
+pub struct Transaction {
+    pid: PID,
+    packet_id_range: Range<u64>,
+    payload_byte_range: Option<Range<u64>>,
+}
+
+impl Transaction {
+    fn packet_count(&self) -> u64 {
+        self.packet_id_range.end - self.packet_id_range.start
+    }
+
+    fn payload_size(&self) -> Option<u64> {
+        match &self.payload_byte_range {
+            Some(range) => Some(range.end - range.start),
+            None => None
+        }
+    }
+}
+
+pub struct ControlTransfer {
+    address: u8,
+    fields: SetupFields,
+    data: Vec<u8>,
+}
+
+impl ControlTransfer {
+    fn summary(&self) -> String {
+        let request_type = self.fields.type_fields.request_type();
+        let direction = self.fields.type_fields.direction();
+        let request = self.fields.request;
+        let std_req = StandardRequest::from(request);
+        let descriptor_type =
+            DescriptorType::from((self.fields.value >> 8) as u8);
+        let action = match direction {
+            Direction::In => "reading",
+            Direction::Out => "writing"
+        };
+        let size = self.data.len();
+        let mut parts = vec![format!(
+            "{} for {}",
+            match request_type {
+                RequestType::Standard => std_req.description(&self.fields),
+                _ => format!(
+                    "{:?} request #{}, index {}, value {}",
+                    request_type, request,
+                    self.fields.index, self.fields.value)
+            },
+            match self.fields.type_fields.recipient() {
+                Recipient::Device => format!(
+                    "device {}", self.address),
+                Recipient::Interface => format!(
+                    "interface {}.{}", self.address, self.fields.index),
+                Recipient::Endpoint => format!(
+                    "endpoint {}.{} {}",
+                    self.address,
+                    self.fields.index & 0x7F,
+                    if (self.fields.index & 0x80) == 0 {"OUT"} else {"IN"}),
+                _ => format!(
+                    "device {}, index {}", self.address, self.fields.index)
+            }
+        )];
+        match (self.fields.length, size) {
+            (0, 0) => {}
+            (len, _) if size == len as usize => {
+                parts.push(format!(", {} {} bytes", action, len));
+            },
+            (len, _) => {
+                parts.push(format!(", {} {} of {} requested bytes",
+                                   action, size, len));
+            }
+        };
+        match (request_type, std_req, descriptor_type) {
+            (RequestType::Standard,
+             StandardRequest::GetDescriptor,
+             DescriptorType::String)
+                if size >= 4 &&
+                self.fields.index != 0 =>
+            {
+                parts.push(
+                    match WString::from_utf16le(self.data[2..size].to_vec()) {
+                        Ok(utf16) => format!(": '{}'", utf16.to_utf8()),
+                        Err(_) => format!(": Invalid UTF-16 string")
+                    }
+                );
+            },
+            (..) => {}
+        };
+        parts.concat()
     }
 }
 
@@ -655,19 +931,24 @@ impl Capture {
                             token.endpoint_number(),
                             token.crc()),
                         PacketFields::Data(data) => format!(
-                            " with CRC {:04X}",
+                            " with {} data bytes and CRC {:04X}",
+                            packet.len() - 3,
                             data.crc),
                         PacketFields::None => "".to_string()
                     },
                     packet)
             },
-            Transaction(..) => {
-                let range = self.item_range(&item);
-                let count = range.end - range.start;
-                let pid = self.get_packet_pid(range.start);
-                match pid {
-                    PID::SOF => format!("{} SOF packets", count),
-                    _ => format!("{} transaction, {} packets", pid, count)
+            Transaction(_, transaction_id) => {
+                let transaction = self.get_transaction(transaction_id);
+                let count = transaction.packet_count();
+                match (transaction.pid, transaction.payload_size()) {
+                    (PID::SOF, _) => format!(
+                        "{} SOF packets", count),
+                    (pid, None) => format!(
+                        "{} transaction, {} packets", pid, count),
+                    (pid, Some(size)) => format!(
+                        "{} transaction, {} packets with {} data bytes",
+                        pid, count, size)
                 }
             },
             Transfer(transfer_index_id) => {
@@ -695,9 +976,11 @@ impl Capture {
                         "{} invalid groups", count),
                     EndpointType::Framing => format!(
                         "{} SOF groups", count),
-                    EndpointType::Control => format!(
-                        "Control transfer with {} transactions on device {}",
-                        count, endpoint.device_address),
+                    EndpointType::Control => {
+                        let transfer = self.get_control_transfer(
+                            endpoint.device_address, endpoint_id, range);
+                        transfer.summary()
+                    },
                     EndpointType::Normal => format!(
                         "Bulk transfer with {} transactions on endpoint {}.{}",
                         count, endpoint.device_address, endpoint.endpoint_number)
@@ -831,6 +1114,73 @@ impl Capture {
     fn get_packet_pid(&mut self, index: u64) -> PID {
         let offset = self.packet_index.get(index).unwrap();
         PID::from(self.packet_data.get(offset).unwrap())
+    }
+
+    fn get_transaction(&mut self, index: &u64) -> Transaction {
+        let packet_id_range = get_index_range(&mut self.transaction_index,
+                                              self.packet_index.len(), *index);
+        let packet_count = packet_id_range.end - packet_id_range.start;
+        let pid = self.get_packet_pid(packet_id_range.start);
+        use PID::*;
+        let payload_byte_range = match pid {
+            IN | OUT if packet_count >= 2 => {
+                let data_packet_id = packet_id_range.start + 1;
+                let packet_byte_range = get_index_range(
+                    &mut self.packet_index,
+                    self.packet_data.len(), data_packet_id);
+                let pid = self.packet_data.get(packet_byte_range.start).unwrap();
+                match PID::from(pid) {
+                    DATA0 | DATA1 => Some({
+                        packet_byte_range.start + 1 .. packet_byte_range.end - 2
+                    }),
+                    _ => None
+                }
+            },
+            _ => None
+        };
+        Transaction {
+            pid: pid,
+            packet_id_range: packet_id_range,
+            payload_byte_range: payload_byte_range,
+        }
+    }
+
+    fn get_control_transfer(&mut self,
+                            address: u8,
+                            endpoint_id: u16,
+                            range: Range<u64>) -> ControlTransfer
+    {
+        let ep_data = &mut self.endpoint_data[endpoint_id as usize];
+        let transaction_ids =
+            ep_data.transaction_ids.get_range(range).unwrap();
+        let setup_transaction_id = transaction_ids[0];
+        let setup_packet_id =
+            self.transaction_index.get(setup_transaction_id)
+                                  .unwrap();
+        let data_packet_id = setup_packet_id + 1;
+        let data_packet = self.get_packet(data_packet_id);
+        let fields = SetupFields::from_data_packet(&data_packet);
+        let direction = fields.type_fields.direction();
+        let mut data: Vec<u8> = Vec::new();
+        for id in transaction_ids {
+            let transaction = self.get_transaction(&id);
+            match (direction,
+                   transaction.pid,
+                   transaction.payload_byte_range)
+            {
+                (Direction::In,  PID::IN,  Some(range)) |
+                (Direction::Out, PID::OUT, Some(range)) => {
+                    data.extend_from_slice(
+                        &self.packet_data.get_range(range).unwrap());
+                },
+                (..) => {}
+            };
+        }
+        ControlTransfer {
+            address: address,
+            fields: fields,
+            data: data,
+        }
     }
 }
 
