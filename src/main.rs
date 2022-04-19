@@ -29,10 +29,8 @@ use capture::Capture;
 mod file_vec;
 mod hybrid_index;
 
-fn create_view<Item, Model, RowData>(
-        capture: &Arc<Mutex<Capture>>,
-        connectors: bool,
-    ) -> ListView
+fn create_view<Item, Model, RowData>(capture: &Arc<Mutex<Capture>>)
+        -> ListView
     where
         Model: GenericModel<Item> + IsA<ListModel>,
         RowData: GenericRowData<Item> + IsA<Object>
@@ -54,7 +52,7 @@ fn create_view<Item, Model, RowData>(
     let factory = SignalListItemFactory::new();
     factory.connect_setup(move |_, list_item| {
         let text_label = Label::new(None);
-        if connectors {
+        if RowData::CONNECTORS {
             let container = gtk::Box::new(Orientation::Horizontal, 5);
             let conn_label = Label::new(None);
             let expander = Expander::new(None);
@@ -91,10 +89,10 @@ fn create_view<Item, Model, RowData>(
             .downcast::<Label>()
             .expect("The child must be a Label.");
 
-        let text = row.property::<String>("text");
-        text_label.set_text(&text);
+        let summary = row.get_summary();
+        text_label.set_text(&summary);
 
-        if connectors {
+        if RowData::CONNECTORS {
             let conn_label = container
                 .first_child()
                 .expect("The child has to exist")
@@ -109,8 +107,12 @@ fn create_view<Item, Model, RowData>(
 
             expander.set_visible(treelistrow.is_expandable());
 
-            let conn = format!("<tt>{}</tt>", row.property::<String>("conn"));
-            conn_label.set_markup(&conn);
+            match row.get_connectors() {
+                Some(connectors) =>
+                    conn_label.set_markup(
+                        format!("<tt>{}</tt>", connectors).as_str()),
+                None => {}
+            };
 
             expander.connect_expanded_notify(move |expander| {
                 treelistrow.set_expanded(expander.is_expanded());
@@ -150,7 +152,7 @@ fn main() {
             .build();
 
         let listview = create_view::
-            <capture::Item, model::Model, row_data::RowData>(&capture, true);
+            <capture::Item, model::Model, row_data::RowData>(&capture);
 
         let scrolled_window = gtk::ScrolledWindow::builder()
             .hscrollbar_policy(gtk::PolicyType::Automatic) // Disable horizontal scrolling
@@ -162,7 +164,7 @@ fn main() {
 
         let device_tree = create_view::<capture::DeviceItem,
                                         model::DeviceModel,
-                                        row_data::DeviceRowData>(&capture, false);
+                                        row_data::DeviceRowData>(&capture);
         let device_window = gtk::ScrolledWindow::builder()
             .hscrollbar_policy(gtk::PolicyType::Automatic)
             .min_content_height(480)

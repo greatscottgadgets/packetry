@@ -7,7 +7,7 @@ use crate::capture::{self, Capture};
 
 use std::cell::RefCell;
 use std::sync::{Arc, Mutex};
-use crate::row_data::{RowData, DeviceRowData, GenericRowData};
+use crate::row_data::{RowData, DeviceRowData};
 
 #[derive(Default)]
 pub struct Model {
@@ -52,11 +52,7 @@ impl ListModelImpl for Model {
         let item = cap.get_item(&self.parent.borrow(), position as u64);
         let summary = cap.get_summary(&item);
         let connectors = cap.get_connectors(&item);
-        let properties: &[(&str, &dyn ToValue)] = &[
-            ("text", &summary),
-            ("conn", &connectors),
-        ];
-        Some(RowData::new(Some(item), properties).upcast::<glib::Object>())
+        Some(RowData::new(Some(item), summary, connectors).upcast::<glib::Object>())
     }
 }
 
@@ -72,9 +68,6 @@ impl ListModelImpl for DeviceModel {
         let mut cap = arc.lock().unwrap();
         let item = cap.get_device_item(&self.parent.borrow(), position as u64);
         let summary = cap.get_device_summary(&item);
-        let properties: &[(&str, &dyn ToValue)] = &[
-            ("text", &summary),
-        ];
-        Some(DeviceRowData::new(Some(item), properties).upcast::<glib::Object>())
+        Some(DeviceRowData::new(Some(item), summary).upcast::<glib::Object>())
     }
 }
