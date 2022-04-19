@@ -430,6 +430,78 @@ impl Transaction {
     }
 }
 
+pub struct ControlTransfer {
+    address: u8,
+    fields: SetupFields,
+    data: Vec<u8>,
+}
+
+impl ControlTransfer {
+    fn summary(&self) -> String {
+        let request_type = self.fields.type_fields.request_type();
+        let direction = self.fields.type_fields.direction();
+        let request = self.fields.request;
+        let std_req = StandardRequest::from(request);
+        let descriptor_type =
+            DescriptorType::from((self.fields.value >> 8) as u8);
+        let action = match direction {
+            Direction::In => "reading",
+            Direction::Out => "writing"
+        };
+        let size = self.data.len();
+        let mut parts = vec![format!(
+            "{} for {}",
+            match request_type {
+                RequestType::Standard => std_req.description(&self.fields),
+                _ => format!(
+                    "{:?} request #{}, index {}, value {}",
+                    request_type, request,
+                    self.fields.index, self.fields.value)
+            },
+            match self.fields.type_fields.recipient() {
+                Recipient::Device => format!(
+                    "device {}", self.address),
+                Recipient::Interface => format!(
+                    "interface {}.{}", self.address, self.fields.index),
+                Recipient::Endpoint => format!(
+                    "endpoint {}.{} {}",
+                    self.address,
+                    self.fields.index & 0x7F,
+                    if (self.fields.index & 0x80) == 0 {"OUT"} else {"IN"}),
+                _ => format!(
+                    "device {}, index {}", self.address, self.fields.index)
+            }
+        )];
+        match (self.fields.length, size) {
+            (0, 0) => {}
+            (len, _) if size == len as usize => {
+                parts.push(format!(", {} {} bytes", action, len));
+            },
+            (len, _) => {
+                parts.push(format!(", {} {} of {} requested bytes",
+                                   action, size, len));
+            }
+        };
+        match (request_type, std_req, descriptor_type) {
+            (RequestType::Standard,
+             StandardRequest::GetDescriptor,
+             DescriptorType::String)
+                if size >= 4 &&
+                self.fields.index != 0 =>
+            {
+                parts.push(format!(
+                    ": '{}'",
+                    WString::from_utf16le(
+                        self.data[2..size].to_vec()
+                    ).unwrap().to_utf8()
+                ));
+            },
+            (..) => {}
+        };
+        parts.concat()
+    }
+}
+
 #[derive(PartialEq)]
 enum DecodeStatus {
     NEW,
@@ -905,93 +977,9 @@ impl Capture {
                     EndpointType::Framing => format!(
                         "{} SOF groups", count),
                     EndpointType::Control => {
-                        use RequestType::*;
-                        use Direction::*;
-                        use StandardRequest::*;
-                        use DescriptorType::*;
-                        use PID::*;
-                        let transaction_ids =
-                            ep_data.transaction_ids.get_range(range).unwrap();
-                        let setup_transaction_id = transaction_ids[0];
-                        let setup_packet_id =
-                            self.transaction_index.get(setup_transaction_id)
-                                                  .unwrap();
-                        let data_packet_id = setup_packet_id + 1;
-                        let data_packet = self.get_packet(data_packet_id);
-                        let fields = SetupFields::from_data_packet(&data_packet);
-                        let request_type = fields.type_fields.request_type();
-                        let direction = fields.type_fields.direction();
-                        let request = fields.request;
-                        let std_req = StandardRequest::from(request);
-                        let descriptor_type =
-                            DescriptorType::from((fields.value >> 8) as u8);
-                        let action = match direction {
-                            In => "reading",
-                            Out => "writing"
-                        };
-                        let mut transfer_data: Vec<u8> = Vec::new();
-                        for id in transaction_ids {
-                            let transaction = self.get_transaction(&id);
-                            match (direction,
-                                   transaction.pid,
-                                   transaction.payload_byte_range)
-                            {
-                                (In,  IN,  Some(range)) |
-                                (Out, OUT, Some(range)) => {
-                                    transfer_data.extend_from_slice(
-                                        &self.packet_data.get_range(range)
-                                                         .unwrap())
-                                },
-                                (..) => {}
-                            };
-                        };
-                        let size = transfer_data.len();
-                        format!(
-                            "{} for {}{}{}",
-                            match request_type {
-                                Standard => std_req.description(&fields),
-                                _ => format!(
-                                    "{:?} request #{}, index {}, value {}",
-                                    request_type, request,
-                                    fields.index, fields.value)
-                            },
-                            match fields.type_fields.recipient() {
-                                Recipient::Device => format!("device {}",
-                                                  endpoint.device_address),
-                                Recipient::Interface => format!("interface {}.{}",
-                                                     endpoint.device_address,
-                                                     fields.index),
-                                Recipient::Endpoint => format!("endpoint {}.{} {}",
-                                                    endpoint.device_address,
-                                                    fields.index & 0x7F,
-                                                    if (fields.index & 0x80) == 0 {
-                                                        "OUT"
-                                                    } else {
-                                                        "IN"
-                                                    }),
-                                _ => format!("device {}, index {}",
-                                             endpoint.device_address,
-                                             fields.index)
-                            },
-                            match (fields.length, size) {
-                                (0, 0) => "".to_string(),
-                                (len, size) if size == len as usize => format!(
-                                    ", {} {} bytes", action, len),
-                                (len, size) => format!(
-                                    ", {} {} of {} requested bytes",
-                                    action, size, len)
-                            },
-                            match (request_type, std_req, descriptor_type) {
-                                (Standard, GetDescriptor, String)
-                                    if size >= 4 && fields.index != 0 => format!(
-                                        ": '{}'",
-                                        WString::from_utf16le(
-                                            transfer_data[2..size].to_vec()
-                                        ).unwrap().to_utf8()
-                                ),
-                                (..) => "".to_string()
-                            }
-                        )
+                        let transfer = self.get_control_transfer(
+                            endpoint.device_address, endpoint_id, range);
+                        transfer.summary()
                     },
                     EndpointType::Normal => format!(
                         "Bulk transfer with {} transactions on endpoint {}.{}",
@@ -1154,6 +1142,44 @@ impl Capture {
             pid: pid,
             packet_id_range: packet_id_range,
             payload_byte_range: payload_byte_range,
+        }
+    }
+
+    fn get_control_transfer(&mut self,
+                            address: u8,
+                            endpoint_id: u16,
+                            range: Range<u64>) -> ControlTransfer
+    {
+        let ep_data = &mut self.endpoint_data[endpoint_id as usize];
+        let transaction_ids =
+            ep_data.transaction_ids.get_range(range).unwrap();
+        let setup_transaction_id = transaction_ids[0];
+        let setup_packet_id =
+            self.transaction_index.get(setup_transaction_id)
+                                  .unwrap();
+        let data_packet_id = setup_packet_id + 1;
+        let data_packet = self.get_packet(data_packet_id);
+        let fields = SetupFields::from_data_packet(&data_packet);
+        let direction = fields.type_fields.direction();
+        let mut data: Vec<u8> = Vec::new();
+        for id in transaction_ids {
+            let transaction = self.get_transaction(&id);
+            match (direction,
+                   transaction.pid,
+                   transaction.payload_byte_range)
+            {
+                (Direction::In,  PID::IN,  Some(range)) |
+                (Direction::Out, PID::OUT, Some(range)) => {
+                    data.extend_from_slice(
+                        &self.packet_data.get_range(range).unwrap());
+                },
+                (..) => {}
+            };
+        }
+        ControlTransfer {
+            address: address,
+            fields: fields,
+            data: data,
         }
     }
 }
