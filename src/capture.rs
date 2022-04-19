@@ -8,7 +8,6 @@ use bytemuck::pod_read_unaligned;
 use num_enum::{IntoPrimitive, FromPrimitive};
 use num_format::{Locale, ToFormattedString};
 use humansize::{FileSize, file_size_opts as options};
-use utf16string::WString;
 
 #[derive(Copy, Clone, Debug, IntoPrimitive, FromPrimitive, PartialEq)]
 #[repr(u8)]
@@ -402,20 +401,26 @@ impl DeviceDescriptor {
         pod_read_unaligned::<DeviceDescriptor>(bytes)
     }
 
-    fn field_text(&self, id: u8) -> String {
+    fn field_text(&self, id: u8, strings: &Vec<Option<Vec<u8>>>) -> String {
         match id {
-        0 => format!("Length: {} bytes", self.length),
-        1 => format!("Type: 0x{:02X}", self.descriptor_type),
-        2 => format!("USB Version: {:X}.{:02X}",
-                     self.usb >> 8, self.usb & 0xFF),
-        3 => format!("Class: 0x{:02X}", self.device_class),
-        4 => format!("Subclass: 0x{:02X}", self.device_subclass),
-        5 => format!("Protocol: 0x{:02X}", self.device_protocol),
-        6 => format!("Max EP0 packet size: {} bytes", self.max_packet_size_0),
-        7 => format!("Vendor ID: 0x{:04X}", self.vendor_id),
-        8 => format!("Product ID: 0x{:04X}", self.product_id),
-        9 => format!("Version: {:X}.{:02X}",
-                     self.device_version >> 8, self.device_version & 0xFF),
+        0  => format!("Length: {} bytes", self.length),
+        1  => format!("Type: 0x{:02X}", self.descriptor_type),
+        2  => format!("USB Version: {:X}.{:02X}",
+                      self.usb >> 8, self.usb & 0xFF),
+        3  => format!("Class: 0x{:02X}", self.device_class),
+        4  => format!("Subclass: 0x{:02X}", self.device_subclass),
+        5  => format!("Protocol: 0x{:02X}", self.device_protocol),
+        6  => format!("Max EP0 packet size: {} bytes", self.max_packet_size_0),
+        7  => format!("Vendor ID: 0x{:04X}", self.vendor_id),
+        8  => format!("Product ID: 0x{:04X}", self.product_id),
+        9  => format!("Version: {:X}.{:02X}",
+                      self.device_version >> 8, self.device_version & 0xFF),
+        10 => format!("Manufacturer string: {}",
+                      fmt_str_id(strings, self.manufacturer_str_id)),
+        11 => format!("Product string: {}",
+                      fmt_str_id(strings, self.product_str_id)),
+        12 => format!("Serial string: {}",
+                      fmt_str_id(strings, self.serial_str_id)),
         _ => panic!("Invalid field ID")
         }
     }
@@ -435,7 +440,7 @@ struct ConfigDescriptor {
 }
 
 impl ConfigDescriptor {
-    fn field_text(&self, id: u8) -> String {
+    fn field_text(&self, id: u8, strings: &Vec<Option<Vec<u8>>>) -> String {
         match id {
         0 => format!("Length: {} bytes", self.length),
         1 => format!("Type: 0x{:02X}", self.descriptor_type),
@@ -443,8 +448,10 @@ impl ConfigDescriptor {
             let length: u16 = self.total_length; length }),
         3 => format!("Number of interfaces: {}", self.num_interfaces),
         4 => format!("Configuration number: {}", self.config_value),
-        5 => format!("Attributes: 0x{:02X}", self.attributes),
-        6 => format!("Max power: {}mA", self.max_power as u16 * 2),
+        5 => format!("Configuration string: {}",
+                      fmt_str_id(strings, self.config_str_id)),
+        6 => format!("Attributes: 0x{:02X}", self.attributes),
+        7 => format!("Max power: {}mA", self.max_power as u16 * 2),
         _ => panic!("Invalid field ID")
         }
     }
@@ -465,7 +472,7 @@ struct InterfaceDescriptor {
 }
 
 impl InterfaceDescriptor {
-    fn field_text(&self, id: u8) -> String {
+    fn field_text(&self, id: u8, strings: &Vec<Option<Vec<u8>>>) -> String {
         match id {
         0 => format!("Length: {} bytes", self.length),
         1 => format!("Type: 0x{:02X}", self.descriptor_type),
@@ -475,6 +482,8 @@ impl InterfaceDescriptor {
         5 => format!("Class: 0x{:02X}", self.interface_class),
         6 => format!("Subclass: 0x{:02X}", self.interface_subclass),
         7 => format!("Protocol: 0x{:02X}", self.interface_protocol),
+        8 => format!("Interface string: {}",
+                      fmt_str_id(strings, self.interface_str_id)),
         _ => panic!("Invalid field ID")
         }
     }
@@ -579,6 +588,7 @@ struct DeviceData {
     configurations: Vec<Option<Configuration>>,
     configuration_id: Option<usize>,
     endpoint_types: Vec<EndpointType>,
+    strings: Vec<Option<Vec<u8>>>,
 }
 
 impl DeviceData {
@@ -719,11 +729,7 @@ impl ControlTransfer {
                 self.fields.index != 0 =>
             {
                 parts.push(
-                    match WString::from_utf16le(self.data[2..size].to_vec()) {
-                        Ok(utf16) => format!(": '{}'", utf16.to_utf8()),
-                        Err(_) => format!(": Invalid UTF-16 string")
-                    }
-                );
+                    format!(": {}", fmt_utf16(&self.data[2..size])));
             },
             (..) => {}
         };
@@ -838,6 +844,30 @@ pub fn fmt_index(idx: &HybridIndex) -> String {
             fmt_count(idx.len()),
             fmt_count(idx.entry_count()),
             fmt_size(idx.size()))
+}
+
+fn fmt_str_id(strings: &Vec<Option<Vec<u8>>>, id: u8) -> String {
+    match id {
+        0 => "(none)".to_string(),
+        _ => match &strings[id as usize] {
+            Some(bytes) => format!("#{} {}", id, fmt_utf16(bytes)),
+            None => format!("#{} (not seen)", id)
+        }
+    }
+}
+
+fn fmt_utf16(bytes: &[u8]) -> String {
+        let chars: Vec<u16> =
+            bytes.chunks_exact(2)
+                 .into_iter()
+                 .map(|a| u16::from_le_bytes([a[0], a[1]]))
+                 .collect();
+        match String::from_utf16(&chars) {
+            Ok(string) => format!("'{}'", string),
+            Err(_) => format!(
+                "invalid UTF16, partial decode: '{}'",
+                String::from_utf16_lossy(&chars))
+        }
 }
 
 impl Capture {
@@ -999,6 +1029,7 @@ impl Capture {
                 configuration_id: None,
                 endpoint_types: vec![
                     EndpointType::Unidentified; USB_MAX_ENDPOINTS],
+                strings: Vec::new(),
             };
             self.device_data.push(dev_data);
         }
@@ -1070,6 +1101,17 @@ impl Capture {
                         configurations[config_id] = Some(config);
                         dev_data.update_endpoint_types();
                     }
+                }
+            },
+            (Recipient::Device, DescriptorType::String) => {
+                if length >= 2 {
+                    let device_id = ep_data.device_id;
+                    let strings = &mut self.device_data[device_id].strings;
+                    let string_id = (fields.value & 0xFF) as usize;
+                    while strings.len() <= string_id {
+                        strings.push(None);
+                    }
+                    strings[string_id] = Some(payload[2..length].to_vec());
                 }
             },
             _ => {}
@@ -1660,7 +1702,7 @@ impl Capture {
                 data[*dev as usize].configurations.len(),
             DeviceDescriptor(dev) =>
                 match data[*dev as usize].device_descriptor {
-                    Some(_) => 10,
+                    Some(_) => 13,
                     None => 0,
                 },
             Configuration(dev, conf) =>
@@ -1674,7 +1716,7 @@ impl Capture {
                 match data[*dev as usize]
                     .configurations[*conf as usize]
                 {
-                    Some(_) => 7,
+                    Some(_) => 8,
                     None => 0
                 },
             Interface(dev, conf, iface) =>
@@ -1685,7 +1727,7 @@ impl Capture {
                         .endpoint_descriptors.len(),
                     None => 0
                 },
-            InterfaceDescriptor(..) => 8,
+            InterfaceDescriptor(..) => 9,
             EndpointDescriptor(..) => 6,
             _ => 0
         }) as u64
@@ -1718,7 +1760,7 @@ impl Capture {
             DeviceDescriptorField(dev, field) => {
                 let data = &self.device_data[*dev as usize];
                 let desc = data.device_descriptor.unwrap();
-                desc.field_text(*field)
+                desc.field_text(*field, &data.strings)
             },
             Configuration(_, conf) => format!(
                 "Configuration {}", conf),
@@ -1728,7 +1770,7 @@ impl Capture {
                 let data = &self.device_data[*dev as usize];
                 let config = &data.configurations[*conf as usize];
                 let config = config.as_ref().unwrap();
-                config.descriptor.field_text(*field)
+                config.descriptor.field_text(*field, &data.strings)
             },
             Interface(_, _, iface) => format!(
                 "Interface {}", iface),
@@ -1739,7 +1781,7 @@ impl Capture {
                 let config = &data.configurations[*conf as usize];
                 let config = config.as_ref().unwrap();
                 let iface = &config.interfaces[*iface as usize];
-                iface.descriptor.field_text(*field)
+                iface.descriptor.field_text(*field, &data.strings)
             },
             EndpointDescriptor(dev, conf, iface, ep) => {
                 let data = &self.device_data[*dev as usize];
