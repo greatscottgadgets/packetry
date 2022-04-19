@@ -489,12 +489,12 @@ impl ControlTransfer {
                 if size >= 4 &&
                 self.fields.index != 0 =>
             {
-                parts.push(format!(
-                    ": '{}'",
-                    WString::from_utf16le(
-                        self.data[2..size].to_vec()
-                    ).unwrap().to_utf8()
-                ));
+                parts.push(
+                    match WString::from_utf16le(self.data[2..size].to_vec()) {
+                        Ok(utf16) => format!(": '{}'", utf16.to_utf8()),
+                        Err(_) => format!(": Invalid UTF-16 string")
+                    }
+                );
             },
             (..) => {}
         };
