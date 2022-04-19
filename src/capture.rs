@@ -411,6 +411,25 @@ impl Default for Capture {
     }
 }
 
+pub struct Transaction {
+    pid: PID,
+    packet_id_range: Range<u64>,
+    payload_byte_range: Option<Range<u64>>,
+}
+
+impl Transaction {
+    fn packet_count(&self) -> u64 {
+        self.packet_id_range.end - self.packet_id_range.start
+    }
+
+    fn payload_size(&self) -> Option<u64> {
+        match &self.payload_byte_range {
+            Some(range) => Some(range.end - range.start),
+            None => None
+        }
+    }
+}
+
 #[derive(PartialEq)]
 enum DecodeStatus {
     NEW,
@@ -848,17 +867,16 @@ impl Capture {
                     packet)
             },
             Transaction(_, transaction_id) => {
-                let (pid, packet_id_range, payload) =
-                    self.get_transaction_stats(transaction_id);
-                let count = packet_id_range.end - packet_id_range.start;
-                match (pid, payload) {
+                let transaction = self.get_transaction(transaction_id);
+                let count = transaction.packet_count();
+                match (transaction.pid, transaction.payload_size()) {
                     (PID::SOF, _) => format!(
                         "{} SOF packets", count),
-                    (_, None) => format!(
+                    (pid, None) => format!(
                         "{} transaction, {} packets", pid, count),
-                    (_, Some(range)) => format!(
+                    (pid, Some(size)) => format!(
                         "{} transaction, {} packets with {} data bytes",
-                        pid, count, range.end - range.start)
+                        pid, count, size)
                 }
             },
             Transfer(transfer_index_id) => {
@@ -913,14 +931,12 @@ impl Capture {
                         };
                         let mut transfer_data: Vec<u8> = Vec::new();
                         for id in transaction_ids {
-                            let (pid, _, payload) =
-                                self.get_transaction_stats(&id);
-                            match (direction, pid, payload) {
-                                (In, IN, Some(range)) => {
-                                    transfer_data.extend_from_slice(
-                                        &self.packet_data.get_range(range)
-                                                         .unwrap())
-                                },
+                            let transaction = self.get_transaction(&id);
+                            match (direction,
+                                   transaction.pid,
+                                   transaction.payload_byte_range)
+                            {
+                                (In,  IN,  Some(range)) |
                                 (Out, OUT, Some(range)) => {
                                     transfer_data.extend_from_slice(
                                         &self.packet_data.get_range(range)
@@ -1112,15 +1128,13 @@ impl Capture {
         PID::from(self.packet_data.get(offset).unwrap())
     }
 
-    fn get_transaction_stats(&mut self, index: &u64) ->
-        (PID, Range<u64>, Option<Range<u64>>)
-    {
+    fn get_transaction(&mut self, index: &u64) -> Transaction {
         let packet_id_range = get_index_range(&mut self.transaction_index,
                                               self.packet_index.len(), *index);
         let packet_count = packet_id_range.end - packet_id_range.start;
         let pid = self.get_packet_pid(packet_id_range.start);
         use PID::*;
-        let payload = match pid {
+        let payload_byte_range = match pid {
             IN | OUT if packet_count >= 2 => {
                 let data_packet_id = packet_id_range.start + 1;
                 let packet_byte_range = get_index_range(
@@ -1136,7 +1150,11 @@ impl Capture {
             },
             _ => None
         };
-        (pid, packet_id_range, payload)
+        Transaction {
+            pid: pid,
+            packet_id_range: packet_id_range,
+            payload_byte_range: payload_byte_range,
+        }
     }
 }
 
