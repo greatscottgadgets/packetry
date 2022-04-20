@@ -54,13 +54,8 @@ fn create_view<Item, Model, RowData>(capture: &Arc<Mutex<Capture>>)
     factory.connect_setup(move |_, list_item| {
         let text_label = Label::new(None);
         if RowData::CONNECTORS {
-            let container = gtk::Box::new(Orientation::Horizontal, 5);
-            let conn_label = Label::new(None);
             let expander = ExpanderWrapper::new();
-            container.append(&conn_label);
-            container.append(&expander);
-            container.append(&text_label);
-            list_item.set_child(Some(&container));
+            list_item.set_child(Some(&expander));
         } else {
             let expander = TreeExpander::new();
             expander.set_child(Some(&text_label));
@@ -94,28 +89,13 @@ fn create_view<Item, Model, RowData>(capture: &Arc<Mutex<Capture>>)
         text_label.set_text(&summary);
 
         if RowData::CONNECTORS {
-            let conn_label = container
-                .first_child()
-                .expect("The child has to exist")
-                .downcast::<Label>()
-                .expect("The child must be a Label.");
-
-            let expander_wrapper = conn_label
-                .next_sibling()
-                .expect("The child has to exist")
+            let expander_wrapper = container
                 .downcast::<ExpanderWrapper>()
                 .expect("The child must be a ExpanderWrapper.");
 
-            expander_wrapper.set_visible(treelistrow.is_expandable());
-
-            match row.get_connectors() {
-                Some(connectors) =>
-                    conn_label.set_markup(
-                        format!("<tt>{}</tt>", connectors).as_str()),
-                None => {}
-            };
-
+            expander_wrapper.set_connectors(row.get_connectors());
             let expander = expander_wrapper.expander();
+            expander.set_visible(treelistrow.is_expandable());
             expander.set_expanded(treelistrow.is_expanded());
             let handler = expander.connect_expanded_notify(move |expander| {
                 treelistrow.set_expanded(expander.is_expanded());
@@ -135,15 +115,7 @@ fn create_view<Item, Model, RowData>(capture: &Arc<Mutex<Capture>>)
             .expect("The child has to exist");
 
         if RowData::CONNECTORS {
-            let conn_label = container
-                .first_child()
-                .expect("The child has to exist")
-                .downcast::<Label>()
-                .expect("The child must be a Label.");
-
-            let expander_wrapper = conn_label
-                .next_sibling()
-                .expect("The child has to exist")
+            let expander_wrapper = container
                 .downcast::<ExpanderWrapper>()
                 .expect("The child must be a ExpanderWrapper.");
 

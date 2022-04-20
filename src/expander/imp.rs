@@ -3,6 +3,7 @@ use gtk::{
     subclass::prelude::*,
     glib::{self, SignalHandlerId},
     Expander,
+    Label,
 };
 use std::cell::RefCell;
 
@@ -10,6 +11,8 @@ unsafe impl IsSubclassable<ExpanderWrapper> for Expander {}
 
 #[derive(Default)]
 pub struct ExpanderWrapper {
+    pub text_label: RefCell<Label>,
+    pub conn_label: RefCell<Label>,
     pub expander: RefCell<Expander>,
     pub handler: RefCell<Option<SignalHandlerId>>,
 }
