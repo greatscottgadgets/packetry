@@ -5,7 +5,7 @@ use gtk::{
     self,
     prelude::*,
     subclass::prelude::*,
-    glib,
+    glib::{self, SignalHandlerId},
     Expander};
 
 glib::wrapper! {
@@ -26,5 +26,13 @@ impl ExpanderWrapper {
 
     pub fn expander(&self) -> RefMut<Expander> {
         self.imp().expander.borrow_mut()
+    }
+
+    pub fn set_handler(&self, handler: SignalHandlerId) {
+        self.imp().handler.replace(Some(handler));
+    }
+
+    pub fn take_handler(&self) -> Option<SignalHandlerId> {
+        self.imp().handler.take().take()
     }
 }
