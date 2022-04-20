@@ -3,6 +3,7 @@ extern crate bitfield;
 
 mod model;
 pub mod row_data;
+mod expander;
 
 use std::sync::{Arc, Mutex};
 
@@ -12,7 +13,6 @@ use gtk::{
     prelude::*,
     ListView,
     Label,
-    Expander,
     TreeExpander,
     TreeListModel,
     TreeListRow,
@@ -22,6 +22,7 @@ use gtk::{
 };
 use row_data::GenericRowData;
 use model::GenericModel;
+use expander::ExpanderWrapper;
 
 mod capture;
 use capture::Capture;
@@ -55,7 +56,7 @@ fn create_view<Item, Model, RowData>(capture: &Arc<Mutex<Capture>>)
         if RowData::CONNECTORS {
             let container = gtk::Box::new(Orientation::Horizontal, 5);
             let conn_label = Label::new(None);
-            let expander = Expander::new(None);
+            let expander = ExpanderWrapper::new();
             container.append(&conn_label);
             container.append(&expander);
             container.append(&text_label);
@@ -99,13 +100,13 @@ fn create_view<Item, Model, RowData>(capture: &Arc<Mutex<Capture>>)
                 .downcast::<Label>()
                 .expect("The child must be a Label.");
 
-            let expander = conn_label
+            let expander_wrapper = conn_label
                 .next_sibling()
                 .expect("The child has to exist")
-                .downcast::<Expander>()
-                .expect("The child must be a Expander.");
+                .downcast::<ExpanderWrapper>()
+                .expect("The child must be a ExpanderWrapper.");
 
-            expander.set_visible(treelistrow.is_expandable());
+            expander_wrapper.set_visible(treelistrow.is_expandable());
 
             match row.get_connectors() {
                 Some(connectors) =>
@@ -114,6 +115,7 @@ fn create_view<Item, Model, RowData>(capture: &Arc<Mutex<Capture>>)
                 None => {}
             };
 
+            let expander = expander_wrapper.expander();
             expander.connect_expanded_notify(move |expander| {
                 treelistrow.set_expanded(expander.is_expanded());
             });
