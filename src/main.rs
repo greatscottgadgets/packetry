@@ -116,6 +116,7 @@ fn create_view<Item, Model, RowData>(capture: &Arc<Mutex<Capture>>)
             };
 
             let expander = expander_wrapper.expander();
+            expander.set_expanded(treelistrow.is_expanded());
             let handler = expander.connect_expanded_notify(move |expander| {
                 treelistrow.set_expanded(expander.is_expanded());
             });
