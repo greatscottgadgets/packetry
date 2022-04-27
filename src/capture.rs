@@ -1619,32 +1619,47 @@ impl Capture {
         let ep_data = &mut self.endpoint_data[endpoint_id as usize];
         let transaction_ids =
             ep_data.transaction_ids.get_range(range).unwrap();
-        let setup_transaction_id = transaction_ids[0];
-        let setup_packet_id =
-            self.transaction_index.get(setup_transaction_id)
-                                  .unwrap();
-        let data_packet_id = setup_packet_id + 1;
-        let data_packet = self.get_packet(data_packet_id);
-        let fields = SetupFields::from_data_packet(&data_packet);
-        let direction = fields.type_fields.direction();
+        let mut fields: Option<SetupFields> = None;
         let mut data: Vec<u8> = Vec::new();
+        let mut index = 0;
         for id in transaction_ids {
             let transaction = self.get_transaction(&id);
-            match (direction,
-                   transaction.pid,
-                   transaction.payload_byte_range)
-            {
-                (Direction::In,  PID::IN,  Some(range)) |
-                (Direction::Out, PID::OUT, Some(range)) => {
-                    data.extend_from_slice(
-                        &self.packet_data.get_range(range).unwrap());
-                },
-                (..) => {}
+            if transaction.packet_count() != 3 {
+                continue;
+            }
+            let last_packet_id = transaction.packet_id_range.end - 1;
+            let last_packet_pid = self.get_packet_pid(last_packet_id);
+            match last_packet_pid {
+                PID::ACK | PID::NYET => {},
+                _ => {
+                    continue;
+                }
             };
+            if index == 0 {
+                let data_packet_id = transaction.packet_id_range.start + 1;
+                let data_packet = self.get_packet(data_packet_id);
+                fields = Some(SetupFields::from_data_packet(&data_packet));
+            } else {
+                let direction =
+                    fields.as_ref().unwrap().type_fields.direction();
+                match (direction,
+                       transaction.pid,
+                       transaction.payload_byte_range)
+                {
+                    (Direction::In,  PID::IN,  Some(range)) |
+                    (Direction::Out, PID::OUT, Some(range)) => {
+                        data.extend_from_slice(
+                            &self.packet_data.get_range(range)
+                                             .unwrap());
+                    },
+                    (..) => {}
+                };
+            }
+            index += 1;
         }
         ControlTransfer {
             address: address,
-            fields: fields,
+            fields: fields.unwrap(),
             data: data,
         }
     }
