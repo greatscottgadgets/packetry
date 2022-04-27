@@ -370,7 +370,6 @@ struct EndpointData {
     number: usize,
     transaction_ids: HybridIndex,
     transfer_index: HybridIndex,
-    transaction_start: u64,
     transaction_count: u64,
     last: PID,
     setup: Option<SetupFields>,
@@ -1047,7 +1046,6 @@ impl Capture {
             device_id: self.device_index[addr] as usize,
             transaction_ids: HybridIndex::new(1).unwrap(),
             transfer_index: HybridIndex::new(1).unwrap(),
-            transaction_start: 0,
             transaction_count: 0,
             last: PID::Malformed,
             setup: None,
@@ -1258,9 +1256,8 @@ impl Capture {
         self.last_item_endpoint = endpoint_id as i16;
         self.add_transfer_entry(endpoint_id, true);
         let ep_data = &mut self.endpoint_data[endpoint_id];
-        ep_data.transaction_start = ep_data.transaction_ids.len();
         ep_data.transaction_count = 0;
-        ep_data.transfer_index.push(ep_data.transaction_start).unwrap();
+        ep_data.transfer_index.push(ep_data.transaction_ids.len()).unwrap();
     }
 
     fn transfer_append(&mut self, success: bool) {
