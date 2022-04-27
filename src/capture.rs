@@ -651,7 +651,8 @@ impl Default for Capture {
 }
 
 pub struct Transaction {
-    pid: PID,
+    start_pid: PID,
+    end_pid: PID,
     packet_id_range: Range<u64>,
     payload_byte_range: Option<Range<u64>>,
 }
@@ -665,6 +666,14 @@ impl Transaction {
         match &self.payload_byte_range {
             Some(range) => Some(range.end - range.start),
             None => None
+        }
+    }
+
+    fn successful(&self) -> bool {
+        use PID::*;
+        match (self.packet_count(), self.end_pid) {
+            (3, ACK | NYET) => true,
+            (..)            => false
         }
     }
 }
@@ -1405,7 +1414,7 @@ impl Capture {
             Transaction(_, transaction_id) => {
                 let transaction = self.get_transaction(transaction_id);
                 let count = transaction.packet_count();
-                match (transaction.pid, transaction.payload_size()) {
+                match (transaction.start_pid, transaction.payload_size()) {
                     (PID::SOF, _) => format!(
                         "{} SOF packets", count),
                     (pid, None) => format!(
@@ -1586,9 +1595,10 @@ impl Capture {
         let packet_id_range = get_index_range(&mut self.transaction_index,
                                               self.packet_index.len(), *index);
         let packet_count = packet_id_range.end - packet_id_range.start;
-        let pid = self.get_packet_pid(packet_id_range.start);
+        let start_pid = self.get_packet_pid(packet_id_range.start);
+        let end_pid = self.get_packet_pid(packet_id_range.end - 1);
         use PID::*;
-        let payload_byte_range = match pid {
+        let payload_byte_range = match start_pid {
             IN | OUT if packet_count >= 2 => {
                 let data_packet_id = packet_id_range.start + 1;
                 let packet_byte_range = get_index_range(
@@ -1605,7 +1615,8 @@ impl Capture {
             _ => None
         };
         Transaction {
-            pid: pid,
+            start_pid: start_pid,
+            end_pid: end_pid,
             packet_id_range: packet_id_range,
             payload_byte_range: payload_byte_range,
         }
@@ -1624,17 +1635,9 @@ impl Capture {
         let mut index = 0;
         for id in transaction_ids {
             let transaction = self.get_transaction(&id);
-            if transaction.packet_count() != 3 {
+            if !transaction.successful() {
                 continue;
             }
-            let last_packet_id = transaction.packet_id_range.end - 1;
-            let last_packet_pid = self.get_packet_pid(last_packet_id);
-            match last_packet_pid {
-                PID::ACK | PID::NYET => {},
-                _ => {
-                    continue;
-                }
-            };
             if index == 0 {
                 let data_packet_id = transaction.packet_id_range.start + 1;
                 let data_packet = self.get_packet(data_packet_id);
@@ -1643,7 +1646,7 @@ impl Capture {
                 let direction =
                     fields.as_ref().unwrap().type_fields.direction();
                 match (direction,
-                       transaction.pid,
+                       transaction.start_pid,
                        transaction.payload_byte_range)
                 {
                     (Direction::In,  PID::IN,  Some(range)) |
