@@ -47,8 +47,9 @@ impl std::fmt::Display for PID {
 #[derive(Clone)]
 pub enum Item {
     Transfer(u64),
-    Transaction(u64, u64),
-    Packet(u64, u64, u64),
+    TransactionGroup(u64, u64),
+    Transaction(u64, u64, u64),
+    Packet(u64, u64, u64, u64),
 }
 
 #[derive(Clone)]
@@ -369,9 +370,11 @@ struct EndpointData {
     device_id: usize,
     number: usize,
     transaction_ids: HybridIndex,
+    transaction_groups: HybridIndex,
     transfer_index: HybridIndex,
     transaction_count: u64,
     last: PID,
+    prev_handshake: Option<PID>,
     setup: Option<SetupFields>,
     payload: Vec<u8>,
 }
@@ -1045,9 +1048,11 @@ impl Capture {
             number: num as usize,
             device_id: self.device_index[addr] as usize,
             transaction_ids: HybridIndex::new(1).unwrap(),
+            transaction_groups: HybridIndex::new(1).unwrap(),
             transfer_index: HybridIndex::new(1).unwrap(),
             transaction_count: 0,
             last: PID::Malformed,
+            prev_handshake: None,
             setup: None,
             payload: Vec::new(),
         };
@@ -1257,17 +1262,24 @@ impl Capture {
         self.add_transfer_entry(endpoint_id, true);
         let ep_data = &mut self.endpoint_data[endpoint_id];
         ep_data.transaction_count = 0;
-        ep_data.transfer_index.push(ep_data.transaction_ids.len()).unwrap();
+        ep_data.transfer_index.push(ep_data.transaction_groups.len()).unwrap();
     }
 
     fn transfer_append(&mut self, success: bool) {
         let endpoint_id = self.transaction_state.endpoint_id;
         let ep_data = &mut self.endpoint_data[endpoint_id];
-        ep_data.transaction_ids.push(self.transaction_index.len()).unwrap();
-        ep_data.transaction_count += 1;
         if success {
             ep_data.last = self.transaction_state.first;
         }
+        let prev = ep_data.prev_handshake;
+        let next = self.transaction_state.last;
+        if success || prev.is_none() || prev.unwrap() != next {
+            ep_data.transaction_groups.push(ep_data.transaction_ids.len())
+                                      .unwrap();
+        }
+        ep_data.prev_handshake = Some(next);
+        ep_data.transaction_count += 1;
+        ep_data.transaction_ids.push(self.transaction_index.len()).unwrap();
     }
 
     fn transfer_end(&mut self) {
@@ -1320,17 +1332,32 @@ impl Capture {
     fn child_item(&mut self, parent: &Item, index: u64) -> Item {
         use Item::*;
         match parent {
-            Transfer(transfer_index_id) =>
-                Transaction(*transfer_index_id, {
+            Transfer(transfer_index_id) => {
+                let group = TransactionGroup(*transfer_index_id, {
                     let entry = self.transfer_index.get(*transfer_index_id).unwrap();
                     let endpoint_id = entry.endpoint_id() as usize;
                     let transfer_id = entry.transfer_id();
                     let ep_data = &mut self.endpoint_data[endpoint_id];
-                    let offset = ep_data.transfer_index.get(transfer_id).unwrap();
+                    ep_data.transfer_index.get(transfer_id).unwrap() + index
+                });
+                if self.child_count(&group) == 1 {
+                    self.child_item(&group, 0)
+                } else {
+                    group
+                }
+            },
+            TransactionGroup(transfer_index_id, transaction_group_id) =>
+                Transaction(*transfer_index_id, *transaction_group_id, {
+                    let entry = self.transfer_index.get(*transfer_index_id).unwrap();
+                    let endpoint_id = entry.endpoint_id() as usize;
+                    let ep_data = &mut self.endpoint_data[endpoint_id];
+                    let offset =
+                        ep_data.transaction_groups.get(*transaction_group_id)
+                                                  .unwrap();
                     ep_data.transaction_ids.get(offset + index).unwrap()
                 }),
-            Transaction(transfer_index_id, transaction_id) =>
-                Packet(*transfer_index_id, *transaction_id,
+            Transaction(transfer_index_id, transaction_group_id, transaction_id) =>
+                Packet(*transfer_index_id, *transaction_group_id, *transaction_id,
                        self.transaction_index.get(*transaction_id).unwrap() + index),
             Packet(..) => panic!("packets do not have children")
         }
@@ -1353,9 +1380,16 @@ impl Capture {
                 let transfer_id = entry.transfer_id();
                 let ep_data = &mut self.endpoint_data[endpoint_id];
                 get_index_range(&mut ep_data.transfer_index,
-                    ep_data.transaction_ids.len(), transfer_id)
+                    ep_data.transaction_groups.len(), transfer_id)
             },
-            Transaction(_, transaction_id) => {
+            TransactionGroup(transfer_index_id, transaction_group_id) => {
+                let entry = self.transfer_index.get(*transfer_index_id).unwrap();
+                let endpoint_id = entry.endpoint_id() as usize;
+                let ep_data = &mut self.endpoint_data[endpoint_id];
+                get_index_range(&mut ep_data.transaction_groups,
+                    ep_data.transaction_ids.len(), *transaction_group_id)
+            },
+            Transaction(.., transaction_id) => {
                 get_index_range(&mut self.transaction_index,
                     self.packet_index.len(), *transaction_id)
             },
@@ -1378,7 +1412,7 @@ impl Capture {
                     0
                 }
             },
-            Transaction(..) => {
+            TransactionGroup(..) | Transaction(..) => {
                 let range = self.item_range(&item);
                 range.end - range.start
             },
@@ -1419,7 +1453,13 @@ impl Capture {
                     },
                     packet)
             },
-            Transaction(_, transaction_id) => {
+            TransactionGroup(..) => {
+                let count = self.child_count(&item);
+                let first_child = self.child_item(&item, 0);
+                let summary = self.get_summary(&first_child);
+                format!("{} × {}", count, summary)
+            },
+            Transaction(.., transaction_id) => {
                 let transaction = self.get_transaction(transaction_id);
                 match (transaction.start_pid, transaction.payload_size()) {
                     (PID::SOF, ..) =>
@@ -1453,21 +1493,30 @@ impl Capture {
                     }
                 }
                 let range = self.item_range(&item);
-                let count = range.end - range.start;
+                let ep_data = &mut self.endpoint_data[endpoint_id as usize];
+                let first =
+                    ep_data.transaction_groups.get(range.start).unwrap();
+                let last_range =
+                    get_index_range(&mut ep_data.transaction_groups,
+                                    ep_data.transaction_ids.len(),
+                                    range.end - 1);
+                let count = last_range.end - first;
                 match ep_type {
                     EndpointType::Invalid => format!(
-                        "{} invalid groups", count),
+                        "{} invalid transactions", count),
                     EndpointType::Framing => format!(
-                        "{} SOF groups", count),
+                        "{} SOF packets", count),
                     EndpointType::Control => {
                         let transfer = self.get_control_transfer(
                             endpoint.device_address(), endpoint_id, range);
                         transfer.summary()
                     },
-                    endpoint_type => format!(
+                    endpoint_type => {
+                        format!(
                         "{:?} transfer with {} transactions on endpoint {}.{}",
                         endpoint_type, count,
                         endpoint.device_address(), endpoint.number())
+                    }
                 }
             }
         }
@@ -1481,7 +1530,10 @@ impl Capture {
         let string_length = MIN_LEN + endpoint_count;
         let mut connectors = String::with_capacity(string_length);
         let transfer_index_id = match item {
-            Transfer(i) | Transaction(i, _) | Packet(i, ..) => i
+            Transfer(i) |
+            TransactionGroup(i, _) |
+            Transaction(i, ..) |
+            Packet(i, ..) => i
         };
         let entry = self.transfer_index.get(*transfer_index_id).unwrap();
         let endpoint_id = entry.endpoint_id() as usize;
@@ -1489,23 +1541,43 @@ impl Capture {
         let state_length = endpoint_state.len();
         let extended = self.transfer_extended(endpoint_id, *transfer_index_id);
         let ep_data = &mut self.endpoint_data[endpoint_id];
-        let last_transaction = match item {
-            Transaction(_, transaction_id) | Packet(_, transaction_id, _) => {
+        let last_group = match item {
+            TransactionGroup(_, group_id) |
+            Transaction(_, group_id, _) |
+            Packet(_, group_id, ..) => {
                 let range = get_index_range(&mut ep_data.transfer_index,
-                    ep_data.transaction_ids.len(), entry.transfer_id());
+                    ep_data.transaction_groups.len(), entry.transfer_id());
+                let last_group_id = range.end - 1;
+                *group_id == last_group_id
+            }, _ => false
+        };
+        let last_transaction = match item {
+            Transaction(_, group_id, transaction_id) |
+            Packet(_, group_id, transaction_id, _) => {
+                let range = get_index_range(&mut ep_data.transaction_groups,
+                    ep_data.transaction_ids.len(), *group_id);
                 let last_transaction_id =
                     ep_data.transaction_ids.get(range.end - 1).unwrap();
                 *transaction_id == last_transaction_id
             }, _ => false
         };
         let last_packet = match item {
-            Packet(_, transaction_id, packet_id) => {
+            Packet(.., transaction_id, packet_id) => {
                 let range = get_index_range(&mut self.transaction_index,
                     self.packet_index.len(), *transaction_id);
                 *packet_id == range.end - 1
             }, _ => false
         };
-        let last = last_transaction && !extended;
+        let grouped = match item {
+            Packet(_, group_id, ..) |
+            Transaction(_, group_id, _) => {
+                let range = get_index_range(&mut ep_data.transaction_groups,
+                    ep_data.transaction_ids.len(), *group_id);
+                let count = range.end - range.start;
+                count != 1
+            }, _ => false
+        };
+        let last = last_group && !extended;
         let mut thru = false;
         for i in 0..state_length {
             let state = EndpointState::from(endpoint_state[i]);
@@ -1516,8 +1588,8 @@ impl Capture {
                 (Transaction(..) | Packet(..), _, true) => on_endpoint,
                 _ => false,
             };
-            connectors.push(match item {
-                Transfer(..) => {
+            connectors.push(match (item, grouped) {
+                (Transfer(..), _) => {
                     match (state, thru) {
                         (Idle,     false) => ' ',
                         (Idle,     true ) => '─',
@@ -1527,7 +1599,8 @@ impl Capture {
                         (Ending,   _    ) => '└',
                     }
                 },
-                Transaction(..) => {
+                (TransactionGroup(..), _) |
+                (Transaction(..), false) => {
                     match (on_endpoint, active, thru, last) {
                         (false, false, false, _    ) => ' ',
                         (false, false, true,  _    ) => '─',
@@ -1537,7 +1610,8 @@ impl Capture {
                         (true,  _,     _,     true ) => '└',
                     }
                 },
-                Packet(..) => {
+                (Transaction(..), true) |
+                (Packet(..), _) => {
                     match (on_endpoint, active, last) {
                         (false, false, _    ) => ' ',
                         (false, true,  _    ) => '│',
@@ -1548,19 +1622,28 @@ impl Capture {
             });
         };
         for _ in state_length..endpoint_count {
-            connectors.push(match item {
-                Transfer(..)    => '─',
-                Transaction(..) => '─',
-                Packet(..)      => ' ',
+            connectors.push(match (item, grouped) {
+                (Transfer(..), _)         => '─',
+                (TransactionGroup(..), _) => '─',
+                (Transaction(..), false)  => '─',
+                (Transaction(..), true )  => ' ',
+                (Packet(..), _)           => ' ',
             });
         }
         connectors.push_str(
-            match (item, last_packet) {
-                (Transfer(_), _) if entry.is_start() => "─",
-                (Transfer(_), _)                     => "──□ ",
-                (Transaction(..), _)                 => "───",
-                (Packet(..), false)                  => "    ├──",
-                (Packet(..), true)                   => "    └──",
+            match (item, last_packet, grouped, last_transaction) {
+                (Transfer(_), ..) if entry.is_start() => "─",
+                (Transfer(_), ..)                     => "──□ ",
+                (Transaction(..), _, false, _)        => "───",
+                (Packet(..), false,  false, _)        => "    ├──",
+                (Packet(..), true,   false, _)        => "    └──",
+                (TransactionGroup(..), ..)            => "───",
+                (Transaction(..), _, true,  false)    => "    ├──",
+                (Packet(..), false,  true , false)    => "    │  ├──",
+                (Packet(..), true,   true , false)    => "    │  └──",
+                (Transaction(..), _, true,  true )    => "    └──",
+                (Packet(..), false,  true , true )    => "       ├──",
+                (Packet(..), true,   true , true )    => "       └──",
             }
         );
         connectors
@@ -1637,38 +1720,43 @@ impl Capture {
                             endpoint_id: u16,
                             range: Range<u64>) -> ControlTransfer
     {
-        let ep_data = &mut self.endpoint_data[endpoint_id as usize];
-        let transaction_ids =
-            ep_data.transaction_ids.get_range(range).unwrap();
         let mut fields: Option<SetupFields> = None;
         let mut data: Vec<u8> = Vec::new();
         let mut index = 0;
-        for id in transaction_ids {
-            let transaction = self.get_transaction(&id);
-            if !transaction.successful() {
-                continue;
+        for group_id in range {
+            let ep_data = &mut self.endpoint_data[endpoint_id as usize];
+            let group_range =
+                get_index_range(&mut ep_data.transaction_groups,
+                    ep_data.transaction_ids.len(), group_id);
+            let transaction_ids =
+                ep_data.transaction_ids.get_range(group_range).unwrap();
+            for id in transaction_ids {
+                let transaction = self.get_transaction(&id);
+                if !transaction.successful() {
+                    continue;
+                }
+                if index == 0 {
+                    let data_packet_id = transaction.packet_id_range.start + 1;
+                    let data_packet = self.get_packet(data_packet_id);
+                    fields = Some(SetupFields::from_data_packet(&data_packet));
+                } else {
+                    let direction =
+                        fields.as_ref().unwrap().type_fields.direction();
+                    match (direction,
+                           transaction.start_pid,
+                           transaction.payload_byte_range)
+                    {
+                        (Direction::In,  PID::IN,  Some(range)) |
+                        (Direction::Out, PID::OUT, Some(range)) => {
+                            data.extend_from_slice(
+                                &self.packet_data.get_range(range)
+                                                 .unwrap());
+                        },
+                        (..) => {}
+                    };
+                }
+                index += 1;
             }
-            if index == 0 {
-                let data_packet_id = transaction.packet_id_range.start + 1;
-                let data_packet = self.get_packet(data_packet_id);
-                fields = Some(SetupFields::from_data_packet(&data_packet));
-            } else {
-                let direction =
-                    fields.as_ref().unwrap().type_fields.direction();
-                match (direction,
-                       transaction.start_pid,
-                       transaction.payload_byte_range)
-                {
-                    (Direction::In,  PID::IN,  Some(range)) |
-                    (Direction::Out, PID::OUT, Some(range)) => {
-                        data.extend_from_slice(
-                            &self.packet_data.get_range(range)
-                                             .unwrap());
-                    },
-                    (..) => {}
-                };
-            }
-            index += 1;
         }
         ControlTransfer {
             address: address,
