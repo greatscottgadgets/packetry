@@ -1359,26 +1359,30 @@ impl Capture {
         }
     }
 
-    pub fn item_count(&mut self, parent: &Option<Item>) -> u64 {
+    fn child_count(&mut self, item: &Item) -> u64 {
         use Item::*;
-        match parent {
-            None => self.item_index.len(),
-            Some(item) => match item {
-                Transfer(id) => {
-                    let entry = self.transfer_index.get(*id).unwrap();
-                    if entry.is_start() {
-                        let range = self.item_range(&item);
-                        range.end - range.start
-                    } else {
-                        0
-                    }
-                },
-                Transaction(..) => {
+        match item {
+            Transfer(id) => {
+                let entry = self.transfer_index.get(*id).unwrap();
+                if entry.is_start() {
                     let range = self.item_range(&item);
                     range.end - range.start
-                },
-                Packet(..) => 0,
-            }
+                } else {
+                    0
+                }
+            },
+            Transaction(..) => {
+                let range = self.item_range(&item);
+                range.end - range.start
+            },
+            Packet(..) => 0,
+        }
+    }
+
+    pub fn item_count(&mut self, parent: &Option<Item>) -> u64 {
+        match parent {
+            None => self.item_index.len(),
+            Some(item) => self.child_count(item)
         }
     }
 
