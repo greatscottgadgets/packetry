@@ -1519,7 +1519,8 @@ impl Capture {
             connectors.push(match item {
                 Transfer(..) => {
                     match (state, thru) {
-                        (Idle,     _    ) => ' ',
+                        (Idle,     false) => ' ',
+                        (Idle,     true ) => '─',
                         (Starting, _    ) => '○',
                         (Ongoing,  false) => '│',
                         (Ongoing,  true ) => '┼',
