@@ -23,54 +23,60 @@ pub struct FileVec<T> where T: Pod + Default {
 }
 
 impl<T: Pod + Default> FileVec<T> {
-   pub fn new() -> Result<Self, FileVecError> {
-        let file = tempfile()?;
-        Ok(Self{
+   pub fn new() -> Self {
+        let file = tempfile().expect("Failed creating temporary file");
+        Self {
             _marker: PhantomData,
             file: BufReaderWriter::new_writer(file),
             file_length: 0,
             item_count: 0,
-        })
+        }
     }
 
-    pub fn push(&mut self, item: &T) -> Result<(), FileVecError> where T: Pod {
-        let data= bytes_of(item);
-        self.file.write_all(data)?;
+    pub fn push(&mut self, item: &T) where T: Pod {
+        let data = bytes_of(item);
+        self.file.write_all(data)
+                 .expect("Failed writing bytes to file");
         self.file_length += data.len() as u64;
         self.item_count += 1;
-        Ok(())
     }
 
-    pub fn append(&mut self, items: &[T]) -> Result<(), FileVecError> where T: Pod {
+    pub fn append(&mut self, items: &[T]) where T: Pod {
         for item in items {
             let data = bytes_of(item);
-            self.file.write_all(data)?;
+            self.file.write_all(data)
+                     .expect("Failed writing bytes to file");
             self.file_length += data.len() as u64;
         }
         self.item_count += items.len() as u64;
-        Ok(())
     }
 
-    pub fn get(&mut self, index: u64) -> Result<T, FileVecError> {
+    pub fn get(&mut self, index: u64) -> T {
         let mut result: T = Default::default();
         let start = index * std::mem::size_of::<T>() as u64;
-        self.file.seek(SeekFrom::Start(start as u64))?;
-        self.file.read_exact(bytes_of_mut(&mut result))?;
-        self.file.seek(SeekFrom::Start(self.file_length))?;
-        Ok(result)
+        self.file.seek(SeekFrom::Start(start as u64))
+                 .expect("Failed to seek to position in file");
+        self.file.read_exact(bytes_of_mut(&mut result))
+                 .expect("Failed to read bytes from file");
+        self.file.seek(SeekFrom::Start(self.file_length))
+                 .expect("Failed to seek to file end");
+        result
     }
 
-    pub fn get_range(&mut self, range: Range<u64>) -> Result<Vec<T>, FileVecError> {
+    pub fn get_range(&mut self, range: Range<u64>) -> Vec<T> {
         let mut buf: T = Default::default();
         let mut result = Vec::new();
         let start = range.start * std::mem::size_of::<T>() as u64;
-        self.file.seek(SeekFrom::Start(start as u64))?;
+        self.file.seek(SeekFrom::Start(start as u64))
+                 .expect("Failed to seek to position in file");
         for _ in range {
-            self.file.read_exact(bytes_of_mut(&mut buf))?;
+            self.file.read_exact(bytes_of_mut(&mut buf))
+                     .expect("Failed to read bytes from file");
             result.push(buf);
         }
-        self.file.seek(SeekFrom::Start(self.file_length))?;
-        Ok(result)
+        self.file.seek(SeekFrom::Start(self.file_length))
+                 .expect("Failed to seek to file end");
+        result
     }
 
     pub fn len(&self) -> u64 {
@@ -96,17 +102,17 @@ mod tests {
 
     #[test]
     fn test_file_vec_push() {
-        let mut v = FileVec::new().unwrap();
+        let mut v = FileVec::new();
         for i in 0..100 {
             let x= Foo{ bar: i, baz: i};
-            v.push(&x).unwrap();
-            assert!(v.get(i as u64).unwrap() == x);
+            v.push(&x);
+            assert!(v.get(i as u64) == x);
         }
     }
 
     #[test]
     fn test_file_vec_append() {
-        let mut file_vec = FileVec::new().unwrap();
+        let mut file_vec = FileVec::new();
 
         // Build a (normal) Vec of data
         let mut data = Vec::new();
@@ -116,10 +122,10 @@ mod tests {
         }
 
         // append it to the FileVec
-        file_vec.append(&data.as_slice()).unwrap();
+        file_vec.append(&data.as_slice());
 
         // and check
-        let vec: Vec<_> = file_vec.get_range(0..100).unwrap();
+        let vec: Vec<_> = file_vec.get_range(0..100);
         assert!(vec == data);
     }
 }

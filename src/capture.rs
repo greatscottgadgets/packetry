@@ -825,11 +825,11 @@ fn get_index_range(index: &mut HybridIndex,
                       id: u64) -> Range<u64>
 {
     if id + 2 > index.len() {
-        let start = index.get(id).unwrap();
+        let start = index.get(id);
         let end = length;
         start..end
     } else {
-        let vec = index.get_range(id..(id + 2)).unwrap();
+        let vec = index.get_range(id..(id + 2));
         let start = vec[0];
         let end = vec[1];
         start..end
@@ -884,19 +884,19 @@ fn fmt_utf16(bytes: &[u8]) -> String {
 impl Capture {
     pub fn new() -> Self {
         let mut capture = Capture {
-            item_index: HybridIndex::new(1).unwrap(),
-            packet_index: HybridIndex::new(2).unwrap(),
-            packet_data: FileVec::new().unwrap(),
-            transaction_index: HybridIndex::new(1).unwrap(),
-            transfer_index: FileVec::new().unwrap(),
+            item_index: HybridIndex::new(1),
+            packet_index: HybridIndex::new(2),
+            packet_data: FileVec::new(),
+            transaction_index: HybridIndex::new(1),
+            transfer_index: FileVec::new(),
             device_index: [-1; USB_MAX_DEVICES],
-            devices: FileVec::new().unwrap(),
+            devices: FileVec::new(),
             device_data: Vec::new(),
-            endpoints: FileVec::new().unwrap(),
+            endpoints: FileVec::new(),
             endpoint_data: Vec::new(),
             endpoint_index: [[-1; USB_MAX_ENDPOINTS]; USB_MAX_DEVICES],
-            endpoint_states: FileVec::new().unwrap(),
-            endpoint_state_index: HybridIndex::new(1).unwrap(),
+            endpoint_states: FileVec::new(),
+            endpoint_state_index: HybridIndex::new(1),
             last_endpoint_state: Vec::new(),
             last_item_endpoint: -1,
             transaction_state: TransactionState::default(),
@@ -908,8 +908,8 @@ impl Capture {
 
     pub fn handle_raw_packet(&mut self, packet: &[u8]) {
         self.transaction_update(packet);
-        self.packet_index.push(self.packet_data.len()).unwrap();
-        self.packet_data.append(packet).unwrap();
+        self.packet_index.push(self.packet_data.len());
+        self.packet_data.append(packet);
     }
 
     pub fn print_storage_summary(&self) {
@@ -1026,14 +1026,14 @@ impl Capture {
     fn add_transaction(&mut self) {
         if self.transaction_state.count == 0 { return }
         self.transfer_update();
-        self.transaction_index.push(self.transaction_state.start).unwrap();
+        self.transaction_index.push(self.transaction_state.start);
     }
 
     fn add_endpoint(&mut self, addr: usize, num: usize) {
         if self.device_index[addr] == -1 {
             self.device_index[addr] = self.devices.size() as i8;
             let device = Device { address: addr as u8 };
-            self.devices.push(&device).unwrap();
+            self.devices.push(&device);
             let dev_data = DeviceData {
                 device_descriptor: None,
                 configurations: Vec::new(),
@@ -1047,9 +1047,9 @@ impl Capture {
         let ep_data = EndpointData {
             number: num as usize,
             device_id: self.device_index[addr] as usize,
-            transaction_ids: HybridIndex::new(1).unwrap(),
-            transaction_groups: HybridIndex::new(1).unwrap(),
-            transfer_index: HybridIndex::new(1).unwrap(),
+            transaction_ids: HybridIndex::new(1),
+            transaction_groups: HybridIndex::new(1),
+            transfer_index: HybridIndex::new(1),
             transaction_count: 0,
             last: PID::Malformed,
             prev_handshake: None,
@@ -1061,7 +1061,7 @@ impl Capture {
         endpoint.set_device_id(self.device_index[addr] as u64);
         endpoint.set_device_address(addr as u8);
         endpoint.set_number(num as u8);
-        self.endpoints.push(&endpoint).unwrap();
+        self.endpoints.push(&endpoint);
         self.last_endpoint_state.push(EndpointState::Idle as u8);
     }
 
@@ -1256,13 +1256,13 @@ impl Capture {
     }
 
     fn transfer_start(&mut self) {
-        self.item_index.push(self.transfer_index.len()).unwrap();
+        self.item_index.push(self.transfer_index.len());
         let endpoint_id = self.transaction_state.endpoint_id;
         self.last_item_endpoint = endpoint_id as i16;
         self.add_transfer_entry(endpoint_id, true);
         let ep_data = &mut self.endpoint_data[endpoint_id];
         ep_data.transaction_count = 0;
-        ep_data.transfer_index.push(ep_data.transaction_groups.len()).unwrap();
+        ep_data.transfer_index.push(ep_data.transaction_groups.len());
     }
 
     fn transfer_append(&mut self, success: bool) {
@@ -1274,12 +1274,11 @@ impl Capture {
         let prev = ep_data.prev_handshake;
         let next = self.transaction_state.last;
         if success || prev.is_none() || prev.unwrap() != next {
-            ep_data.transaction_groups.push(ep_data.transaction_ids.len())
-                                      .unwrap();
+            ep_data.transaction_groups.push(ep_data.transaction_ids.len());
         }
         ep_data.prev_handshake = Some(next);
         ep_data.transaction_count += 1;
-        ep_data.transaction_ids.push(self.transaction_index.len()).unwrap();
+        ep_data.transaction_ids.push(self.transaction_index.len());
     }
 
     fn transfer_end(&mut self) {
@@ -1287,7 +1286,7 @@ impl Capture {
         let ep_data = &self.endpoint_data[endpoint_id];
         if ep_data.transaction_count > 0 {
             if self.last_item_endpoint != (endpoint_id as i16) {
-                self.item_index.push(self.transfer_index.len()).unwrap();
+                self.item_index.push(self.transfer_index.len());
                 self.last_item_endpoint = endpoint_id as i16;
             }
             self.add_transfer_entry(endpoint_id, false);
@@ -1304,7 +1303,7 @@ impl Capture {
         entry.set_endpoint_id(endpoint_id as u16);
         entry.set_transfer_id(ep_data.transfer_index.len());
         entry.set_is_start(start);
-        self.transfer_index.push(&entry).unwrap();
+        self.transfer_index.push(&entry);
         self.add_endpoint_state(endpoint_id, start);
     }
 
@@ -1325,26 +1324,26 @@ impl Capture {
         }
         let last_state = self.last_endpoint_state.as_slice();
         let state_offset = self.endpoint_states.len();
-        self.endpoint_states.append(last_state).unwrap();
-        self.endpoint_state_index.push(state_offset).unwrap();
+        self.endpoint_states.append(last_state);
+        self.endpoint_state_index.push(state_offset);
     }
 
     fn child_item(&mut self, parent: &Item, index: u64) -> Item {
         use Item::*;
         match parent {
             Transfer(transfer_index_id) => {
-                let entry = self.transfer_index.get(*transfer_index_id).unwrap();
+                let entry = self.transfer_index.get(*transfer_index_id);
                 let endpoint_id = entry.endpoint_id() as usize;
                 let transfer_id = entry.transfer_id();
                 let ep_data = &mut self.endpoint_data[endpoint_id];
                 if endpoint_id == 1 {
                     let group_id =
-                        ep_data.transfer_index.get(transfer_id).unwrap();
+                        ep_data.transfer_index.get(transfer_id);
                     let group = TransactionGroup(*transfer_index_id, group_id);
                     self.child_item(&group, index)
                 } else {
                     let group_id =
-                        ep_data.transfer_index.get(transfer_id).unwrap() + index;
+                        ep_data.transfer_index.get(transfer_id) + index;
                     let group = TransactionGroup(*transfer_index_id, group_id);
                     if self.child_count(&group) == 1 {
                         self.child_item(&group, 0)
@@ -1355,17 +1354,16 @@ impl Capture {
             },
             TransactionGroup(transfer_index_id, transaction_group_id) =>
                 Transaction(*transfer_index_id, *transaction_group_id, {
-                    let entry = self.transfer_index.get(*transfer_index_id).unwrap();
+                    let entry = self.transfer_index.get(*transfer_index_id);
                     let endpoint_id = entry.endpoint_id() as usize;
                     let ep_data = &mut self.endpoint_data[endpoint_id];
                     let offset =
-                        ep_data.transaction_groups.get(*transaction_group_id)
-                                                  .unwrap();
-                    ep_data.transaction_ids.get(offset + index).unwrap()
+                        ep_data.transaction_groups.get(*transaction_group_id);
+                    ep_data.transaction_ids.get(offset + index)
                 }),
             Transaction(transfer_index_id, transaction_group_id, transaction_id) =>
                 Packet(*transfer_index_id, *transaction_group_id, *transaction_id,
-                       self.transaction_index.get(*transaction_id).unwrap() + index),
+                       self.transaction_index.get(*transaction_id) + index),
             Packet(..) => panic!("packets do not have children")
         }
     }
@@ -1373,7 +1371,7 @@ impl Capture {
     pub fn get_item(&mut self, parent: &Option<Item>, index: u64) -> Item {
         use Item::*;
         match parent {
-            None => Transfer(self.item_index.get(index).unwrap()),
+            None => Transfer(self.item_index.get(index)),
             Some(item) => self.child_item(item, index)
         }
     }
@@ -1382,7 +1380,7 @@ impl Capture {
         use Item::*;
         match item {
             Transfer(transfer_index_id) => {
-                let entry = self.transfer_index.get(*transfer_index_id).unwrap();
+                let entry = self.transfer_index.get(*transfer_index_id);
                 let endpoint_id = entry.endpoint_id() as usize;
                 let transfer_id = entry.transfer_id();
                 let ep_data = &mut self.endpoint_data[endpoint_id];
@@ -1390,7 +1388,7 @@ impl Capture {
                     ep_data.transaction_groups.len(), transfer_id)
             },
             TransactionGroup(transfer_index_id, transaction_group_id) => {
-                let entry = self.transfer_index.get(*transfer_index_id).unwrap();
+                let entry = self.transfer_index.get(*transfer_index_id);
                 let endpoint_id = entry.endpoint_id() as usize;
                 let ep_data = &mut self.endpoint_data[endpoint_id];
                 get_index_range(&mut ep_data.transaction_groups,
@@ -1411,14 +1409,14 @@ impl Capture {
         use Item::*;
         match item {
             Transfer(id) => {
-                let entry = self.transfer_index.get(*id).unwrap();
+                let entry = self.transfer_index.get(*id);
                 let endpoint_id = entry.endpoint_id() as usize;
                 let ep_data = &mut self.endpoint_data[endpoint_id];
                 if entry.is_start() {
                     if entry.endpoint_id() == 1 {
                         let transfer_id = entry.transfer_id();
                         let group_id =
-                            ep_data.transfer_index.get(transfer_id).unwrap();
+                            ep_data.transfer_index.get(transfer_id);
                         let group = TransactionGroup(*id, group_id);
                         self.child_count(&group)
                     } else {
@@ -1491,9 +1489,9 @@ impl Capture {
                 }
             },
             Transfer(transfer_index_id) => {
-                let entry = self.transfer_index.get(*transfer_index_id).unwrap();
+                let entry = self.transfer_index.get(*transfer_index_id);
                 let endpoint_id = entry.endpoint_id();
-                let endpoint = self.endpoints.get(endpoint_id as u64).unwrap();
+                let endpoint = self.endpoints.get(endpoint_id as u64);
                 let device_id = endpoint.device_id() as usize;
                 let dev_data = &self.device_data[device_id];
                 let num = endpoint.number() as usize;
@@ -1512,7 +1510,7 @@ impl Capture {
                 let range = self.item_range(&item);
                 let ep_data = &mut self.endpoint_data[endpoint_id as usize];
                 let first =
-                    ep_data.transaction_groups.get(range.start).unwrap();
+                    ep_data.transaction_groups.get(range.start);
                 let last_range =
                     get_index_range(&mut ep_data.transaction_groups,
                                     ep_data.transaction_ids.len(),
@@ -1552,7 +1550,7 @@ impl Capture {
             Transaction(i, ..) |
             Packet(i, ..) => i
         };
-        let entry = self.transfer_index.get(*transfer_index_id).unwrap();
+        let entry = self.transfer_index.get(*transfer_index_id);
         let endpoint_id = entry.endpoint_id() as usize;
         let endpoint_state = self.get_endpoint_state(*transfer_index_id);
         let state_length = endpoint_state.len();
@@ -1574,7 +1572,7 @@ impl Capture {
                 let range = get_index_range(&mut ep_data.transaction_groups,
                     ep_data.transaction_ids.len(), *group_id);
                 let last_transaction_id =
-                    ep_data.transaction_ids.get(range.end - 1).unwrap();
+                    ep_data.transaction_ids.get(range.end - 1);
                 *transaction_id == last_transaction_id
             }, _ => false
         };
@@ -1687,18 +1685,18 @@ impl Capture {
         let range = get_index_range(
             &mut self.endpoint_state_index,
             self.endpoint_states.len(), index);
-        self.endpoint_states.get_range(range).unwrap()
+        self.endpoint_states.get_range(range)
     }
 
     fn get_packet(&mut self, index: u64) -> Vec<u8> {
         let range = get_index_range(&mut self.packet_index,
                                     self.packet_data.len(), index);
-        self.packet_data.get_range(range).unwrap()
+        self.packet_data.get_range(range)
     }
 
     fn get_packet_pid(&mut self, index: u64) -> PID {
-        let offset = self.packet_index.get(index).unwrap();
-        PID::from(self.packet_data.get(offset).unwrap())
+        let offset = self.packet_index.get(index);
+        PID::from(self.packet_data.get(offset))
     }
 
     fn get_transaction(&mut self, index: &u64) -> Transaction {
@@ -1714,7 +1712,7 @@ impl Capture {
                 let packet_byte_range = get_index_range(
                     &mut self.packet_index,
                     self.packet_data.len(), data_packet_id);
-                let pid = self.packet_data.get(packet_byte_range.start).unwrap();
+                let pid = self.packet_data.get(packet_byte_range.start);
                 match PID::from(pid) {
                     DATA0 | DATA1 => Some({
                         packet_byte_range.start + 1 .. packet_byte_range.end - 2
@@ -1746,7 +1744,7 @@ impl Capture {
                 get_index_range(&mut ep_data.transaction_groups,
                     ep_data.transaction_ids.len(), group_id);
             let transaction_ids =
-                ep_data.transaction_ids.get_range(group_range).unwrap();
+                ep_data.transaction_ids.get_range(group_range);
             for id in transaction_ids {
                 let transaction = self.get_transaction(&id);
                 if !transaction.successful() {
@@ -1766,8 +1764,7 @@ impl Capture {
                         (Direction::In,  PID::IN,  Some(range)) |
                         (Direction::Out, PID::OUT, Some(range)) => {
                             data.extend_from_slice(
-                                &self.packet_data.get_range(range)
-                                                 .unwrap());
+                                &self.packet_data.get_range(range));
                         },
                         (..) => {}
                     };
@@ -1871,7 +1868,7 @@ impl Capture {
         match item {
             Device(dev) => {
                 let data = &self.device_data[*dev as usize];
-                let device = self.devices.get(*dev).unwrap();
+                let device = self.devices.get(*dev);
                 format!("Device {}: {}", device.address,
                     match data.device_descriptor {
                         Some(descriptor) => format!(

@@ -39,9 +39,9 @@ pub struct HybridIndex {
 }
 
 impl HybridIndex {
-    pub fn new(min_width: u8) -> Result<Self, HybridIndexError> {
-        let file = tempfile()?;
-        Ok(Self{
+    pub fn new(min_width: u8) -> Self {
+        let file = tempfile().expect("Failed creating temporary file");
+        Self {
             min_width: min_width,
             file: BufReaderWriter::new_writer(file),
             file_length: 0,
@@ -50,10 +50,10 @@ impl HybridIndex {
             index: Vec::new(),
             last_value: 0,
             at_end: true,
-        })
+        }
     }
 
-    pub fn push(&mut self, value: u64) -> Result<(), HybridIndexError> {
+    pub fn push(&mut self, value: u64) {
         if self.entries.len() == 0 {
             let first_entry = Entry {
                 base_value: value,
@@ -81,39 +81,42 @@ impl HybridIndex {
                 }
                 let bytes = increment.to_le_bytes();
                 if !self.at_end {
-                   self.file.seek(SeekFrom::Start(self.file_length))?;
+                   self.file.seek(SeekFrom::Start(self.file_length))
+                            .expect("Failed seeking to end of file");
                    self.at_end = true;
                 }
-                self.file.write_all(&bytes[0..width as usize])?;
+                self.file.write_all(&bytes[0..width as usize])
+                         .expect("Failed writing bytes to file");
                 self.file_length += width as u64;
                 last_entry.increments.set_count(count + 1);
             }
         }
         self.total_count += 1;
         self.last_value = value;
-        Ok(())
     }
 
-    pub fn get(&mut self, i: u64) -> Result<u64, HybridIndexError> {
+    pub fn get(&mut self, i: u64) -> u64 {
         let entry_id = bisect_right(self.index.as_slice(), &i) - 1;
         let entry = &self.entries[entry_id];
         let increment_id = i - self.index[entry_id];
         if increment_id == 0 {
-            Ok(entry.base_value)
+            entry.base_value
         } else {
             let width = entry.increments.width();
             let start = entry.file_offset + (increment_id - 1) * width as u64;
             let mut bytes = [0 as u8; 8];
-            self.file.seek(SeekFrom::Start(start))?;
+            self.file.seek(SeekFrom::Start(start))
+                     .expect("Failed seeking to position in file");
             self.at_end = false;
-            self.file.read_exact(&mut bytes[0..width as usize])?;
+            self.file.read_exact(&mut bytes[0..width as usize])
+                     .expect("Failed reading bytes from file");
             let increment = u64::from_le_bytes(bytes);
             let value = entry.base_value + increment;
-            Ok(value)
+            value
         }
     }
 
-    pub fn get_range(&mut self, range: Range<u64>) -> Result<Vec<u64>, HybridIndexError> {
+    pub fn get_range(&mut self, range: Range<u64>) -> Vec<u64> {
         let mut result = Vec::new();
         let mut i = range.start;
         while i < range.end {
@@ -134,18 +137,20 @@ impl HybridIndex {
             }
             let width = entry.increments.width();
             let start = entry.file_offset + increment_id * width as u64;
-            self.file.seek(SeekFrom::Start(start))?;
+            self.file.seek(SeekFrom::Start(start))
+                     .expect("Failed seeking to position in file");
             self.at_end = false;
             let mut bytes = [0 as u8; 8];
             for _ in 0..read_count {
-                self.file.read_exact(&mut bytes[0..width as usize])?;
+                self.file.read_exact(&mut bytes[0..width as usize])
+                         .expect("Failed reading bytes from file");
                 let increment = u64::from_le_bytes(bytes);
                 let value = entry.base_value + increment;
                 result.push(value);
             }
             i += read_count;
         }
-        Ok(result)
+        result
     }
 
     pub fn len(&self) -> u64 {
@@ -190,38 +195,38 @@ mod tests {
 
     #[test]
     fn test_hybrid_index() {
-        let mut v = HybridIndex::new(1).unwrap();
+        let mut v = HybridIndex::new(1);
         let mut expected = Vec::<u64>::new();
         let mut x = 10;
         let n = 321;
         for i in 0..n {
             x += 1 + i % 3;
             expected.push(x);
-            v.push(x).unwrap();
+            v.push(x);
         }
         for i in 0..n {
-            let vi = v.get(i).unwrap();
+            let vi = v.get(i);
             let xi = expected[i as usize];
             assert!(vi == xi);
         }
         for i in 0..n {
             let vrng = i as u64 .. n as u64;
             let xrng = i as usize .. n as usize;
-            let vr = v.get_range(vrng).unwrap();
+            let vr = v.get_range(vrng);
             let xr = &expected[xrng];
             assert!(vr == xr);
         }
         for i in 0..n {
             let vrng = 0 as u64 .. i as u64;
             let xrng = 0 as usize .. i as usize;
-            let vr = v.get_range(vrng).unwrap();
+            let vr = v.get_range(vrng);
             let xr = &expected[xrng];
             assert!(vr == xr);
         }
         for i in 0..(n - 10) {
             let vrng = i as u64 .. (i + 10) as u64;
             let xrng = i as usize .. (i + 10) as usize;
-            let vr = v.get_range(vrng).unwrap();
+            let vr = v.get_range(vrng);
             let xr = &expected[xrng];
             assert!(vr == xr);
         }
