@@ -1333,17 +1333,24 @@ impl Capture {
         use Item::*;
         match parent {
             Transfer(transfer_index_id) => {
-                let group = TransactionGroup(*transfer_index_id, {
-                    let entry = self.transfer_index.get(*transfer_index_id).unwrap();
-                    let endpoint_id = entry.endpoint_id() as usize;
-                    let transfer_id = entry.transfer_id();
-                    let ep_data = &mut self.endpoint_data[endpoint_id];
-                    ep_data.transfer_index.get(transfer_id).unwrap() + index
-                });
-                if self.child_count(&group) == 1 {
-                    self.child_item(&group, 0)
+                let entry = self.transfer_index.get(*transfer_index_id).unwrap();
+                let endpoint_id = entry.endpoint_id() as usize;
+                let transfer_id = entry.transfer_id();
+                let ep_data = &mut self.endpoint_data[endpoint_id];
+                if endpoint_id == 1 {
+                    let group_id =
+                        ep_data.transfer_index.get(transfer_id).unwrap();
+                    let group = TransactionGroup(*transfer_index_id, group_id);
+                    self.child_item(&group, index)
                 } else {
-                    group
+                    let group_id =
+                        ep_data.transfer_index.get(transfer_id).unwrap() + index;
+                    let group = TransactionGroup(*transfer_index_id, group_id);
+                    if self.child_count(&group) == 1 {
+                        self.child_item(&group, 0)
+                    } else {
+                        group
+                    }
                 }
             },
             TransactionGroup(transfer_index_id, transaction_group_id) =>
@@ -1405,9 +1412,19 @@ impl Capture {
         match item {
             Transfer(id) => {
                 let entry = self.transfer_index.get(*id).unwrap();
+                let endpoint_id = entry.endpoint_id() as usize;
+                let ep_data = &mut self.endpoint_data[endpoint_id];
                 if entry.is_start() {
-                    let range = self.item_range(&item);
-                    range.end - range.start
+                    if entry.endpoint_id() == 1 {
+                        let transfer_id = entry.transfer_id();
+                        let group_id =
+                            ep_data.transfer_index.get(transfer_id).unwrap();
+                        let group = TransactionGroup(*id, group_id);
+                        self.child_count(&group)
+                    } else {
+                        let range = self.item_range(&item);
+                        range.end - range.start
+                    }
                 } else {
                     0
                 }
@@ -1568,7 +1585,7 @@ impl Capture {
                 *packet_id == range.end - 1
             }, _ => false
         };
-        let grouped = match item {
+        let grouped = endpoint_id != 1 && match item {
             Packet(_, group_id, ..) |
             Transaction(_, group_id, _) => {
                 let range = get_index_range(&mut ep_data.transaction_groups,
