@@ -5,12 +5,19 @@ mod model;
 pub mod row_data;
 mod expander;
 
+use std::cell::Cell;
 use std::sync::{Arc, Mutex};
+use std::panic::{catch_unwind, UnwindSafe, RefUnwindSafe};
 
 use gtk::gio::ListModel;
-use gtk::glib::Object;
+use gtk::glib::{self, Object, clone};
 use gtk::{
     prelude::*,
+    ApplicationWindow,
+    MessageDialog,
+    DialogFlags,
+    MessageType,
+    ButtonsType,
     ListView,
     Label,
     TreeExpander,
@@ -30,11 +37,59 @@ use capture::Capture;
 mod file_vec;
 mod hybrid_index;
 
-fn create_view<Item, Model, RowData>(capture: &Arc<Mutex<Capture>>)
-        -> ListView
+thread_local!(
+    // Set to true when a fatal error has occured and we are
+    // just displaying a dialog to the user before exiting.
+    static DYING: Cell<bool> = Cell::new(false);
+);
+
+fn catch_errors<F: FnOnce() -> R + UnwindSafe, R>(
+    operation: &str,
+    window: &ApplicationWindow,
+    f: F)
+{
+    DYING.with(|dying| {
+        if dying.get() {
+            // Already displaying a fatal error.
+            // Don't run anything else that could error.
+            return;
+        }
+        match catch_unwind(f) {
+            Ok(_) => {},
+            Err(e) => {
+                dying.replace(true);
+                let message = format!(
+                    "Fatal error while {}:\n{}",
+                    operation,
+                    match e.downcast_ref::<&str>() {
+                        Some(s) => s,
+                        None => "No error message",
+                    }
+                );
+                let dialog = MessageDialog::new(
+                    Some(window),
+                    DialogFlags::MODAL,
+                    MessageType::Error,
+                    ButtonsType::Close,
+                    &message
+                );
+                dialog.connect_response(
+                    clone!(@weak window => move |_, _| {
+                        window.destroy()
+                    }));
+                dialog.show();
+            }
+        };
+    });
+}
+
+fn create_view<Item, Model, RowData>(
+    window: &ApplicationWindow,
+    capture: &Arc<Mutex<Capture>>)
+    -> ListView
     where
         Model: GenericModel<Item> + IsA<ListModel>,
-        RowData: GenericRowData<Item> + IsA<Object>
+        RowData: GenericRowData<Item> + IsA<Object> + RefUnwindSafe
 {
     let cap = capture.clone();
     let model = Model::new(cap, None);
@@ -51,7 +106,10 @@ fn create_view<Item, Model, RowData>(capture: &Arc<Mutex<Capture>>)
     });
     let selection_model = SingleSelection::new(Some(&tree_model));
     let factory = SignalListItemFactory::new();
-    factory.connect_setup(move |_, list_item| {
+    factory.connect_setup(
+        clone!(@weak window => move |_, list_item| {
+            catch_errors("setting up list item", &window, ||
+    {
         let text_label = Label::new(None);
         if RowData::CONNECTORS {
             let expander = ExpanderWrapper::new();
@@ -61,8 +119,12 @@ fn create_view<Item, Model, RowData>(capture: &Arc<Mutex<Capture>>)
             expander.set_child(Some(&text_label));
             list_item.set_child(Some(&expander));
         }
-    });
-    factory.connect_bind(move |_, list_item| {
+    })}));
+    factory.connect_bind(
+        clone!(@weak window => move |_, list_item| {
+            catch_errors("binding list item", &window, ||
+    {
+
         let treelistrow = list_item
             .item()
             .expect("The item has to exist.")
@@ -108,8 +170,11 @@ fn create_view<Item, Model, RowData>(capture: &Arc<Mutex<Capture>>)
 
             tree_expander.set_list_row(Some(&treelistrow));
         }
-    });
-    factory.connect_unbind(move |_, list_item| {
+    })}));
+    factory.connect_unbind(
+        clone!(@weak window => move |_, list_item| {
+            catch_errors("unbinding list item", &window, ||
+    {
         let container = list_item
             .child()
             .expect("The child has to exist");
@@ -131,7 +196,7 @@ fn create_view<Item, Model, RowData>(capture: &Arc<Mutex<Capture>>)
 
             tree_expander.set_list_row(None);
         }
-    });
+    })}));
     ListView::new(Some(&selection_model), Some(&factory))
 }
 
@@ -159,7 +224,7 @@ fn main() {
             .build();
 
         let listview = create_view::
-            <capture::Item, model::Model, row_data::RowData>(&capture);
+            <capture::Item, model::Model, row_data::RowData>(&window, &capture);
 
         let scrolled_window = gtk::ScrolledWindow::builder()
             .hscrollbar_policy(gtk::PolicyType::Automatic) // Disable horizontal scrolling
@@ -171,7 +236,7 @@ fn main() {
 
         let device_tree = create_view::<capture::DeviceItem,
                                         model::DeviceModel,
-                                        row_data::DeviceRowData>(&capture);
+                                        row_data::DeviceRowData>(&window, &capture);
         let device_window = gtk::ScrolledWindow::builder()
             .hscrollbar_policy(gtk::PolicyType::Automatic)
             .min_content_height(480)
