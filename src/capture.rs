@@ -1880,6 +1880,11 @@ mod tests {
         }
         writer.write(summary.as_bytes()).unwrap();
         writer.write(b"\n").unwrap();
+        let num_children = cap.child_count(&item);
+        for child_id in 0..num_children {
+            let child = cap.get_child(&item, child_id);
+            write_item(cap, &child, depth + 1, writer);
+        }
     }
 
     #[test]
