@@ -1312,10 +1312,16 @@ impl Capture {
     }
 
     pub fn get_item(&mut self, parent: &Option<Item>, index: u64) -> Item {
+        match parent {
+            None => Item::Transfer(self.item_index.get(index).unwrap()),
+            Some(item) => self.get_child(item, index)
+        }
+    }
+
+    pub fn get_child(&mut self, parent: &Item, index: u64) -> Item {
         use Item::*;
         match parent {
-            None => Transfer(self.item_index.get(index).unwrap()),
-            Some(Transfer(transfer_index_id)) =>
+            Transfer(transfer_index_id) =>
                 Transaction(*transfer_index_id, {
                     let entry = self.transfer_index.get(*transfer_index_id).unwrap();
                     let endpoint_id = entry.endpoint_id() as usize;
@@ -1324,10 +1330,10 @@ impl Capture {
                     let offset = ep_data.transfer_index.get(transfer_id).unwrap();
                     ep_data.transaction_ids.get(offset + index).unwrap()
                 }),
-            Some(Transaction(transfer_index_id, transaction_id)) =>
+            Transaction(transfer_index_id, transaction_id) =>
                 Packet(*transfer_index_id, *transaction_id, {
                     self.transaction_index.get(*transaction_id).unwrap() + index}),
-            Some(Packet(..)) => panic!("packets do not have children"),
+            Packet(..) => panic!("packets do not have children"),
         }
     }
 
@@ -1354,25 +1360,29 @@ impl Capture {
     }
 
     pub fn item_count(&mut self, parent: &Option<Item>) -> u64 {
-        use Item::*;
         match parent {
             None => self.item_index.len(),
-            Some(item) => match item {
-                Transfer(id) => {
-                    let entry = self.transfer_index.get(*id).unwrap();
-                    if entry.is_start() {
-                        let range = self.item_range(&item);
-                        range.end - range.start
-                    } else {
-                        0
-                    }
-                },
-                Transaction(..) => {
-                    let range = self.item_range(&item);
+            Some(item) => self.child_count(item)
+        }
+    }
+
+    pub fn child_count(&mut self, parent: &Item) -> u64 {
+        use Item::*;
+        match parent {
+            Transfer(id) => {
+                let entry = self.transfer_index.get(*id).unwrap();
+                if entry.is_start() {
+                    let range = self.item_range(parent);
                     range.end - range.start
-                },
-                Packet(..) => 0,
-            }
+                } else {
+                    0
+                }
+            },
+            Transaction(..) => {
+                let range = self.item_range(parent);
+                range.end - range.start
+            },
+            Packet(..) => 0,
         }
     }
 
