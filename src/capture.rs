@@ -1809,6 +1809,8 @@ impl Capture {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs::File;
+    use std::io::{BufReader, BufWriter, BufRead, Write};
 
     #[test]
     fn test_parse_sof() {
@@ -1857,6 +1859,49 @@ mod tests {
             panic!("Expected Data but got {:?}", p);
         }
 
+    }
+
+    #[test]
+    fn test_captures() {
+        let test_dir = "./tests/";
+        for result in std::fs::read_dir(test_dir).unwrap() {
+            let entry = result.unwrap();
+            if entry.file_type().unwrap().is_dir() {
+                let path = entry.path();
+                let mut cap_path = path.clone();
+                let mut ref_path = path.clone();
+                let mut out_path = path.clone();
+                cap_path.push("capture.pcap");
+                ref_path.push("reference.txt");
+                out_path.push("output.txt");
+                {
+                    let mut pcap = pcap::Capture::from_file(cap_path).unwrap();
+                    let mut cap = Capture::new();
+                    while let Ok(packet) = pcap.next() {
+                        cap.handle_raw_packet(&packet);
+                    }
+                    let out_file = File::create(out_path.clone()).unwrap();
+                    let mut out_writer = BufWriter::new(out_file);
+                    let num_items = cap.item_index.len();
+                    for item_id in 0 .. num_items {
+                        let item = cap.get_item(&None, item_id);
+                        let summary = cap.get_summary(&item);
+                        out_writer.write(summary.as_bytes()).unwrap();
+                        out_writer.write(b"\n").unwrap();
+                    }
+                }
+                let ref_file = File::open(ref_path).unwrap();
+                let out_file = File::open(out_path.clone()).unwrap();
+                let ref_reader = BufReader::new(ref_file);
+                let out_reader = BufReader::new(out_file);
+                let mut out_lines = out_reader.lines();
+                for line in ref_reader.lines() {
+                    let expected = line.unwrap();
+                    let actual = out_lines.next().unwrap().unwrap();
+                    assert!(actual == expected);
+                }
+            }
+        }
     }
 }
 

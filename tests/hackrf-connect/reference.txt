@@ -1,0 +1,12 @@
+6 SOF groups
+Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
+Setting address to 29 for device 0
+Getting device descriptor #0 for device 29, reading 18 bytes
+Getting configuration descriptor #0 for device 29, reading 9 bytes
+Getting configuration descriptor #0 for device 29, reading 32 bytes
+Getting string descriptor #0 for device 29, reading 4 of 255 requested bytes
+Getting string descriptor #2, language 0x0409 for device 29, reading 22 of 255 requested bytes: 'HackRF One'
+Getting string descriptor #1, language 0x0409 for device 29, reading 40 of 255 requested bytes: 'Great Scott Gadgets'
+Getting string descriptor #4, language 0x0409 for device 29, reading 66 of 255 requested bytes: '0000000000000000325866e6215c4023'
+Setting configuration 1 for device 29
+Getting string descriptor #3, language 0x0409 for device 29, reading 24 of 255 requested bytes: 'Transceiver'
