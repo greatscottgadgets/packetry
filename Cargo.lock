@@ -74,12 +74,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "byteorder"
-version = "1.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14c189c53d098945499cdfa7ecc63567cf3886b3332b312a5b4585d8d3a6a610"
-
-[[package]]
 name = "cairo-rs"
 version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -589,7 +583,6 @@ dependencies = [
  "pcap",
  "tempfile",
  "thiserror",
- "utf16string",
 ]
 
 [[package]]
@@ -868,15 +861,6 @@ name = "unicode-xid"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ccb82d61f80a663efe1f787a51b16b5a51e3314d6ac365b08639f52387b33f3"
-
-[[package]]
-name = "utf16string"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b62a1e85e12d5d712bf47a85f426b73d303e2d00a90de5f3004df3596e9d216"
-dependencies = [
- "byteorder",
-]
 
 [[package]]
 name = "version-compare"

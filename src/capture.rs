@@ -1,12 +1,13 @@
 use std::ops::Range;
+use std::mem::size_of;
 
 use crate::file_vec::FileVec;
 use crate::hybrid_index::HybridIndex;
 use bytemuck_derive::{Pod, Zeroable};
+use bytemuck::pod_read_unaligned;
 use num_enum::{IntoPrimitive, FromPrimitive};
 use num_format::{Locale, ToFormattedString};
 use humansize::{FileSize, file_size_opts as options};
-use utf16string::WString;
 
 #[derive(Copy, Clone, Debug, IntoPrimitive, FromPrimitive, PartialEq)]
 #[repr(u8)]
@@ -48,6 +49,21 @@ pub enum Item {
     Transfer(u64),
     Transaction(u64, u64),
     Packet(u64, u64, u64),
+}
+
+#[derive(Clone)]
+pub enum DeviceItem {
+    Device(u64),
+    DeviceDescriptor(u64),
+    DeviceDescriptorField(u64, u8),
+    Configuration(u64, u8),
+    ConfigurationDescriptor(u64, u8),
+    ConfigurationDescriptorField(u64, u8, u8),
+    Interface(u64, u8, u8),
+    InterfaceDescriptor(u64, u8, u8),
+    InterfaceDescriptorField(u64, u8, u8, u8),
+    EndpointDescriptor(u64, u8, u8, u8),
+    EndpointDescriptorField(u64, u8, u8, u8, u8),
 }
 
 bitfield! {
@@ -227,7 +243,7 @@ impl StandardRequest {
     }
 }
 
-#[derive(Copy, Clone, Debug, FromPrimitive)]
+#[derive(Copy, Clone, Debug, FromPrimitive, PartialEq)]
 #[repr(u8)]
 pub enum DescriptorType {
     Device = 1,
@@ -284,9 +300,17 @@ impl StandardFeature {
 
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
 #[repr(C)]
-pub struct Endpoint {
-    pub device_address: u8,
-    pub endpoint_number: u8,
+pub struct Device {
+    pub address: u8,
+}
+
+bitfield! {
+    #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
+    #[repr(C)]
+    pub struct Endpoint(u64);
+    u64, device_id, set_device_id: 51, 0;
+    u8, device_address, set_device_address: 58, 52;
+    u8, number, set_number: 63, 59;
 }
 
 bitfield! {
@@ -307,13 +331,15 @@ impl TransferIndexEntry {
     }
 }
 
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Default)]
 struct TransactionState {
     first: PID,
     last: PID,
     start: u64,
     count: u64,
     endpoint_id: usize,
+    setup: Option<SetupFields>,
+    payload: Vec<u8>,
 }
 
 #[derive(Copy, Clone, IntoPrimitive, FromPrimitive, PartialEq)]
@@ -326,62 +352,272 @@ enum EndpointState {
     Ending = 3,
 }
 
-#[derive(FromPrimitive)]
+#[derive(Copy, Clone, Debug, FromPrimitive)]
 #[repr(u8)]
 enum EndpointType {
-    Control = 0,
+    Control       = 0x00,
+    Isochronous   = 0x01,
+    Bulk          = 0x02,
+    Interrupt     = 0x03,
     #[default]
-    Normal,
-    Framing = 0xFE,
-    Invalid = 0xFF,
+    Unidentified  = 0x04,
+    Framing       = 0x10,
+    Invalid       = 0x11,
 }
 
 struct EndpointData {
-    ep_type: EndpointType,
+    device_id: usize,
+    number: usize,
     transaction_ids: HybridIndex,
     transfer_index: HybridIndex,
     transaction_start: u64,
     transaction_count: u64,
     last: PID,
+    setup: Option<SetupFields>,
+    payload: Vec<u8>,
 }
 
-impl EndpointData {
-    fn status(&self, next: PID) -> DecodeStatus {
-        use PID::*;
+#[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
+#[repr(C)]
+struct DeviceDescriptor {
+    length: u8,
+    descriptor_type: u8,
+    usb: u16,
+    device_class: u8,
+    device_subclass: u8,
+    device_protocol: u8,
+    max_packet_size_0: u8,
+    vendor_id: u16,
+    product_id: u16,
+    device_version: u16,
+    manufacturer_str_id: u8,
+    product_str_id: u8,
+    serial_str_id: u8,
+    num_configurations: u8
+}
+
+impl DeviceDescriptor {
+    fn from_bytes(bytes: &[u8]) -> Self {
+        pod_read_unaligned::<DeviceDescriptor>(bytes)
+    }
+
+    fn field_text(&self, id: u8, strings: &Vec<Option<Vec<u8>>>) -> String {
+        match id {
+        0  => format!("Length: {} bytes", self.length),
+        1  => format!("Type: 0x{:02X}", self.descriptor_type),
+        2  => format!("USB Version: {:X}.{:02X}",
+                      self.usb >> 8, self.usb & 0xFF),
+        3  => format!("Class: 0x{:02X}", self.device_class),
+        4  => format!("Subclass: 0x{:02X}", self.device_subclass),
+        5  => format!("Protocol: 0x{:02X}", self.device_protocol),
+        6  => format!("Max EP0 packet size: {} bytes", self.max_packet_size_0),
+        7  => format!("Vendor ID: 0x{:04X}", self.vendor_id),
+        8  => format!("Product ID: 0x{:04X}", self.product_id),
+        9  => format!("Version: {:X}.{:02X}",
+                      self.device_version >> 8, self.device_version & 0xFF),
+        10 => format!("Manufacturer string: {}",
+                      fmt_str_id(strings, self.manufacturer_str_id)),
+        11 => format!("Product string: {}",
+                      fmt_str_id(strings, self.product_str_id)),
+        12 => format!("Serial string: {}",
+                      fmt_str_id(strings, self.serial_str_id)),
+        _ => panic!("Invalid field ID")
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
+#[repr(C, packed)]
+struct ConfigDescriptor {
+    length: u8,
+    descriptor_type: u8,
+    total_length: u16,
+    num_interfaces: u8,
+    config_value: u8,
+    config_str_id: u8,
+    attributes: u8,
+    max_power: u8
+}
+
+impl ConfigDescriptor {
+    fn field_text(&self, id: u8, strings: &Vec<Option<Vec<u8>>>) -> String {
+        match id {
+        0 => format!("Length: {} bytes", self.length),
+        1 => format!("Type: 0x{:02X}", self.descriptor_type),
+        2 => format!("Total length: {} bytes", {
+            let length: u16 = self.total_length; length }),
+        3 => format!("Number of interfaces: {}", self.num_interfaces),
+        4 => format!("Configuration number: {}", self.config_value),
+        5 => format!("Configuration string: {}",
+                      fmt_str_id(strings, self.config_str_id)),
+        6 => format!("Attributes: 0x{:02X}", self.attributes),
+        7 => format!("Max power: {}mA", self.max_power as u16 * 2),
+        _ => panic!("Invalid field ID")
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
+#[repr(C, packed)]
+struct InterfaceDescriptor {
+    length: u8,
+    descriptor_type: u8,
+    interface_number: u8,
+    alternate_setting: u8,
+    num_endpoints: u8,
+    interface_class: u8,
+    interface_subclass: u8,
+    interface_protocol: u8,
+    interface_str_id: u8,
+}
+
+impl InterfaceDescriptor {
+    fn field_text(&self, id: u8, strings: &Vec<Option<Vec<u8>>>) -> String {
+        match id {
+        0 => format!("Length: {} bytes", self.length),
+        1 => format!("Type: 0x{:02X}", self.descriptor_type),
+        2 => format!("Interface number: {}", self.interface_number),
+        3 => format!("Alternate setting: {}", self.alternate_setting),
+        4 => format!("Number of endpoints: {}", self.num_endpoints),
+        5 => format!("Class: 0x{:02X}", self.interface_class),
+        6 => format!("Subclass: 0x{:02X}", self.interface_subclass),
+        7 => format!("Protocol: 0x{:02X}", self.interface_protocol),
+        8 => format!("Interface string: {}",
+                      fmt_str_id(strings, self.interface_str_id)),
+        _ => panic!("Invalid field ID")
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
+#[repr(C, packed)]
+struct EndpointDescriptor {
+    length: u8,
+    descriptor_type: u8,
+    endpoint_address: u8,
+    attributes: u8,
+    max_packet_size: u16,
+    interval: u8,
+}
+
+impl EndpointDescriptor {
+    fn field_text(&self, id: u8) -> String {
+        match id {
+        0 => format!("Length: {} bytes", self.length),
+        1 => format!("Type: 0x{:02X}", self.descriptor_type),
+        2 => format!("Endpoint address: 0x{:02X}", self.endpoint_address),
+        3 => format!("Attributes: 0x{:02X}", self.attributes),
+        4 => format!("Max packet size: {} bytes", {
+            let size: u16 = self.max_packet_size; size }),
+        5 => format!("Interval: 0x{:02X}", self.interval),
+        _ => panic!("Invalid field ID")
+        }
+    }
+}
+
+struct Configuration {
+    descriptor: ConfigDescriptor,
+    interfaces: Vec<Interface>,
+}
+
+struct Interface {
+    descriptor: InterfaceDescriptor,
+    endpoint_descriptors: Vec<EndpointDescriptor>
+}
+
+impl Configuration {
+    fn from_bytes(bytes: &[u8]) -> Option<Self> {
+        let config_size = size_of::<ConfigDescriptor>();
+        let iface_size = size_of::<InterfaceDescriptor>();
+        let ep_size = size_of::<EndpointDescriptor>();
+        if bytes.len() < config_size {
+            return None;
+        }
+        let config_bytes = &bytes[0 .. config_size];
+        let config_desc =
+            pod_read_unaligned::<ConfigDescriptor>(config_bytes);
+        if config_desc.descriptor_type != DescriptorType::Configuration as u8 {
+            return None;
+        }
+        let mut config = Configuration {
+            descriptor: config_desc,
+            interfaces:
+                Vec::with_capacity(config_desc.num_interfaces as usize),
+        };
+        let mut offset = config_size;
+        for _ in 0 .. config.descriptor.num_interfaces {
+            if offset + iface_size > bytes.len() {
+                break;
+            }
+            let iface_bytes = &bytes[offset .. offset + iface_size];
+            let iface_desc =
+                pod_read_unaligned::<InterfaceDescriptor>(iface_bytes);
+            offset += iface_size;
+            if iface_desc.descriptor_type != DescriptorType::Interface as u8{
+                break;
+            }
+            let mut iface = Interface {
+                descriptor: iface_desc,
+                endpoint_descriptors:
+                    Vec::with_capacity(iface_desc.num_endpoints as usize),
+            };
+            while iface.endpoint_descriptors.len() <
+                iface.descriptor.num_endpoints as usize
+            {
+                if offset + ep_size > bytes.len() {
+                    break;
+                }
+                let ep_bytes = &bytes[offset .. offset + ep_size];
+                let ep_desc =
+                    pod_read_unaligned::<EndpointDescriptor>(ep_bytes);
+                offset += ep_desc.length as usize;
+                if ep_desc.descriptor_type != DescriptorType::Endpoint as u8 {
+                    // Could be HID or other class descriptor; skip over it.
+                    continue;
+                }
+                iface.endpoint_descriptors.push(ep_desc);
+            };
+            config.interfaces.push(iface);
+        };
+        Some(config)
+    }
+}
+
+struct DeviceData {
+    device_descriptor: Option<DeviceDescriptor>,
+    configurations: Vec<Option<Configuration>>,
+    configuration_id: Option<usize>,
+    endpoint_types: Vec<EndpointType>,
+    strings: Vec<Option<Vec<u8>>>,
+}
+
+impl DeviceData {
+    fn endpoint_type(&self, number: usize) -> EndpointType {
         use EndpointType::*;
-        match (&self.ep_type, self.last, next) {
+        match number {
+            0 => Control,
+            0x10 => Framing,
+            0x11 => Invalid,
+            _ => self.endpoint_types[number],
+        }
+    }
 
-            // A SETUP transaction starts a new control transfer.
-            (Control, _, SETUP) => DecodeStatus::NEW,
-
-            // SETUP may be followed by IN or OUT at data stage.
-            (Control, SETUP, IN | OUT) => DecodeStatus::CONTINUE,
-
-            // IN or OUT may then be repeated during data stage.
-            (Control, IN, IN) => DecodeStatus::CONTINUE,
-            (Control, OUT, OUT) => DecodeStatus::CONTINUE,
-
-            // The opposite direction at status stage ends the transfer.
-            (Control, IN, OUT) => DecodeStatus::DONE,
-            (Control, OUT, IN) => DecodeStatus::DONE,
-
-            // An IN or OUT transaction on a non-control endpoint,
-            // with no transfer in progress, starts a bulk transfer.
-            (Normal, Malformed, IN | OUT) => DecodeStatus::NEW,
-
-            // IN or OUT may then be repeated.
-            (Normal, IN, IN) => DecodeStatus::CONTINUE,
-            (Normal, OUT, OUT) => DecodeStatus::CONTINUE,
-
-            // A SOF group starts a special transfer, unless
-            // one is already in progress.
-            (Framing, Malformed, SOF) => DecodeStatus::NEW,
-
-            // Further SOF groups continue this transfer.
-            (Framing, SOF, SOF) => DecodeStatus::CONTINUE,
-
-            // Any other case is not a valid part of a transfer.
-            _ => DecodeStatus::INVALID
+    fn update_endpoint_types(&mut self) {
+        match self.configuration_id {
+            Some(id) => match &self.configurations[id] {
+                Some(config) => {
+                    for iface in &config.interfaces {
+                        for ep_desc in &iface.endpoint_descriptors {
+                            let number = ep_desc.endpoint_address & 0x0F;
+                            let index = number as usize;
+                            self.endpoint_types[index] =
+                                EndpointType::from(ep_desc.attributes & 0x03);
+                        }
+                    }
+                },
+                None => {},
+            },
+            None => {},
         }
     }
 }
@@ -395,6 +631,9 @@ pub struct Capture {
     packet_data: FileVec<u8>,
     transaction_index: HybridIndex,
     transfer_index: FileVec<TransferIndexEntry>,
+    device_index: [i8; USB_MAX_DEVICES],
+    devices: FileVec<Device>,
+    device_data: Vec<DeviceData>,
     endpoint_index: [[i16; USB_MAX_ENDPOINTS]; USB_MAX_DEVICES],
     endpoints: FileVec<Endpoint>,
     endpoint_data: Vec<EndpointData>,
@@ -490,11 +729,7 @@ impl ControlTransfer {
                 self.fields.index != 0 =>
             {
                 parts.push(
-                    match WString::from_utf16le(self.data[2..size].to_vec()) {
-                        Ok(utf16) => format!(": '{}'", utf16.to_utf8()),
-                        Err(_) => format!(": Invalid UTF-16 string")
-                    }
-                );
+                    format!(": {}", fmt_utf16(&self.data[2..size])));
             },
             (..) => {}
         };
@@ -511,7 +746,8 @@ enum DecodeStatus {
 }
 
 impl TransactionState {
-    pub fn status(&self, next: PID) -> DecodeStatus {
+    pub fn status(&mut self, packet: &[u8]) -> DecodeStatus {
+        let next = PID::from(packet[0]);
         use PID::*;
         match (self.first, self.last, next) {
 
@@ -524,22 +760,51 @@ impl TransactionState {
             // Additional SOFs extend this "transaction", more may follow.
             (_, SOF, SOF) => DecodeStatus::CONTINUE,
 
-            // SETUP must be followed by DATA0, wait for ACK to follow.
-            (_, SETUP, DATA0) => DecodeStatus::CONTINUE,
+            // SETUP must be followed by DATA0.
+            (_, SETUP, DATA0) => {
+                // The packet must have the correct size.
+                match packet.len() {
+                    11 => {
+                        self.setup = Some(
+                            SetupFields::from_data_packet(packet));
+                        // Wait for ACK.
+                        DecodeStatus::CONTINUE
+                    },
+                    _ => DecodeStatus::INVALID
+                }
+            }
             // ACK then completes the transaction.
             (SETUP, DATA0, ACK) => DecodeStatus::DONE,
 
             // IN may be followed by NAK or STALL, completing transaction.
             (_, IN, NAK | STALL) => DecodeStatus::DONE,
             // IN or OUT may be followed by DATA0 or DATA1, wait for status.
-            (_, IN | OUT, DATA0 | DATA1) => DecodeStatus::CONTINUE,
-            // An ACK then completes the transaction.
-            (IN | OUT, DATA0 | DATA1, ACK) => DecodeStatus::DONE,
+            (_, IN | OUT, DATA0 | DATA1) => {
+                if packet.len() >= 3 {
+                    let range = 1 .. (packet.len() - 2);
+                    self.payload = packet[range].to_vec();
+                    DecodeStatus::CONTINUE
+                } else {
+                    DecodeStatus::INVALID
+                }
+            },
+            // An ACK or NYET then completes the transaction.
+            (IN | OUT, DATA0 | DATA1, ACK | NYET) => DecodeStatus::DONE,
             // OUT may also be completed by NAK or STALL.
             (OUT, DATA0 | DATA1, NAK | STALL) => DecodeStatus::DONE,
 
             // Any other case is not a valid part of a transaction.
             _ => DecodeStatus::INVALID,
+        }
+    }
+
+    fn completed(&self) -> bool {
+        use PID::*;
+        // A transaction is completed if it has 3 valid packets and is
+        // acknowledged with an ACK or NYET handshake.
+        match (self.count, self.last) {
+            (3, ACK | NYET) => true,
+            (..)            => false
         }
     }
 }
@@ -581,6 +846,30 @@ pub fn fmt_index(idx: &HybridIndex) -> String {
             fmt_size(idx.size()))
 }
 
+fn fmt_str_id(strings: &Vec<Option<Vec<u8>>>, id: u8) -> String {
+    match id {
+        0 => "(none)".to_string(),
+        _ => match &strings[id as usize] {
+            Some(bytes) => format!("#{} {}", id, fmt_utf16(bytes)),
+            None => format!("#{} (not seen)", id)
+        }
+    }
+}
+
+fn fmt_utf16(bytes: &[u8]) -> String {
+        let chars: Vec<u16> =
+            bytes.chunks_exact(2)
+                 .into_iter()
+                 .map(|a| u16::from_le_bytes([a[0], a[1]]))
+                 .collect();
+        match String::from_utf16(&chars) {
+            Ok(string) => format!("'{}'", string),
+            Err(_) => format!(
+                "invalid UTF16, partial decode: '{}'",
+                String::from_utf16_lossy(&chars))
+        }
+}
+
 impl Capture {
     pub fn new() -> Self {
         let mut capture = Capture {
@@ -589,6 +878,9 @@ impl Capture {
             packet_data: FileVec::new().unwrap(),
             transaction_index: HybridIndex::new(1).unwrap(),
             transfer_index: FileVec::new().unwrap(),
+            device_index: [-1; USB_MAX_DEVICES],
+            devices: FileVec::new().unwrap(),
+            device_data: Vec::new(),
             endpoints: FileVec::new().unwrap(),
             endpoint_data: Vec::new(),
             endpoint_index: [[-1; USB_MAX_ENDPOINTS]; USB_MAX_DEVICES],
@@ -658,7 +950,7 @@ impl Capture {
 
     fn transaction_update(&mut self, packet: &[u8]) {
         let pid = PID::from(packet[0]);
-        match self.transaction_state.status(pid) {
+        match self.transaction_state.status(packet) {
             DecodeStatus::NEW => {
                 self.transaction_end();
                 self.transaction_start(packet);
@@ -717,6 +1009,7 @@ impl Capture {
         state.count = 0;
         state.first = PID::Malformed;
         state.last = PID::Malformed;
+        state.setup = None;
     }
 
     fn add_transaction(&mut self) {
@@ -726,34 +1019,204 @@ impl Capture {
     }
 
     fn add_endpoint(&mut self, addr: usize, num: usize) {
+        if self.device_index[addr] == -1 {
+            self.device_index[addr] = self.devices.size() as i8;
+            let device = Device { address: addr as u8 };
+            self.devices.push(&device).unwrap();
+            let dev_data = DeviceData {
+                device_descriptor: None,
+                configurations: Vec::new(),
+                configuration_id: None,
+                endpoint_types: vec![
+                    EndpointType::Unidentified; USB_MAX_ENDPOINTS],
+                strings: Vec::new(),
+            };
+            self.device_data.push(dev_data);
+        }
         let ep_data = EndpointData {
-            ep_type: EndpointType::from(num as u8),
+            number: num as usize,
+            device_id: self.device_index[addr] as usize,
             transaction_ids: HybridIndex::new(1).unwrap(),
             transfer_index: HybridIndex::new(1).unwrap(),
             transaction_start: 0,
             transaction_count: 0,
             last: PID::Malformed,
+            setup: None,
+            payload: Vec::new(),
         };
         self.endpoint_data.push(ep_data);
-        let endpoint = Endpoint {
-            device_address: addr as u8,
-            endpoint_number: num as u8,
-        };
+        let mut endpoint = Endpoint::default();
+        endpoint.set_device_id(self.device_index[addr] as u64);
+        endpoint.set_device_address(addr as u8);
+        endpoint.set_number(num as u8);
         self.endpoints.push(&endpoint).unwrap();
         self.last_endpoint_state.push(EndpointState::Idle as u8);
     }
 
-    fn transfer_update(&mut self) {
+    fn decode_request(&mut self) {
+        let endpoint_id = self.transaction_state.endpoint_id;
+        let ep_data = &self.endpoint_data[endpoint_id];
+        let fields = ep_data.setup.as_ref().unwrap();
+        let req_type = fields.type_fields.request_type();
+        let request = StandardRequest::from(fields.request);
+        match (req_type, request) {
+            (RequestType::Standard, StandardRequest::GetDescriptor)
+                => self.decode_descriptor_read(),
+            (RequestType::Standard, StandardRequest::SetConfiguration)
+                => self.decode_configuration_set(),
+            (..) => {}
+        }
+    }
+
+    fn decode_descriptor_read(&mut self) {
         let endpoint_id = self.transaction_state.endpoint_id;
         let ep_data = &mut self.endpoint_data[endpoint_id];
-        let status = ep_data.status(self.transaction_state.first);
-        let completed =
-            self.transaction_state.count == 3 &&
-            self.transaction_state.last == PID::ACK;
+        let fields = ep_data.setup.as_ref().unwrap();
+        let recipient = fields.type_fields.recipient();
+        let desc_type = DescriptorType::from((fields.value >> 8) as u8);
+        let payload = &ep_data.payload;
+        let length = payload.len();
+        match (recipient, desc_type) {
+            (Recipient::Device, DescriptorType::Device) => {
+                if length == size_of::<DeviceDescriptor>() {
+                    let device_id = ep_data.device_id;
+                    let dev_data = &mut self.device_data[device_id];
+                    dev_data.device_descriptor =
+                        Some(DeviceDescriptor::from_bytes(payload));
+                }
+            },
+            (Recipient::Device, DescriptorType::Configuration) => {
+                let size = size_of::<ConfigDescriptor>();
+                if length >= size {
+                    let device_id = ep_data.device_id;
+                    let dev_data = &mut self.device_data[device_id];
+                    let configurations = &mut dev_data.configurations;
+                    let configuration = Configuration::from_bytes(&payload);
+                    if let Some(config) = configuration {
+                        let config_id =
+                            config.descriptor.config_value as usize;
+                        while configurations.len() <= config_id {
+                            configurations.push(None);
+                        }
+                        configurations[config_id] = Some(config);
+                        dev_data.update_endpoint_types();
+                    }
+                }
+            },
+            (Recipient::Device, DescriptorType::String) => {
+                if length >= 2 {
+                    let device_id = ep_data.device_id;
+                    let strings = &mut self.device_data[device_id].strings;
+                    let string_id = (fields.value & 0xFF) as usize;
+                    while strings.len() <= string_id {
+                        strings.push(None);
+                    }
+                    strings[string_id] = Some(payload[2..length].to_vec());
+                }
+            },
+            _ => {}
+        }
+    }
+
+    fn decode_configuration_set(&mut self) {
+        let endpoint_id = self.transaction_state.endpoint_id;
+        let ep_data = &mut self.endpoint_data[endpoint_id];
+        let device_id = ep_data.device_id;
+        let dev_data = &mut self.device_data[device_id];
+        let fields = ep_data.setup.as_ref().unwrap();
+        let config_id = fields.value as usize;
+        dev_data.configuration_id = Some(config_id);
+        dev_data.update_endpoint_types();
+    }
+
+    fn transfer_status(&mut self) -> DecodeStatus {
+        let next = self.transaction_state.first;
+        let endpoint_id = self.transaction_state.endpoint_id;
+        let ep_data = &mut self.endpoint_data[endpoint_id];
+        let dev_data = &self.device_data[ep_data.device_id];
+        let ep_type = &dev_data.endpoint_type(ep_data.number);
+        use PID::*;
+        use EndpointType::*;
+        use Direction::*;
+        match (ep_type, ep_data.last, next) {
+
+            // A SETUP transaction starts a new control transfer.
+            // Store the setup fields to interpret the request.
+            (Control, _, SETUP) => {
+                ep_data.setup = self.transaction_state.setup.take();
+                DecodeStatus::NEW
+            },
+
+            (Control, _, _) => match &ep_data.setup {
+                // No control transaction is valid unless setup was done.
+                None => DecodeStatus::INVALID,
+                // If setup was done then valid transactions depend on the
+                // contents of the setup data packet.
+                Some(fields) => {
+                    let with_data = fields.length != 0;
+                    let direction = fields.type_fields.direction();
+                    match (direction, with_data, ep_data.last, next) {
+
+                        // If there is data to transfer, setup stage is
+                        // followed by IN/OUT at data stage in the direction
+                        // of the request. IN/OUT may then be repeated.
+                        (In,  true, SETUP, IN ) |
+                        (Out, true, SETUP, OUT) |
+                        (In,  true, IN,    IN ) |
+                        (Out, true, OUT,   OUT) => {
+                            if self.transaction_state.completed() {
+                                ep_data.payload.extend(
+                                    &self.transaction_state.payload);
+                            }
+                            // Await status stage.
+                            DecodeStatus::CONTINUE
+                        },
+
+                        // If there is no data to transfer, setup stage is
+                        // followed by IN/OUT at status stage in the opposite
+                        // direction to the request. If there is data, then
+                        // the status stage follows the data stage.
+                        (In,  false, SETUP, OUT) |
+                        (Out, false, SETUP, IN ) |
+                        (In,  true,  IN,    OUT) |
+                        (Out, true,  OUT,   IN ) => {
+                            self.decode_request();
+                            DecodeStatus::DONE
+                        },
+                        // Any other sequence is invalid.
+                        (..) => DecodeStatus::INVALID
+                    }
+                }
+            },
+
+            // An IN or OUT transaction on a non-control endpoint,
+            // with no transfer in progress, starts a new transfer.
+            (_, Malformed, IN | OUT) => DecodeStatus::NEW,
+
+            // IN or OUT may then be repeated.
+            (_, IN, IN) => DecodeStatus::CONTINUE,
+            (_, OUT, OUT) => DecodeStatus::CONTINUE,
+
+            // A SOF group starts a special transfer, unless
+            // one is already in progress.
+            (Framing, Malformed, SOF) => DecodeStatus::NEW,
+
+            // Further SOF groups continue this transfer.
+            (Framing, SOF, SOF) => DecodeStatus::CONTINUE,
+
+            // Any other case is not a valid part of a transfer.
+            _ => DecodeStatus::INVALID
+        }
+    }
+
+    fn transfer_update(&mut self) {
+        let status = self.transfer_status();
+        let endpoint_id = self.transaction_state.endpoint_id;
+        let ep_data = &mut self.endpoint_data[endpoint_id];
         let retry_needed =
             ep_data.transaction_count > 0 &&
             status != DecodeStatus::INVALID &&
-            !completed;
+            !self.transaction_state.completed();
         if retry_needed {
             self.transfer_append(false);
             return
@@ -814,6 +1277,7 @@ impl Capture {
         let ep_data = &mut self.endpoint_data[endpoint_id];
         ep_data.transaction_count = 0;
         ep_data.last = PID::Malformed;
+        ep_data.payload.clear();
     }
 
     fn add_transfer_entry(&mut self, endpoint_id: usize, start: bool) {
@@ -955,35 +1419,37 @@ impl Capture {
                 let entry = self.transfer_index.get(*transfer_index_id).unwrap();
                 let endpoint_id = entry.endpoint_id();
                 let endpoint = self.endpoints.get(endpoint_id as u64).unwrap();
+                let device_id = endpoint.device_id() as usize;
+                let dev_data = &self.device_data[device_id];
+                let num = endpoint.number() as usize;
+                let ep_type = dev_data.endpoint_type(num);
                 if !entry.is_start() {
-                    let ep_data = &mut self.endpoint_data[endpoint_id as usize];
-                    return format!("End of {}", match ep_data.ep_type {
-                        EndpointType::Invalid => "invalid groups".to_string(),
-                        EndpointType::Framing => "SOF groups".to_string(),
-                        EndpointType::Control => format!(
-                            "control transfer on device {}",
-                            endpoint.device_address),
-                        EndpointType::Normal => format!(
-                            "bulk transfer on endpoint {}.{}",
-                            endpoint.device_address, endpoint.endpoint_number)
-                    });
+                    return match ep_type {
+                        EndpointType::Invalid =>
+                            "End of invalid groups".to_string(),
+                        EndpointType::Framing =>
+                            "End of SOF groups".to_string(),
+                        endpoint_type => format!(
+                            "{:?} transfer ending on endpoint {}.{}",
+                            endpoint_type, endpoint.device_address(), num)
+                    }
                 }
                 let range = self.item_range(&item);
                 let count = range.end - range.start;
-                let ep_data = &mut self.endpoint_data[endpoint_id as usize];
-                match ep_data.ep_type {
+                match ep_type {
                     EndpointType::Invalid => format!(
                         "{} invalid groups", count),
                     EndpointType::Framing => format!(
                         "{} SOF groups", count),
                     EndpointType::Control => {
                         let transfer = self.get_control_transfer(
-                            endpoint.device_address, endpoint_id, range);
+                            endpoint.device_address(), endpoint_id, range);
                         transfer.summary()
                     },
-                    EndpointType::Normal => format!(
-                        "Bulk transfer with {} transactions on endpoint {}.{}",
-                        count, endpoint.device_address, endpoint.endpoint_number)
+                    endpoint_type => format!(
+                        "{:?} transfer with {} transactions on endpoint {}.{}",
+                        endpoint_type, count,
+                        endpoint.device_address(), endpoint.number())
                 }
             }
         }
@@ -1180,6 +1646,162 @@ impl Capture {
             address: address,
             fields: fields,
             data: data,
+        }
+    }
+
+    pub fn get_device_item(&mut self, parent: &Option<DeviceItem>, index: u64)
+        -> DeviceItem
+    {
+        match parent {
+            None => DeviceItem::Device(index + 1),
+            Some(item) => self.device_child(item, index)
+        }
+    }
+
+    fn device_child(&self, item: &DeviceItem, index: u64) -> DeviceItem {
+        use DeviceItem::*;
+        match item {
+            Device(dev) => match index {
+                0 => DeviceDescriptor(*dev),
+                conf => Configuration(*dev, conf as u8),
+            },
+            DeviceDescriptor(dev) =>
+                DeviceDescriptorField(*dev, index as u8),
+            Configuration(dev, conf) => match index {
+                0 => ConfigurationDescriptor(*dev, *conf),
+                n => Interface(*dev, *conf, (n - 1).try_into().unwrap()),
+            },
+            ConfigurationDescriptor(dev, conf) =>
+                ConfigurationDescriptorField(*dev, *conf, index as u8),
+            Interface(dev, conf, iface) => match index {
+                0 => InterfaceDescriptor(*dev, *conf, *iface),
+                n => EndpointDescriptor(*dev, *conf, *iface,
+                                        (n - 1).try_into().unwrap())
+            },
+            InterfaceDescriptor(dev, conf, iface) =>
+                InterfaceDescriptorField(*dev, *conf, *iface, index as u8),
+            EndpointDescriptor(dev, conf, iface, ep) =>
+                 EndpointDescriptorField(*dev, *conf, *iface,
+                                         *ep, index as u8),
+            _ => panic!("Item does not have children")
+        }
+    }
+
+    pub fn device_item_count(&mut self, parent: &Option<DeviceItem>) -> u64 {
+        match parent {
+            None => (self.device_data.len() - 1) as u64,
+            Some(item) => self.device_child_count(item),
+        }
+    }
+
+    fn device_child_count(&self, item: &DeviceItem) -> u64 {
+        use DeviceItem::*;
+        let data = &self.device_data;
+        (match item {
+            Device(dev) =>
+                data[*dev as usize].configurations.len(),
+            DeviceDescriptor(dev) =>
+                match data[*dev as usize].device_descriptor {
+                    Some(_) => 13,
+                    None => 0,
+                },
+            Configuration(dev, conf) =>
+                match data[*dev as usize]
+                    .configurations[*conf as usize].as_ref()
+                {
+                    Some(conf) => 1 + conf.interfaces.len(),
+                    None => 0
+                },
+            ConfigurationDescriptor(dev, conf) =>
+                match data[*dev as usize]
+                    .configurations[*conf as usize]
+                {
+                    Some(_) => 8,
+                    None => 0
+                },
+            Interface(dev, conf, iface) =>
+                match data[*dev as usize]
+                    .configurations[*conf as usize].as_ref()
+                {
+                    Some(conf) => 1 + conf.interfaces[*iface as usize]
+                        .endpoint_descriptors.len(),
+                    None => 0
+                },
+            InterfaceDescriptor(..) => 9,
+            EndpointDescriptor(..) => 6,
+            _ => 0
+        }) as u64
+    }
+
+    pub fn get_device_summary(&mut self, item: &DeviceItem) -> String {
+        use DeviceItem::*;
+        match item {
+            Device(dev) => {
+                let data = &self.device_data[*dev as usize];
+                let device = self.devices.get(*dev).unwrap();
+                format!("Device {}: {}", device.address,
+                    match data.device_descriptor {
+                        Some(descriptor) => format!(
+                            "{:04X}:{:04X}",
+                            descriptor.vendor_id,
+                            descriptor.product_id
+                        ),
+                        None => format!("Unknown"),
+                    }
+                )
+            },
+            DeviceDescriptor(dev) => {
+                let data = &self.device_data[*dev as usize];
+                match data.device_descriptor {
+                    Some(_) => "Device descriptor",
+                    None => "No device descriptor"
+                }.to_string()
+            },
+            DeviceDescriptorField(dev, field) => {
+                let data = &self.device_data[*dev as usize];
+                let desc = data.device_descriptor.unwrap();
+                desc.field_text(*field, &data.strings)
+            },
+            Configuration(_, conf) => format!(
+                "Configuration {}", conf),
+            ConfigurationDescriptor(..) =>
+                "Configuration descriptor".to_string(),
+            ConfigurationDescriptorField(dev, conf, field) => {
+                let data = &self.device_data[*dev as usize];
+                let config = &data.configurations[*conf as usize];
+                let config = config.as_ref().unwrap();
+                config.descriptor.field_text(*field, &data.strings)
+            },
+            Interface(_, _, iface) => format!(
+                "Interface {}", iface),
+            InterfaceDescriptor(..) =>
+                "Interface descriptor".to_string(),
+            InterfaceDescriptorField(dev, conf, iface, field) => {
+                let data = &self.device_data[*dev as usize];
+                let config = &data.configurations[*conf as usize];
+                let config = config.as_ref().unwrap();
+                let iface = &config.interfaces[*iface as usize];
+                iface.descriptor.field_text(*field, &data.strings)
+            },
+            EndpointDescriptor(dev, conf, iface, ep) => {
+                let data = &self.device_data[*dev as usize];
+                let config = &data.configurations[*conf as usize];
+                let config = config.as_ref().unwrap();
+                let iface = &config.interfaces[*iface as usize];
+                let desc = iface.endpoint_descriptors[*ep as usize];
+                format!("Endpoint {} {}",
+                    desc.endpoint_address & 0x7F,
+                    if desc.endpoint_address & 0x80 != 0 {"IN"} else {"OUT"}
+                )
+            },
+            EndpointDescriptorField(dev, conf, iface, ep, field) => {
+                let data = &self.device_data[*dev as usize];
+                let config = &data.configurations[*conf as usize];
+                let config = config.as_ref().unwrap();
+                let iface = &config.interfaces[*iface as usize];
+                let desc = iface.endpoint_descriptors[*ep as usize];
+                desc.field_text(*field)
+            }
         }
     }
 }
