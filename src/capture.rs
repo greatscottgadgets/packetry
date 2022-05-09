@@ -1861,6 +1861,17 @@ mod tests {
 
     }
 
+    fn write_item(cap: &mut Capture, item: &Item, depth: u8,
+                  writer: &mut dyn Write)
+    {
+        let summary = cap.get_summary(&item);
+        for _ in 0..depth {
+            writer.write(b" ").unwrap();
+        }
+        writer.write(summary.as_bytes()).unwrap();
+        writer.write(b"\n").unwrap();
+    }
+
     #[test]
     fn test_captures() {
         let test_dir = "./tests/";
@@ -1885,9 +1896,7 @@ mod tests {
                     let num_items = cap.item_index.len();
                     for item_id in 0 .. num_items {
                         let item = cap.get_item(&None, item_id);
-                        let summary = cap.get_summary(&item);
-                        out_writer.write(summary.as_bytes()).unwrap();
-                        out_writer.write(b"\n").unwrap();
+                        write_item(&mut cap, &item, 0, &mut out_writer);
                     }
                 }
                 let ref_file = File::open(ref_path).unwrap();
