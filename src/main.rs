@@ -29,6 +29,7 @@ use capture::Capture;
 
 mod file_vec;
 mod hybrid_index;
+mod usb;
 
 fn create_view<Item, Model, RowData>(capture: &Arc<Mutex<Capture>>)
         -> ListView
