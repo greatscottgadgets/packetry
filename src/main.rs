@@ -1,5 +1,6 @@
 #[macro_use]
 extern crate bitfield;
+use thiserror::Error;
 
 mod model;
 pub mod row_data;
@@ -25,7 +26,7 @@ use model::GenericModel;
 use expander::ExpanderWrapper;
 
 mod capture;
-use capture::Capture;
+use capture::{Capture, CaptureError};
 
 mod decoder;
 use decoder::Decoder;
@@ -40,17 +41,17 @@ fn create_view<Item, Model, RowData>(capture: &Arc<Mutex<Capture>>)
         Model: GenericModel<Item> + IsA<ListModel>,
         RowData: GenericRowData<Item> + IsA<Object>
 {
-    let cap = capture.clone();
-    let model = Model::new(cap, None);
-    let cap = capture.clone();
+    let model = Model::new(capture.clone(), None);
+    let cap_arc = capture.clone();
     let tree_model = TreeListModel::new(&model, false, false, move |o| {
-        let row = o.downcast_ref::<RowData>().unwrap();
-        match row.child_count(&mut cap.lock().unwrap()) {
-            0 => None,
-            _ => Some(
-                Model::new(cap.clone(), row.get_item())
-                    .upcast::<ListModel>()
-            )
+        match (cap_arc.lock(), o.downcast_ref::<RowData>()) {
+            (Ok(mut cap), Some(row)) => match row.child_count(&mut cap) {
+                Ok(0) | Err(_) => None,
+                Ok(_) => Some(
+                    Model::new(cap_arc.clone(), row.get_item())
+                          .upcast::<ListModel>())
+            },
+            _ => None
         }
     });
     let selection_model = SingleSelection::new(Some(&tree_model));
@@ -139,15 +140,23 @@ fn create_view<Item, Model, RowData>(capture: &Arc<Mutex<Capture>>)
     ListView::new(Some(&selection_model), Some(&factory))
 }
 
-fn main() {
+#[derive(Error, Debug)]
+pub enum PacketryError {
+    #[error(transparent)]
+    CaptureError(#[from] CaptureError),
+    #[error(transparent)]
+    PcapError(#[from] pcap::Error),
+}
+
+fn run() -> Result<(), PacketryError> {
     let application = gtk::Application::new(
         Some("com.greatscottgadgets.packetry"),
         Default::default(),
     );
 
     let args: Vec<_> = std::env::args().collect();
-    let mut pcap = pcap::Capture::from_file(&args[1]).unwrap();
-    let mut cap = Capture::new();
+    let mut pcap = pcap::Capture::from_file(&args[1])?;
+    let mut cap = Capture::new()?;
     let mut decoder = Decoder::new(&mut cap);
     while let Ok(packet) = pcap.next() {
         decoder.handle_raw_packet(&packet);
@@ -195,4 +204,12 @@ fn main() {
         window.show();
     });
     application.run_with_args::<&str>(&[]);
+    Ok(())
+}
+
+fn main() {
+    match run() {
+        Ok(()) => {},
+        Err(e) => println!("Error: {:?}", e)
+    }
 }

@@ -1,7 +1,7 @@
 use std::ops::Range;
 
-use crate::file_vec::FileVec;
-use crate::hybrid_index::HybridIndex;
+use crate::file_vec::{FileVec, FileVecError};
+use crate::hybrid_index::{HybridIndex, HybridIndexError};
 use crate::usb::{
     PID,
     PacketFields,
@@ -16,6 +16,15 @@ use bytemuck_derive::{Pod, Zeroable};
 use num_enum::{IntoPrimitive, FromPrimitive};
 use num_format::{Locale, ToFormattedString};
 use humansize::{FileSize, file_size_opts as options};
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum CaptureError {
+    #[error(transparent)]
+    FileVecError(#[from] FileVecError),
+    #[error(transparent)]
+    HybridIndexError(#[from] HybridIndexError),
+}
 
 #[derive(Clone)]
 pub enum Item {
@@ -153,12 +162,6 @@ pub struct Capture {
     pub endpoint_state_index: HybridIndex,
 }
 
-impl Default for Capture {
-    fn default() -> Self {
-        Capture::new()
-    }
-}
-
 pub struct Transaction {
     pid: PID,
     packet_id_range: Range<u64>,
@@ -180,18 +183,18 @@ impl Transaction {
 
 fn get_index_range(index: &mut HybridIndex,
                       length: u64,
-                      id: u64) -> Range<u64>
+                      id: u64) -> Result<Range<u64>, CaptureError>
 {
-    if id + 2 > index.len() {
-        let start = index.get(id).unwrap();
+    Ok(if id + 2 > index.len() {
+        let start = index.get(id)?;
         let end = length;
         start..end
     } else {
-        let vec = index.get_range(id..(id + 2)).unwrap();
+        let vec = index.get_range(id..(id + 2))?;
         let start = vec[0];
         let end = vec[1];
         start..end
-    }
+    })
 }
 
 pub fn fmt_count(count: u64) -> String {
@@ -216,20 +219,20 @@ pub fn fmt_index(idx: &HybridIndex) -> String {
 }
 
 impl Capture {
-    pub fn new() -> Self {
-        Capture {
-            item_index: HybridIndex::new(1).unwrap(),
-            packet_index: HybridIndex::new(2).unwrap(),
-            packet_data: FileVec::new().unwrap(),
-            transaction_index: HybridIndex::new(1).unwrap(),
-            transfer_index: FileVec::new().unwrap(),
-            devices: FileVec::new().unwrap(),
+    pub fn new() -> Result<Self, CaptureError> {
+        Ok(Capture {
+            item_index: HybridIndex::new(1)?,
+            packet_index: HybridIndex::new(2)?,
+            packet_data: FileVec::new()?,
+            transaction_index: HybridIndex::new(1)?,
+            transfer_index: FileVec::new()?,
+            devices: FileVec::new()?,
             device_data: Vec::new(),
-            endpoints: FileVec::new().unwrap(),
+            endpoints: FileVec::new()?,
             endpoint_traffic: Vec::new(),
-            endpoint_states: FileVec::new().unwrap(),
-            endpoint_state_index: HybridIndex::new(1).unwrap(),
-        }
+            endpoint_states: FileVec::new()?,
+            endpoint_state_index: HybridIndex::new(1)?,
+        })
     }
 
     pub fn print_storage_summary(&self) {
@@ -279,37 +282,43 @@ impl Capture {
         )
     }
 
-    pub fn get_item(&mut self, parent: &Option<Item>, index: u64) -> Item {
+    pub fn get_item(&mut self, parent: &Option<Item>, index: u64)
+        -> Result<Item, CaptureError>
+    {
         match parent {
-            None => Item::Transfer(self.item_index.get(index).unwrap()),
+            None => Ok(Item::Transfer(self.item_index.get(index)?)),
             Some(item) => self.get_child(item, index)
         }
     }
 
-    pub fn get_child(&mut self, parent: &Item, index: u64) -> Item {
+    pub fn get_child(&mut self, parent: &Item, index: u64)
+        -> Result<Item, CaptureError>
+    {
         use Item::*;
-        match parent {
+        Ok(match parent {
             Transfer(transfer_index_id) =>
                 Transaction(*transfer_index_id, {
-                    let entry = self.transfer_index.get(*transfer_index_id).unwrap();
+                    let entry = self.transfer_index.get(*transfer_index_id)?;
                     let endpoint_id = entry.endpoint_id() as usize;
                     let transfer_id = entry.transfer_id();
                     let ep_traf = &mut self.endpoint_traffic[endpoint_id];
-                    let offset = ep_traf.transfer_index.get(transfer_id).unwrap();
-                    ep_traf.transaction_ids.get(offset + index).unwrap()
+                    let offset = ep_traf.transfer_index.get(transfer_id)?;
+                    ep_traf.transaction_ids.get(offset + index)?
                 }),
             Transaction(transfer_index_id, transaction_id) =>
                 Packet(*transfer_index_id, *transaction_id, {
-                    self.transaction_index.get(*transaction_id).unwrap() + index}),
+                    self.transaction_index.get(*transaction_id)? + index}),
             Packet(..) => panic!("packets do not have children"),
-        }
+        })
     }
 
-    fn item_range(&mut self, item: &Item) -> Range<u64> {
+    fn item_range(&mut self, item: &Item)
+        -> Result<Range<u64>, CaptureError>
+    {
         use Item::*;
         match item {
             Transfer(transfer_index_id) => {
-                let entry = self.transfer_index.get(*transfer_index_id).unwrap();
+                let entry = self.transfer_index.get(*transfer_index_id)?;
                 let endpoint_id = entry.endpoint_id() as usize;
                 let transfer_id = entry.transfer_id();
                 let ep_traf = &mut self.endpoint_traffic[endpoint_id];
@@ -327,38 +336,44 @@ impl Capture {
         }
     }
 
-    pub fn item_count(&mut self, parent: &Option<Item>) -> u64 {
+    pub fn item_count(&mut self, parent: &Option<Item>)
+        -> Result<u64, CaptureError>
+    {
         match parent {
-            None => self.item_index.len(),
+            None => Ok(self.item_index.len()),
             Some(item) => self.child_count(item)
         }
     }
 
-    pub fn child_count(&mut self, parent: &Item) -> u64 {
+    pub fn child_count(&mut self, parent: &Item)
+        -> Result<u64, CaptureError>
+    {
         use Item::*;
-        match parent {
+        Ok(match parent {
             Transfer(id) => {
-                let entry = self.transfer_index.get(*id).unwrap();
+                let entry = self.transfer_index.get(*id)?;
                 if entry.is_start() {
-                    let range = self.item_range(parent);
+                    let range = self.item_range(parent)?;
                     range.end - range.start
                 } else {
                     0
                 }
             },
             Transaction(..) => {
-                let range = self.item_range(parent);
+                let range = self.item_range(parent)?;
                 range.end - range.start
             },
             Packet(..) => 0,
-        }
+        })
     }
 
-    pub fn get_summary(&mut self, item: &Item) -> String {
+    pub fn get_summary(&mut self, item: &Item)
+        -> Result<String, CaptureError>
+    {
         use Item::*;
-        match item {
+        Ok(match item {
             Packet(.., packet_id) => {
-                let packet = self.get_packet(*packet_id);
+                let packet = self.get_packet(*packet_id)?;
                 let pid = PID::from(packet[0]);
                 format!("{} packet{}: {:02X?}",
                     pid,
@@ -381,7 +396,7 @@ impl Capture {
                     packet)
             },
             Transaction(_, transaction_id) => {
-                let transaction = self.get_transaction(transaction_id);
+                let transaction = self.get_transaction(transaction_id)?;
                 let count = transaction.packet_count();
                 match (transaction.pid, transaction.payload_size()) {
                     (PID::SOF, _) => format!(
@@ -394,15 +409,15 @@ impl Capture {
                 }
             },
             Transfer(transfer_index_id) => {
-                let entry = self.transfer_index.get(*transfer_index_id).unwrap();
+                let entry = self.transfer_index.get(*transfer_index_id)?;
                 let endpoint_id = entry.endpoint_id();
-                let endpoint = self.endpoints.get(endpoint_id as u64).unwrap();
+                let endpoint = self.endpoints.get(endpoint_id as u64)?;
                 let device_id = endpoint.device_id() as usize;
                 let dev_data = &self.device_data[device_id];
                 let num = endpoint.number() as usize;
                 let ep_type = dev_data.endpoint_type(num);
                 if !entry.is_start() {
-                    return match ep_type {
+                    return Ok(match ep_type {
                         EndpointType::Invalid =>
                             "End of invalid groups".to_string(),
                         EndpointType::Framing =>
@@ -410,9 +425,9 @@ impl Capture {
                         endpoint_type => format!(
                             "{:?} transfer ending on endpoint {}.{}",
                             endpoint_type, endpoint.device_address(), num)
-                    }
+                    })
                 }
-                let range = self.item_range(&item);
+                let range = self.item_range(&item)?;
                 let count = range.end - range.start;
                 match ep_type {
                     EndpointType::Invalid => format!(
@@ -421,7 +436,7 @@ impl Capture {
                         "{} SOF groups", count),
                     EndpointType::Control => {
                         let transfer = self.get_control_transfer(
-                            endpoint.device_address(), endpoint_id, range);
+                            endpoint.device_address(), endpoint_id, range)?;
                         transfer.summary()
                     },
                     endpoint_type => format!(
@@ -430,10 +445,12 @@ impl Capture {
                         endpoint.device_address(), endpoint.number())
                 }
             }
-        }
+        })
     }
 
-    pub fn get_connectors(&mut self, item: &Item) -> String {
+    pub fn get_connectors(&mut self, item: &Item)
+        -> Result<String, CaptureError>
+    {
         use EndpointState::*;
         use Item::*;
         let endpoint_count = self.endpoints.len() as usize;
@@ -443,25 +460,25 @@ impl Capture {
         let transfer_index_id = match item {
             Transfer(i) | Transaction(i, _) | Packet(i, ..) => i
         };
-        let entry = self.transfer_index.get(*transfer_index_id).unwrap();
+        let entry = self.transfer_index.get(*transfer_index_id)?;
         let endpoint_id = entry.endpoint_id() as usize;
-        let endpoint_state = self.get_endpoint_state(*transfer_index_id);
+        let endpoint_state = self.get_endpoint_state(*transfer_index_id)?;
         let state_length = endpoint_state.len();
-        let extended = self.transfer_extended(endpoint_id, *transfer_index_id);
+        let extended = self.transfer_extended(endpoint_id, *transfer_index_id)?;
         let ep_traf = &mut self.endpoint_traffic[endpoint_id];
         let last_transaction = match item {
             Transaction(_, transaction_id) | Packet(_, transaction_id, _) => {
                 let range = get_index_range(&mut ep_traf.transfer_index,
-                    ep_traf.transaction_ids.len(), entry.transfer_id());
+                    ep_traf.transaction_ids.len(), entry.transfer_id())?;
                 let last_transaction_id =
-                    ep_traf.transaction_ids.get(range.end - 1).unwrap();
+                    ep_traf.transaction_ids.get(range.end - 1)?;
                 *transaction_id == last_transaction_id
             }, _ => false
         };
         let last_packet = match item {
             Packet(_, transaction_id, packet_id) => {
                 let range = get_index_range(&mut self.transaction_index,
-                    self.packet_index.len(), *transaction_id);
+                    self.packet_index.len(), *transaction_id)?;
                 *packet_id == range.end - 1
             }, _ => false
         };
@@ -522,57 +539,68 @@ impl Capture {
                 (Packet(..), true)                   => "    └──",
             }
         );
-        connectors
+        Ok(connectors)
     }
 
-    fn transfer_extended(&mut self, endpoint_id: usize, index: u64) -> bool {
+    fn transfer_extended(&mut self, endpoint_id: usize, index: u64)
+        -> Result<bool, CaptureError>
+    {
         use EndpointState::*;
         let count = self.transfer_index.len();
         if index + 1 >= count {
-            return false;
+            return Ok(false);
         };
-        let state = self.get_endpoint_state(index + 1);
-        if endpoint_id >= state.len() {
+        let state = self.get_endpoint_state(index + 1)?;
+        Ok(if endpoint_id >= state.len() {
             false
         } else {
             match EndpointState::from(state[endpoint_id]) {
                 Ongoing => true,
                 _ => false,
             }
-        }
+        })
     }
 
-    fn get_endpoint_state(&mut self, index: u64) -> Vec<u8> {
+    fn get_endpoint_state(&mut self, index: u64)
+        -> Result<Vec<u8>, CaptureError>
+    {
         let range = get_index_range(
             &mut self.endpoint_state_index,
-            self.endpoint_states.len(), index);
-        self.endpoint_states.get_range(range).unwrap()
+            self.endpoint_states.len(), index)?;
+        Ok(self.endpoint_states.get_range(range)?)
     }
 
-    fn get_packet(&mut self, index: u64) -> Vec<u8> {
+    fn get_packet(&mut self, index: u64)
+        -> Result<Vec<u8>, CaptureError>
+    {
         let range = get_index_range(&mut self.packet_index,
-                                    self.packet_data.len(), index);
-        self.packet_data.get_range(range).unwrap()
+                                    self.packet_data.len(), index)?;
+        Ok(self.packet_data.get_range(range)?)
     }
 
-    fn get_packet_pid(&mut self, index: u64) -> PID {
-        let offset = self.packet_index.get(index).unwrap();
-        PID::from(self.packet_data.get(offset).unwrap())
+    fn get_packet_pid(&mut self, index: u64)
+        -> Result<PID, CaptureError>
+    {
+        let offset = self.packet_index.get(index)?;
+        Ok(PID::from(self.packet_data.get(offset)?))
     }
 
-    fn get_transaction(&mut self, index: &u64) -> Transaction {
+    fn get_transaction(&mut self, index: &u64)
+        -> Result<Transaction, CaptureError>
+    {
         let packet_id_range = get_index_range(&mut self.transaction_index,
-                                              self.packet_index.len(), *index);
+                                              self.packet_index.len(),
+                                              *index)?;
         let packet_count = packet_id_range.end - packet_id_range.start;
-        let pid = self.get_packet_pid(packet_id_range.start);
+        let pid = self.get_packet_pid(packet_id_range.start)?;
         use PID::*;
         let payload_byte_range = match pid {
             IN | OUT if packet_count >= 2 => {
                 let data_packet_id = packet_id_range.start + 1;
                 let packet_byte_range = get_index_range(
                     &mut self.packet_index,
-                    self.packet_data.len(), data_packet_id);
-                let pid = self.packet_data.get(packet_byte_range.start).unwrap();
+                    self.packet_data.len(), data_packet_id)?;
+                let pid = self.packet_data.get(packet_byte_range.start)?;
                 match PID::from(pid) {
                     DATA0 | DATA1 => Some({
                         packet_byte_range.start + 1 .. packet_byte_range.end - 2
@@ -582,32 +610,32 @@ impl Capture {
             },
             _ => None
         };
-        Transaction {
+        Ok(Transaction {
             pid: pid,
             packet_id_range: packet_id_range,
             payload_byte_range: payload_byte_range,
-        }
+        })
     }
 
     fn get_control_transfer(&mut self,
                             address: u8,
                             endpoint_id: u16,
-                            range: Range<u64>) -> ControlTransfer
+                            range: Range<u64>)
+        -> Result<ControlTransfer, CaptureError>
     {
         let ep_traf = &mut self.endpoint_traffic[endpoint_id as usize];
         let transaction_ids =
-            ep_traf.transaction_ids.get_range(range).unwrap();
+            ep_traf.transaction_ids.get_range(range)?;
         let setup_transaction_id = transaction_ids[0];
         let setup_packet_id =
-            self.transaction_index.get(setup_transaction_id)
-                                  .unwrap();
+            self.transaction_index.get(setup_transaction_id)?;
         let data_packet_id = setup_packet_id + 1;
-        let data_packet = self.get_packet(data_packet_id);
+        let data_packet = self.get_packet(data_packet_id)?;
         let fields = SetupFields::from_data_packet(&data_packet);
         let direction = fields.type_fields.direction();
         let mut data: Vec<u8> = Vec::new();
         for id in transaction_ids {
-            let transaction = self.get_transaction(&id);
+            let transaction = self.get_transaction(&id)?;
             match (direction,
                    transaction.pid,
                    transaction.payload_byte_range)
@@ -615,30 +643,32 @@ impl Capture {
                 (Direction::In,  PID::IN,  Some(range)) |
                 (Direction::Out, PID::OUT, Some(range)) => {
                     data.extend_from_slice(
-                        &self.packet_data.get_range(range).unwrap());
+                        &self.packet_data.get_range(range)?);
                 },
                 (..) => {}
             };
         }
-        ControlTransfer {
+        Ok(ControlTransfer {
             address: address,
             fields: fields,
             data: data,
-        }
+        })
     }
 
     pub fn get_device_item(&mut self, parent: &Option<DeviceItem>, index: u64)
-        -> DeviceItem
+        -> Result<DeviceItem, CaptureError>
     {
         match parent {
-            None => DeviceItem::Device(index + 1),
+            None => Ok(DeviceItem::Device(index + 1)),
             Some(item) => self.device_child(item, index)
         }
     }
 
-    fn device_child(&self, item: &DeviceItem, index: u64) -> DeviceItem {
+    fn device_child(&self, item: &DeviceItem, index: u64)
+        -> Result<DeviceItem, CaptureError>
+    {
         use DeviceItem::*;
-        match item {
+        Ok(match item {
             Device(dev) => match index {
                 0 => DeviceDescriptor(*dev),
                 conf => Configuration(*dev, conf as u8),
@@ -662,20 +692,24 @@ impl Capture {
                  EndpointDescriptorField(*dev, *conf, *iface,
                                          *ep, index as u8),
             _ => panic!("Item does not have children")
-        }
+        })
     }
 
-    pub fn device_item_count(&mut self, parent: &Option<DeviceItem>) -> u64 {
-        match parent {
+    pub fn device_item_count(&mut self, parent: &Option<DeviceItem>)
+        -> Result<u64, CaptureError>
+    {
+        Ok(match parent {
             None => (self.device_data.len() - 1) as u64,
-            Some(item) => self.device_child_count(item),
-        }
+            Some(item) => self.device_child_count(item)?,
+        })
     }
 
-    fn device_child_count(&self, item: &DeviceItem) -> u64 {
+    fn device_child_count(&self, item: &DeviceItem)
+        -> Result<u64, CaptureError>
+    {
         use DeviceItem::*;
         let data = &self.device_data;
-        (match item {
+        Ok((match item {
             Device(dev) =>
                 data[*dev as usize].configurations.len(),
             DeviceDescriptor(dev) =>
@@ -708,15 +742,17 @@ impl Capture {
             InterfaceDescriptor(..) => 9,
             EndpointDescriptor(..) => 6,
             _ => 0
-        }) as u64
+        }) as u64)
     }
 
-    pub fn get_device_summary(&mut self, item: &DeviceItem) -> String {
+    pub fn get_device_summary(&mut self, item: &DeviceItem)
+        -> Result<String, CaptureError>
+    {
         use DeviceItem::*;
-        match item {
+        Ok(match item {
             Device(dev) => {
                 let data = &self.device_data[*dev as usize];
-                let device = self.devices.get(*dev).unwrap();
+                let device = self.devices.get(*dev)?;
                 format!("Device {}: {}", device.address,
                     match data.device_descriptor {
                         Some(descriptor) => format!(
@@ -780,7 +816,7 @@ impl Capture {
                 let desc = iface.endpoint_descriptors[*ep as usize];
                 desc.field_text(*field)
             }
-        }
+        })
     }
 }
 
@@ -794,15 +830,15 @@ mod tests {
     fn write_item(cap: &mut Capture, item: &Item, depth: u8,
                   writer: &mut dyn Write)
     {
-        let summary = cap.get_summary(&item);
+        let summary = cap.get_summary(&item).unwrap();
         for _ in 0..depth {
             writer.write(b" ").unwrap();
         }
         writer.write(summary.as_bytes()).unwrap();
         writer.write(b"\n").unwrap();
-        let num_children = cap.child_count(&item);
+        let num_children = cap.child_count(&item).unwrap();
         for child_id in 0..num_children {
-            let child = cap.get_child(&item, child_id);
+            let child = cap.get_child(&item, child_id).unwrap();
             write_item(cap, &child, depth + 1, writer);
         }
     }
@@ -822,7 +858,7 @@ mod tests {
                 out_path.push("output.txt");
                 {
                     let mut pcap = pcap::Capture::from_file(cap_path).unwrap();
-                    let mut cap = Capture::new();
+                    let mut cap = Capture::new().unwrap();
                     let mut decoder = Decoder::new(&mut cap);
                     while let Ok(packet) = pcap.next() {
                         decoder.handle_raw_packet(&packet);
@@ -831,7 +867,7 @@ mod tests {
                     let mut out_writer = BufWriter::new(out_file);
                     let num_items = cap.item_index.len();
                     for item_id in 0 .. num_items {
-                        let item = cap.get_item(&None, item_id);
+                        let item = cap.get_item(&None, item_id).unwrap();
                         write_item(&mut cap, &item, 0, &mut out_writer);
                     }
                 }
