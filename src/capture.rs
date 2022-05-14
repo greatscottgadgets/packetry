@@ -1,4 +1,5 @@
 use std::ops::Range;
+use std::num::TryFromIntError;
 
 use crate::file_vec::{FileVec, FileVecError};
 use crate::hybrid_index::{HybridIndex, HybridIndexError};
@@ -24,6 +25,8 @@ pub enum CaptureError {
     FileVecError(#[from] FileVecError),
     #[error(transparent)]
     HybridIndexError(#[from] HybridIndexError),
+    #[error(transparent)]
+    RangeError(#[from] TryFromIntError),
     #[error("Descriptor missing")]
     DescriptorMissing,
 }
@@ -693,14 +696,14 @@ impl Capture {
                 DeviceDescriptorField(*dev, index as u8),
             Configuration(dev, conf) => match index {
                 0 => ConfigurationDescriptor(*dev, *conf),
-                n => Interface(*dev, *conf, (n - 1).try_into().unwrap()),
+                n => Interface(*dev, *conf, (n - 1).try_into()?),
             },
             ConfigurationDescriptor(dev, conf) =>
                 ConfigurationDescriptorField(*dev, *conf, index as u8),
             Interface(dev, conf, iface) => match index {
                 0 => InterfaceDescriptor(*dev, *conf, *iface),
                 n => EndpointDescriptor(*dev, *conf, *iface,
-                                        (n - 1).try_into().unwrap())
+                                        (n - 1).try_into()?)
             },
             InterfaceDescriptor(dev, conf, iface) =>
                 InterfaceDescriptorField(*dev, *conf, *iface, index as u8),
