@@ -284,25 +284,21 @@ impl<'cap> Decoder<'cap> {
         Ok(())
     }
 
-    fn decode_request(&mut self) {
-        let endpoint_id = self.transaction_state.endpoint_id;
-        let ep_data = &self.endpoint_data[endpoint_id];
-        let fields = ep_data.setup.as_ref().unwrap();
+    fn decode_request(&mut self, fields: SetupFields) {
         let req_type = fields.type_fields.request_type();
         let request = StandardRequest::from(fields.request);
         match (req_type, request) {
             (RequestType::Standard, StandardRequest::GetDescriptor)
-                => self.decode_descriptor_read(),
+                => self.decode_descriptor_read(&fields),
             (RequestType::Standard, StandardRequest::SetConfiguration)
-                => self.decode_configuration_set(),
+                => self.decode_configuration_set(&fields),
             (..) => {}
         }
     }
 
-    fn decode_descriptor_read(&mut self) {
+    fn decode_descriptor_read(&mut self, fields: &SetupFields) {
         let endpoint_id = self.transaction_state.endpoint_id;
         let ep_data = &mut self.endpoint_data[endpoint_id];
-        let fields = ep_data.setup.as_ref().unwrap();
         let recipient = fields.type_fields.recipient();
         let desc_type = DescriptorType::from((fields.value >> 8) as u8);
         let payload = &ep_data.payload;
@@ -350,12 +346,11 @@ impl<'cap> Decoder<'cap> {
         }
     }
 
-    fn decode_configuration_set(&mut self) {
+    fn decode_configuration_set(&mut self, fields: &SetupFields) {
         let endpoint_id = self.transaction_state.endpoint_id;
         let ep_data = &mut self.endpoint_data[endpoint_id];
         let device_id = ep_data.device_id;
         let dev_data = &mut self.capture.device_data[device_id];
-        let fields = ep_data.setup.as_ref().unwrap();
         let config_id = fields.value as usize;
         dev_data.configuration_id = Some(config_id);
         dev_data.update_endpoint_types();
@@ -412,7 +407,8 @@ impl<'cap> Decoder<'cap> {
                         (Out, false, SETUP, IN ) |
                         (In,  true,  IN,    OUT) |
                         (Out, true,  OUT,   IN ) => {
-                            self.decode_request();
+                            let fields_copy = fields.clone();
+                            self.decode_request(fields_copy);
                             DecodeStatus::DONE
                         },
                         // Any other sequence is invalid.

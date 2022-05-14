@@ -131,6 +131,7 @@ impl RequestTypeFields {
     pub fn direction(&self) -> Direction { Direction::from(self._direction()) }
 }
 
+#[derive(Copy, Clone)]
 pub struct SetupFields {
     pub type_fields: RequestTypeFields,
     pub request: u8,
