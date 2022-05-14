@@ -215,7 +215,10 @@ pub fn fmt_count(count: u64) -> String {
 }
 
 pub fn fmt_size(size: u64) -> String {
-    size.file_size(options::BINARY).unwrap()
+    match size.file_size(options::BINARY) {
+        Ok(string) => string,
+        Err(e) => format!("<Error: {}>", e)
+    }
 }
 
 pub fn fmt_vec<T>(vec: &FileVec<T>) -> String
