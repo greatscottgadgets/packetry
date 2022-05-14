@@ -24,7 +24,11 @@ pub enum CaptureError {
     FileVecError(#[from] FileVecError),
     #[error(transparent)]
     HybridIndexError(#[from] HybridIndexError),
+    #[error("Descriptor missing")]
+    DescriptorMissing,
 }
+
+use CaptureError::DescriptorMissing;
 
 #[derive(Clone)]
 pub enum Item {
@@ -118,6 +122,15 @@ pub struct DeviceData {
 }
 
 impl DeviceData {
+    pub fn get_configuration(&self, number: &u8)
+        -> Result<&Configuration, CaptureError>
+    {
+        match &self.configurations[*number as usize] {
+            Some(config) => Ok(config),
+            _ => Err(DescriptorMissing)
+        }
+    }
+
     pub fn endpoint_type(&self, number: usize) -> EndpointType {
         use EndpointType::*;
         match number {
@@ -773,8 +786,10 @@ impl Capture {
             },
             DeviceDescriptorField(dev, field) => {
                 let data = &self.device_data[*dev as usize];
-                let desc = data.device_descriptor.unwrap();
-                desc.field_text(*field, &data.strings)
+                match data.device_descriptor {
+                    Some(desc) => desc.field_text(*field, &data.strings),
+                    None => return Err(DescriptorMissing)
+                }
             },
             Configuration(_, conf) => format!(
                 "Configuration {}", conf),
@@ -782,8 +797,7 @@ impl Capture {
                 "Configuration descriptor".to_string(),
             ConfigurationDescriptorField(dev, conf, field) => {
                 let data = &self.device_data[*dev as usize];
-                let config = &data.configurations[*conf as usize];
-                let config = config.as_ref().unwrap();
+                let config = data.get_configuration(conf)?;
                 config.descriptor.field_text(*field, &data.strings)
             },
             Interface(_, _, iface) => format!(
@@ -792,15 +806,13 @@ impl Capture {
                 "Interface descriptor".to_string(),
             InterfaceDescriptorField(dev, conf, iface, field) => {
                 let data = &self.device_data[*dev as usize];
-                let config = &data.configurations[*conf as usize];
-                let config = config.as_ref().unwrap();
+                let config = data.get_configuration(conf)?;
                 let iface = &config.interfaces[*iface as usize];
                 iface.descriptor.field_text(*field, &data.strings)
             },
             EndpointDescriptor(dev, conf, iface, ep) => {
                 let data = &self.device_data[*dev as usize];
-                let config = &data.configurations[*conf as usize];
-                let config = config.as_ref().unwrap();
+                let config = data.get_configuration(conf)?;
                 let iface = &config.interfaces[*iface as usize];
                 let desc = iface.endpoint_descriptors[*ep as usize];
                 format!("Endpoint {} {}",
@@ -810,8 +822,7 @@ impl Capture {
             },
             EndpointDescriptorField(dev, conf, iface, ep, field) => {
                 let data = &self.device_data[*dev as usize];
-                let config = &data.configurations[*conf as usize];
-                let config = config.as_ref().unwrap();
+                let config = data.get_configuration(conf)?;
                 let iface = &config.interfaces[*iface as usize];
                 let desc = iface.endpoint_descriptors[*ep as usize];
                 desc.field_text(*field)
