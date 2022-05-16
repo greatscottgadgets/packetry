@@ -27,8 +27,12 @@ use expander::ExpanderWrapper;
 mod capture;
 use capture::Capture;
 
+mod decoder;
+use decoder::Decoder;
+
 mod file_vec;
 mod hybrid_index;
+mod usb;
 
 fn create_view<Item, Model, RowData>(capture: &Arc<Mutex<Capture>>)
         -> ListView
@@ -144,8 +148,9 @@ fn main() {
     let args: Vec<_> = std::env::args().collect();
     let mut pcap = pcap::Capture::from_file(&args[1]).unwrap();
     let mut cap = Capture::new();
+    let mut decoder = Decoder::new(&mut cap);
     while let Ok(packet) = pcap.next() {
-        cap.handle_raw_packet(&packet);
+        decoder.handle_raw_packet(&packet);
     }
     cap.print_storage_summary();
     let capture = Arc::new(Mutex::new(cap));
