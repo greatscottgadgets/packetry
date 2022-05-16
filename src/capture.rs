@@ -1312,10 +1312,16 @@ impl Capture {
     }
 
     pub fn get_item(&mut self, parent: &Option<Item>, index: u64) -> Item {
+        match parent {
+            None => Item::Transfer(self.item_index.get(index).unwrap()),
+            Some(item) => self.get_child(item, index)
+        }
+    }
+
+    pub fn get_child(&mut self, parent: &Item, index: u64) -> Item {
         use Item::*;
         match parent {
-            None => Transfer(self.item_index.get(index).unwrap()),
-            Some(Transfer(transfer_index_id)) =>
+            Transfer(transfer_index_id) =>
                 Transaction(*transfer_index_id, {
                     let entry = self.transfer_index.get(*transfer_index_id).unwrap();
                     let endpoint_id = entry.endpoint_id() as usize;
@@ -1324,10 +1330,10 @@ impl Capture {
                     let offset = ep_data.transfer_index.get(transfer_id).unwrap();
                     ep_data.transaction_ids.get(offset + index).unwrap()
                 }),
-            Some(Transaction(transfer_index_id, transaction_id)) =>
+            Transaction(transfer_index_id, transaction_id) =>
                 Packet(*transfer_index_id, *transaction_id, {
                     self.transaction_index.get(*transaction_id).unwrap() + index}),
-            Some(Packet(..)) => panic!("packets do not have children"),
+            Packet(..) => panic!("packets do not have children"),
         }
     }
 
@@ -1354,25 +1360,29 @@ impl Capture {
     }
 
     pub fn item_count(&mut self, parent: &Option<Item>) -> u64 {
-        use Item::*;
         match parent {
             None => self.item_index.len(),
-            Some(item) => match item {
-                Transfer(id) => {
-                    let entry = self.transfer_index.get(*id).unwrap();
-                    if entry.is_start() {
-                        let range = self.item_range(&item);
-                        range.end - range.start
-                    } else {
-                        0
-                    }
-                },
-                Transaction(..) => {
-                    let range = self.item_range(&item);
+            Some(item) => self.child_count(item)
+        }
+    }
+
+    pub fn child_count(&mut self, parent: &Item) -> u64 {
+        use Item::*;
+        match parent {
+            Transfer(id) => {
+                let entry = self.transfer_index.get(*id).unwrap();
+                if entry.is_start() {
+                    let range = self.item_range(parent);
                     range.end - range.start
-                },
-                Packet(..) => 0,
-            }
+                } else {
+                    0
+                }
+            },
+            Transaction(..) => {
+                let range = self.item_range(parent);
+                range.end - range.start
+            },
+            Packet(..) => 0,
         }
     }
 
@@ -1809,6 +1819,8 @@ impl Capture {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs::File;
+    use std::io::{BufReader, BufWriter, BufRead, Write};
 
     #[test]
     fn test_parse_sof() {
@@ -1857,6 +1869,63 @@ mod tests {
             panic!("Expected Data but got {:?}", p);
         }
 
+    }
+
+    fn write_item(cap: &mut Capture, item: &Item, depth: u8,
+                  writer: &mut dyn Write)
+    {
+        let summary = cap.get_summary(&item);
+        for _ in 0..depth {
+            writer.write(b" ").unwrap();
+        }
+        writer.write(summary.as_bytes()).unwrap();
+        writer.write(b"\n").unwrap();
+        let num_children = cap.child_count(&item);
+        for child_id in 0..num_children {
+            let child = cap.get_child(&item, child_id);
+            write_item(cap, &child, depth + 1, writer);
+        }
+    }
+
+    #[test]
+    fn test_captures() {
+        let test_dir = "./tests/";
+        for result in std::fs::read_dir(test_dir).unwrap() {
+            let entry = result.unwrap();
+            if entry.file_type().unwrap().is_dir() {
+                let path = entry.path();
+                let mut cap_path = path.clone();
+                let mut ref_path = path.clone();
+                let mut out_path = path.clone();
+                cap_path.push("capture.pcap");
+                ref_path.push("reference.txt");
+                out_path.push("output.txt");
+                {
+                    let mut pcap = pcap::Capture::from_file(cap_path).unwrap();
+                    let mut cap = Capture::new();
+                    while let Ok(packet) = pcap.next() {
+                        cap.handle_raw_packet(&packet);
+                    }
+                    let out_file = File::create(out_path.clone()).unwrap();
+                    let mut out_writer = BufWriter::new(out_file);
+                    let num_items = cap.item_index.len();
+                    for item_id in 0 .. num_items {
+                        let item = cap.get_item(&None, item_id);
+                        write_item(&mut cap, &item, 0, &mut out_writer);
+                    }
+                }
+                let ref_file = File::open(ref_path).unwrap();
+                let out_file = File::open(out_path.clone()).unwrap();
+                let ref_reader = BufReader::new(ref_file);
+                let out_reader = BufReader::new(out_file);
+                let mut out_lines = out_reader.lines();
+                for line in ref_reader.lines() {
+                    let expected = line.unwrap();
+                    let actual = out_lines.next().unwrap().unwrap();
+                    assert!(actual == expected);
+                }
+            }
+        }
     }
 }
 
