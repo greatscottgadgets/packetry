@@ -120,21 +120,17 @@ impl DeviceData {
     }
 
     pub fn update_endpoint_types(&mut self) {
-        match self.configuration_id {
-            Some(id) => match &self.configurations[id] {
-                Some(config) => {
-                    for iface in &config.interfaces {
-                        for ep_desc in &iface.endpoint_descriptors {
-                            let number = ep_desc.endpoint_address & 0x0F;
-                            let index = number as usize;
-                            self.endpoint_types[index] =
-                                EndpointType::from(ep_desc.attributes & 0x03);
-                        }
+        if let Some(id) = self.configuration_id {
+            if let Some(config) = &self.configurations[id] {
+                for iface in &config.interfaces {
+                    for ep_desc in &iface.endpoint_descriptors {
+                        let number = ep_desc.endpoint_address & 0x0F;
+                        let index = number as usize;
+                        self.endpoint_types[index] =
+                            EndpointType::from(ep_desc.attributes & 0x03);
                     }
-                },
-                None => {},
-            },
-            None => {},
+                }
+            }
         }
     }
 }
@@ -171,10 +167,7 @@ impl Transaction {
     }
 
     fn payload_size(&self) -> Option<u64> {
-        match &self.payload_byte_range {
-            Some(range) => Some(range.end - range.start),
-            None => None
-        }
+        self.payload_byte_range.as_ref().map(|range| range.end - range.start)
     }
 }
 
@@ -412,7 +405,7 @@ impl Capture {
                             endpoint_type, endpoint.device_address(), num)
                     }
                 }
-                let range = self.item_range(&item);
+                let range = self.item_range(item);
                 let count = range.end - range.start;
                 match ep_type {
                     EndpointType::Invalid => format!(
@@ -446,7 +439,6 @@ impl Capture {
         let entry = self.transfer_index.get(*transfer_index_id).unwrap();
         let endpoint_id = entry.endpoint_id() as usize;
         let endpoint_state = self.get_endpoint_state(*transfer_index_id);
-        let state_length = endpoint_state.len();
         let extended = self.transfer_extended(endpoint_id, *transfer_index_id);
         let ep_traf = &mut self.endpoint_traffic[endpoint_id];
         let last_transaction = match item {
@@ -467,8 +459,8 @@ impl Capture {
         };
         let last = last_transaction && !extended;
         let mut thru = false;
-        for i in 0..state_length {
-            let state = EndpointState::from(endpoint_state[i]);
+        for (i, &state) in endpoint_state.iter().enumerate() {
+            let state = EndpointState::from(state);
             let active = state != Idle;
             let on_endpoint = i == endpoint_id;
             thru |= match (item, state, on_endpoint) {
@@ -506,6 +498,7 @@ impl Capture {
                 }
             });
         };
+        let state_length = endpoint_state.len();
         for _ in state_length..endpoint_count {
             connectors.push(match item {
                 Transfer(..)    => '─',
@@ -535,10 +528,7 @@ impl Capture {
         if endpoint_id >= state.len() {
             false
         } else {
-            match EndpointState::from(state[endpoint_id]) {
-                Ongoing => true,
-                _ => false,
-            }
+            matches!(EndpointState::from(state[endpoint_id]), Ongoing)
         }
     }
 
@@ -583,9 +573,9 @@ impl Capture {
             _ => None
         };
         Transaction {
-            pid: pid,
-            packet_id_range: packet_id_range,
-            payload_byte_range: payload_byte_range,
+            pid,
+            packet_id_range,
+            payload_byte_range,
         }
     }
 
@@ -621,9 +611,9 @@ impl Capture {
             };
         }
         ControlTransfer {
-            address: address,
-            fields: fields,
-            data: data,
+            address,
+            fields,
+            data,
         }
     }
 
@@ -724,7 +714,7 @@ impl Capture {
                             descriptor.vendor_id,
                             descriptor.product_id
                         ),
-                        None => format!("Unknown"),
+                        None => "Unknown".to_string(),
                     }
                 )
             },
