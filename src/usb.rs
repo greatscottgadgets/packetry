@@ -4,6 +4,7 @@ use bytemuck_derive::{Pod, Zeroable};
 use bytemuck::pod_read_unaligned;
 use num_enum::{IntoPrimitive, FromPrimitive};
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Copy, Clone, Debug, IntoPrimitive, FromPrimitive, PartialEq)]
 #[repr(u8)]
 pub enum PID {
@@ -59,6 +60,7 @@ pub struct DataFields {
     pub crc: u16,
 }
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Debug)]
 pub enum PacketFields {
     SOF(SOFFields),
@@ -170,6 +172,7 @@ pub enum StandardRequest {
     Unknown = 13,
 }
 
+#[allow(clippy::useless_format)]
 impl StandardRequest {
     pub fn description(&self, fields: &SetupFields) -> String {
         use StandardRequest::*;
@@ -291,12 +294,13 @@ pub struct DeviceDescriptor {
     pub num_configurations: u8
 }
 
+#[allow(clippy::useless_format)]
 impl DeviceDescriptor {
     pub fn from_bytes(bytes: &[u8]) -> Self {
         pod_read_unaligned::<DeviceDescriptor>(bytes)
     }
 
-    pub fn field_text(&self, id: u8, strings: &Vec<Option<Vec<u8>>>) -> String {
+    pub fn field_text(&self, id: u8, strings: &[Option<Vec<u8>>]) -> String {
         match id {
         0  => format!("Length: {} bytes", self.length),
         1  => format!("Type: 0x{:02X}", self.descriptor_type),
@@ -334,8 +338,9 @@ pub struct ConfigDescriptor {
     pub max_power: u8
 }
 
+#[allow(clippy::useless_format)]
 impl ConfigDescriptor {
-    pub fn field_text(&self, id: u8, strings: &Vec<Option<Vec<u8>>>) -> String {
+    pub fn field_text(&self, id: u8, strings: &[Option<Vec<u8>>]) -> String {
         match id {
         0 => format!("Length: {} bytes", self.length),
         1 => format!("Type: 0x{:02X}", self.descriptor_type),
@@ -366,8 +371,9 @@ pub struct InterfaceDescriptor {
     pub interface_str_id: u8,
 }
 
+#[allow(clippy::useless_format)]
 impl InterfaceDescriptor {
-    pub fn field_text(&self, id: u8, strings: &Vec<Option<Vec<u8>>>) -> String {
+    pub fn field_text(&self, id: u8, strings: &[Option<Vec<u8>>]) -> String {
         match id {
         0 => format!("Length: {} bytes", self.length),
         1 => format!("Type: 0x{:02X}", self.descriptor_type),
@@ -395,6 +401,7 @@ pub struct EndpointDescriptor {
     pub interval: u8,
 }
 
+#[allow(clippy::useless_format)]
 impl EndpointDescriptor {
     pub fn field_text(&self, id: u8) -> String {
         match id {
@@ -546,7 +553,7 @@ impl ControlTransfer {
     }
 }
 
-fn fmt_str_id(strings: &Vec<Option<Vec<u8>>>, id: u8) -> String {
+fn fmt_str_id(strings: &[Option<Vec<u8>>], id: u8) -> String {
     match id {
         0 => "(none)".to_string(),
         _ => match &strings[id as usize] {

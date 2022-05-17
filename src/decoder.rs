@@ -32,10 +32,10 @@ use CaptureError::IndexError;
 
 #[derive(PartialEq)]
 enum DecodeStatus {
-    NEW,
-    CONTINUE,
-    DONE,
-    INVALID
+    New,
+    Continue,
+    Done,
+    Invalid
 }
 
 struct EndpointData {
@@ -68,13 +68,13 @@ impl TransactionState {
         Ok(match (self.first, self.last, next) {
 
             // SETUP, IN or OUT always start a new transaction.
-            (_, _, SETUP | IN | OUT) => DecodeStatus::NEW,
+            (_, _, SETUP | IN | OUT) => DecodeStatus::New,
 
             // SOF when there is no existing transaction starts a new
             // "transaction" representing an idle period on the bus.
-            (_, Malformed, SOF) => DecodeStatus::NEW,
+            (_, Malformed, SOF) => DecodeStatus::New,
             // Additional SOFs extend this "transaction", more may follow.
-            (_, SOF, SOF) => DecodeStatus::CONTINUE,
+            (_, SOF, SOF) => DecodeStatus::Continue,
 
             // SETUP must be followed by DATA0.
             (_, SETUP, DATA0) => {
@@ -84,33 +84,33 @@ impl TransactionState {
                         self.setup = Some(
                             SetupFields::from_data_packet(packet));
                         // Wait for ACK.
-                        DecodeStatus::CONTINUE
+                        DecodeStatus::Continue
                     },
-                    _ => DecodeStatus::INVALID
+                    _ => DecodeStatus::Invalid
                 }
             }
             // ACK then completes the transaction.
-            (SETUP, DATA0, ACK) => DecodeStatus::DONE,
+            (SETUP, DATA0, ACK) => DecodeStatus::Done,
 
             // IN may be followed by NAK or STALL, completing transaction.
-            (_, IN, NAK | STALL) => DecodeStatus::DONE,
+            (_, IN, NAK | STALL) => DecodeStatus::Done,
             // IN or OUT may be followed by DATA0 or DATA1, wait for status.
             (_, IN | OUT, DATA0 | DATA1) => {
                 if packet.len() >= 3 {
                     let range = 1 .. (packet.len() - 2);
                     self.payload = packet[range].to_vec();
-                    DecodeStatus::CONTINUE
+                    DecodeStatus::Continue
                 } else {
-                    DecodeStatus::INVALID
+                    DecodeStatus::Invalid
                 }
             },
             // An ACK or NYET then completes the transaction.
-            (IN | OUT, DATA0 | DATA1, ACK | NYET) => DecodeStatus::DONE,
+            (IN | OUT, DATA0 | DATA1, ACK | NYET) => DecodeStatus::Done,
             // OUT may also be completed by NAK or STALL.
-            (OUT, DATA0 | DATA1, NAK | STALL) => DecodeStatus::DONE,
+            (OUT, DATA0 | DATA1, NAK | STALL) => DecodeStatus::Done,
 
             // Any other case is not a valid part of a transaction.
-            _ => DecodeStatus::INVALID,
+            _ => DecodeStatus::Invalid,
         })
     }
 
@@ -141,7 +141,7 @@ pub struct Decoder<'cap> {
 impl<'cap> Decoder<'cap> {
     pub fn new(capture: &'cap mut Capture) -> Result<Self, CaptureError> {
         let mut decoder = Decoder {
-            capture: capture,
+            capture,
             device_index: [None; USB_MAX_DEVICES],
             endpoint_data: Vec::new(),
             endpoint_index: [[None; USB_MAX_ENDPOINTS]; USB_MAX_DEVICES],
@@ -169,18 +169,18 @@ impl<'cap> Decoder<'cap> {
     {
         let pid = PID::from(*packet.get(0).ok_or(IndexError)?);
         match self.transaction_state.status(packet)? {
-            DecodeStatus::NEW => {
+            DecodeStatus::New => {
                 self.transaction_end()?;
                 self.transaction_start(packet)?;
             },
-            DecodeStatus::CONTINUE => {
+            DecodeStatus::Continue => {
                 self.transaction_append(pid);
             },
-            DecodeStatus::DONE => {
+            DecodeStatus::Done => {
                 self.transaction_append(pid);
                 self.transaction_end()?;
             },
-            DecodeStatus::INVALID => {
+            DecodeStatus::Invalid => {
                 self.transaction_end()?;
                 self.transaction_start(packet)?;
                 self.transaction_end()?;
@@ -197,7 +197,7 @@ impl<'cap> Decoder<'cap> {
         state.count = 1;
         state.first = PID::from(*packet.get(0).ok_or(IndexError)?);
         state.last = state.first;
-        match PacketFields::from_packet(&packet) {
+        match PacketFields::from_packet(packet) {
             PacketFields::SOF(_) => {
                 self.transaction_state.endpoint_id = 1;
             },
@@ -302,16 +302,14 @@ impl<'cap> Decoder<'cap> {
         -> Result<&EndpointData, CaptureError>
     {
         let endpoint_id = self.transaction_state.endpoint_id;
-        Ok(self.endpoint_data.get(endpoint_id)
-                             .ok_or(IndexError)?)
+        self.endpoint_data.get(endpoint_id).ok_or(IndexError)
     }
 
     fn current_endpoint_data_mut(&mut self)
         -> Result<&mut EndpointData, CaptureError>
     {
         let endpoint_id = self.transaction_state.endpoint_id;
-        Ok(self.endpoint_data.get_mut(endpoint_id)
-                             .ok_or(IndexError)?)
+        self.endpoint_data.get_mut(endpoint_id).ok_or(IndexError)
     }
 
     fn current_device_data(&self)
@@ -319,7 +317,7 @@ impl<'cap> Decoder<'cap> {
     {
         let ep_data = self.current_endpoint_data()?;
         let device_id = ep_data.device_id as u64;
-        Ok(self.capture.get_device_data(&device_id)?)
+        self.capture.get_device_data(&device_id)
     }
 
     fn current_device_data_mut(&mut self)
@@ -327,7 +325,7 @@ impl<'cap> Decoder<'cap> {
     {
         let ep_data = self.current_endpoint_data()?;
         let device_id = ep_data.device_id as u64;
-        Ok(self.capture.get_device_data_mut(&device_id)?)
+        self.capture.get_device_data_mut(&device_id)
     }
 
     fn decode_request(&mut self, fields: SetupFields)
@@ -335,13 +333,14 @@ impl<'cap> Decoder<'cap> {
     {
         let req_type = fields.type_fields.request_type();
         let request = StandardRequest::from(fields.request);
-        Ok(match (req_type, request) {
+        match (req_type, request) {
             (RequestType::Standard, StandardRequest::GetDescriptor)
                 => self.decode_descriptor_read(&fields)?,
             (RequestType::Standard, StandardRequest::SetConfiguration)
                 => self.decode_configuration_set(&fields)?,
-            (..) => {}
-        })
+            _ => ()
+        }
+        Ok(())
     }
 
     fn decode_descriptor_read(&mut self, fields: &SetupFields)
@@ -351,7 +350,7 @@ impl<'cap> Decoder<'cap> {
         let desc_type = DescriptorType::from((fields.value >> 8) as u8);
         let payload = &self.current_endpoint_data()?.payload;
         let length = payload.len();
-        Ok(match (recipient, desc_type) {
+        match (recipient, desc_type) {
             (Recipient::Device, DescriptorType::Device) => {
                 if length == size_of::<DeviceDescriptor>() {
                     let descriptor = DeviceDescriptor::from_bytes(payload);
@@ -362,10 +361,10 @@ impl<'cap> Decoder<'cap> {
             (Recipient::Device, DescriptorType::Configuration) => {
                 let size = size_of::<ConfigDescriptor>();
                 if length >= size {
-                    let configuration = Configuration::from_bytes(&payload);
+                    let configuration = Configuration::from_bytes(payload);
                     let dev_data = self.current_device_data_mut()?;
-                    let configurations = &mut dev_data.configurations;
                     if let Some(config) = configuration {
+                        let configurations = &mut dev_data.configurations;
                         let config_id =
                             config.descriptor.config_value as usize;
                         while configurations.len() <= config_id {
@@ -389,7 +388,8 @@ impl<'cap> Decoder<'cap> {
                 }
             },
             _ => {}
-        })
+        };
+        Ok(())
     }
 
     fn decode_configuration_set(&mut self, fields: &SetupFields)
@@ -418,12 +418,12 @@ impl<'cap> Decoder<'cap> {
                 let setup = self.transaction_state.setup.take();
                 let ep_data = self.current_endpoint_data_mut()?;
                 ep_data.setup = setup;
-                DecodeStatus::NEW
+                DecodeStatus::New
             },
 
             (Control, _, _) => match &ep_data.setup {
                 // No control transaction is valid unless setup was done.
-                None => DecodeStatus::INVALID,
+                None => DecodeStatus::Invalid,
                 // If setup was done then valid transactions depend on the
                 // contents of the setup data packet.
                 Some(fields) => {
@@ -445,7 +445,7 @@ impl<'cap> Decoder<'cap> {
                                 ep_data.payload.extend(payload);
                             }
                             // Await status stage.
-                            DecodeStatus::CONTINUE
+                            DecodeStatus::Continue
                         },
 
                         // If there is no data to transfer, setup stage is
@@ -456,33 +456,33 @@ impl<'cap> Decoder<'cap> {
                         (Out, false, SETUP, IN ) |
                         (In,  true,  IN,    OUT) |
                         (Out, true,  OUT,   IN ) => {
-                            let fields_copy = fields.clone();
+                            let fields_copy = *fields;
                             self.decode_request(fields_copy)?;
-                            DecodeStatus::DONE
+                            DecodeStatus::Done
                         },
                         // Any other sequence is invalid.
-                        (..) => DecodeStatus::INVALID
+                        (..) => DecodeStatus::Invalid
                     }
                 }
             },
 
             // An IN or OUT transaction on a non-control endpoint,
             // with no transfer in progress, starts a new transfer.
-            (_, Malformed, IN | OUT) => DecodeStatus::NEW,
+            (_, Malformed, IN | OUT) => DecodeStatus::New,
 
             // IN or OUT may then be repeated.
-            (_, IN, IN) => DecodeStatus::CONTINUE,
-            (_, OUT, OUT) => DecodeStatus::CONTINUE,
+            (_, IN, IN) => DecodeStatus::Continue,
+            (_, OUT, OUT) => DecodeStatus::Continue,
 
             // A SOF group starts a special transfer, unless
             // one is already in progress.
-            (Framing, Malformed, SOF) => DecodeStatus::NEW,
+            (Framing, Malformed, SOF) => DecodeStatus::New,
 
             // Further SOF groups continue this transfer.
-            (Framing, SOF, SOF) => DecodeStatus::CONTINUE,
+            (Framing, SOF, SOF) => DecodeStatus::Continue,
 
             // Any other case is not a valid part of a transfer.
-            _ => DecodeStatus::INVALID
+            _ => DecodeStatus::Invalid
         })
     }
 
@@ -493,26 +493,26 @@ impl<'cap> Decoder<'cap> {
         let ep_data = self.current_endpoint_data()?;
         let retry_needed =
             ep_data.transaction_count > 0 &&
-            status != DecodeStatus::INVALID &&
+            status != DecodeStatus::Invalid &&
             !self.transaction_state.completed();
         if retry_needed {
             self.transfer_append(false)?;
             return Ok(());
         }
         match status {
-            DecodeStatus::NEW => {
+            DecodeStatus::New=> {
                 self.transfer_end()?;
                 self.transfer_start()?;
                 self.transfer_append(true)?;
             },
-            DecodeStatus::CONTINUE => {
+            DecodeStatus::Continue => {
                 self.transfer_append(true)?;
             },
-            DecodeStatus::DONE => {
+            DecodeStatus::Done => {
                 self.transfer_append(true)?;
                 self.transfer_end()?;
             },
-            DecodeStatus::INVALID => {
+            DecodeStatus::Invalid => {
                 self.transfer_end()?;
                 self.transfer_start()?;
                 self.transfer_append(false)?;

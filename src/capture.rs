@@ -160,26 +160,21 @@ impl DeviceData {
     }
 
     pub fn update_endpoint_types(&mut self) {
-        match self.configuration_id {
-            Some(id) => match &self.configurations.get(id) {
-                Some(Some(config)) => {
-                    for iface in &config.interfaces {
-                        for ep_desc in &iface.endpoint_descriptors {
-                            let number = ep_desc.endpoint_address & 0x0F;
-                            let index = number as usize;
-                            match self.endpoint_types.get_mut(index) {
-                                Some(ep_type) => {
-                                    *ep_type = EndpointType::from(
-                                        ep_desc.attributes & 0x03);
-                                },
-                                None => {}
-                            }
+        if let Some(id) = self.configuration_id {
+            if let Some(Some(config)) = &self.configurations.get(id) {
+                for iface in &config.interfaces {
+                    for ep_desc in &iface.endpoint_descriptors {
+                        let number = ep_desc.endpoint_address & 0x0F;
+                        let index = number as usize;
+                        if let Some(ep_type) =
+                            self.endpoint_types.get_mut(index)
+                        {
+                            *ep_type =
+                                EndpointType::from(ep_desc.attributes & 0x03);
                         }
                     }
-                },
-                _ => {},
-            },
-            None => {},
+                }
+            }
         }
     }
 }
@@ -232,10 +227,7 @@ impl Transaction {
     }
 
     fn payload_size(&self) -> Option<u64> {
-        match &self.payload_byte_range {
-            Some(range) => Some(range.end - range.start),
-            None => None
-        }
+        self.payload_byte_range.as_ref().map(|range| range.end - range.start)
     }
 }
 
@@ -491,7 +483,7 @@ impl Capture {
                             endpoint_type, endpoint.device_address(), num)
                     })
                 }
-                let range = self.item_range(&item)?;
+                let range = self.item_range(item)?;
                 let count = range.end - range.start;
                 match ep_type {
                     EndpointType::Invalid => format!(
@@ -527,7 +519,6 @@ impl Capture {
         let entry = self.transfer_index.get(*transfer_index_id)?;
         let endpoint_id = entry.endpoint_id() as usize;
         let endpoint_state = self.get_endpoint_state(*transfer_index_id)?;
-        let state_length = endpoint_state.len();
         let extended = self.transfer_extended(endpoint_id, *transfer_index_id)?;
         let ep_traf = self.endpoint_traffic.get_mut(endpoint_id)
                                            .ok_or(IndexError)?;
@@ -549,8 +540,8 @@ impl Capture {
         };
         let last = last_transaction && !extended;
         let mut thru = false;
-        for (i, ep_state) in endpoint_state.iter().enumerate() {
-            let state = EndpointState::from(*ep_state);
+        for (i, &state) in endpoint_state.iter().enumerate() {
+            let state = EndpointState::from(state);
             let active = state != Idle;
             let on_endpoint = i == endpoint_id;
             thru |= match (item, state, on_endpoint) {
@@ -588,6 +579,7 @@ impl Capture {
                 }
             });
         };
+        let state_length = endpoint_state.len();
         for _ in state_length..endpoint_count {
             connectors.push(match item {
                 Transfer(..)    => '─',
@@ -672,9 +664,9 @@ impl Capture {
             _ => None
         };
         Ok(Transaction {
-            pid: pid,
-            packet_id_range: packet_id_range,
-            payload_byte_range: payload_byte_range,
+            pid,
+            packet_id_range,
+            payload_byte_range,
         })
     }
 
@@ -711,9 +703,9 @@ impl Capture {
             };
         }
         Ok(ControlTransfer {
-            address: address,
-            fields: fields,
-            data: data,
+            address,
+            fields,
+            data,
         })
     }
 
@@ -769,13 +761,13 @@ impl Capture {
     pub fn get_device_data(&self, id: &u64)
         -> Result<&DeviceData, CaptureError>
     {
-        Ok(self.device_data.get(*id as usize).ok_or(IndexError)?)
+        self.device_data.get(*id as usize).ok_or(IndexError)
     }
 
     pub fn get_device_data_mut(&mut self, id: &u64)
         -> Result<&mut DeviceData, CaptureError>
     {
-        Ok(self.device_data.get_mut(*id as usize).ok_or(IndexError)?)
+        self.device_data.get_mut(*id as usize).ok_or(IndexError)
     }
 
     fn device_child_count(&self, item: &DeviceItem)
@@ -827,7 +819,7 @@ impl Capture {
                             descriptor.vendor_id,
                             descriptor.product_id
                         ),
-                        None => format!("Unknown"),
+                        None => "Unknown".to_string(),
                     }
                 )
             },
