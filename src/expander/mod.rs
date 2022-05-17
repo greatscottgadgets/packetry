@@ -46,11 +46,15 @@ impl ExpanderWrapper {
     }
 
     pub fn set_connectors(&self, connectors: Option<String>) {
-        match connectors {
-            Some(text) =>
-                self.imp().conn_label.borrow_mut().set_markup(
-                    format!("<tt>{}</tt>", text).as_str()),
-            None => {}
-        };
+        if let Some(text) = connectors {
+            self.imp().conn_label.borrow_mut().set_markup(
+                    format!("<tt>{}</tt>", text).as_str());
+        }
+    }
+}
+
+impl Default for ExpanderWrapper {
+    fn default() -> Self {
+        Self::new()
     }
 }

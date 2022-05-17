@@ -42,7 +42,7 @@ impl HybridIndex {
     pub fn new(min_width: u8) -> Result<Self, HybridIndexError> {
         let file = tempfile()?;
         Ok(Self{
-            min_width: min_width,
+            min_width,
             file: BufReaderWriter::new_writer(file),
             file_length: 0,
             total_count: 0,
@@ -54,7 +54,7 @@ impl HybridIndex {
     }
 
     pub fn push(&mut self, value: u64) -> Result<(), HybridIndexError> {
-        if self.entries.len() == 0 {
+        if self.entries.is_empty() {
             let first_entry = Entry {
                 base_value: value,
                 file_offset: 0,
@@ -103,7 +103,7 @@ impl HybridIndex {
         } else {
             let width = entry.increments.width();
             let start = entry.file_offset + (increment_id - 1) * width as u64;
-            let mut bytes = [0 as u8; 8];
+            let mut bytes = [0_u8; 8];
             self.file.seek(SeekFrom::Start(start))?;
             self.at_end = false;
             self.file.read_exact(&mut bytes[0..width as usize])?;
@@ -136,7 +136,7 @@ impl HybridIndex {
             let start = entry.file_offset + increment_id * width as u64;
             self.file.seek(SeekFrom::Start(start))?;
             self.at_end = false;
-            let mut bytes = [0 as u8; 8];
+            let mut bytes = [0_u8; 8];
             for _ in 0..read_count {
                 self.file.read_exact(&mut bytes[0..width as usize])?;
                 let increment = u64::from_le_bytes(bytes);

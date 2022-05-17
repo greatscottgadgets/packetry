@@ -1,0 +1,76 @@
+on:
+  push:
+  pull_request:
+
+name: CI
+
+jobs:
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install stable components
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: clippy
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install libgtk-4-dev libpcap-dev build-essential
+
+      - name: Run clippy
+        uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --verbose --release -- -D warnings
+
+  build_and_test:
+    name: Build and test
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ['macos-latest', 'ubuntu-22.04']
+        rust: ['stable']
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+
+      - name: Install dependencies (Ubuntu)
+        run: |
+          sudo apt update
+          sudo apt install libgtk-4-dev libpcap-dev build-essential
+        if: startsWith(matrix.os, 'ubuntu-')
+
+      - name: Install dependencies (macOS)
+        run: brew install gtk4 libpcap
+        if: matrix.os == 'macos-latest'
+
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --all-features
+
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: Packetry ${{ matrix.os }}
+          path: |
+            target/release/packetry
+            target/release/packetry.exe
+
