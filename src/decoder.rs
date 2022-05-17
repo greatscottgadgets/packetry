@@ -28,6 +28,8 @@ use crate::capture::{
 
 use crate::hybrid_index::HybridIndex;
 
+use CaptureError::IndexError;
+
 #[derive(PartialEq)]
 enum DecodeStatus {
     NEW,
@@ -58,10 +60,12 @@ struct TransactionState {
 }
 
 impl TransactionState {
-    pub fn status(&mut self, packet: &[u8]) -> DecodeStatus {
-        let next = PID::from(packet[0]);
+    pub fn status(&mut self, packet: &[u8])
+        -> Result<DecodeStatus, CaptureError>
+    {
+        let next = PID::from(*packet.get(0).ok_or(IndexError)?);
         use PID::*;
-        match (self.first, self.last, next) {
+        Ok(match (self.first, self.last, next) {
 
             // SETUP, IN or OUT always start a new transaction.
             (_, _, SETUP | IN | OUT) => DecodeStatus::NEW,
@@ -107,7 +111,7 @@ impl TransactionState {
 
             // Any other case is not a valid part of a transaction.
             _ => DecodeStatus::INVALID,
-        }
+        })
     }
 
     fn completed(&self) -> bool {
@@ -163,8 +167,8 @@ impl<'cap> Decoder<'cap> {
     fn transaction_update(&mut self, packet: &[u8])
         -> Result<(), CaptureError>
     {
-        let pid = PID::from(packet[0]);
-        match self.transaction_state.status(packet) {
+        let pid = PID::from(*packet.get(0).ok_or(IndexError)?);
+        match self.transaction_state.status(packet)? {
             DecodeStatus::NEW => {
                 self.transaction_end()?;
                 self.transaction_start(packet)?;
@@ -191,7 +195,7 @@ impl<'cap> Decoder<'cap> {
         let state = &mut self.transaction_state;
         state.start = self.capture.packet_index.len();
         state.count = 1;
-        state.first = PID::from(packet[0]);
+        state.first = PID::from(*packet.get(0).ok_or(IndexError)?);
         state.last = state.first;
         match PacketFields::from_packet(&packet) {
             PacketFields::SOF(_) => {
@@ -284,41 +288,73 @@ impl<'cap> Decoder<'cap> {
         Ok(())
     }
 
-    fn decode_request(&mut self, fields: SetupFields) {
-        let req_type = fields.type_fields.request_type();
-        let request = StandardRequest::from(fields.request);
-        match (req_type, request) {
-            (RequestType::Standard, StandardRequest::GetDescriptor)
-                => self.decode_descriptor_read(&fields),
-            (RequestType::Standard, StandardRequest::SetConfiguration)
-                => self.decode_configuration_set(&fields),
-            (..) => {}
-        }
+    fn current_endpoint_data(&self)
+        -> Result<&EndpointData, CaptureError>
+    {
+        let endpoint_id = self.transaction_state.endpoint_id;
+        Ok(self.endpoint_data.get(endpoint_id)
+                             .ok_or(IndexError)?)
     }
 
-    fn decode_descriptor_read(&mut self, fields: &SetupFields) {
+    fn current_endpoint_data_mut(&mut self)
+        -> Result<&mut EndpointData, CaptureError>
+    {
         let endpoint_id = self.transaction_state.endpoint_id;
-        let ep_data = &mut self.endpoint_data[endpoint_id];
+        Ok(self.endpoint_data.get_mut(endpoint_id)
+                             .ok_or(IndexError)?)
+    }
+
+    fn current_device_data(&self)
+        -> Result<&DeviceData, CaptureError>
+    {
+        let ep_data = self.current_endpoint_data()?;
+        let device_id = ep_data.device_id as u64;
+        Ok(self.capture.get_device_data(&device_id)?)
+    }
+
+    fn current_device_data_mut(&mut self)
+        -> Result<&mut DeviceData, CaptureError>
+    {
+        let ep_data = self.current_endpoint_data()?;
+        let device_id = ep_data.device_id as u64;
+        Ok(self.capture.get_device_data_mut(&device_id)?)
+    }
+
+    fn decode_request(&mut self, fields: SetupFields)
+        -> Result<(), CaptureError>
+    {
+        let req_type = fields.type_fields.request_type();
+        let request = StandardRequest::from(fields.request);
+        Ok(match (req_type, request) {
+            (RequestType::Standard, StandardRequest::GetDescriptor)
+                => self.decode_descriptor_read(&fields)?,
+            (RequestType::Standard, StandardRequest::SetConfiguration)
+                => self.decode_configuration_set(&fields)?,
+            (..) => {}
+        })
+    }
+
+    fn decode_descriptor_read(&mut self, fields: &SetupFields)
+        -> Result<(), CaptureError>
+    {
         let recipient = fields.type_fields.recipient();
         let desc_type = DescriptorType::from((fields.value >> 8) as u8);
-        let payload = &ep_data.payload;
+        let payload = &self.current_endpoint_data()?.payload;
         let length = payload.len();
-        match (recipient, desc_type) {
+        Ok(match (recipient, desc_type) {
             (Recipient::Device, DescriptorType::Device) => {
                 if length == size_of::<DeviceDescriptor>() {
-                    let device_id = ep_data.device_id;
-                    let dev_data = &mut self.capture.device_data[device_id];
-                    dev_data.device_descriptor =
-                        Some(DeviceDescriptor::from_bytes(payload));
+                    let descriptor = DeviceDescriptor::from_bytes(payload);
+                    let dev_data = self.current_device_data_mut()?;
+                    dev_data.device_descriptor = Some(descriptor);
                 }
             },
             (Recipient::Device, DescriptorType::Configuration) => {
                 let size = size_of::<ConfigDescriptor>();
                 if length >= size {
-                    let device_id = ep_data.device_id;
-                    let dev_data = &mut self.capture.device_data[device_id];
-                    let configurations = &mut dev_data.configurations;
                     let configuration = Configuration::from_bytes(&payload);
+                    let dev_data = self.current_device_data_mut()?;
+                    let configurations = &mut dev_data.configurations;
                     if let Some(config) = configuration {
                         let config_id =
                             config.descriptor.config_value as usize;
@@ -332,45 +368,46 @@ impl<'cap> Decoder<'cap> {
             },
             (Recipient::Device, DescriptorType::String) => {
                 if length >= 2 {
-                    let device_id = ep_data.device_id;
-                    let strings =
-                        &mut self.capture.device_data[device_id].strings;
+                    let string = payload[2..length].to_vec();
+                    let dev_data = self.current_device_data_mut()?;
+                    let strings = &mut dev_data.strings;
                     let string_id = (fields.value & 0xFF) as usize;
                     while strings.len() <= string_id {
                         strings.push(None);
                     }
-                    strings[string_id] = Some(payload[2..length].to_vec());
+                    strings[string_id] = Some(string);
                 }
             },
             _ => {}
-        }
+        })
     }
 
-    fn decode_configuration_set(&mut self, fields: &SetupFields) {
-        let endpoint_id = self.transaction_state.endpoint_id;
-        let ep_data = &mut self.endpoint_data[endpoint_id];
-        let device_id = ep_data.device_id;
-        let dev_data = &mut self.capture.device_data[device_id];
+    fn decode_configuration_set(&mut self, fields: &SetupFields)
+        -> Result<(), CaptureError>
+    {
+        let dev_data = self.current_device_data_mut()?;
         let config_id = fields.value as usize;
         dev_data.configuration_id = Some(config_id);
         dev_data.update_endpoint_types();
+        Ok(())
     }
 
-    fn transfer_status(&mut self) -> DecodeStatus {
+    fn transfer_status(&mut self) -> Result<DecodeStatus, CaptureError> {
         let next = self.transaction_state.first;
-        let endpoint_id = self.transaction_state.endpoint_id;
-        let ep_data = &mut self.endpoint_data[endpoint_id];
-        let dev_data = &self.capture.device_data[ep_data.device_id];
+        let ep_data = self.current_endpoint_data()?;
+        let dev_data = self.current_device_data()?;
         let ep_type = &dev_data.endpoint_type(ep_data.number);
         use PID::*;
         use EndpointType::*;
         use Direction::*;
-        match (ep_type, ep_data.last, next) {
+        Ok(match (ep_type, ep_data.last, next) {
 
             // A SETUP transaction starts a new control transfer.
             // Store the setup fields to interpret the request.
             (Control, _, SETUP) => {
-                ep_data.setup = self.transaction_state.setup.take();
+                let setup = self.transaction_state.setup.take();
+                let ep_data = self.current_endpoint_data_mut()?;
+                ep_data.setup = setup;
                 DecodeStatus::NEW
             },
 
@@ -392,8 +429,10 @@ impl<'cap> Decoder<'cap> {
                         (In,  true, IN,    IN ) |
                         (Out, true, OUT,   OUT) => {
                             if self.transaction_state.completed() {
-                                ep_data.payload.extend(
-                                    &self.transaction_state.payload);
+                                let payload =
+                                    self.transaction_state.payload.clone();
+                                let ep_data = self.current_endpoint_data_mut()?;
+                                ep_data.payload.extend(payload);
                             }
                             // Await status stage.
                             DecodeStatus::CONTINUE
@@ -408,7 +447,7 @@ impl<'cap> Decoder<'cap> {
                         (In,  true,  IN,    OUT) |
                         (Out, true,  OUT,   IN ) => {
                             let fields_copy = fields.clone();
-                            self.decode_request(fields_copy);
+                            self.decode_request(fields_copy)?;
                             DecodeStatus::DONE
                         },
                         // Any other sequence is invalid.
@@ -434,15 +473,14 @@ impl<'cap> Decoder<'cap> {
 
             // Any other case is not a valid part of a transfer.
             _ => DecodeStatus::INVALID
-        }
+        })
     }
 
     fn transfer_update(&mut self)
         -> Result<(), CaptureError>
     {
-        let status = self.transfer_status();
-        let endpoint_id = self.transaction_state.endpoint_id;
-        let ep_data = &mut self.endpoint_data[endpoint_id];
+        let status = self.transfer_status()?;
+        let ep_data = self.current_endpoint_data()?;
         let retry_needed =
             ep_data.transaction_count > 0 &&
             status != DecodeStatus::INVALID &&
@@ -482,8 +520,10 @@ impl<'cap> Decoder<'cap> {
         let endpoint_id = self.transaction_state.endpoint_id;
         self.last_item_endpoint = endpoint_id as i16;
         self.add_transfer_entry(endpoint_id, true)?;
-        let ep_data = &mut self.endpoint_data[endpoint_id];
-        let ep_traf = &mut self.capture.endpoint_traffic[endpoint_id];
+        let ep_data = self.endpoint_data.get_mut(endpoint_id)
+                                        .ok_or(IndexError)?;
+        let ep_traf = self.capture.endpoint_traffic.get_mut(endpoint_id)
+                                                   .ok_or(IndexError)?;
         ep_data.transaction_start = ep_traf.transaction_ids.len();
         ep_data.transaction_count = 0;
         ep_traf.transfer_index.push(ep_data.transaction_start)?;
@@ -494,8 +534,10 @@ impl<'cap> Decoder<'cap> {
         -> Result<(), CaptureError>
     {
         let endpoint_id = self.transaction_state.endpoint_id;
-        let ep_data = &mut self.endpoint_data[endpoint_id];
-        let ep_traf = &mut self.capture.endpoint_traffic[endpoint_id];
+        let ep_data = self.endpoint_data.get_mut(endpoint_id)
+                                        .ok_or(IndexError)?;
+        let ep_traf = self.capture.endpoint_traffic.get_mut(endpoint_id)
+                                                   .ok_or(IndexError)?;
         ep_traf.transaction_ids.push(
             self.capture.transaction_index.len())?;
         ep_data.transaction_count += 1;
@@ -509,7 +551,7 @@ impl<'cap> Decoder<'cap> {
         -> Result<(), CaptureError>
     {
         let endpoint_id = self.transaction_state.endpoint_id;
-        let ep_data = &self.endpoint_data[endpoint_id];
+        let ep_data = self.current_endpoint_data()?;
         if ep_data.transaction_count > 0 {
             if self.last_item_endpoint != (endpoint_id as i16) {
                 self.capture.item_index.push(
@@ -518,7 +560,7 @@ impl<'cap> Decoder<'cap> {
             }
             self.add_transfer_entry(endpoint_id, false)?;
         }
-        let ep_data = &mut self.endpoint_data[endpoint_id];
+        let ep_data = self.current_endpoint_data_mut()?;
         ep_data.transaction_count = 0;
         ep_data.last = PID::Malformed;
         ep_data.payload.clear();
@@ -528,7 +570,8 @@ impl<'cap> Decoder<'cap> {
     fn add_transfer_entry(&mut self, endpoint_id: usize, start: bool)
         -> Result<(), CaptureError>
     {
-        let ep_traf = &mut self.capture.endpoint_traffic[endpoint_id];
+        let ep_traf = self.capture.endpoint_traffic.get_mut(endpoint_id)
+                                                   .ok_or(IndexError)?;
         let mut entry = TransferIndexEntry::default();
         entry.set_endpoint_id(endpoint_id as u16);
         entry.set_transfer_id(ep_traf.transfer_index.len());

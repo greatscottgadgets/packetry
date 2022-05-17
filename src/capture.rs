@@ -766,8 +766,16 @@ impl Capture {
         })
     }
 
-    fn get_device_data(&self, id: &u64) -> Result<&DeviceData, CaptureError> {
+    pub fn get_device_data(&self, id: &u64)
+        -> Result<&DeviceData, CaptureError>
+    {
         Ok(self.device_data.get(*id as usize).ok_or(IndexError)?)
+    }
+
+    pub fn get_device_data_mut(&mut self, id: &u64)
+        -> Result<&mut DeviceData, CaptureError>
+    {
+        Ok(self.device_data.get_mut(*id as usize).ok_or(IndexError)?)
     }
 
     fn device_child_count(&self, item: &DeviceItem)
