@@ -135,19 +135,13 @@ impl ListModelImpl for Model {
     }
 
     fn n_items(&self, _list_model: &Self::Type) -> u32 {
-        match self.try_n_items() {
-            Ok(count) => count,
-            Err(_) => 0
-        }
+        self.try_n_items().unwrap_or(0)
     }
 
     fn item(&self, _list_model: &Self::Type, position: u32)
         -> Option<glib::Object>
     {
-        match self.try_item(position) {
-            Ok(item) => item,
-            Err(_) => None
-        }
+        self.try_item(position).unwrap_or(None)
     }
 }
 
@@ -157,18 +151,12 @@ impl ListModelImpl for DeviceModel {
     }
 
     fn n_items(&self, _list_model: &Self::Type) -> u32 {
-        match self.try_n_items() {
-            Ok(count) => count,
-            Err(_) => 0
-        }
+        self.try_n_items().unwrap_or(0)
     }
 
     fn item(&self, _list_model: &Self::Type, position: u32)
         -> Option<glib::Object>
     {
-        match self.try_item(position) {
-            Ok(item) => item,
-            Err(_) => None
-        }
+        self.try_item(position).unwrap_or(None)
     }
 }
