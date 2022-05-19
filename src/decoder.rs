@@ -20,9 +20,12 @@ use crate::capture::{
     Device,
     DeviceData,
     Endpoint,
+    EndpointId,
     EndpointType,
     EndpointState,
     EndpointTraffic,
+    EndpointTransactionId,
+    PacketId,
     TransferIndexEntry,
 };
 
@@ -41,7 +44,7 @@ enum DecodeStatus {
 struct EndpointData {
     device_id: usize,
     number: usize,
-    transaction_start: u64,
+    transaction_start: EndpointTransactionId,
     transaction_count: u64,
     last: PID,
     setup: Option<SetupFields>,
@@ -52,7 +55,7 @@ struct EndpointData {
 struct TransactionState {
     first: PID,
     last: PID,
-    start: u64,
+    start: Option<PacketId>,
     count: u64,
     endpoint_id: usize,
     setup: Option<SetupFields>,
@@ -159,7 +162,7 @@ impl<'cap> Decoder<'cap> {
     {
         self.transaction_update(packet)?;
         self.capture.packet_index.push(
-            self.capture.packet_data.len())?;
+            self.capture.packet_data.next_id())?;
         self.capture.packet_data.append(packet)?;
         Ok(())
     }
@@ -193,7 +196,7 @@ impl<'cap> Decoder<'cap> {
         -> Result<(), CaptureError>
     {
         let state = &mut self.transaction_state;
-        state.start = self.capture.packet_index.len();
+        state.start = Some(self.capture.packet_index.next_id());
         state.count = 1;
         state.first = PID::from(*packet.get(0).ok_or(IndexError)?);
         state.last = state.first;
@@ -246,7 +249,7 @@ impl<'cap> Decoder<'cap> {
         if self.transaction_state.count == 0 { return Ok(()) }
         self.transfer_update()?;
         self.capture.transaction_index.push(
-            self.transaction_state.start)?;
+            self.transaction_state.start.ok_or(IndexError)?)?;
         Ok(())
     }
 
@@ -277,7 +280,7 @@ impl<'cap> Decoder<'cap> {
         let ep_data = EndpointData {
             number: num as usize,
             device_id: device_id as usize,
-            transaction_start: 0,
+            transaction_start: EndpointTransactionId::from(0),
             transaction_count: 0,
             last: PID::Malformed,
             setup: None,
@@ -526,7 +529,7 @@ impl<'cap> Decoder<'cap> {
         -> Result<(), CaptureError>
     {
         self.capture.item_index.push(
-            self.capture.transfer_index.len())?;
+            self.capture.transfer_index.next_id())?;
         let endpoint_id = self.transaction_state.endpoint_id;
         self.last_item_endpoint = Some(endpoint_id);
         self.add_transfer_entry(endpoint_id, true)?;
@@ -534,7 +537,7 @@ impl<'cap> Decoder<'cap> {
                                         .ok_or(IndexError)?;
         let ep_traf = self.capture.endpoint_traffic.get_mut(endpoint_id)
                                                    .ok_or(IndexError)?;
-        ep_data.transaction_start = ep_traf.transaction_ids.len();
+        ep_data.transaction_start = ep_traf.transaction_ids.next_id();
         ep_data.transaction_count = 0;
         ep_traf.transfer_index.push(ep_data.transaction_start)?;
         Ok(())
@@ -549,7 +552,7 @@ impl<'cap> Decoder<'cap> {
         let ep_traf = self.capture.endpoint_traffic.get_mut(endpoint_id)
                                                    .ok_or(IndexError)?;
         ep_traf.transaction_ids.push(
-            self.capture.transaction_index.len())?;
+            self.capture.transaction_index.next_id())?;
         ep_data.transaction_count += 1;
         if success {
             ep_data.last = self.transaction_state.first;
@@ -565,7 +568,7 @@ impl<'cap> Decoder<'cap> {
         if ep_data.transaction_count > 0 {
             if self.last_item_endpoint != Some(endpoint_id) {
                 self.capture.item_index.push(
-                    self.capture.transfer_index.len())?;
+                    self.capture.transfer_index.next_id())?;
                 self.last_item_endpoint = Some(endpoint_id);
             }
             self.add_transfer_entry(endpoint_id, false)?;
@@ -583,8 +586,8 @@ impl<'cap> Decoder<'cap> {
         let ep_traf = self.capture.endpoint_traffic.get_mut(endpoint_id)
                                                    .ok_or(IndexError)?;
         let mut entry = TransferIndexEntry::default();
-        entry.set_endpoint_id(endpoint_id as u16);
-        entry.set_transfer_id(ep_traf.transfer_index.len());
+        entry.set_endpoint_id(EndpointId::from(endpoint_id as u64));
+        entry.set_transfer_id(ep_traf.transfer_index.next_id());
         entry.set_is_start(start);
         self.capture.transfer_index.push(&entry)?;
         self.add_endpoint_state(endpoint_id, start)?;
@@ -609,7 +612,7 @@ impl<'cap> Decoder<'cap> {
             } as u8;
         }
         let last_state = self.last_endpoint_state.as_slice();
-        let state_offset = self.capture.endpoint_states.len();
+        let state_offset = self.capture.endpoint_states.next_id();
         self.capture.endpoint_states.append(last_state)?;
         self.capture.endpoint_state_index.push(state_offset)?;
         Ok(())
