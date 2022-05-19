@@ -58,17 +58,17 @@ pub enum Item {
 
 #[derive(Clone)]
 pub enum DeviceItem {
-    Device(u64),
-    DeviceDescriptor(u64),
-    DeviceDescriptorField(u64, u8),
-    Configuration(u64, u8),
-    ConfigurationDescriptor(u64, u8),
-    ConfigurationDescriptorField(u64, u8, u8),
-    Interface(u64, u8, u8),
-    InterfaceDescriptor(u64, u8, u8),
-    InterfaceDescriptorField(u64, u8, u8, u8),
-    EndpointDescriptor(u64, u8, u8, u8),
-    EndpointDescriptorField(u64, u8, u8, u8, u8),
+    Device(DeviceId),
+    DeviceDescriptor(DeviceId),
+    DeviceDescriptorField(DeviceId, u8),
+    Configuration(DeviceId, u8),
+    ConfigurationDescriptor(DeviceId, u8),
+    ConfigurationDescriptorField(DeviceId, u8, u8),
+    Interface(DeviceId, u8, u8),
+    InterfaceDescriptor(DeviceId, u8, u8),
+    InterfaceDescriptorField(DeviceId, u8, u8, u8),
+    EndpointDescriptor(DeviceId, u8, u8, u8),
+    EndpointDescriptorField(DeviceId, u8, u8, u8, u8),
 }
 
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
@@ -81,9 +81,19 @@ bitfield! {
     #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
     #[repr(C)]
     pub struct Endpoint(u64);
-    pub u64, device_id, set_device_id: 51, 0;
+    pub u64, _device_id, _set_device_id: 51, 0;
     pub u8, device_address, set_device_address: 58, 52;
     pub u8, number, set_number: 63, 59;
+}
+
+impl Endpoint {
+    pub fn device_id(&self) -> DeviceId {
+        DeviceId::from(self._device_id())
+    }
+
+    pub fn set_device_id(&mut self, id: DeviceId) {
+        self._set_device_id(id.value)
+    }
 }
 
 bitfield! {
@@ -495,9 +505,8 @@ impl Capture {
                 let entry = self.transfer_index.get(*transfer_index_id)?;
                 let endpoint_id = entry.endpoint_id();
                 let endpoint = self.endpoints.get(endpoint_id)?;
-                let device_id = endpoint.device_id() as usize;
-                let dev_data = &self.device_data.get(device_id)
-                                                .ok_or(IndexError)?;
+                let device_id = endpoint.device_id();
+                let dev_data = &self.get_device_data(&device_id)?;
                 let num = endpoint.number() as usize;
                 let ep_type = dev_data.endpoint_type(num);
                 if !entry.is_start() {
@@ -743,7 +752,7 @@ impl Capture {
         -> Result<DeviceItem, CaptureError>
     {
         match parent {
-            None => Ok(DeviceItem::Device(index + 1)),
+            None => Ok(DeviceItem::Device(DeviceId::from(index + 1))),
             Some(item) => self.device_child(item, index)
         }
     }
@@ -788,16 +797,16 @@ impl Capture {
         })
     }
 
-    pub fn get_device_data(&self, id: &u64)
+    pub fn get_device_data(&self, id: &DeviceId)
         -> Result<&DeviceData, CaptureError>
     {
-        self.device_data.get(*id as usize).ok_or(IndexError)
+        self.device_data.get(id.value as usize).ok_or(IndexError)
     }
 
-    pub fn get_device_data_mut(&mut self, id: &u64)
+    pub fn get_device_data_mut(&mut self, id: &DeviceId)
         -> Result<&mut DeviceData, CaptureError>
     {
-        self.device_data.get_mut(*id as usize).ok_or(IndexError)
+        self.device_data.get_mut(id.value as usize).ok_or(IndexError)
     }
 
     fn device_child_count(&self, item: &DeviceItem)
@@ -840,7 +849,7 @@ impl Capture {
         use DeviceItem::*;
         Ok(match item {
             Device(dev) => {
-                let device = self.devices.get(DeviceId::from(*dev))?;
+                let device = self.devices.get(*dev)?;
                 let data = self.get_device_data(dev)?;
                 format!("Device {}: {}", device.address,
                     match data.device_descriptor {

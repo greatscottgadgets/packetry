@@ -18,6 +18,7 @@ use crate::capture::{
     Capture,
     CaptureError,
     Device,
+    DeviceId,
     DeviceData,
     Endpoint,
     EndpointId,
@@ -42,7 +43,7 @@ enum DecodeStatus {
 }
 
 struct EndpointData {
-    device_id: usize,
+    device_id: DeviceId,
     number: usize,
     transaction_start: EndpointTransactionId,
     transaction_count: u64,
@@ -133,7 +134,7 @@ const USB_MAX_ENDPOINTS: usize = 16;
 
 pub struct Decoder<'cap> {
     capture: &'cap mut Capture,
-    device_index: [Option<usize>; USB_MAX_DEVICES],
+    device_index: [Option<DeviceId>; USB_MAX_DEVICES],
     endpoint_index: [[Option<usize>; USB_MAX_ENDPOINTS]; USB_MAX_DEVICES],
     endpoint_data: Vec<EndpointData>,
     last_endpoint_state: Vec<u8>,
@@ -253,8 +254,8 @@ impl<'cap> Decoder<'cap> {
         Ok(())
     }
 
-    fn add_device(&mut self, addr: usize) -> Result<usize, CaptureError> {
-        let id = self.capture.devices.size() as usize;
+    fn add_device(&mut self, addr: usize) -> Result<DeviceId, CaptureError> {
+        let id = self.capture.devices.next_id();
         self.device_index[addr] = Some(id);
         let device = Device { address: addr as u8 };
         self.capture.devices.push(&device)?;
@@ -279,7 +280,7 @@ impl<'cap> Decoder<'cap> {
         };
         let ep_data = EndpointData {
             number: num as usize,
-            device_id: device_id as usize,
+            device_id,
             transaction_start: EndpointTransactionId::from(0),
             transaction_count: 0,
             last: PID::Malformed,
@@ -288,7 +289,7 @@ impl<'cap> Decoder<'cap> {
         };
         self.endpoint_data.push(ep_data);
         let mut endpoint = Endpoint::default();
-        endpoint.set_device_id(device_id as u64);
+        endpoint.set_device_id(device_id);
         endpoint.set_device_address(addr as u8);
         endpoint.set_number(num as u8);
         self.capture.endpoints.push(&endpoint)?;
@@ -319,15 +320,14 @@ impl<'cap> Decoder<'cap> {
         -> Result<&DeviceData, CaptureError>
     {
         let ep_data = self.current_endpoint_data()?;
-        let device_id = ep_data.device_id as u64;
-        self.capture.get_device_data(&device_id)
+        self.capture.get_device_data(&ep_data.device_id)
     }
 
     fn current_device_data_mut(&mut self)
         -> Result<&mut DeviceData, CaptureError>
     {
         let ep_data = self.current_endpoint_data()?;
-        let device_id = ep_data.device_id as u64;
+        let device_id = ep_data.device_id;
         self.capture.get_device_data_mut(&device_id)
     }
 
