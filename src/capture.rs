@@ -369,6 +369,13 @@ impl Capture {
         )
     }
 
+    pub fn endpoint_traffic(&mut self, endpoint_id: EndpointId)
+        -> Result<&mut EndpointTraffic, CaptureError>
+    {
+        let idx = endpoint_id.value as usize;
+        self.endpoint_traffic.get_mut(idx).ok_or(IndexError)
+    }
+
     pub fn get_item(&mut self, parent: &Option<Item>, index: u64)
         -> Result<Item, CaptureError>
     {
@@ -390,10 +397,9 @@ impl Capture {
             Transfer(transfer_index_id) =>
                 Transaction(*transfer_index_id, {
                     let entry = self.transfer_index.get(*transfer_index_id)?;
-                    let endpoint_id = entry.endpoint_id().value as usize;
+                    let endpoint_id = entry.endpoint_id();
                     let transfer_id = entry.transfer_id();
-                    let ep_traf = self.endpoint_traffic.get_mut(endpoint_id)
-                                                       .ok_or(IndexError)?;
+                    let ep_traf = self.endpoint_traffic(endpoint_id)?;
                     let offset = ep_traf.transfer_index.get(transfer_id)?;
                     ep_traf.transaction_ids.get(offset + index)?
                 }),
@@ -407,10 +413,9 @@ impl Capture {
     fn transfer_range(&mut self, entry: &TransferIndexEntry)
         -> Result<Range<EndpointTransactionId>, CaptureError>
     {
-        let endpoint_id = entry.endpoint_id().value as usize;
+        let endpoint_id = entry.endpoint_id();
         let ep_transfer_id = entry.transfer_id();
-        let ep_traf = self.endpoint_traffic.get_mut(endpoint_id)
-                                           .ok_or(IndexError)?;
+        let ep_traf = self.endpoint_traffic(endpoint_id)?;
         get_index_range(&mut ep_traf.transfer_index,
                         ep_traf.transaction_ids.len(), ep_transfer_id)
     }
@@ -540,11 +545,10 @@ impl Capture {
             Transfer(i) | Transaction(i, _) | Packet(i, ..) => *i
         };
         let entry = self.transfer_index.get(transfer_index_id)?;
-        let endpoint_id = entry.endpoint_id().value as usize;
+        let endpoint_id = entry.endpoint_id();
         let endpoint_state = self.get_endpoint_state(transfer_index_id)?;
         let extended = self.transfer_extended(endpoint_id, transfer_index_id)?;
-        let ep_traf = self.endpoint_traffic.get_mut(endpoint_id)
-                                           .ok_or(IndexError)?;
+        let ep_traf = self.endpoint_traffic(endpoint_id)?;
         let last_transaction = match item {
             Transaction(_, transaction_id) | Packet(_, transaction_id, _) => {
                 let range = get_index_range(&mut ep_traf.transfer_index,
@@ -566,7 +570,7 @@ impl Capture {
         for (i, &state) in endpoint_state.iter().enumerate() {
             let state = EndpointState::from(state);
             let active = state != Idle;
-            let on_endpoint = i == endpoint_id;
+            let on_endpoint = i == endpoint_id.value as usize;
             thru |= match (item, state, on_endpoint) {
                 (Transfer(..), Starting | Ending, _) => true,
                 (Transaction(..) | Packet(..), _, true) => on_endpoint,
@@ -622,7 +626,9 @@ impl Capture {
         Ok(connectors)
     }
 
-    fn transfer_extended(&mut self, endpoint_id: usize, transfer_id: TransferId)
+    fn transfer_extended(&mut self,
+                         endpoint_id: EndpointId,
+                         transfer_id: TransferId)
         -> Result<bool, CaptureError>
     {
         use EndpointState::*;
@@ -631,7 +637,7 @@ impl Capture {
             return Ok(false);
         };
         let state = self.get_endpoint_state(transfer_id + 1)?;
-        Ok(match state.get(endpoint_id) {
+        Ok(match state.get(endpoint_id.value as usize) {
             Some(ep_state) => EndpointState::from(*ep_state) == Ongoing,
             None => false
         })
@@ -701,8 +707,7 @@ impl Capture {
                             range: Range<EndpointTransactionId>)
         -> Result<ControlTransfer, CaptureError>
     {
-        let ep_traf = self.endpoint_traffic.get_mut(endpoint_id.value as usize)
-                                           .ok_or(IndexError)?;
+        let ep_traf = self.endpoint_traffic(endpoint_id)?;
         let transaction_ids =
             ep_traf.transaction_ids.get_range(range)?;
         let setup_transaction_id = transaction_ids.get(0).ok_or(IndexError)?;
