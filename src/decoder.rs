@@ -345,7 +345,7 @@ impl<'cap> Decoder<'cap> {
         -> Result<&DeviceData, CaptureError>
     {
         let ep_data = self.current_endpoint_data()?;
-        self.capture.get_device_data(&ep_data.device_id)
+        self.capture.device_data(&ep_data.device_id)
     }
 
     fn current_device_data_mut(&mut self)
@@ -353,7 +353,7 @@ impl<'cap> Decoder<'cap> {
     {
         let ep_data = self.current_endpoint_data()?;
         let device_id = ep_data.device_id;
-        self.capture.get_device_data_mut(&device_id)
+        self.capture.device_data_mut(&device_id)
     }
 
     fn decode_request(&mut self, fields: SetupFields)

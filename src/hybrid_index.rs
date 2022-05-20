@@ -165,7 +165,7 @@ impl<T: Number + Copy> HybridIndex<T> {
         Ok(result)
     }
 
-    pub fn get_target_range(&mut self, id: Id<T>, target_length: u64)
+    pub fn target_range(&mut self, id: Id<T>, target_length: u64)
         -> Result<Range<T>, HybridIndexError>
     {
         Ok(if id.value + 2 > self.len() {
