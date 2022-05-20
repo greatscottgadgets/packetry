@@ -81,27 +81,17 @@ bitfield! {
     #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
     #[repr(C)]
     pub struct Endpoint(u64);
-    pub u64, _device_id, _set_device_id: 51, 0;
+    pub u64, from into DeviceId, device_id, set_device_id: 51, 0;
     pub u8, device_address, set_device_address: 58, 52;
     pub u8, number, set_number: 63, 59;
-}
-
-impl Endpoint {
-    pub fn device_id(&self) -> DeviceId {
-        DeviceId::from(self._device_id())
-    }
-
-    pub fn set_device_id(&mut self, id: DeviceId) {
-        self._set_device_id(id.value)
-    }
 }
 
 bitfield! {
     #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
     #[repr(C)]
     pub struct TransferIndexEntry(u64);
-    pub u64, _transfer_id, _set_transfer_id: 51, 0;
-    pub u16, _endpoint_id, _set_endpoint_id: 62, 52;
+    pub u64, from into EndpointTransferId, transfer_id, set_transfer_id: 51, 0;
+    pub u64, from into EndpointId, endpoint_id, set_endpoint_id: 62, 52;
     pub u8, _is_start, _set_is_start: 63, 63;
 }
 
@@ -111,22 +101,6 @@ impl TransferIndexEntry {
     }
     pub fn set_is_start(&mut self, value: bool) {
         self._set_is_start(value as u8)
-    }
-
-    pub fn transfer_id(&self) -> EndpointTransferId {
-        EndpointTransferId::from(self._transfer_id())
-    }
-
-    pub fn set_transfer_id(&mut self, id: EndpointTransferId) {
-        self._set_transfer_id(id.value)
-    }
-
-    pub fn endpoint_id(&self) -> EndpointId {
-        EndpointId::from(self._endpoint_id() as u64)
-    }
-
-    pub fn set_endpoint_id(&mut self, id: EndpointId) {
-        self._set_endpoint_id(id.value as u16)
     }
 }
 

@@ -122,15 +122,9 @@ bitfield! {
     #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
     #[repr(C)]
     pub struct RequestTypeFields(u8);
-    pub u8, _recipient, _: 4, 0;
-    pub u8, _type, _: 6, 5;
-    pub u8, _direction, _: 7, 7;
-}
-
-impl RequestTypeFields {
-    pub fn recipient(&self) -> Recipient { Recipient::from(self._recipient()) }
-    pub fn request_type(&self) -> RequestType { RequestType::from(self._type()) }
-    pub fn direction(&self) -> Direction { Direction::from(self._direction()) }
+    pub u8, into Recipient, recipient, _: 4, 0;
+    pub u8, into RequestType, request_type, _: 6, 5;
+    pub u8, into Direction, direction, _: 7, 7;
 }
 
 #[derive(Copy, Clone)]
