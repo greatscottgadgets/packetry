@@ -14,6 +14,14 @@ use crate::usb::{
     Interface,
     EndpointDescriptor,
     ControlTransfer,
+    DeviceAddr,
+    DeviceField,
+    ConfigNum,
+    ConfigField,
+    InterfaceNum,
+    InterfaceField,
+    EndpointNum,
+    EndpointField,
 };
 
 use bytemuck_derive::{Pod, Zeroable};
@@ -60,21 +68,23 @@ pub enum Item {
 pub enum DeviceItem {
     Device(DeviceId),
     DeviceDescriptor(DeviceId),
-    DeviceDescriptorField(DeviceId, u8),
-    Configuration(DeviceId, u8),
-    ConfigurationDescriptor(DeviceId, u8),
-    ConfigurationDescriptorField(DeviceId, u8, u8),
-    Interface(DeviceId, u8, u8),
-    InterfaceDescriptor(DeviceId, u8, u8),
-    InterfaceDescriptorField(DeviceId, u8, u8, u8),
-    EndpointDescriptor(DeviceId, u8, u8, u8),
-    EndpointDescriptorField(DeviceId, u8, u8, u8, u8),
+    DeviceDescriptorField(DeviceId, DeviceField),
+    Configuration(DeviceId, ConfigNum),
+    ConfigurationDescriptor(DeviceId, ConfigNum),
+    ConfigurationDescriptorField(DeviceId, ConfigNum, ConfigField),
+    Interface(DeviceId, ConfigNum, InterfaceNum),
+    InterfaceDescriptor(DeviceId, ConfigNum, InterfaceNum),
+    InterfaceDescriptorField(DeviceId, ConfigNum,
+                             InterfaceNum, InterfaceField),
+    EndpointDescriptor(DeviceId, ConfigNum, InterfaceNum, EndpointNum),
+    EndpointDescriptorField(DeviceId, ConfigNum, InterfaceNum,
+                            EndpointNum, EndpointField),
 }
 
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
 #[repr(C)]
 pub struct Device {
-    pub address: u8,
+    pub address: DeviceAddr,
 }
 
 bitfield! {
@@ -82,8 +92,8 @@ bitfield! {
     #[repr(C)]
     pub struct Endpoint(u64);
     pub u64, from into DeviceId, device_id, set_device_id: 51, 0;
-    pub u8, device_address, set_device_address: 58, 52;
-    pub u8, number, set_number: 63, 59;
+    pub u8, from into DeviceAddr, device_address, set_device_address: 58, 52;
+    pub u8, from into EndpointNum, number, set_number: 63, 59;
 }
 
 bitfield! {
@@ -135,21 +145,22 @@ pub struct EndpointTraffic {
 pub struct DeviceData {
     pub device_descriptor: Option<DeviceDescriptor>,
     pub configurations: Vec<Option<Configuration>>,
-    pub configuration_id: Option<usize>,
+    pub config_number: Option<ConfigNum>,
     pub endpoint_types: Vec<EndpointType>,
     pub strings: Vec<Option<Vec<u8>>>,
 }
 
 impl DeviceData {
-    pub fn try_get_configuration(&self, number: &u8) -> Option<&Configuration>
+    pub fn try_get_configuration(&self, number: &ConfigNum)
+        -> Option<&Configuration>
     {
-        match self.configurations.get(*number as usize) {
+        match self.configurations.get(number.0 as usize) {
             Some(Some(config)) => Some(config),
             _ => None
         }
     }
 
-    pub fn get_configuration(&self, number: &u8)
+    pub fn get_configuration(&self, number: &ConfigNum)
         -> Result<&Configuration, CaptureError>
     {
         match self.try_get_configuration(number) {
@@ -158,13 +169,13 @@ impl DeviceData {
         }
     }
 
-    pub fn endpoint_type(&self, number: usize) -> EndpointType {
+    pub fn endpoint_type(&self, number: EndpointNum) -> EndpointType {
         use EndpointType::*;
-        match number {
+        match number.0 {
             0 => Control,
             0x10 => Framing,
             0x11 => Invalid,
-            _ => match self.endpoint_types.get(number) {
+            _ => match self.endpoint_types.get(number.0 as usize) {
                 Some(ep_type) => *ep_type,
                 None => Unidentified
             }
@@ -172,8 +183,9 @@ impl DeviceData {
     }
 
     pub fn update_endpoint_types(&mut self) {
-        if let Some(id) = self.configuration_id {
-            if let Some(Some(config)) = &self.configurations.get(id) {
+        if let Some(number) = self.config_number {
+            let idx = number.0 as usize;
+            if let Some(Some(config)) = &self.configurations.get(idx) {
                 for iface in &config.interfaces {
                     for ep_desc in &iface.endpoint_descriptors {
                         let number = ep_desc.endpoint_address & 0x0F;
@@ -192,10 +204,10 @@ impl DeviceData {
 }
 
 impl Configuration {
-    pub fn get_interface(&self, number: &u8)
+    pub fn get_interface(&self, number: &InterfaceNum)
         -> Result<&Interface, CaptureError>
     {
-        match self.interfaces.get(*number as usize) {
+        match self.interfaces.get(number.0 as usize) {
             Some(iface) => Ok(iface),
             _ => Err(IndexError)
         }
@@ -203,10 +215,10 @@ impl Configuration {
 }
 
 impl Interface {
-    pub fn get_endpoint_descriptor(&self, number: &u8)
+    pub fn get_endpoint_descriptor(&self, number: &EndpointNum)
         -> Result<&EndpointDescriptor, CaptureError>
     {
-        match self.endpoint_descriptors.get(*number as usize) {
+        match self.endpoint_descriptors.get(number.0 as usize) {
             Some(desc) => Ok(desc),
             _ => Err(IndexError)
         }
@@ -481,7 +493,7 @@ impl Capture {
                 let endpoint = self.endpoints.get(endpoint_id)?;
                 let device_id = endpoint.device_id();
                 let dev_data = &self.get_device_data(&device_id)?;
-                let num = endpoint.number() as usize;
+                let num = endpoint.number();
                 let ep_type = dev_data.endpoint_type(num);
                 if !entry.is_start() {
                     return Ok(match ep_type {
@@ -685,7 +697,7 @@ impl Capture {
     }
 
     fn get_control_transfer(&mut self,
-                            address: u8,
+                            address: DeviceAddr,
                             endpoint_id: EndpointId,
                             range: Range<EndpointTransactionId>)
         -> Result<ControlTransfer, CaptureError>
@@ -738,26 +750,31 @@ impl Capture {
         Ok(match item {
             Device(dev) => match index {
                 0 => DeviceDescriptor(*dev),
-                conf => Configuration(*dev, conf as u8),
+                conf => Configuration(*dev,
+                    ConfigNum(conf.try_into()?)),
             },
             DeviceDescriptor(dev) =>
-                DeviceDescriptorField(*dev, index as u8),
+                DeviceDescriptorField(*dev,
+                    DeviceField(index.try_into()?)),
             Configuration(dev, conf) => match index {
                 0 => ConfigurationDescriptor(*dev, *conf),
-                n => Interface(*dev, *conf, (n - 1).try_into()?),
+                n => Interface(*dev, *conf,
+                    InterfaceNum((n - 1).try_into()?)),
             },
             ConfigurationDescriptor(dev, conf) =>
-                ConfigurationDescriptorField(*dev, *conf, index as u8),
+                ConfigurationDescriptorField(*dev, *conf,
+                    ConfigField(index.try_into()?)),
             Interface(dev, conf, iface) => match index {
                 0 => InterfaceDescriptor(*dev, *conf, *iface),
                 n => EndpointDescriptor(*dev, *conf, *iface,
-                                        (n - 1).try_into()?)
+                    EndpointNum((n - 1).try_into()?))
             },
             InterfaceDescriptor(dev, conf, iface) =>
-                InterfaceDescriptorField(*dev, *conf, *iface, index as u8),
+                InterfaceDescriptorField(*dev, *conf, *iface,
+                    InterfaceField(index.try_into()?)),
             EndpointDescriptor(dev, conf, iface, ep) =>
-                 EndpointDescriptorField(*dev, *conf, *iface,
-                                         *ep, index as u8),
+                EndpointDescriptorField(*dev, *conf, *iface, *ep,
+                    EndpointField(index.try_into()?)),
             _ => return Err(IndexError)
         })
     }

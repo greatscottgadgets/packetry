@@ -12,6 +12,9 @@ use crate::usb::{
     DeviceDescriptor,
     ConfigDescriptor,
     Configuration,
+    DeviceAddr,
+    ConfigNum,
+    EndpointNum,
 };
 
 use crate::capture::{
@@ -44,7 +47,7 @@ enum DecodeStatus {
 
 struct EndpointData {
     device_id: DeviceId,
-    number: usize,
+    number: EndpointNum,
     transaction_start: EndpointTransactionId,
     transaction_count: u64,
     last: PID,
@@ -153,8 +156,10 @@ impl<'cap> Decoder<'cap> {
             last_item_endpoint: None,
             transaction_state: TransactionState::default(),
         };
-        decoder.add_endpoint(0, EndpointType::Invalid as usize)?;
-        decoder.add_endpoint(0, EndpointType::Framing as usize)?;
+        decoder.add_endpoint(
+            DeviceAddr(0), EndpointNum(EndpointType::Invalid as u8))?;
+        decoder.add_endpoint(
+            DeviceAddr(0), EndpointNum(EndpointType::Framing as u8))?;
         Ok(decoder)
     }
 
@@ -205,14 +210,16 @@ impl<'cap> Decoder<'cap> {
             match PacketFields::from_packet(packet) {
                 PacketFields::SOF(_) => EndpointId::from(1),
                 PacketFields::Token(token) => {
-                    let addr = token.device_address() as usize;
-                    let num = token.endpoint_number() as usize;
+                    let address = token.device_address();
+                    let number = token.endpoint_number();
+                    let addr = address.0 as usize;
+                    let num = number.0 as usize;
                     match self.endpoint_index[addr][num] {
                         Some(id) => id,
                         None => {
                             let id = self.capture.endpoints.next_id();
                             self.endpoint_index[addr][num] = Some(id);
-                            self.add_endpoint(addr, num)?;
+                            self.add_endpoint(address, number)?;
                             id
                         }
                     }
@@ -251,15 +258,17 @@ impl<'cap> Decoder<'cap> {
         Ok(())
     }
 
-    fn add_device(&mut self, addr: usize) -> Result<DeviceId, CaptureError> {
+    fn add_device(&mut self, address: DeviceAddr)
+        -> Result<DeviceId, CaptureError>
+    {
         let id = self.capture.devices.next_id();
-        self.device_index[addr] = Some(id);
-        let device = Device { address: addr as u8 };
+        self.device_index[address.0 as usize] = Some(id);
+        let device = Device { address };
         self.capture.devices.push(&device)?;
         let dev_data = DeviceData {
             device_descriptor: None,
             configurations: Vec::new(),
-            configuration_id: None,
+            config_number: None,
             endpoint_types: vec![
                 EndpointType::Unidentified; USB_MAX_ENDPOINTS],
             strings: Vec::new(),
@@ -268,15 +277,15 @@ impl<'cap> Decoder<'cap> {
         Ok(id)
     }
 
-    fn add_endpoint(&mut self, addr: usize, num: usize)
+    fn add_endpoint(&mut self, address: DeviceAddr, number: EndpointNum)
         -> Result<(), CaptureError>
     {
-        let device_id = match self.device_index[addr] {
+        let device_id = match self.device_index[address.0 as usize] {
             Some(id) => id,
-            None => self.add_device(addr)?
+            None => self.add_device(address)?
         };
         let ep_data = EndpointData {
-            number: num as usize,
+            number,
             device_id,
             transaction_start: EndpointTransactionId::from(0),
             transaction_count: 0,
@@ -287,8 +296,8 @@ impl<'cap> Decoder<'cap> {
         self.endpoint_data.push(ep_data);
         let mut endpoint = Endpoint::default();
         endpoint.set_device_id(device_id);
-        endpoint.set_device_address(addr as u8);
-        endpoint.set_number(num as u8);
+        endpoint.set_device_address(address);
+        endpoint.set_number(number);
         self.capture.endpoints.push(&endpoint)?;
         let ep_traf = EndpointTraffic {
             transaction_ids: HybridIndex::new(1)?,
@@ -400,8 +409,7 @@ impl<'cap> Decoder<'cap> {
         -> Result<(), CaptureError>
     {
         let dev_data = self.current_device_data_mut()?;
-        let config_id = fields.value as usize;
-        dev_data.configuration_id = Some(config_id);
+        dev_data.config_number = Some(ConfigNum(fields.value.try_into()?));
         dev_data.update_endpoint_types();
         Ok(())
     }
