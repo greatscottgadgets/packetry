@@ -320,7 +320,7 @@ impl DeviceDescriptor {
                       fmt_str_id(strings, self.product_str_id)),
         12 => format!("Serial string: {}",
                       fmt_str_id(strings, self.serial_str_id)),
-        _ => panic!("Invalid field ID")
+        i  => format!("Error: Invalid field ID {}", i)
         }
     }
 }
@@ -352,7 +352,7 @@ impl ConfigDescriptor {
                       fmt_str_id(strings, self.config_str_id)),
         6 => format!("Attributes: 0x{:02X}", self.attributes),
         7 => format!("Max power: {}mA", self.max_power as u16 * 2),
-        _ => panic!("Invalid field ID")
+        i => format!("Error: Invalid field ID {}", i)
         }
     }
 }
@@ -385,7 +385,7 @@ impl InterfaceDescriptor {
         7 => format!("Protocol: 0x{:02X}", self.interface_protocol),
         8 => format!("Interface string: {}",
                       fmt_str_id(strings, self.interface_str_id)),
-        _ => panic!("Invalid field ID")
+        i => format!("Error: Invalid field ID {}", i)
         }
     }
 }
@@ -412,7 +412,7 @@ impl EndpointDescriptor {
         4 => format!("Max packet size: {} bytes", {
             let size: u16 = self.max_packet_size; size }),
         5 => format!("Interval: 0x{:02X}", self.interval),
-        _ => panic!("Invalid field ID")
+        i => format!("Error: Invalid field ID {}", i)
         }
     }
 }

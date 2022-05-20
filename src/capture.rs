@@ -362,7 +362,7 @@ impl Capture {
             Transaction(transfer_index_id, transaction_id) =>
                 Packet(*transfer_index_id, *transaction_id, {
                     self.transaction_index.get(*transaction_id)? + index}),
-            Packet(..) => panic!("packets do not have children"),
+            Packet(..) => return Err(IndexError)
         })
     }
 
@@ -745,7 +745,7 @@ impl Capture {
             EndpointDescriptor(dev, conf, iface, ep) =>
                  EndpointDescriptorField(*dev, *conf, *iface,
                                          *ep, index as u8),
-            _ => panic!("Item does not have children")
+            _ => return Err(IndexError)
         })
     }
 
