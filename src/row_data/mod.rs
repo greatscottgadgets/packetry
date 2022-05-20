@@ -65,7 +65,8 @@ impl DeviceRowData {
 pub trait GenericRowData<Item> {
     const CONNECTORS: bool;
     fn get_item(&self) -> Option<Item>;
-    fn child_count(&self, capture: &mut capture::Capture) -> u64;
+    fn child_count(&self, capture: &mut capture::Capture)
+        -> Result<u64, capture::CaptureError>;
     fn get_summary(&self) -> String;
     fn get_connectors(&self) -> Option<String>;
 }
@@ -77,7 +78,9 @@ impl GenericRowData<capture::Item> for RowData {
         self.imp().item.borrow().clone()
     }
 
-    fn child_count(&self, capture: &mut capture::Capture) -> u64 {
+    fn child_count(&self, capture: &mut capture::Capture)
+        -> Result<u64, capture::CaptureError>
+    {
         capture.item_count(&self.imp().item.borrow())
     }
 
@@ -97,7 +100,9 @@ impl GenericRowData<capture::DeviceItem> for DeviceRowData {
         self.imp().item.borrow().clone()
     }
 
-    fn child_count(&self, capture: &mut capture::Capture) -> u64 {
+    fn child_count(&self, capture: &mut capture::Capture)
+        -> Result<u64, capture::CaptureError>
+    {
         capture.device_item_count(&self.imp().item.borrow())
     }
 

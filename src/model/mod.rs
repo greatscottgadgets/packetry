@@ -33,7 +33,7 @@ impl GenericModel<capture::Item> for Model {
     }
 
     fn set_capture(&mut self, capture: Arc<Mutex<Capture>>) {
-        self.imp().capture.replace(capture);
+        self.imp().capture.replace(Some(capture));
     }
 
     fn set_parent(&mut self, parent: Option<capture::Item>) {
@@ -53,7 +53,7 @@ impl GenericModel<capture::DeviceItem> for DeviceModel {
     }
 
     fn set_capture(&mut self, capture: Arc<Mutex<Capture>>) {
-        self.imp().capture.replace(capture);
+        self.imp().capture.replace(Some(capture));
     }
 
     fn set_parent(&mut self, parent: Option<capture::DeviceItem>) {

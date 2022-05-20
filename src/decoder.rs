@@ -16,6 +16,7 @@ use crate::usb::{
 
 use crate::capture::{
     Capture,
+    CaptureError,
     Device,
     DeviceData,
     Endpoint,
@@ -26,6 +27,8 @@ use crate::capture::{
 };
 
 use crate::hybrid_index::HybridIndex;
+
+use CaptureError::IndexError;
 
 #[derive(PartialEq)]
 enum DecodeStatus {
@@ -57,10 +60,12 @@ struct TransactionState {
 }
 
 impl TransactionState {
-    pub fn status(&mut self, packet: &[u8]) -> DecodeStatus {
-        let next = PID::from(packet[0]);
+    pub fn status(&mut self, packet: &[u8])
+        -> Result<DecodeStatus, CaptureError>
+    {
+        let next = PID::from(*packet.get(0).ok_or(IndexError)?);
         use PID::*;
-        match (self.first, self.last, next) {
+        Ok(match (self.first, self.last, next) {
 
             // SETUP, IN or OUT always start a new transaction.
             (_, _, SETUP | IN | OUT) => DecodeStatus::New,
@@ -106,7 +111,7 @@ impl TransactionState {
 
             // Any other case is not a valid part of a transaction.
             _ => DecodeStatus::Invalid,
-        }
+        })
     }
 
     fn completed(&self) -> bool {
@@ -125,64 +130,72 @@ const USB_MAX_ENDPOINTS: usize = 16;
 
 pub struct Decoder<'cap> {
     capture: &'cap mut Capture,
-    device_index: [i8; USB_MAX_DEVICES],
-    endpoint_index: [[i16; USB_MAX_ENDPOINTS]; USB_MAX_DEVICES],
+    device_index: [Option<usize>; USB_MAX_DEVICES],
+    endpoint_index: [[Option<usize>; USB_MAX_ENDPOINTS]; USB_MAX_DEVICES],
     endpoint_data: Vec<EndpointData>,
     last_endpoint_state: Vec<u8>,
-    last_item_endpoint: i16,
+    last_item_endpoint: Option<usize>,
     transaction_state: TransactionState,
 }
 
 impl<'cap> Decoder<'cap> {
-    pub fn new(capture: &'cap mut Capture) -> Self {
+    pub fn new(capture: &'cap mut Capture) -> Result<Self, CaptureError> {
         let mut decoder = Decoder {
             capture,
-            device_index: [-1; USB_MAX_DEVICES],
+            device_index: [None; USB_MAX_DEVICES],
             endpoint_data: Vec::new(),
-            endpoint_index: [[-1; USB_MAX_ENDPOINTS]; USB_MAX_DEVICES],
+            endpoint_index: [[None; USB_MAX_ENDPOINTS]; USB_MAX_DEVICES],
             last_endpoint_state: Vec::new(),
-            last_item_endpoint: -1,
+            last_item_endpoint: None,
             transaction_state: TransactionState::default(),
         };
-        decoder.add_endpoint(0, EndpointType::Invalid as usize);
-        decoder.add_endpoint(0, EndpointType::Framing as usize);
-        decoder
+        decoder.add_endpoint(0, EndpointType::Invalid as usize)?;
+        decoder.add_endpoint(0, EndpointType::Framing as usize)?;
+        Ok(decoder)
     }
 
-    pub fn handle_raw_packet(&mut self, packet: &[u8]) {
-        self.transaction_update(packet);
+    pub fn handle_raw_packet(&mut self, packet: &[u8])
+        -> Result<(), CaptureError>
+    {
+        self.transaction_update(packet)?;
         self.capture.packet_index.push(
-            self.capture.packet_data.len()).unwrap();
-        self.capture.packet_data.append(packet).unwrap();
+            self.capture.packet_data.len())?;
+        self.capture.packet_data.append(packet)?;
+        Ok(())
     }
 
-    fn transaction_update(&mut self, packet: &[u8]) {
-        let pid = PID::from(packet[0]);
-        match self.transaction_state.status(packet) {
+    fn transaction_update(&mut self, packet: &[u8])
+        -> Result<(), CaptureError>
+    {
+        let pid = PID::from(*packet.get(0).ok_or(IndexError)?);
+        match self.transaction_state.status(packet)? {
             DecodeStatus::New => {
-                self.transaction_end();
-                self.transaction_start(packet);
+                self.transaction_end()?;
+                self.transaction_start(packet)?;
             },
             DecodeStatus::Continue => {
                 self.transaction_append(pid);
             },
             DecodeStatus::Done => {
                 self.transaction_append(pid);
-                self.transaction_end();
+                self.transaction_end()?;
             },
             DecodeStatus::Invalid => {
-                self.transaction_end();
-                self.transaction_start(packet);
-                self.transaction_end();
+                self.transaction_end()?;
+                self.transaction_start(packet)?;
+                self.transaction_end()?;
             },
         };
+        Ok(())
     }
 
-    fn transaction_start(&mut self, packet: &[u8]) {
+    fn transaction_start(&mut self, packet: &[u8])
+        -> Result<(), CaptureError>
+    {
         let state = &mut self.transaction_state;
         state.start = self.capture.packet_index.len();
         state.count = 1;
-        state.first = PID::from(packet[0]);
+        state.first = PID::from(*packet.get(0).ok_or(IndexError)?);
         state.last = state.first;
         match PacketFields::from_packet(packet) {
             PacketFields::SOF(_) => {
@@ -191,18 +204,22 @@ impl<'cap> Decoder<'cap> {
             PacketFields::Token(token) => {
                 let addr = token.device_address() as usize;
                 let num = token.endpoint_number() as usize;
-                if self.endpoint_index[addr][num] < 0 {
-                    let endpoint_id = self.capture.endpoints.len() as i16;
-                    self.endpoint_index[addr][num] = endpoint_id;
-                    self.add_endpoint(addr, num);
-                }
-                self.transaction_state.endpoint_id =
-                    self.endpoint_index[addr][num] as usize;
+                let endpoint_id = match self.endpoint_index[addr][num] {
+                    Some(id) => id,
+                    None => {
+                        let id = self.capture.endpoints.len() as usize;
+                        self.endpoint_index[addr][num] = Some(id);
+                        self.add_endpoint(addr, num)?;
+                        id
+                    }
+                };
+                self.transaction_state.endpoint_id = endpoint_id as usize;
             },
             _ => {
                 self.transaction_state.endpoint_id = 0;
             }
-        }
+        };
+        Ok(())
     }
 
     fn transaction_append(&mut self, pid: PID) {
@@ -211,40 +228,55 @@ impl<'cap> Decoder<'cap> {
         state.last = pid;
     }
 
-    fn transaction_end(&mut self) {
-        self.add_transaction();
+    fn transaction_end(&mut self)
+        -> Result<(), CaptureError>
+    {
+        self.add_transaction()?;
         let state = &mut self.transaction_state;
         state.count = 0;
         state.first = PID::Malformed;
         state.last = PID::Malformed;
         state.setup = None;
+        Ok(())
     }
 
-    fn add_transaction(&mut self) {
-        if self.transaction_state.count == 0 { return }
-        self.transfer_update();
+    fn add_transaction(&mut self)
+        -> Result<(), CaptureError>
+    {
+        if self.transaction_state.count == 0 { return Ok(()) }
+        self.transfer_update()?;
         self.capture.transaction_index.push(
-            self.transaction_state.start).unwrap();
+            self.transaction_state.start)?;
+        Ok(())
     }
 
-    fn add_endpoint(&mut self, addr: usize, num: usize) {
-        if self.device_index[addr] == -1 {
-            self.device_index[addr] = self.capture.devices.size() as i8;
-            let device = Device { address: addr as u8 };
-            self.capture.devices.push(&device).unwrap();
-            let dev_data = DeviceData {
-                device_descriptor: None,
-                configurations: Vec::new(),
-                configuration_id: None,
-                endpoint_types: vec![
-                    EndpointType::Unidentified; USB_MAX_ENDPOINTS],
-                strings: Vec::new(),
-            };
-            self.capture.device_data.push(dev_data);
-        }
+    fn add_device(&mut self, addr: usize) -> Result<usize, CaptureError> {
+        let id = self.capture.devices.size() as usize;
+        self.device_index[addr] = Some(id);
+        let device = Device { address: addr as u8 };
+        self.capture.devices.push(&device)?;
+        let dev_data = DeviceData {
+            device_descriptor: None,
+            configurations: Vec::new(),
+            configuration_id: None,
+            endpoint_types: vec![
+                EndpointType::Unidentified; USB_MAX_ENDPOINTS],
+            strings: Vec::new(),
+        };
+        self.capture.device_data.push(dev_data);
+        Ok(id)
+    }
+
+    fn add_endpoint(&mut self, addr: usize, num: usize)
+        -> Result<(), CaptureError>
+    {
+        let device_id = match self.device_index[addr] {
+            Some(id) => id,
+            None => self.add_device(addr)?
+        };
         let ep_data = EndpointData {
             number: num as usize,
-            device_id: self.device_index[addr] as usize,
+            device_id: device_id as usize,
             transaction_start: 0,
             transaction_count: 0,
             last: PID::Malformed,
@@ -253,58 +285,86 @@ impl<'cap> Decoder<'cap> {
         };
         self.endpoint_data.push(ep_data);
         let mut endpoint = Endpoint::default();
-        endpoint.set_device_id(self.device_index[addr] as u64);
+        endpoint.set_device_id(device_id as u64);
         endpoint.set_device_address(addr as u8);
         endpoint.set_number(num as u8);
-        self.capture.endpoints.push(&endpoint).unwrap();
+        self.capture.endpoints.push(&endpoint)?;
         let ep_traf = EndpointTraffic {
-            transaction_ids: HybridIndex::new(1).unwrap(),
-            transfer_index: HybridIndex::new(1).unwrap(),
+            transaction_ids: HybridIndex::new(1)?,
+            transfer_index: HybridIndex::new(1)?,
         };
         self.capture.endpoint_traffic.push(ep_traf);
         self.last_endpoint_state.push(EndpointState::Idle as u8);
+        Ok(())
     }
 
-    fn decode_request(&mut self) {
+    fn current_endpoint_data(&self)
+        -> Result<&EndpointData, CaptureError>
+    {
         let endpoint_id = self.transaction_state.endpoint_id;
-        let ep_data = &self.endpoint_data[endpoint_id];
-        let fields = ep_data.setup.as_ref().unwrap();
+        self.endpoint_data.get(endpoint_id).ok_or(IndexError)
+    }
+
+    fn current_endpoint_data_mut(&mut self)
+        -> Result<&mut EndpointData, CaptureError>
+    {
+        let endpoint_id = self.transaction_state.endpoint_id;
+        self.endpoint_data.get_mut(endpoint_id).ok_or(IndexError)
+    }
+
+    fn current_device_data(&self)
+        -> Result<&DeviceData, CaptureError>
+    {
+        let ep_data = self.current_endpoint_data()?;
+        let device_id = ep_data.device_id as u64;
+        self.capture.get_device_data(&device_id)
+    }
+
+    fn current_device_data_mut(&mut self)
+        -> Result<&mut DeviceData, CaptureError>
+    {
+        let ep_data = self.current_endpoint_data()?;
+        let device_id = ep_data.device_id as u64;
+        self.capture.get_device_data_mut(&device_id)
+    }
+
+    fn decode_request(&mut self, fields: SetupFields)
+        -> Result<(), CaptureError>
+    {
         let req_type = fields.type_fields.request_type();
         let request = StandardRequest::from(fields.request);
         match (req_type, request) {
             (RequestType::Standard, StandardRequest::GetDescriptor)
-                => self.decode_descriptor_read(),
+                => self.decode_descriptor_read(&fields)?,
             (RequestType::Standard, StandardRequest::SetConfiguration)
-                => self.decode_configuration_set(),
-            (..) => {}
+                => self.decode_configuration_set(&fields)?,
+            _ => ()
         }
+        Ok(())
     }
 
-    fn decode_descriptor_read(&mut self) {
-        let endpoint_id = self.transaction_state.endpoint_id;
-        let ep_data = &mut self.endpoint_data[endpoint_id];
-        let fields = ep_data.setup.as_ref().unwrap();
+    fn decode_descriptor_read(&mut self, fields: &SetupFields)
+        -> Result<(), CaptureError>
+    {
         let recipient = fields.type_fields.recipient();
         let desc_type = DescriptorType::from((fields.value >> 8) as u8);
-        let payload = &ep_data.payload;
+        let payload = &self.current_endpoint_data()?.payload;
         let length = payload.len();
         match (recipient, desc_type) {
             (Recipient::Device, DescriptorType::Device) => {
                 if length == size_of::<DeviceDescriptor>() {
-                    let device_id = ep_data.device_id;
-                    let dev_data = &mut self.capture.device_data[device_id];
-                    dev_data.device_descriptor =
-                        Some(DeviceDescriptor::from_bytes(payload));
+                    let descriptor = DeviceDescriptor::from_bytes(payload);
+                    let dev_data = self.current_device_data_mut()?;
+                    dev_data.device_descriptor = Some(descriptor);
                 }
             },
             (Recipient::Device, DescriptorType::Configuration) => {
                 let size = size_of::<ConfigDescriptor>();
                 if length >= size {
-                    let device_id = ep_data.device_id;
-                    let dev_data = &mut self.capture.device_data[device_id];
-                    let configurations = &mut dev_data.configurations;
                     let configuration = Configuration::from_bytes(payload);
+                    let dev_data = self.current_device_data_mut()?;
                     if let Some(config) = configuration {
+                        let configurations = &mut dev_data.configurations;
                         let config_id =
                             config.descriptor.config_value as usize;
                         while configurations.len() <= config_id {
@@ -317,46 +377,47 @@ impl<'cap> Decoder<'cap> {
             },
             (Recipient::Device, DescriptorType::String) => {
                 if length >= 2 {
-                    let device_id = ep_data.device_id;
-                    let strings =
-                        &mut self.capture.device_data[device_id].strings;
+                    let string = payload[2..length].to_vec();
+                    let dev_data = self.current_device_data_mut()?;
+                    let strings = &mut dev_data.strings;
                     let string_id = (fields.value & 0xFF) as usize;
                     while strings.len() <= string_id {
                         strings.push(None);
                     }
-                    strings[string_id] = Some(payload[2..length].to_vec());
+                    strings[string_id] = Some(string);
                 }
             },
             _ => {}
-        }
+        };
+        Ok(())
     }
 
-    fn decode_configuration_set(&mut self) {
-        let endpoint_id = self.transaction_state.endpoint_id;
-        let ep_data = &mut self.endpoint_data[endpoint_id];
-        let device_id = ep_data.device_id;
-        let dev_data = &mut self.capture.device_data[device_id];
-        let fields = ep_data.setup.as_ref().unwrap();
+    fn decode_configuration_set(&mut self, fields: &SetupFields)
+        -> Result<(), CaptureError>
+    {
+        let dev_data = self.current_device_data_mut()?;
         let config_id = fields.value as usize;
         dev_data.configuration_id = Some(config_id);
         dev_data.update_endpoint_types();
+        Ok(())
     }
 
-    fn transfer_status(&mut self) -> DecodeStatus {
+    fn transfer_status(&mut self) -> Result<DecodeStatus, CaptureError> {
         let next = self.transaction_state.first;
-        let endpoint_id = self.transaction_state.endpoint_id;
-        let ep_data = &mut self.endpoint_data[endpoint_id];
-        let dev_data = &self.capture.device_data[ep_data.device_id];
+        let ep_data = self.current_endpoint_data()?;
+        let dev_data = self.current_device_data()?;
         let ep_type = &dev_data.endpoint_type(ep_data.number);
         use PID::*;
         use EndpointType::*;
         use Direction::*;
-        match (ep_type, ep_data.last, next) {
+        Ok(match (ep_type, ep_data.last, next) {
 
             // A SETUP transaction starts a new control transfer.
             // Store the setup fields to interpret the request.
             (Control, _, SETUP) => {
-                ep_data.setup = self.transaction_state.setup.take();
+                let setup = self.transaction_state.setup.take();
+                let ep_data = self.current_endpoint_data_mut()?;
+                ep_data.setup = setup;
                 DecodeStatus::New
             },
 
@@ -378,8 +439,10 @@ impl<'cap> Decoder<'cap> {
                         (In,  true, IN,    IN ) |
                         (Out, true, OUT,   OUT) => {
                             if self.transaction_state.completed() {
-                                ep_data.payload.extend(
-                                    &self.transaction_state.payload);
+                                let payload =
+                                    self.transaction_state.payload.clone();
+                                let ep_data = self.current_endpoint_data_mut()?;
+                                ep_data.payload.extend(payload);
                             }
                             // Await status stage.
                             DecodeStatus::Continue
@@ -393,7 +456,8 @@ impl<'cap> Decoder<'cap> {
                         (Out, false, SETUP, IN ) |
                         (In,  true,  IN,    OUT) |
                         (Out, true,  OUT,   IN ) => {
-                            self.decode_request();
+                            let fields_copy = *fields;
+                            self.decode_request(fields_copy)?;
                             DecodeStatus::Done
                         },
                         // Any other sequence is invalid.
@@ -419,96 +483,117 @@ impl<'cap> Decoder<'cap> {
 
             // Any other case is not a valid part of a transfer.
             _ => DecodeStatus::Invalid
-        }
+        })
     }
 
-    fn transfer_update(&mut self) {
-        let status = self.transfer_status();
-        let endpoint_id = self.transaction_state.endpoint_id;
-        let ep_data = &mut self.endpoint_data[endpoint_id];
+    fn transfer_update(&mut self)
+        -> Result<(), CaptureError>
+    {
+        let status = self.transfer_status()?;
+        let ep_data = self.current_endpoint_data()?;
         let retry_needed =
             ep_data.transaction_count > 0 &&
             status != DecodeStatus::Invalid &&
             !self.transaction_state.completed();
         if retry_needed {
-            self.transfer_append(false);
-            return
+            self.transfer_append(false)?;
+            return Ok(());
         }
         match status {
-            DecodeStatus::New => {
-                self.transfer_end();
-                self.transfer_start();
-                self.transfer_append(true);
+            DecodeStatus::New=> {
+                self.transfer_end()?;
+                self.transfer_start()?;
+                self.transfer_append(true)?;
             },
             DecodeStatus::Continue => {
-                self.transfer_append(true);
+                self.transfer_append(true)?;
             },
             DecodeStatus::Done => {
-                self.transfer_append(true);
-                self.transfer_end();
+                self.transfer_append(true)?;
+                self.transfer_end()?;
             },
             DecodeStatus::Invalid => {
-                self.transfer_end();
-                self.transfer_start();
-                self.transfer_append(false);
-                self.transfer_end();
+                self.transfer_end()?;
+                self.transfer_start()?;
+                self.transfer_append(false)?;
+                self.transfer_end()?;
             }
         }
+        Ok(())
     }
 
-    fn transfer_start(&mut self) {
+    fn transfer_start(&mut self)
+        -> Result<(), CaptureError>
+    {
         self.capture.item_index.push(
-            self.capture.transfer_index.len()).unwrap();
+            self.capture.transfer_index.len())?;
         let endpoint_id = self.transaction_state.endpoint_id;
-        self.last_item_endpoint = endpoint_id as i16;
-        self.add_transfer_entry(endpoint_id, true);
-        let ep_data = &mut self.endpoint_data[endpoint_id];
-        let ep_traf = &mut self.capture.endpoint_traffic[endpoint_id];
+        self.last_item_endpoint = Some(endpoint_id);
+        self.add_transfer_entry(endpoint_id, true)?;
+        let ep_data = self.endpoint_data.get_mut(endpoint_id)
+                                        .ok_or(IndexError)?;
+        let ep_traf = self.capture.endpoint_traffic.get_mut(endpoint_id)
+                                                   .ok_or(IndexError)?;
         ep_data.transaction_start = ep_traf.transaction_ids.len();
         ep_data.transaction_count = 0;
-        ep_traf.transfer_index.push(ep_data.transaction_start).unwrap();
+        ep_traf.transfer_index.push(ep_data.transaction_start)?;
+        Ok(())
     }
 
-    fn transfer_append(&mut self, success: bool) {
+    fn transfer_append(&mut self, success: bool)
+        -> Result<(), CaptureError>
+    {
         let endpoint_id = self.transaction_state.endpoint_id;
-        let ep_data = &mut self.endpoint_data[endpoint_id];
-        let ep_traf = &mut self.capture.endpoint_traffic[endpoint_id];
+        let ep_data = self.endpoint_data.get_mut(endpoint_id)
+                                        .ok_or(IndexError)?;
+        let ep_traf = self.capture.endpoint_traffic.get_mut(endpoint_id)
+                                                   .ok_or(IndexError)?;
         ep_traf.transaction_ids.push(
-            self.capture.transaction_index.len()).unwrap();
+            self.capture.transaction_index.len())?;
         ep_data.transaction_count += 1;
         if success {
             ep_data.last = self.transaction_state.first;
         }
+        Ok(())
     }
 
-    fn transfer_end(&mut self) {
+    fn transfer_end(&mut self)
+        -> Result<(), CaptureError>
+    {
         let endpoint_id = self.transaction_state.endpoint_id;
-        let ep_data = &self.endpoint_data[endpoint_id];
+        let ep_data = self.current_endpoint_data()?;
         if ep_data.transaction_count > 0 {
-            if self.last_item_endpoint != (endpoint_id as i16) {
+            if self.last_item_endpoint != Some(endpoint_id) {
                 self.capture.item_index.push(
-                    self.capture.transfer_index.len()).unwrap();
-                self.last_item_endpoint = endpoint_id as i16;
+                    self.capture.transfer_index.len())?;
+                self.last_item_endpoint = Some(endpoint_id);
             }
-            self.add_transfer_entry(endpoint_id, false);
+            self.add_transfer_entry(endpoint_id, false)?;
         }
-        let ep_data = &mut self.endpoint_data[endpoint_id];
+        let ep_data = self.current_endpoint_data_mut()?;
         ep_data.transaction_count = 0;
         ep_data.last = PID::Malformed;
         ep_data.payload.clear();
+        Ok(())
     }
 
-    fn add_transfer_entry(&mut self, endpoint_id: usize, start: bool) {
-        let ep_traf = &mut self.capture.endpoint_traffic[endpoint_id];
+    fn add_transfer_entry(&mut self, endpoint_id: usize, start: bool)
+        -> Result<(), CaptureError>
+    {
+        let ep_traf = self.capture.endpoint_traffic.get_mut(endpoint_id)
+                                                   .ok_or(IndexError)?;
         let mut entry = TransferIndexEntry::default();
         entry.set_endpoint_id(endpoint_id as u16);
         entry.set_transfer_id(ep_traf.transfer_index.len());
         entry.set_is_start(start);
-        self.capture.transfer_index.push(&entry).unwrap();
-        self.add_endpoint_state(endpoint_id, start);
+        self.capture.transfer_index.push(&entry)?;
+        self.add_endpoint_state(endpoint_id, start)?;
+        Ok(())
     }
 
-    fn add_endpoint_state(&mut self, endpoint_id: usize, start: bool) {
+    fn add_endpoint_state(&mut self, endpoint_id: usize, start: bool)
+        -> Result<(), CaptureError>
+    {
         let endpoint_count = self.capture.endpoints.len() as usize;
         for i in 0..endpoint_count {
             use EndpointState::*;
@@ -525,7 +610,8 @@ impl<'cap> Decoder<'cap> {
         }
         let last_state = self.last_endpoint_state.as_slice();
         let state_offset = self.capture.endpoint_states.len();
-        self.capture.endpoint_states.append(last_state).unwrap();
-        self.capture.endpoint_state_index.push(state_offset).unwrap();
+        self.capture.endpoint_states.append(last_state)?;
+        self.capture.endpoint_state_index.push(state_offset)?;
+        Ok(())
     }
 }

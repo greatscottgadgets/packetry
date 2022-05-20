@@ -1,7 +1,8 @@
 use std::ops::Range;
+use std::num::TryFromIntError;
 
-use crate::file_vec::FileVec;
-use crate::hybrid_index::HybridIndex;
+use crate::file_vec::{FileVec, FileVecError};
+use crate::hybrid_index::{HybridIndex, HybridIndexError};
 use crate::usb::{
     PID,
     PacketFields,
@@ -9,6 +10,8 @@ use crate::usb::{
     Direction,
     DeviceDescriptor,
     Configuration,
+    Interface,
+    EndpointDescriptor,
     ControlTransfer,
 };
 
@@ -16,6 +19,23 @@ use bytemuck_derive::{Pod, Zeroable};
 use num_enum::{IntoPrimitive, FromPrimitive};
 use num_format::{Locale, ToFormattedString};
 use humansize::{FileSize, file_size_opts as options};
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum CaptureError {
+    #[error(transparent)]
+    FileVecError(#[from] FileVecError),
+    #[error(transparent)]
+    HybridIndexError(#[from] HybridIndexError),
+    #[error(transparent)]
+    RangeError(#[from] TryFromIntError),
+    #[error("Descriptor missing")]
+    DescriptorMissing,
+    #[error("Invalid index")]
+    IndexError,
+}
+
+use CaptureError::{DescriptorMissing, IndexError};
 
 #[derive(Clone)]
 pub enum Item {
@@ -109,28 +129,74 @@ pub struct DeviceData {
 }
 
 impl DeviceData {
+    pub fn try_get_configuration(&self, number: &u8) -> Option<&Configuration>
+    {
+        match self.configurations.get(*number as usize) {
+            Some(Some(config)) => Some(config),
+            _ => None
+        }
+    }
+
+    pub fn get_configuration(&self, number: &u8)
+        -> Result<&Configuration, CaptureError>
+    {
+        match self.try_get_configuration(number) {
+            Some(config) => Ok(config),
+            None => Err(DescriptorMissing)
+        }
+    }
+
     pub fn endpoint_type(&self, number: usize) -> EndpointType {
         use EndpointType::*;
         match number {
             0 => Control,
             0x10 => Framing,
             0x11 => Invalid,
-            _ => self.endpoint_types[number],
+            _ => match self.endpoint_types.get(number) {
+                Some(ep_type) => *ep_type,
+                None => Unidentified
+            }
         }
     }
 
     pub fn update_endpoint_types(&mut self) {
         if let Some(id) = self.configuration_id {
-            if let Some(config) = &self.configurations[id] {
+            if let Some(Some(config)) = &self.configurations.get(id) {
                 for iface in &config.interfaces {
                     for ep_desc in &iface.endpoint_descriptors {
                         let number = ep_desc.endpoint_address & 0x0F;
                         let index = number as usize;
-                        self.endpoint_types[index] =
-                            EndpointType::from(ep_desc.attributes & 0x03);
+                        if let Some(ep_type) =
+                            self.endpoint_types.get_mut(index)
+                        {
+                            *ep_type =
+                                EndpointType::from(ep_desc.attributes & 0x03);
+                        }
                     }
                 }
             }
+        }
+    }
+}
+
+impl Configuration {
+    pub fn get_interface(&self, number: &u8)
+        -> Result<&Interface, CaptureError>
+    {
+        match self.interfaces.get(*number as usize) {
+            Some(iface) => Ok(iface),
+            _ => Err(IndexError)
+        }
+    }
+}
+
+impl Interface {
+    pub fn get_endpoint_descriptor(&self, number: &u8)
+        -> Result<&EndpointDescriptor, CaptureError>
+    {
+        match self.endpoint_descriptors.get(*number as usize) {
+            Some(desc) => Ok(desc),
+            _ => Err(IndexError)
         }
     }
 }
@@ -147,12 +213,6 @@ pub struct Capture {
     pub endpoint_traffic: Vec<EndpointTraffic>,
     pub endpoint_states: FileVec<u8>,
     pub endpoint_state_index: HybridIndex,
-}
-
-impl Default for Capture {
-    fn default() -> Self {
-        Capture::new()
-    }
 }
 
 pub struct Transaction {
@@ -173,18 +233,18 @@ impl Transaction {
 
 fn get_index_range(index: &mut HybridIndex,
                       length: u64,
-                      id: u64) -> Range<u64>
+                      id: u64) -> Result<Range<u64>, CaptureError>
 {
-    if id + 2 > index.len() {
-        let start = index.get(id).unwrap();
+    Ok(if id + 2 > index.len() {
+        let start = index.get(id)?;
         let end = length;
         start..end
     } else {
-        let vec = index.get_range(id..(id + 2)).unwrap();
+        let vec = index.get_range(id..(id + 2))?;
         let start = vec[0];
         let end = vec[1];
         start..end
-    }
+    })
 }
 
 pub fn fmt_count(count: u64) -> String {
@@ -192,7 +252,10 @@ pub fn fmt_count(count: u64) -> String {
 }
 
 pub fn fmt_size(size: u64) -> String {
-    size.file_size(options::BINARY).unwrap()
+    match size.file_size(options::BINARY) {
+        Ok(string) => string,
+        Err(e) => format!("<Error: {}>", e)
+    }
 }
 
 pub fn fmt_vec<T>(vec: &FileVec<T>) -> String
@@ -209,20 +272,20 @@ pub fn fmt_index(idx: &HybridIndex) -> String {
 }
 
 impl Capture {
-    pub fn new() -> Self {
-        Capture {
-            item_index: HybridIndex::new(1).unwrap(),
-            packet_index: HybridIndex::new(2).unwrap(),
-            packet_data: FileVec::new().unwrap(),
-            transaction_index: HybridIndex::new(1).unwrap(),
-            transfer_index: FileVec::new().unwrap(),
-            devices: FileVec::new().unwrap(),
+    pub fn new() -> Result<Self, CaptureError> {
+        Ok(Capture {
+            item_index: HybridIndex::new(1)?,
+            packet_index: HybridIndex::new(2)?,
+            packet_data: FileVec::new()?,
+            transaction_index: HybridIndex::new(1)?,
+            transfer_index: FileVec::new()?,
+            devices: FileVec::new()?,
             device_data: Vec::new(),
-            endpoints: FileVec::new().unwrap(),
+            endpoints: FileVec::new()?,
             endpoint_traffic: Vec::new(),
-            endpoint_states: FileVec::new().unwrap(),
-            endpoint_state_index: HybridIndex::new(1).unwrap(),
-        }
+            endpoint_states: FileVec::new()?,
+            endpoint_state_index: HybridIndex::new(1)?,
+        })
     }
 
     pub fn print_storage_summary(&self) {
@@ -272,40 +335,48 @@ impl Capture {
         )
     }
 
-    pub fn get_item(&mut self, parent: &Option<Item>, index: u64) -> Item {
+    pub fn get_item(&mut self, parent: &Option<Item>, index: u64)
+        -> Result<Item, CaptureError>
+    {
         match parent {
-            None => Item::Transfer(self.item_index.get(index).unwrap()),
+            None => Ok(Item::Transfer(self.item_index.get(index)?)),
             Some(item) => self.get_child(item, index)
         }
     }
 
-    pub fn get_child(&mut self, parent: &Item, index: u64) -> Item {
+    pub fn get_child(&mut self, parent: &Item, index: u64)
+        -> Result<Item, CaptureError>
+    {
         use Item::*;
-        match parent {
+        Ok(match parent {
             Transfer(transfer_index_id) =>
                 Transaction(*transfer_index_id, {
-                    let entry = self.transfer_index.get(*transfer_index_id).unwrap();
+                    let entry = self.transfer_index.get(*transfer_index_id)?;
                     let endpoint_id = entry.endpoint_id() as usize;
                     let transfer_id = entry.transfer_id();
-                    let ep_traf = &mut self.endpoint_traffic[endpoint_id];
-                    let offset = ep_traf.transfer_index.get(transfer_id).unwrap();
-                    ep_traf.transaction_ids.get(offset + index).unwrap()
+                    let ep_traf = self.endpoint_traffic.get_mut(endpoint_id)
+                                                       .ok_or(IndexError)?;
+                    let offset = ep_traf.transfer_index.get(transfer_id)?;
+                    ep_traf.transaction_ids.get(offset + index)?
                 }),
             Transaction(transfer_index_id, transaction_id) =>
                 Packet(*transfer_index_id, *transaction_id, {
-                    self.transaction_index.get(*transaction_id).unwrap() + index}),
-            Packet(..) => panic!("packets do not have children"),
-        }
+                    self.transaction_index.get(*transaction_id)? + index}),
+            Packet(..) => return Err(IndexError)
+        })
     }
 
-    fn item_range(&mut self, item: &Item) -> Range<u64> {
+    fn item_range(&mut self, item: &Item)
+        -> Result<Range<u64>, CaptureError>
+    {
         use Item::*;
         match item {
             Transfer(transfer_index_id) => {
-                let entry = self.transfer_index.get(*transfer_index_id).unwrap();
+                let entry = self.transfer_index.get(*transfer_index_id)?;
                 let endpoint_id = entry.endpoint_id() as usize;
                 let transfer_id = entry.transfer_id();
-                let ep_traf = &mut self.endpoint_traffic[endpoint_id];
+                let ep_traf = self.endpoint_traffic.get_mut(endpoint_id)
+                                                   .ok_or(IndexError)?;
                 get_index_range(&mut ep_traf.transfer_index,
                     ep_traf.transaction_ids.len(), transfer_id)
             },
@@ -320,39 +391,45 @@ impl Capture {
         }
     }
 
-    pub fn item_count(&mut self, parent: &Option<Item>) -> u64 {
+    pub fn item_count(&mut self, parent: &Option<Item>)
+        -> Result<u64, CaptureError>
+    {
         match parent {
-            None => self.item_index.len(),
+            None => Ok(self.item_index.len()),
             Some(item) => self.child_count(item)
         }
     }
 
-    pub fn child_count(&mut self, parent: &Item) -> u64 {
+    pub fn child_count(&mut self, parent: &Item)
+        -> Result<u64, CaptureError>
+    {
         use Item::*;
-        match parent {
+        Ok(match parent {
             Transfer(id) => {
-                let entry = self.transfer_index.get(*id).unwrap();
+                let entry = self.transfer_index.get(*id)?;
                 if entry.is_start() {
-                    let range = self.item_range(parent);
+                    let range = self.item_range(parent)?;
                     range.end - range.start
                 } else {
                     0
                 }
             },
             Transaction(..) => {
-                let range = self.item_range(parent);
+                let range = self.item_range(parent)?;
                 range.end - range.start
             },
             Packet(..) => 0,
-        }
+        })
     }
 
-    pub fn get_summary(&mut self, item: &Item) -> String {
+    pub fn get_summary(&mut self, item: &Item)
+        -> Result<String, CaptureError>
+    {
         use Item::*;
-        match item {
+        Ok(match item {
             Packet(.., packet_id) => {
-                let packet = self.get_packet(*packet_id);
-                let pid = PID::from(packet[0]);
+                let packet = self.get_packet(*packet_id)?;
+                let pid = PID::from(*packet.get(0).ok_or(IndexError)?);
                 format!("{} packet{}: {:02X?}",
                     pid,
                     match PacketFields::from_packet(&packet) {
@@ -374,7 +451,7 @@ impl Capture {
                     packet)
             },
             Transaction(_, transaction_id) => {
-                let transaction = self.get_transaction(transaction_id);
+                let transaction = self.get_transaction(transaction_id)?;
                 let count = transaction.packet_count();
                 match (transaction.pid, transaction.payload_size()) {
                     (PID::SOF, _) => format!(
@@ -387,15 +464,16 @@ impl Capture {
                 }
             },
             Transfer(transfer_index_id) => {
-                let entry = self.transfer_index.get(*transfer_index_id).unwrap();
+                let entry = self.transfer_index.get(*transfer_index_id)?;
                 let endpoint_id = entry.endpoint_id();
-                let endpoint = self.endpoints.get(endpoint_id as u64).unwrap();
+                let endpoint = self.endpoints.get(endpoint_id as u64)?;
                 let device_id = endpoint.device_id() as usize;
-                let dev_data = &self.device_data[device_id];
+                let dev_data = &self.device_data.get(device_id)
+                                                .ok_or(IndexError)?;
                 let num = endpoint.number() as usize;
                 let ep_type = dev_data.endpoint_type(num);
                 if !entry.is_start() {
-                    return match ep_type {
+                    return Ok(match ep_type {
                         EndpointType::Invalid =>
                             "End of invalid groups".to_string(),
                         EndpointType::Framing =>
@@ -403,9 +481,9 @@ impl Capture {
                         endpoint_type => format!(
                             "{:?} transfer ending on endpoint {}.{}",
                             endpoint_type, endpoint.device_address(), num)
-                    }
+                    })
                 }
-                let range = self.item_range(item);
+                let range = self.item_range(item)?;
                 let count = range.end - range.start;
                 match ep_type {
                     EndpointType::Invalid => format!(
@@ -414,7 +492,7 @@ impl Capture {
                         "{} SOF groups", count),
                     EndpointType::Control => {
                         let transfer = self.get_control_transfer(
-                            endpoint.device_address(), endpoint_id, range);
+                            endpoint.device_address(), endpoint_id, range)?;
                         transfer.summary()
                     },
                     endpoint_type => format!(
@@ -423,10 +501,12 @@ impl Capture {
                         endpoint.device_address(), endpoint.number())
                 }
             }
-        }
+        })
     }
 
-    pub fn get_connectors(&mut self, item: &Item) -> String {
+    pub fn get_connectors(&mut self, item: &Item)
+        -> Result<String, CaptureError>
+    {
         use EndpointState::*;
         use Item::*;
         let endpoint_count = self.endpoints.len() as usize;
@@ -436,24 +516,25 @@ impl Capture {
         let transfer_index_id = match item {
             Transfer(i) | Transaction(i, _) | Packet(i, ..) => i
         };
-        let entry = self.transfer_index.get(*transfer_index_id).unwrap();
+        let entry = self.transfer_index.get(*transfer_index_id)?;
         let endpoint_id = entry.endpoint_id() as usize;
-        let endpoint_state = self.get_endpoint_state(*transfer_index_id);
-        let extended = self.transfer_extended(endpoint_id, *transfer_index_id);
-        let ep_traf = &mut self.endpoint_traffic[endpoint_id];
+        let endpoint_state = self.get_endpoint_state(*transfer_index_id)?;
+        let extended = self.transfer_extended(endpoint_id, *transfer_index_id)?;
+        let ep_traf = self.endpoint_traffic.get_mut(endpoint_id)
+                                           .ok_or(IndexError)?;
         let last_transaction = match item {
             Transaction(_, transaction_id) | Packet(_, transaction_id, _) => {
                 let range = get_index_range(&mut ep_traf.transfer_index,
-                    ep_traf.transaction_ids.len(), entry.transfer_id());
+                    ep_traf.transaction_ids.len(), entry.transfer_id())?;
                 let last_transaction_id =
-                    ep_traf.transaction_ids.get(range.end - 1).unwrap();
+                    ep_traf.transaction_ids.get(range.end - 1)?;
                 *transaction_id == last_transaction_id
             }, _ => false
         };
         let last_packet = match item {
             Packet(_, transaction_id, packet_id) => {
                 let range = get_index_range(&mut self.transaction_index,
-                    self.packet_index.len(), *transaction_id);
+                    self.packet_index.len(), *transaction_id)?;
                 *packet_id == range.end - 1
             }, _ => false
         };
@@ -515,54 +596,64 @@ impl Capture {
                 (Packet(..), true)                   => "    └──",
             }
         );
-        connectors
+        Ok(connectors)
     }
 
-    fn transfer_extended(&mut self, endpoint_id: usize, index: u64) -> bool {
+    fn transfer_extended(&mut self, endpoint_id: usize, index: u64)
+        -> Result<bool, CaptureError>
+    {
         use EndpointState::*;
         let count = self.transfer_index.len();
         if index + 1 >= count {
-            return false;
+            return Ok(false);
         };
-        let state = self.get_endpoint_state(index + 1);
-        if endpoint_id >= state.len() {
-            false
-        } else {
-            matches!(EndpointState::from(state[endpoint_id]), Ongoing)
-        }
+        let state = self.get_endpoint_state(index + 1)?;
+        Ok(match state.get(endpoint_id) {
+            Some(ep_state) => EndpointState::from(*ep_state) == Ongoing,
+            None => false
+        })
     }
 
-    fn get_endpoint_state(&mut self, index: u64) -> Vec<u8> {
+    fn get_endpoint_state(&mut self, index: u64)
+        -> Result<Vec<u8>, CaptureError>
+    {
         let range = get_index_range(
             &mut self.endpoint_state_index,
-            self.endpoint_states.len(), index);
-        self.endpoint_states.get_range(range).unwrap()
+            self.endpoint_states.len(), index)?;
+        Ok(self.endpoint_states.get_range(range)?)
     }
 
-    fn get_packet(&mut self, index: u64) -> Vec<u8> {
+    fn get_packet(&mut self, index: u64)
+        -> Result<Vec<u8>, CaptureError>
+    {
         let range = get_index_range(&mut self.packet_index,
-                                    self.packet_data.len(), index);
-        self.packet_data.get_range(range).unwrap()
+                                    self.packet_data.len(), index)?;
+        Ok(self.packet_data.get_range(range)?)
     }
 
-    fn get_packet_pid(&mut self, index: u64) -> PID {
-        let offset = self.packet_index.get(index).unwrap();
-        PID::from(self.packet_data.get(offset).unwrap())
+    fn get_packet_pid(&mut self, index: u64)
+        -> Result<PID, CaptureError>
+    {
+        let offset = self.packet_index.get(index)?;
+        Ok(PID::from(self.packet_data.get(offset)?))
     }
 
-    fn get_transaction(&mut self, index: &u64) -> Transaction {
+    fn get_transaction(&mut self, index: &u64)
+        -> Result<Transaction, CaptureError>
+    {
         let packet_id_range = get_index_range(&mut self.transaction_index,
-                                              self.packet_index.len(), *index);
+                                              self.packet_index.len(),
+                                              *index)?;
         let packet_count = packet_id_range.end - packet_id_range.start;
-        let pid = self.get_packet_pid(packet_id_range.start);
+        let pid = self.get_packet_pid(packet_id_range.start)?;
         use PID::*;
         let payload_byte_range = match pid {
             IN | OUT if packet_count >= 2 => {
                 let data_packet_id = packet_id_range.start + 1;
                 let packet_byte_range = get_index_range(
                     &mut self.packet_index,
-                    self.packet_data.len(), data_packet_id);
-                let pid = self.packet_data.get(packet_byte_range.start).unwrap();
+                    self.packet_data.len(), data_packet_id)?;
+                let pid = self.packet_data.get(packet_byte_range.start)?;
                 match PID::from(pid) {
                     DATA0 | DATA1 => Some({
                         packet_byte_range.start + 1 .. packet_byte_range.end - 2
@@ -572,32 +663,33 @@ impl Capture {
             },
             _ => None
         };
-        Transaction {
+        Ok(Transaction {
             pid,
             packet_id_range,
             payload_byte_range,
-        }
+        })
     }
 
     fn get_control_transfer(&mut self,
                             address: u8,
                             endpoint_id: u16,
-                            range: Range<u64>) -> ControlTransfer
+                            range: Range<u64>)
+        -> Result<ControlTransfer, CaptureError>
     {
-        let ep_traf = &mut self.endpoint_traffic[endpoint_id as usize];
+        let ep_traf = self.endpoint_traffic.get_mut(endpoint_id as usize)
+                                           .ok_or(IndexError)?;
         let transaction_ids =
-            ep_traf.transaction_ids.get_range(range).unwrap();
-        let setup_transaction_id = transaction_ids[0];
+            ep_traf.transaction_ids.get_range(range)?;
+        let setup_transaction_id = transaction_ids.get(0).ok_or(IndexError)?;
         let setup_packet_id =
-            self.transaction_index.get(setup_transaction_id)
-                                  .unwrap();
+            self.transaction_index.get(*setup_transaction_id)?;
         let data_packet_id = setup_packet_id + 1;
-        let data_packet = self.get_packet(data_packet_id);
+        let data_packet = self.get_packet(data_packet_id)?;
         let fields = SetupFields::from_data_packet(&data_packet);
         let direction = fields.type_fields.direction();
         let mut data: Vec<u8> = Vec::new();
         for id in transaction_ids {
-            let transaction = self.get_transaction(&id);
+            let transaction = self.get_transaction(&id)?;
             match (direction,
                    transaction.pid,
                    transaction.payload_byte_range)
@@ -605,30 +697,32 @@ impl Capture {
                 (Direction::In,  PID::IN,  Some(range)) |
                 (Direction::Out, PID::OUT, Some(range)) => {
                     data.extend_from_slice(
-                        &self.packet_data.get_range(range).unwrap());
+                        &self.packet_data.get_range(range)?);
                 },
                 (..) => {}
             };
         }
-        ControlTransfer {
+        Ok(ControlTransfer {
             address,
             fields,
             data,
-        }
+        })
     }
 
     pub fn get_device_item(&mut self, parent: &Option<DeviceItem>, index: u64)
-        -> DeviceItem
+        -> Result<DeviceItem, CaptureError>
     {
         match parent {
-            None => DeviceItem::Device(index + 1),
+            None => Ok(DeviceItem::Device(index + 1)),
             Some(item) => self.device_child(item, index)
         }
     }
 
-    fn device_child(&self, item: &DeviceItem, index: u64) -> DeviceItem {
+    fn device_child(&self, item: &DeviceItem, index: u64)
+        -> Result<DeviceItem, CaptureError>
+    {
         use DeviceItem::*;
-        match item {
+        Ok(match item {
             Device(dev) => match index {
                 0 => DeviceDescriptor(*dev),
                 conf => Configuration(*dev, conf as u8),
@@ -637,76 +731,87 @@ impl Capture {
                 DeviceDescriptorField(*dev, index as u8),
             Configuration(dev, conf) => match index {
                 0 => ConfigurationDescriptor(*dev, *conf),
-                n => Interface(*dev, *conf, (n - 1).try_into().unwrap()),
+                n => Interface(*dev, *conf, (n - 1).try_into()?),
             },
             ConfigurationDescriptor(dev, conf) =>
                 ConfigurationDescriptorField(*dev, *conf, index as u8),
             Interface(dev, conf, iface) => match index {
                 0 => InterfaceDescriptor(*dev, *conf, *iface),
                 n => EndpointDescriptor(*dev, *conf, *iface,
-                                        (n - 1).try_into().unwrap())
+                                        (n - 1).try_into()?)
             },
             InterfaceDescriptor(dev, conf, iface) =>
                 InterfaceDescriptorField(*dev, *conf, *iface, index as u8),
             EndpointDescriptor(dev, conf, iface, ep) =>
                  EndpointDescriptorField(*dev, *conf, *iface,
                                          *ep, index as u8),
-            _ => panic!("Item does not have children")
-        }
+            _ => return Err(IndexError)
+        })
     }
 
-    pub fn device_item_count(&mut self, parent: &Option<DeviceItem>) -> u64 {
-        match parent {
+    pub fn device_item_count(&mut self, parent: &Option<DeviceItem>)
+        -> Result<u64, CaptureError>
+    {
+        Ok(match parent {
             None => (self.device_data.len() - 1) as u64,
-            Some(item) => self.device_child_count(item),
-        }
+            Some(item) => self.device_child_count(item)?,
+        })
     }
 
-    fn device_child_count(&self, item: &DeviceItem) -> u64 {
+    pub fn get_device_data(&self, id: &u64)
+        -> Result<&DeviceData, CaptureError>
+    {
+        self.device_data.get(*id as usize).ok_or(IndexError)
+    }
+
+    pub fn get_device_data_mut(&mut self, id: &u64)
+        -> Result<&mut DeviceData, CaptureError>
+    {
+        self.device_data.get_mut(*id as usize).ok_or(IndexError)
+    }
+
+    fn device_child_count(&self, item: &DeviceItem)
+        -> Result<u64, CaptureError>
+    {
         use DeviceItem::*;
-        let data = &self.device_data;
-        (match item {
+        Ok((match item {
             Device(dev) =>
-                data[*dev as usize].configurations.len(),
+                self.get_device_data(dev)?.configurations.len(),
             DeviceDescriptor(dev) =>
-                match data[*dev as usize].device_descriptor {
+                match self.get_device_data(dev)?.device_descriptor {
                     Some(_) => 13,
                     None => 0,
                 },
             Configuration(dev, conf) =>
-                match data[*dev as usize]
-                    .configurations[*conf as usize].as_ref()
-                {
+                match self.get_device_data(dev)?.try_get_configuration(conf) {
                     Some(conf) => 1 + conf.interfaces.len(),
                     None => 0
                 },
             ConfigurationDescriptor(dev, conf) =>
-                match data[*dev as usize]
-                    .configurations[*conf as usize]
-                {
+                match self.get_device_data(dev)?.try_get_configuration(conf) {
                     Some(_) => 8,
                     None => 0
                 },
             Interface(dev, conf, iface) =>
-                match data[*dev as usize]
-                    .configurations[*conf as usize].as_ref()
-                {
-                    Some(conf) => 1 + conf.interfaces[*iface as usize]
-                        .endpoint_descriptors.len(),
+                match self.get_device_data(dev)?.try_get_configuration(conf) {
+                    Some(conf) =>
+                        conf.get_interface(iface)?.endpoint_descriptors.len(),
                     None => 0
                 },
             InterfaceDescriptor(..) => 9,
             EndpointDescriptor(..) => 6,
             _ => 0
-        }) as u64
+        }) as u64)
     }
 
-    pub fn get_device_summary(&mut self, item: &DeviceItem) -> String {
+    pub fn get_device_summary(&mut self, item: &DeviceItem)
+        -> Result<String, CaptureError>
+    {
         use DeviceItem::*;
-        match item {
+        Ok(match item {
             Device(dev) => {
-                let data = &self.device_data[*dev as usize];
-                let device = self.devices.get(*dev).unwrap();
+                let device = self.devices.get(*dev)?;
+                let data = self.get_device_data(dev)?;
                 format!("Device {}: {}", device.address,
                     match data.device_descriptor {
                         Some(descriptor) => format!(
@@ -719,25 +824,26 @@ impl Capture {
                 )
             },
             DeviceDescriptor(dev) => {
-                let data = &self.device_data[*dev as usize];
+                let data = self.get_device_data(dev)?;
                 match data.device_descriptor {
                     Some(_) => "Device descriptor",
                     None => "No device descriptor"
                 }.to_string()
             },
             DeviceDescriptorField(dev, field) => {
-                let data = &self.device_data[*dev as usize];
-                let desc = data.device_descriptor.unwrap();
-                desc.field_text(*field, &data.strings)
+                let data = self.get_device_data(dev)?;
+                match data.device_descriptor {
+                    Some(desc) => desc.field_text(*field, &data.strings),
+                    None => return Err(DescriptorMissing)
+                }
             },
             Configuration(_, conf) => format!(
                 "Configuration {}", conf),
             ConfigurationDescriptor(..) =>
                 "Configuration descriptor".to_string(),
             ConfigurationDescriptorField(dev, conf, field) => {
-                let data = &self.device_data[*dev as usize];
-                let config = &data.configurations[*conf as usize];
-                let config = config.as_ref().unwrap();
+                let data = self.get_device_data(dev)?;
+                let config = data.get_configuration(conf)?;
                 config.descriptor.field_text(*field, &data.strings)
             },
             Interface(_, _, iface) => format!(
@@ -745,32 +851,29 @@ impl Capture {
             InterfaceDescriptor(..) =>
                 "Interface descriptor".to_string(),
             InterfaceDescriptorField(dev, conf, iface, field) => {
-                let data = &self.device_data[*dev as usize];
-                let config = &data.configurations[*conf as usize];
-                let config = config.as_ref().unwrap();
-                let iface = &config.interfaces[*iface as usize];
+                let data = self.get_device_data(dev)?;
+                let config = data.get_configuration(conf)?;
+                let iface = config.get_interface(iface)?;
                 iface.descriptor.field_text(*field, &data.strings)
             },
             EndpointDescriptor(dev, conf, iface, ep) => {
-                let data = &self.device_data[*dev as usize];
-                let config = &data.configurations[*conf as usize];
-                let config = config.as_ref().unwrap();
-                let iface = &config.interfaces[*iface as usize];
-                let desc = iface.endpoint_descriptors[*ep as usize];
+                let data = self.get_device_data(dev)?;
+                let config = data.get_configuration(conf)?;
+                let iface = config.get_interface(iface)?;
+                let desc = iface.get_endpoint_descriptor(ep)?;
                 format!("Endpoint {} {}",
                     desc.endpoint_address & 0x7F,
                     if desc.endpoint_address & 0x80 != 0 {"IN"} else {"OUT"}
                 )
             },
             EndpointDescriptorField(dev, conf, iface, ep, field) => {
-                let data = &self.device_data[*dev as usize];
-                let config = &data.configurations[*conf as usize];
-                let config = config.as_ref().unwrap();
-                let iface = &config.interfaces[*iface as usize];
-                let desc = iface.endpoint_descriptors[*ep as usize];
+                let data = self.get_device_data(dev)?;
+                let config = data.get_configuration(conf)?;
+                let iface = config.get_interface(iface)?;
+                let desc = iface.get_endpoint_descriptor(ep)?;
                 desc.field_text(*field)
             }
-        }
+        })
     }
 }
 
@@ -784,15 +887,15 @@ mod tests {
     fn write_item(cap: &mut Capture, item: &Item, depth: u8,
                   writer: &mut dyn Write)
     {
-        let summary = cap.get_summary(&item);
+        let summary = cap.get_summary(&item).unwrap();
         for _ in 0..depth {
             writer.write(b" ").unwrap();
         }
         writer.write(summary.as_bytes()).unwrap();
         writer.write(b"\n").unwrap();
-        let num_children = cap.child_count(&item);
+        let num_children = cap.child_count(&item).unwrap();
         for child_id in 0..num_children {
-            let child = cap.get_child(&item, child_id);
+            let child = cap.get_child(&item, child_id).unwrap();
             write_item(cap, &child, depth + 1, writer);
         }
     }
@@ -812,16 +915,16 @@ mod tests {
                 out_path.push("output.txt");
                 {
                     let mut pcap = pcap::Capture::from_file(cap_path).unwrap();
-                    let mut cap = Capture::new();
-                    let mut decoder = Decoder::new(&mut cap);
+                    let mut cap = Capture::new().unwrap();
+                    let mut decoder = Decoder::new(&mut cap).unwrap();
                     while let Ok(packet) = pcap.next() {
-                        decoder.handle_raw_packet(&packet);
+                        decoder.handle_raw_packet(&packet).unwrap();
                     }
                     let out_file = File::create(out_path.clone()).unwrap();
                     let mut out_writer = BufWriter::new(out_file);
                     let num_items = cap.item_index.len();
                     for item_id in 0 .. num_items {
-                        let item = cap.get_item(&None, item_id);
+                        let item = cap.get_item(&None, item_id).unwrap();
                         write_item(&mut cap, &item, 0, &mut out_writer);
                     }
                 }
