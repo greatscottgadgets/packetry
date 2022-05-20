@@ -253,26 +253,6 @@ impl Transaction {
     }
 }
 
-fn get_index_range<T>(
-        index: &mut HybridIndex<T>,
-        length: u64,
-        id: Id<T>)
-    -> Result<Range<T>, CaptureError>
-    where T: Number + Copy
-{
-    Ok(if id.value + 2 > index.len() {
-        let start = index.get(id)?;
-        let end = <T>::from_u64(length);
-        start..end
-    } else {
-        let limit = Id::<T>::from(id.value + 2);
-        let vec = index.get_range(id .. limit)?;
-        let start = vec[0];
-        let end = vec[1];
-        start..end
-    })
-}
-
 pub fn fmt_count(count: u64) -> String {
     count.to_formatted_string(&Locale::en)
 }
@@ -291,7 +271,7 @@ pub fn fmt_vec<T>(vec: &FileVec<T>) -> String
 }
 
 pub fn fmt_index<T>(idx: &HybridIndex<T>) -> String
-    where T: Number
+    where T: Number + Copy
 {
     format!("{} values in {} entries, {}",
             fmt_count(idx.len()),
@@ -375,26 +355,24 @@ impl Capture {
         let endpoint_id = entry.endpoint_id();
         let ep_transfer_id = entry.transfer_id();
         let ep_traf = self.endpoint_traffic(endpoint_id)?;
-        get_index_range(&mut ep_traf.transfer_index,
-                        ep_traf.transaction_ids.len(), ep_transfer_id)
+        Ok(ep_traf.transfer_index.get_target_range(
+            ep_transfer_id, ep_traf.transaction_ids.len())?)
     }
 
     fn get_endpoint_state(&mut self, transfer_id: TransferId)
         -> Result<Vec<u8>, CaptureError>
     {
         let endpoint_state_id = EndpointStateId::from(transfer_id.value);
-        let range = get_index_range(
-            &mut self.endpoint_state_index,
-            self.endpoint_states.len(), endpoint_state_id)?;
+        let range = self.endpoint_state_index.get_target_range(
+            endpoint_state_id, self.endpoint_states.len())?;
         Ok(self.endpoint_states.get_range(range)?)
     }
 
     fn get_packet(&mut self, id: PacketId)
         -> Result<Vec<u8>, CaptureError>
     {
-        let range: Range<Id<u8>> = get_index_range(&mut self.packet_index,
-                                                   self.packet_data.len(),
-                                                   id)?;
+        let range = self.packet_index.get_target_range(
+            id, self.packet_data.len())?;
         Ok(self.packet_data.get_range(range)?)
     }
 
@@ -408,18 +386,16 @@ impl Capture {
     fn get_transaction(&mut self, id: TransactionId)
         -> Result<Transaction, CaptureError>
     {
-        let packet_id_range = get_index_range(&mut self.transaction_index,
-                                              self.packet_index.len(),
-                                              id)?;
+        let packet_id_range = self.transaction_index.get_target_range(
+            id, self.packet_index.len())?;
         let packet_count = packet_id_range.len();
         let pid = self.get_packet_pid(packet_id_range.start)?;
         use PID::*;
         let payload_byte_range = match pid {
             IN | OUT if packet_count >= 2 => {
                 let data_packet_id = packet_id_range.start + 1;
-                let packet_byte_range = get_index_range(
-                    &mut self.packet_index,
-                    self.packet_data.len(), data_packet_id)?;
+                let packet_byte_range = self.packet_index.get_target_range(
+                    data_packet_id, self.packet_data.len())?;
                 let pid = self.packet_data.get(packet_byte_range.start)?;
                 match PID::from(pid) {
                     DATA0 | DATA1 => Some({
@@ -578,8 +554,8 @@ impl ItemSource<TrafficItem> for Capture {
                 }
             },
             Transaction(_, transaction_id) => {
-                get_index_range(&mut self.transaction_index,
-                    self.packet_index.len(), *transaction_id)?.len()
+                self.transaction_index.get_target_range(
+                    *transaction_id, self.packet_index.len())?.len()
             },
             Packet(..) => 0,
         })
@@ -687,8 +663,8 @@ impl ItemSource<TrafficItem> for Capture {
         let ep_traf = self.endpoint_traffic(endpoint_id)?;
         let last_transaction = match item {
             Transaction(_, transaction_id) | Packet(_, transaction_id, _) => {
-                let range = get_index_range(&mut ep_traf.transfer_index,
-                    ep_traf.transaction_ids.len(), entry.transfer_id())?;
+                let range = ep_traf.transfer_index.get_target_range(
+                    entry.transfer_id(), ep_traf.transaction_ids.len())?;
                 let last_transaction_id =
                     ep_traf.transaction_ids.get(range.end - 1)?;
                 *transaction_id == last_transaction_id
@@ -696,8 +672,8 @@ impl ItemSource<TrafficItem> for Capture {
         };
         let last_packet = match item {
             Packet(_, transaction_id, packet_id) => {
-                let range = get_index_range(&mut self.transaction_index,
-                    self.packet_index.len(), *transaction_id)?;
+                let range = self.transaction_index.get_target_range(
+                    *transaction_id, self.packet_index.len())?;
                 *packet_id == range.end - 1
             }, _ => false
         };
