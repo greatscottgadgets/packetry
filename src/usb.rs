@@ -360,6 +360,8 @@ impl DeviceDescriptor {
         i  => format!("Error: Invalid field ID {}", i)
         }
     }
+
+    pub const NUM_FIELDS: usize = 13;
 }
 
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
@@ -394,6 +396,8 @@ impl ConfigDescriptor {
         i => format!("Error: Invalid field ID {}", i)
         }
     }
+
+    pub const NUM_FIELDS: usize = 8;
 }
 
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
@@ -429,6 +433,8 @@ impl InterfaceDescriptor {
         i => format!("Error: Invalid field ID {}", i)
         }
     }
+
+    pub const NUM_FIELDS: usize = 9;
 }
 
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
@@ -456,6 +462,8 @@ impl EndpointDescriptor {
         i => format!("Error: Invalid field ID {}", i)
         }
     }
+
+    pub const NUM_FIELDS: usize = 6;
 }
 
 pub struct Interface {

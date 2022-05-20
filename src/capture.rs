@@ -5,6 +5,7 @@ use crate::id::{Id, HasLength};
 use crate::file_vec::{FileVec, FileVecError};
 use crate::hybrid_index::{HybridIndex, HybridIndexError, Number};
 use crate::usb::{
+    self,
     PID,
     PacketFields,
     SetupFields,
@@ -809,7 +810,7 @@ impl Capture {
                 self.get_device_data(dev)?.configurations.len(),
             DeviceDescriptor(dev) =>
                 match self.get_device_data(dev)?.device_descriptor {
-                    Some(_) => 13,
+                    Some(_) => usb::DeviceDescriptor::NUM_FIELDS,
                     None => 0,
                 },
             Configuration(dev, conf) =>
@@ -819,7 +820,7 @@ impl Capture {
                 },
             ConfigurationDescriptor(dev, conf) =>
                 match self.get_device_data(dev)?.try_get_configuration(conf) {
-                    Some(_) => 8,
+                    Some(_) => usb::ConfigDescriptor::NUM_FIELDS,
                     None => 0
                 },
             Interface(dev, conf, iface) =>
@@ -828,8 +829,8 @@ impl Capture {
                         conf.get_interface(iface)?.endpoint_descriptors.len(),
                     None => 0
                 },
-            InterfaceDescriptor(..) => 9,
-            EndpointDescriptor(..) => 6,
+            InterfaceDescriptor(..) => usb::InterfaceDescriptor::NUM_FIELDS,
+            EndpointDescriptor(..) => usb::EndpointDescriptor::NUM_FIELDS,
             _ => 0
         }) as u64)
     }
