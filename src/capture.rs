@@ -391,17 +391,17 @@ impl Capture {
     {
         use Item::*;
         Ok(match parent {
-            Transfer(transfer_index_id) =>
-                Transaction(*transfer_index_id, {
-                    let entry = self.transfer_index.get(*transfer_index_id)?;
+            Transfer(transfer_id) =>
+                Transaction(*transfer_id, {
+                    let entry = self.transfer_index.get(*transfer_id)?;
                     let endpoint_id = entry.endpoint_id();
-                    let transfer_id = entry.transfer_id();
+                    let ep_transfer_id = entry.transfer_id();
                     let ep_traf = self.endpoint_traffic(endpoint_id)?;
-                    let offset = ep_traf.transfer_index.get(transfer_id)?;
+                    let offset = ep_traf.transfer_index.get(ep_transfer_id)?;
                     ep_traf.transaction_ids.get(offset + index)?
                 }),
-            Transaction(transfer_index_id, transaction_id) =>
-                Packet(*transfer_index_id, *transaction_id, {
+            Transaction(transfer_id, transaction_id) =>
+                Packet(*transfer_id, *transaction_id, {
                     self.transaction_index.get(*transaction_id)? + index}),
             Packet(..) => return Err(IndexError)
         })
@@ -488,8 +488,8 @@ impl Capture {
                         pid, count, size)
                 }
             },
-            Transfer(transfer_index_id) => {
-                let entry = self.transfer_index.get(*transfer_index_id)?;
+            Transfer(transfer_id) => {
+                let entry = self.transfer_index.get(*transfer_id)?;
                 let endpoint_id = entry.endpoint_id();
                 let endpoint = self.endpoints.get(endpoint_id)?;
                 let device_id = endpoint.device_id();
@@ -537,13 +537,13 @@ impl Capture {
         const MIN_LEN: usize = " └─".len();
         let string_length = MIN_LEN + endpoint_count;
         let mut connectors = String::with_capacity(string_length);
-        let transfer_index_id = match item {
+        let transfer_id = match item {
             Transfer(i) | Transaction(i, _) | Packet(i, ..) => *i
         };
-        let entry = self.transfer_index.get(transfer_index_id)?;
+        let entry = self.transfer_index.get(transfer_id)?;
         let endpoint_id = entry.endpoint_id();
-        let endpoint_state = self.get_endpoint_state(transfer_index_id)?;
-        let extended = self.transfer_extended(endpoint_id, transfer_index_id)?;
+        let endpoint_state = self.get_endpoint_state(transfer_id)?;
+        let extended = self.transfer_extended(endpoint_id, transfer_id)?;
         let ep_traf = self.endpoint_traffic(endpoint_id)?;
         let last_transaction = match item {
             Transaction(_, transaction_id) | Packet(_, transaction_id, _) => {
@@ -973,4 +973,3 @@ mod tests {
         }
     }
 }
-
