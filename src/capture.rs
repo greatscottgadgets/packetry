@@ -223,20 +223,6 @@ impl Interface {
     }
 }
 
-pub struct Capture {
-    pub item_index: HybridIndex<TransferId>,
-    pub packet_index: HybridIndex<PacketByteId>,
-    pub packet_data: FileVec<u8>,
-    pub transaction_index: HybridIndex<PacketId>,
-    pub transfer_index: FileVec<TransferIndexEntry>,
-    pub devices: FileVec<Device>,
-    pub device_data: VecMap<DeviceId, DeviceData>,
-    pub endpoints: FileVec<Endpoint>,
-    pub endpoint_traffic: VecMap<EndpointId, EndpointTraffic>,
-    pub endpoint_states: FileVec<u8>,
-    pub endpoint_state_index: HybridIndex<Id<u8>>,
-}
-
 pub struct Transaction {
     pid: PID,
     packet_id_range: Range<PacketId>,
@@ -279,14 +265,28 @@ pub fn fmt_index<T>(idx: &HybridIndex<T>) -> String
             fmt_size(idx.size()))
 }
 
+pub struct Capture {
+    pub packet_data: FileVec<u8>,
+    pub packet_index: HybridIndex<PacketByteId>,
+    pub transaction_index: HybridIndex<PacketId>,
+    pub transfer_index: FileVec<TransferIndexEntry>,
+    pub item_index: HybridIndex<TransferId>,
+    pub devices: FileVec<Device>,
+    pub device_data: VecMap<DeviceId, DeviceData>,
+    pub endpoints: FileVec<Endpoint>,
+    pub endpoint_traffic: VecMap<EndpointId, EndpointTraffic>,
+    pub endpoint_states: FileVec<u8>,
+    pub endpoint_state_index: HybridIndex<Id<u8>>,
+}
+
 impl Capture {
     pub fn new() -> Result<Self, CaptureError> {
         Ok(Capture {
-            item_index: HybridIndex::new(1)?,
-            packet_index: HybridIndex::new(2)?,
             packet_data: FileVec::new()?,
+            packet_index: HybridIndex::new(2)?,
             transaction_index: HybridIndex::new(1)?,
             transfer_index: FileVec::new()?,
+            item_index: HybridIndex::new(1)?,
             devices: FileVec::new()?,
             device_data: VecMap::new(),
             endpoints: FileVec::new()?,
