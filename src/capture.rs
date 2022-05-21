@@ -125,6 +125,9 @@ pub enum EndpointState {
     Ending = 3,
 }
 
+pub const INVALID_EP_NUM: u8 = 0x10;
+pub const FRAMING_EP_NUM: u8 = 0x11;
+
 #[derive(Copy, Clone, Debug)]
 pub enum EndpointType {
     Unidentified,
@@ -177,10 +180,10 @@ impl DeviceData {
     pub fn endpoint_type(&self, number: EndpointNum) -> EndpointType {
         use EndpointType::*;
         match number.0 {
+            INVALID_EP_NUM => Invalid,
+            FRAMING_EP_NUM => Framing,
             0 => Normal(usb::EndpointType::Control),
-            0x10 => Framing,
-            0x11 => Invalid,
-            _ => match self.endpoint_types.get(number.0 as usize) {
+            n => match self.endpoint_types.get(n as usize) {
                 Some(ep_type) => *ep_type,
                 None => Unidentified
             }

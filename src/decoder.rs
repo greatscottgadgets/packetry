@@ -32,6 +32,8 @@ use crate::capture::{
     EndpointTransactionId,
     PacketId,
     TransferIndexEntry,
+    INVALID_EP_NUM,
+    FRAMING_EP_NUM,
 };
 
 use crate::hybrid_index::HybridIndex;
@@ -157,8 +159,8 @@ impl<'cap> Decoder<'cap> {
             last_item_endpoint: None,
             transaction_state: TransactionState::default(),
         };
-        decoder.add_endpoint(DeviceAddr(0), EndpointNum(0x11))?;
-        decoder.add_endpoint(DeviceAddr(0), EndpointNum(0x10))?;
+        decoder.add_endpoint(DeviceAddr(0), EndpointNum(INVALID_EP_NUM))?;
+        decoder.add_endpoint(DeviceAddr(0), EndpointNum(FRAMING_EP_NUM))?;
         Ok(decoder)
     }
 
