@@ -1,6 +1,7 @@
 use std::mem::size_of;
 
 use crate::usb::{
+    self,
     PID,
     PacketFields,
     SetupFields,
@@ -156,10 +157,8 @@ impl<'cap> Decoder<'cap> {
             last_item_endpoint: None,
             transaction_state: TransactionState::default(),
         };
-        decoder.add_endpoint(
-            DeviceAddr(0), EndpointNum(EndpointType::Invalid as u8))?;
-        decoder.add_endpoint(
-            DeviceAddr(0), EndpointNum(EndpointType::Framing as u8))?;
+        decoder.add_endpoint(DeviceAddr(0), EndpointNum(0x11))?;
+        decoder.add_endpoint(DeviceAddr(0), EndpointNum(0x10))?;
         Ok(decoder)
     }
 
@@ -421,19 +420,20 @@ impl<'cap> Decoder<'cap> {
         let ep_type = &dev_data.endpoint_type(ep_data.number);
         use PID::*;
         use EndpointType::*;
+        use usb::EndpointType::*;
         use Direction::*;
         Ok(match (ep_type, ep_data.last, next) {
 
             // A SETUP transaction starts a new control transfer.
             // Store the setup fields to interpret the request.
-            (Control, _, SETUP) => {
+            (Normal(Control), _, SETUP) => {
                 let setup = self.transaction_state.setup.take();
                 let ep_data = self.current_endpoint_data_mut()?;
                 ep_data.setup = setup;
                 DecodeStatus::New
             },
 
-            (Control, _, _) => match &ep_data.setup {
+            (Normal(Control), _, _) => match &ep_data.setup {
                 // No control transaction is valid unless setup was done.
                 None => DecodeStatus::Invalid,
                 // If setup was done then valid transactions depend on the

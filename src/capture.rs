@@ -125,17 +125,21 @@ pub enum EndpointState {
     Ending = 3,
 }
 
-#[derive(Copy, Clone, Debug, FromPrimitive)]
-#[repr(u8)]
+#[derive(Copy, Clone, Debug)]
 pub enum EndpointType {
-    Control       = 0x00,
-    Isochronous   = 0x01,
-    Bulk          = 0x02,
-    Interrupt     = 0x03,
-    #[default]
-    Unidentified  = 0x04,
-    Framing       = 0x10,
-    Invalid       = 0x11,
+    Unidentified,
+    Framing,
+    Invalid,
+    Normal(usb::EndpointType)
+}
+
+impl std::fmt::Display for EndpointType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            EndpointType::Normal(usb_type) => write!(f, "{:?}", usb_type),
+            special_type => write!(f, "{:?}", special_type),
+        }
+    }
 }
 
 pub struct EndpointTraffic {
@@ -173,7 +177,7 @@ impl DeviceData {
     pub fn endpoint_type(&self, number: EndpointNum) -> EndpointType {
         use EndpointType::*;
         match number.0 {
-            0 => Control,
+            0 => Normal(usb::EndpointType::Control),
             0x10 => Framing,
             0x11 => Invalid,
             _ => match self.endpoint_types.get(number.0 as usize) {
@@ -194,8 +198,8 @@ impl DeviceData {
                         if let Some(ep_type) =
                             self.endpoint_types.get_mut(index)
                         {
-                            *ep_type =
-                                EndpointType::from(ep_desc.attributes & 0x03);
+                            *ep_type = EndpointType::Normal(
+                                ep_desc.attributes.endpoint_type());
                         }
                     }
                 }
@@ -625,6 +629,8 @@ impl ItemSource<TrafficItem> for Capture {
                 }
             },
             Transfer(transfer_id) => {
+                use EndpointType::*;
+                use usb::EndpointType::*;
                 let entry = self.transfer_index.get(*transfer_id)?;
                 let endpoint_id = entry.endpoint_id();
                 let endpoint = self.endpoints.get(endpoint_id)?;
@@ -634,29 +640,29 @@ impl ItemSource<TrafficItem> for Capture {
                 let ep_type = dev_data.endpoint_type(num);
                 if !entry.is_start() {
                     return Ok(match ep_type {
-                        EndpointType::Invalid =>
+                        Invalid =>
                             "End of invalid groups".to_string(),
-                        EndpointType::Framing =>
+                        Framing =>
                             "End of SOF groups".to_string(),
                         endpoint_type => format!(
-                            "{:?} transfer ending on endpoint {}.{}",
-                            endpoint_type, endpoint.device_address(), num)
+                            "{} transfer ending on endpoint {}.{}",
+                            endpoint_type, endpoint.device_address(), num),
                     })
                 }
                 let range = self.transfer_range(&entry)?;
                 let count = range.len();
                 match ep_type {
-                    EndpointType::Invalid => format!(
+                    Invalid => format!(
                         "{} invalid groups", count),
-                    EndpointType::Framing => format!(
+                    Framing => format!(
                         "{} SOF groups", count),
-                    EndpointType::Control => {
+                    Normal(Control) => {
                         let transfer = self.get_control_transfer(
                             endpoint.device_address(), endpoint_id, range)?;
                         transfer.summary()
                     },
                     endpoint_type => format!(
-                        "{:?} transfer with {} transactions on endpoint {}.{}",
+                        "{} transfer with {} transactions on endpoint {}.{}",
                         endpoint_type, count,
                         endpoint.device_address(), endpoint.number())
                 }

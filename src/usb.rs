@@ -100,6 +100,27 @@ impl EndpointAddr {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Default,
+         Pod, Zeroable, From, Into, Display)]
+#[repr(transparent)]
+pub struct EndpointAttr(pub u8);
+
+impl EndpointAttr {
+    pub fn endpoint_type(&self) -> EndpointType {
+        EndpointType::from(self.0 & 0x03)
+    }
+}
+
+#[derive(Copy, Clone, Debug, FromPrimitive)]
+#[repr(u8)]
+pub enum EndpointType {
+    #[default]
+    Control     = 0,
+    Isochronous = 1,
+    Bulk        = 2,
+    Interrupt   = 3,
+}
+
 bitfield! {
     #[derive(Debug)]
     pub struct SOFFields(u16);
@@ -462,7 +483,7 @@ pub struct EndpointDescriptor {
     pub length: u8,
     pub descriptor_type: u8,
     pub endpoint_address: EndpointAddr,
-    pub attributes: u8,
+    pub attributes: EndpointAttr,
     pub max_packet_size: u16,
     pub interval: u8,
 }
@@ -474,7 +495,7 @@ impl EndpointDescriptor {
         0 => format!("Length: {} bytes", self.length),
         1 => format!("Type: 0x{:02X}", self.descriptor_type),
         2 => format!("Endpoint address: 0x{:02X}", self.endpoint_address.0),
-        3 => format!("Attributes: 0x{:02X}", self.attributes),
+        3 => format!("Attributes: 0x{:02X}", self.attributes.0),
         4 => format!("Max packet size: {} bytes", {
             let size: u16 = self.max_packet_size; size }),
         5 => format!("Interval: 0x{:02X}", self.interval),
