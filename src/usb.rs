@@ -81,6 +81,25 @@ pub struct EndpointNum(pub u8);
 #[repr(transparent)]
 pub struct EndpointField(pub u8);
 
+#[derive(Copy, Clone, Debug, PartialEq, Default,
+         Pod, Zeroable, From, Into, Display)]
+#[repr(transparent)]
+pub struct EndpointAddr(pub u8);
+
+impl EndpointAddr {
+    pub fn number(&self) -> EndpointNum {
+        EndpointNum(self.0 & 0x7F)
+    }
+
+    pub fn direction(&self) -> Direction {
+        if self.0 & 0x80 == 0 {
+            Direction::Out
+        } else {
+            Direction::In
+        }
+    }
+}
+
 bitfield! {
     #[derive(Debug)]
     pub struct SOFFields(u16);
@@ -151,7 +170,7 @@ pub enum Recipient {
     Reserved = 4,
 }
 
-#[derive(Copy, Clone, Debug, FromPrimitive)]
+#[derive(Copy, Clone, Debug, Display, FromPrimitive)]
 #[repr(u8)]
 pub enum Direction {
     #[default]
@@ -442,7 +461,7 @@ impl InterfaceDescriptor {
 pub struct EndpointDescriptor {
     pub length: u8,
     pub descriptor_type: u8,
-    pub endpoint_address: u8,
+    pub endpoint_address: EndpointAddr,
     pub attributes: u8,
     pub max_packet_size: u16,
     pub interval: u8,
@@ -454,7 +473,7 @@ impl EndpointDescriptor {
         match id.0 {
         0 => format!("Length: {} bytes", self.length),
         1 => format!("Type: 0x{:02X}", self.descriptor_type),
-        2 => format!("Endpoint address: 0x{:02X}", self.endpoint_address),
+        2 => format!("Endpoint address: 0x{:02X}", self.endpoint_address.0),
         3 => format!("Attributes: 0x{:02X}", self.attributes),
         4 => format!("Max packet size: {} bytes", {
             let size: u16 = self.max_packet_size; size }),
@@ -567,11 +586,11 @@ impl ControlTransfer {
                     "device {}", self.address),
                 Recipient::Interface => format!(
                     "interface {}.{}", self.address, self.fields.index),
-                Recipient::Endpoint => format!(
-                    "endpoint {}.{} {}",
-                    self.address,
-                    self.fields.index & 0x7F,
-                    if (self.fields.index & 0x80) == 0 {"OUT"} else {"IN"}),
+                Recipient::Endpoint => {
+                    let ep_addr = EndpointAddr(self.fields.index as u8);
+                    format!("endpoint {}.{} {}",
+                            self.address, ep_addr.number(), ep_addr.direction())
+                }
                 _ => format!(
                     "device {}, index {}", self.address, self.fields.index)
             }

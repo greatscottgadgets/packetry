@@ -189,8 +189,8 @@ impl DeviceData {
             if let Some(Some(config)) = &self.configurations.get(idx) {
                 for iface in &config.interfaces {
                     for ep_desc in &iface.endpoint_descriptors {
-                        let number = ep_desc.endpoint_address & 0x0F;
-                        let index = number as usize;
+                        let ep_number = ep_desc.endpoint_address.number();
+                        let index = ep_number.0 as usize;
                         if let Some(ep_type) =
                             self.endpoint_types.get_mut(index)
                         {
@@ -905,10 +905,8 @@ impl ItemSource<DeviceItem> for Capture {
                 let config = data.get_configuration(conf)?;
                 let iface = config.get_interface(iface)?;
                 let desc = iface.get_endpoint_descriptor(ep)?;
-                format!("Endpoint {} {}",
-                    desc.endpoint_address & 0x7F,
-                    if desc.endpoint_address & 0x80 != 0 {"IN"} else {"OUT"}
-                )
+                let addr = desc.endpoint_address;
+                format!("Endpoint {} {}", addr.number(), addr.direction())
             },
             EndpointDescriptorField(dev, conf, iface, ep, field) => {
                 let data = self.get_device_data(dev)?;
