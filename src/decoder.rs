@@ -118,6 +118,13 @@ impl Key for EndpointKey {
     fn id(self) -> usize {
         self.dev_addr.0 as usize * 16 + self.ep_num.0 as usize
     }
+
+    fn key(id: usize) -> EndpointKey {
+        EndpointKey {
+            dev_addr: DeviceAddr((id / 16) as u8),
+            ep_num: EndpointNum((id % 16) as u8),
+        }
+    }
 }
 
 pub struct Decoder<'cap> {

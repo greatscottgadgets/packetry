@@ -68,7 +68,8 @@ impl<T: Number + Copy> HybridIndex<T> {
         })
     }
 
-    pub fn push(&mut self, id: T) -> Result<(), HybridIndexError> {
+    pub fn push(&mut self, id: T) -> Result<Id<T>, HybridIndexError>
+    {
         if self.entries.is_empty() {
             let first_entry = Entry {
                 base_value: id.to_u64(),
@@ -104,9 +105,10 @@ impl<T: Number + Copy> HybridIndex<T> {
                 last_entry.increments.set_count(count + 1);
             }
         }
+        let new_id = Id::<T>::from(self.total_count);
         self.total_count += 1;
         self.last_value = id.to_u64();
-        Ok(())
+        Ok(new_id)
     }
 
     pub fn get(&mut self, id: Id<T>) -> Result<T, HybridIndexError> {

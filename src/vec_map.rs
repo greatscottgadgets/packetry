@@ -6,6 +6,8 @@ use crate::id::Id;
 
 pub trait Key {
     fn id(self) -> usize;
+
+    fn key(id: usize) -> Self;
 }
 
 pub struct VecMap<K, V> where K: Key {
@@ -32,8 +34,9 @@ impl<K, V> VecMap<K, V> where K: Key {
         self.vec.len()
     }
 
-    pub fn push(&mut self, value: V) {
-        self.vec.push(Some(value))
+    pub fn push(&mut self, value: V) -> K {
+        self.vec.push(Some(value));
+        K::key(self.vec.len())
     }
 
     pub fn get(&self, index: K) -> Option<&V> {
@@ -65,15 +68,23 @@ impl<K, V> Default for VecMap<K, V> where K: Key {
     }
 }
 
-impl<T> Key for T where T: Into<u8> {
+impl<T> Key for T where T: From<u8> + Into<u8> {
     fn id(self) -> usize {
         self.into() as usize
+    }
+
+    fn key(id: usize) -> T {
+        T::from(id.try_into().unwrap())
     }
 }
 
 impl<T> Key for Id<T> {
     fn id(self) -> usize {
         self.value as usize
+    }
+
+    fn key(id: usize) -> Id<T> {
+        Id::<T>::from(id as u64)
     }
 }
 

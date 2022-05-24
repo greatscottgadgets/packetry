@@ -35,22 +35,28 @@ impl<T: Pod + Default> FileVec<T> {
         })
     }
 
-    pub fn push(&mut self, item: &T) -> Result<(), FileVecError> where T: Pod {
+    pub fn push(&mut self, item: &T)
+       -> Result<Id<T>, FileVecError> where T: Pod
+    {
         let data= bytes_of(item);
         self.file.write_all(data)?;
         self.file_length += data.len() as u64;
+        let id = Id::<T>::from(self.item_count);
         self.item_count += 1;
-        Ok(())
+        Ok(id)
     }
 
-    pub fn append(&mut self, items: &[T]) -> Result<(), FileVecError> where T: Pod {
+    pub fn append(&mut self, items: &[T])
+       -> Result<Id<T>, FileVecError> where T: Pod
+    {
         for item in items {
             let data = bytes_of(item);
             self.file.write_all(data)?;
             self.file_length += data.len() as u64;
         }
+        let id = Id::<T>::from(self.item_count);
         self.item_count += items.len() as u64;
-        Ok(())
+        Ok(id)
     }
 
     pub fn get(&mut self, id: Id<T>) -> Result<T, FileVecError> {
