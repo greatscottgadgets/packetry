@@ -2,12 +2,16 @@ use std::marker::PhantomData;
 use std::iter::FilterMap;
 use std::slice::Iter;
 
-pub struct VecMap<K, V> {
+pub trait Key {
+    fn id(self) -> usize;
+}
+
+pub struct VecMap<K, V> where K: Key {
     _marker: PhantomData<K>,
     vec: Vec<Option<V>>,
 }
 
-impl<K, V> VecMap<K, V> {
+impl<K, V> VecMap<K, V> where K: Key {
     pub fn new() -> Self {
         VecMap::<K, V> {
             _marker: PhantomData,
@@ -29,33 +33,37 @@ impl<K, V> VecMap<K, V> {
     pub fn push(&mut self, value: V) {
         self.vec.push(Some(value))
     }
-}
 
-impl<K, V> VecMap<K, V> where K: Into<u8> {
     pub fn get(&self, index: K) -> Option<&V> {
-        match self.vec.get(index.into() as usize) {
+        match self.vec.get(index.id()) {
             Some(opt) => opt.as_ref(),
             None => None
         }
     }
 
     pub fn get_mut(&mut self, index: K) -> Option<&mut V> {
-        match self.vec.get_mut(index.into() as usize) {
+        match self.vec.get_mut(index.id()) {
             Some(opt) => opt.as_mut(),
             None => None
         }
     }
 
     pub fn set(&mut self, index: K, value: V) {
-        let index = index.into() as usize;
-        if index >= self.vec.len() {
-            self.vec.resize_with(index + 1, || {None})
+        let id = index.id();
+        if id >= self.vec.len() {
+            self.vec.resize_with(id + 1, || {None})
         }
-        self.vec[index] = Some(value);
+        self.vec[id] = Some(value);
     }
 }
 
-impl<'v, K, V> IntoIterator for &'v VecMap<K, V> {
+impl<T> Key for T where T: Into<u8> {
+    fn id(self) -> usize {
+        self.into() as usize
+    }
+}
+
+impl<'v, K, V> IntoIterator for &'v VecMap<K, V> where K: Key {
     type Item = &'v V;
     type IntoIter =
         FilterMap<Iter<'v, Option<V>>, fn(&Option<V>) -> Option<&V>>;
