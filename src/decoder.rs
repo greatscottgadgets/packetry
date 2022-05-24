@@ -39,7 +39,7 @@ use crate::capture::{
 };
 
 use crate::hybrid_index::HybridIndex;
-use crate::vec_map::VecMap;
+use crate::vec_map::{VecMap, Key};
 
 use CaptureError::IndexError;
 
@@ -138,13 +138,22 @@ impl TransactionState {
     }
 }
 
-const USB_MAX_DEVICES: usize = 128;
-const USB_MAX_ENDPOINTS: usize = 16;
+#[derive(Copy, Clone)]
+struct EndpointKey {
+    dev_addr: DeviceAddr,
+    ep_num: EndpointNum,
+}
+
+impl Key for EndpointKey {
+    fn id(self) -> usize {
+        self.dev_addr.0 as usize * 16 + self.ep_num.0 as usize
+    }
+}
 
 pub struct Decoder<'cap> {
     capture: &'cap mut Capture,
     device_index: VecMap<DeviceAddr, DeviceId>,
-    endpoint_index: [[Option<EndpointId>; USB_MAX_ENDPOINTS]; USB_MAX_DEVICES],
+    endpoint_index: VecMap<EndpointKey, EndpointId>,
     endpoint_data: Vec<EndpointData>,
     last_endpoint_state: Vec<u8>,
     last_item_endpoint: Option<EndpointId>,
@@ -156,8 +165,8 @@ impl<'cap> Decoder<'cap> {
         let mut decoder = Decoder {
             capture,
             device_index: VecMap::new(),
+            endpoint_index: VecMap::new(),
             endpoint_data: Vec::new(),
-            endpoint_index: [[None; USB_MAX_ENDPOINTS]; USB_MAX_DEVICES],
             last_endpoint_state: Vec::new(),
             last_item_endpoint: None,
             transaction_state: TransactionState::default(),
@@ -214,16 +223,16 @@ impl<'cap> Decoder<'cap> {
             match PacketFields::from_packet(packet) {
                 PacketFields::SOF(_) => EndpointId::from(1),
                 PacketFields::Token(token) => {
-                    let address = token.device_address();
-                    let number = token.endpoint_number();
-                    let addr = address.0 as usize;
-                    let num = number.0 as usize;
-                    match self.endpoint_index[addr][num] {
-                        Some(id) => id,
+                    let key = EndpointKey {
+                        dev_addr: token.device_address(),
+                        ep_num: token.endpoint_number()
+                    };
+                    match self.endpoint_index.get(key) {
+                        Some(id) => *id,
                         None => {
                             let id = self.capture.endpoints.next_id();
-                            self.endpoint_index[addr][num] = Some(id);
-                            self.add_endpoint(address, number)?;
+                            self.endpoint_index.set(key, id);
+                            self.add_endpoint(key.dev_addr, key.ep_num)?;
                             id
                         }
                     }
