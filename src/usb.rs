@@ -126,6 +126,19 @@ pub enum EndpointType {
     Interrupt   = 3,
 }
 
+#[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
+#[repr(C)]
+pub struct BCDVersion {
+    pub minor: u8,
+    pub major: u8,
+}
+
+impl std::fmt::Display for BCDVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:X}.{:02X}", self.major, self.minor)
+    }
+}
+
 bitfield! {
     #[derive(Debug)]
     pub struct SOFFields(u16);
@@ -360,14 +373,14 @@ impl StandardFeature {
 pub struct DeviceDescriptor {
     pub length: u8,
     pub descriptor_type: u8,
-    pub usb: u16,
+    pub usb_version: BCDVersion,
     pub device_class: u8,
     pub device_subclass: u8,
     pub device_protocol: u8,
     pub max_packet_size_0: u8,
     pub vendor_id: u16,
     pub product_id: u16,
-    pub device_version: u16,
+    pub device_version: BCDVersion,
     pub manufacturer_str_id: StringId,
     pub product_str_id: StringId,
     pub serial_str_id: StringId,
@@ -386,16 +399,14 @@ impl DeviceDescriptor {
         match id.0 {
         0  => format!("Length: {} bytes", self.length),
         1  => format!("Type: 0x{:02X}", self.descriptor_type),
-        2  => format!("USB Version: {:X}.{:02X}",
-                      self.usb >> 8, self.usb & 0xFF),
+        2  => format!("USB Version: {}", self.usb_version),
         3  => format!("Class: 0x{:02X}", self.device_class),
         4  => format!("Subclass: 0x{:02X}", self.device_subclass),
         5  => format!("Protocol: 0x{:02X}", self.device_protocol),
         6  => format!("Max EP0 packet size: {} bytes", self.max_packet_size_0),
         7  => format!("Vendor ID: 0x{:04X}", self.vendor_id),
         8  => format!("Product ID: 0x{:04X}", self.product_id),
-        9  => format!("Version: {:X}.{:02X}",
-                      self.device_version >> 8, self.device_version & 0xFF),
+        9  => format!("Version: {}", self.device_version),
         10 => format!("Manufacturer string: {}",
                       fmt_str_id(strings, self.manufacturer_str_id)),
         11 => format!("Product string: {}",
