@@ -54,6 +54,11 @@ pub struct DeviceField(pub u8);
 #[derive(Copy, Clone, Debug, PartialEq, Default,
          Pod, Zeroable, From, Into, Display)]
 #[repr(transparent)]
+pub struct StringId(pub u8);
+
+#[derive(Copy, Clone, Debug, PartialEq, Default,
+         Pod, Zeroable, From, Into, Display)]
+#[repr(transparent)]
 pub struct ConfigNum(pub u8);
 
 #[derive(Copy, Clone, Debug, PartialEq, Default,
@@ -363,9 +368,9 @@ pub struct DeviceDescriptor {
     pub vendor_id: u16,
     pub product_id: u16,
     pub device_version: u16,
-    pub manufacturer_str_id: u8,
-    pub product_str_id: u8,
-    pub serial_str_id: u8,
+    pub manufacturer_str_id: StringId,
+    pub product_str_id: StringId,
+    pub serial_str_id: StringId,
     pub num_configurations: u8
 }
 
@@ -412,7 +417,7 @@ pub struct ConfigDescriptor {
     pub total_length: u16,
     pub num_interfaces: u8,
     pub config_value: u8,
-    pub config_str_id: u8,
+    pub config_str_id: StringId,
     pub attributes: u8,
     pub max_power: u8
 }
@@ -451,7 +456,7 @@ pub struct InterfaceDescriptor {
     pub interface_class: u8,
     pub interface_subclass: u8,
     pub interface_protocol: u8,
-    pub interface_str_id: u8,
+    pub interface_str_id: StringId,
 }
 
 #[allow(clippy::useless_format)]
@@ -642,10 +647,10 @@ impl ControlTransfer {
     }
 }
 
-fn fmt_str_id(strings: &[Option<Vec<u8>>], id: u8) -> String {
-    match id {
+fn fmt_str_id(strings: &[Option<Vec<u8>>], id: StringId) -> String {
+    match id.0 {
         0 => "(none)".to_string(),
-        _ => match &strings[id as usize] {
+        n => match &strings[n as usize] {
             Some(bytes) => format!("#{} {}", id, fmt_utf16(bytes)),
             None => format!("#{} (not seen)", id)
         }
