@@ -23,6 +23,7 @@ use crate::usb::{
     InterfaceField,
     EndpointNum,
     EndpointField,
+    UTF16ByteVec,
 };
 
 use bytemuck_derive::{Pod, Zeroable};
@@ -155,7 +156,7 @@ pub struct DeviceData {
     pub configurations: Vec<Option<Configuration>>,
     pub config_number: Option<ConfigNum>,
     pub endpoint_types: Vec<EndpointType>,
-    pub strings: Vec<Option<Vec<u8>>>,
+    pub strings: Vec<Option<UTF16ByteVec>>,
 }
 
 impl DeviceData {

@@ -16,6 +16,7 @@ use crate::usb::{
     DeviceAddr,
     ConfigNum,
     EndpointNum,
+    UTF16ByteVec,
 };
 
 use crate::capture::{
@@ -391,7 +392,7 @@ impl<'cap> Decoder<'cap> {
             },
             (Recipient::Device, DescriptorType::String) => {
                 if length >= 2 {
-                    let string = payload[2..length].to_vec();
+                    let string = UTF16ByteVec(payload[2..length].to_vec());
                     let dev_data = self.current_device_data_mut()?;
                     let strings = &mut dev_data.strings;
                     let string_id = (fields.value & 0xFF) as usize;

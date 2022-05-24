@@ -393,7 +393,8 @@ impl DeviceDescriptor {
         pod_read_unaligned::<DeviceDescriptor>(bytes)
     }
 
-    pub fn field_text(&self, id: DeviceField, strings: &[Option<Vec<u8>>])
+    pub fn field_text(&self, id: DeviceField,
+                      strings: &[Option<UTF16ByteVec>])
         -> String
     {
         match id.0 {
@@ -435,7 +436,8 @@ pub struct ConfigDescriptor {
 
 #[allow(clippy::useless_format)]
 impl ConfigDescriptor {
-    pub fn field_text(&self, id: ConfigField, strings: &[Option<Vec<u8>>])
+    pub fn field_text(&self, id: ConfigField,
+                      strings: &[Option<UTF16ByteVec>])
         -> String
     {
         match id.0 {
@@ -472,7 +474,8 @@ pub struct InterfaceDescriptor {
 
 #[allow(clippy::useless_format)]
 impl InterfaceDescriptor {
-    pub fn field_text(&self, id: InterfaceField, strings: &[Option<Vec<u8>>])
+    pub fn field_text(&self, id: InterfaceField,
+                      strings: &[Option<UTF16ByteVec>])
         -> String
     {
         match id.0 {
@@ -650,7 +653,7 @@ impl ControlTransfer {
                 self.fields.index != 0 =>
             {
                 parts.push(
-                    format!(": {}", fmt_utf16(&self.data[2..size])));
+                    format!(": {}", UTF16Bytes(&self.data[2..size])));
             },
             (..) => {}
         };
@@ -658,28 +661,40 @@ impl ControlTransfer {
     }
 }
 
-fn fmt_str_id(strings: &[Option<Vec<u8>>], id: StringId) -> String {
+fn fmt_str_id(strings: &[Option<UTF16ByteVec>], id: StringId) -> String {
     match id.0 {
         0 => "(none)".to_string(),
         n => match &strings[n as usize] {
-            Some(bytes) => format!("#{} {}", id, fmt_utf16(bytes)),
+            Some(utf16) => format!("#{} {}", id, utf16),
             None => format!("#{} (not seen)", id)
         }
     }
 }
 
-fn fmt_utf16(bytes: &[u8]) -> String {
+pub struct UTF16Bytes<'b>(&'b [u8]);
+
+impl std::fmt::Display for UTF16Bytes<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let chars: Vec<u16> =
-            bytes.chunks_exact(2)
-                 .into_iter()
-                 .map(|a| u16::from_le_bytes([a[0], a[1]]))
-                 .collect();
+            self.0.chunks_exact(2)
+                  .into_iter()
+                  .map(|a| u16::from_le_bytes([a[0], a[1]]))
+                  .collect();
         match String::from_utf16(&chars) {
-            Ok(string) => format!("'{}'", string),
-            Err(_) => format!(
+            Ok(string) => write!(f, "'{}'", string),
+            Err(_) => write!(f,
                 "invalid UTF16, partial decode: '{}'",
                 String::from_utf16_lossy(&chars))
         }
+    }
+}
+
+pub struct UTF16ByteVec(pub Vec<u8>);
+
+impl std::fmt::Display for UTF16ByteVec {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        UTF16Bytes(self.0.as_slice()).fmt(f)
+    }
 }
 
 #[cfg(test)]
