@@ -143,7 +143,7 @@ const USB_MAX_ENDPOINTS: usize = 16;
 
 pub struct Decoder<'cap> {
     capture: &'cap mut Capture,
-    device_index: [Option<DeviceId>; USB_MAX_DEVICES],
+    device_index: VecMap<DeviceAddr, DeviceId>,
     endpoint_index: [[Option<EndpointId>; USB_MAX_ENDPOINTS]; USB_MAX_DEVICES],
     endpoint_data: Vec<EndpointData>,
     last_endpoint_state: Vec<u8>,
@@ -155,7 +155,7 @@ impl<'cap> Decoder<'cap> {
     pub fn new(capture: &'cap mut Capture) -> Result<Self, CaptureError> {
         let mut decoder = Decoder {
             capture,
-            device_index: [None; USB_MAX_DEVICES],
+            device_index: VecMap::new(),
             endpoint_data: Vec::new(),
             endpoint_index: [[None; USB_MAX_ENDPOINTS]; USB_MAX_DEVICES],
             last_endpoint_state: Vec::new(),
@@ -266,7 +266,7 @@ impl<'cap> Decoder<'cap> {
         -> Result<DeviceId, CaptureError>
     {
         let id = self.capture.devices.next_id();
-        self.device_index[address.0 as usize] = Some(id);
+        self.device_index.set(address, id);
         let device = Device { address };
         self.capture.devices.push(&device)?;
         let dev_data = DeviceData {
@@ -283,8 +283,8 @@ impl<'cap> Decoder<'cap> {
     fn add_endpoint(&mut self, address: DeviceAddr, number: EndpointNum)
         -> Result<(), CaptureError>
     {
-        let device_id = match self.device_index[address.0 as usize] {
-            Some(id) => id,
+        let device_id = match self.device_index.get(address) {
+            Some(id) => *id,
             None => self.add_device(address)?
         };
         let ep_data = EndpointData {
