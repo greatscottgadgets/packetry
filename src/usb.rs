@@ -753,3 +753,34 @@ mod tests {
         }
     }
 }
+
+pub mod prelude {
+    pub use super::{
+        PID,
+        PacketFields,
+        TokenFields,
+        SetupFields,
+        Direction,
+        StandardRequest,
+        RequestType,
+        Recipient,
+        DescriptorType,
+        DeviceDescriptor,
+        ConfigDescriptor,
+        InterfaceDescriptor,
+        EndpointDescriptor,
+        Configuration,
+        Interface,
+        ControlTransfer,
+        DeviceAddr,
+        DeviceField,
+        StringId,
+        ConfigNum,
+        ConfigField,
+        InterfaceNum,
+        InterfaceField,
+        EndpointNum,
+        EndpointField,
+        UTF16ByteVec,
+    };
+}

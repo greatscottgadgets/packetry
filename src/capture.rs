@@ -5,28 +5,7 @@ use crate::id::{Id, HasLength};
 use crate::file_vec::{FileVec, FileVecError};
 use crate::hybrid_index::{HybridIndex, HybridIndexError, Number};
 use crate::vec_map::VecMap;
-use crate::usb::{
-    self,
-    PID,
-    PacketFields,
-    SetupFields,
-    Direction,
-    DeviceDescriptor,
-    Configuration,
-    Interface,
-    EndpointDescriptor,
-    ControlTransfer,
-    DeviceAddr,
-    DeviceField,
-    StringId,
-    ConfigNum,
-    ConfigField,
-    InterfaceNum,
-    InterfaceField,
-    EndpointNum,
-    EndpointField,
-    UTF16ByteVec,
-};
+use crate::usb::{self, prelude::*};
 
 use bytemuck_derive::{Pod, Zeroable};
 use num_enum::{IntoPrimitive, FromPrimitive};
@@ -981,4 +960,22 @@ mod tests {
             }
         }
     }
+}
+
+pub mod prelude {
+    pub use super::{
+        Capture,
+        CaptureError,
+        Device,
+        DeviceId,
+        DeviceData,
+        Endpoint,
+        EndpointId,
+        EndpointType,
+        EndpointState,
+        EndpointTraffic,
+        EndpointTransactionId,
+        PacketId,
+        TransferIndexEntry,
+    };
 }

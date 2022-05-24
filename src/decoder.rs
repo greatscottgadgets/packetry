@@ -1,44 +1,7 @@
 use std::mem::size_of;
 
-use crate::usb::{
-    self,
-    PID,
-    PacketFields,
-    TokenFields,
-    SetupFields,
-    Direction,
-    StandardRequest,
-    RequestType,
-    Recipient,
-    DescriptorType,
-    DeviceDescriptor,
-    ConfigDescriptor,
-    Configuration,
-    DeviceAddr,
-    ConfigNum,
-    EndpointNum,
-    StringId,
-    UTF16ByteVec,
-};
-
-use crate::capture::{
-    Capture,
-    CaptureError,
-    Device,
-    DeviceId,
-    DeviceData,
-    Endpoint,
-    EndpointId,
-    EndpointType,
-    EndpointState,
-    EndpointTraffic,
-    EndpointTransactionId,
-    PacketId,
-    TransferIndexEntry,
-    INVALID_EP_NUM,
-    FRAMING_EP_NUM,
-};
-
+use crate::usb::{self, prelude::*};
+use crate::capture::{prelude::*, INVALID_EP_NUM, FRAMING_EP_NUM};
 use crate::hybrid_index::HybridIndex;
 use crate::vec_map::{VecMap, Key};
 
