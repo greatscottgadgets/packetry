@@ -4,6 +4,7 @@ use crate::usb::{
     self,
     PID,
     PacketFields,
+    TokenFields,
     SetupFields,
     Direction,
     StandardRequest,
@@ -186,6 +187,24 @@ impl<'cap> Decoder<'cap> {
         Ok(())
     }
 
+    pub fn token_endpoint(&mut self, token: &TokenFields)
+        -> Result<EndpointId, CaptureError>
+    {
+        let key = EndpointKey {
+            dev_addr: token.device_address(),
+            ep_num: token.endpoint_number()
+        };
+        Ok(match self.endpoint_index.get(key) {
+            Some(id) => *id,
+            None => {
+                let id = self.capture.endpoints.next_id();
+                self.endpoint_index.set(key, id);
+                self.add_endpoint(key.dev_addr, key.ep_num)?;
+                id
+            }
+        })
+    }
+
     fn transaction_update(&mut self, packet: &[u8])
         -> Result<(), CaptureError>
     {
@@ -222,21 +241,7 @@ impl<'cap> Decoder<'cap> {
         self.transaction_state.endpoint_id = Some(
             match PacketFields::from_packet(packet) {
                 PacketFields::SOF(_) => EndpointId::from(1),
-                PacketFields::Token(token) => {
-                    let key = EndpointKey {
-                        dev_addr: token.device_address(),
-                        ep_num: token.endpoint_number()
-                    };
-                    match self.endpoint_index.get(key) {
-                        Some(id) => *id,
-                        None => {
-                            let id = self.capture.endpoints.next_id();
-                            self.endpoint_index.set(key, id);
-                            self.add_endpoint(key.dev_addr, key.ep_num)?;
-                            id
-                        }
-                    }
-                },
+                PacketFields::Token(token) => self.token_endpoint(&token)?,
                 _ => EndpointId::from(0)
             }
         );
