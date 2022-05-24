@@ -7,6 +7,12 @@ use crate::vec_map::{VecMap, Key};
 
 use CaptureError::IndexError;
 
+impl PID {
+    fn from_packet(packet: &[u8]) -> Result<PID, CaptureError> {
+        Ok(PID::from(*packet.get(0).ok_or(IndexError)?))
+    }
+}
+
 #[derive(PartialEq)]
 enum DecodeStatus {
     New,
@@ -40,7 +46,7 @@ impl TransactionState {
     pub fn status(&mut self, packet: &[u8])
         -> Result<DecodeStatus, CaptureError>
     {
-        let next = PID::from(*packet.get(0).ok_or(IndexError)?);
+        let next = PID::from_packet(packet)?;
         use PID::*;
         Ok(match (self.first, self.last, next) {
 
@@ -171,7 +177,7 @@ impl<'cap> Decoder<'cap> {
     fn transaction_update(&mut self, packet: &[u8])
         -> Result<(), CaptureError>
     {
-        let pid = PID::from(*packet.get(0).ok_or(IndexError)?);
+        let pid = PID::from_packet(packet)?;
         match self.transaction_state.status(packet)? {
             DecodeStatus::New => {
                 self.transaction_end()?;
@@ -199,7 +205,7 @@ impl<'cap> Decoder<'cap> {
         let state = &mut self.transaction_state;
         state.start = Some(self.capture.packet_index.next_id());
         state.count = 1;
-        state.first = PID::from(*packet.get(0).ok_or(IndexError)?);
+        state.first = PID::from_packet(packet)?;
         state.last = state.first;
         self.transaction_state.endpoint_id = Some(
             match PacketFields::from_packet(packet) {
