@@ -57,12 +57,19 @@ impl<K, V> VecMap<K, V> where K: Key {
     }
 }
 
+impl<K, V> Default for VecMap<K, V> where K: Key {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T> Key for T where T: Into<u8> {
     fn id(self) -> usize {
         self.into() as usize
     }
 }
 
+#[allow(clippy::type_complexity)]
 impl<'v, K, V> IntoIterator for &'v VecMap<K, V> where K: Key {
     type Item = &'v V;
     type IntoIter =
