@@ -4,6 +4,7 @@ use std::num::TryFromIntError;
 use crate::id::{Id, HasLength};
 use crate::file_vec::{FileVec, FileVecError};
 use crate::hybrid_index::{HybridIndex, HybridIndexError, Number};
+use crate::vec_map::VecMap;
 use crate::usb::{
     self,
     PID,
@@ -17,6 +18,7 @@ use crate::usb::{
     ControlTransfer,
     DeviceAddr,
     DeviceField,
+    StringId,
     ConfigNum,
     ConfigField,
     InterfaceNum,
@@ -153,26 +155,17 @@ pub struct EndpointTraffic {
 
 pub struct DeviceData {
     pub device_descriptor: Option<DeviceDescriptor>,
-    pub configurations: Vec<Option<Configuration>>,
+    pub configurations: VecMap<ConfigNum, Configuration>,
     pub config_number: Option<ConfigNum>,
-    pub endpoint_types: Vec<EndpointType>,
-    pub strings: Vec<Option<UTF16ByteVec>>,
+    pub endpoint_types: VecMap<EndpointNum, EndpointType>,
+    pub strings: VecMap<StringId, UTF16ByteVec>,
 }
 
 impl DeviceData {
-    pub fn try_get_configuration(&self, number: &ConfigNum)
-        -> Option<&Configuration>
-    {
-        match self.configurations.get(number.0 as usize) {
-            Some(Some(config)) => Some(config),
-            _ => None
-        }
-    }
-
     pub fn get_configuration(&self, number: &ConfigNum)
         -> Result<&Configuration, CaptureError>
     {
-        match self.try_get_configuration(number) {
+        match self.configurations.get(*number) {
             Some(config) => Ok(config),
             None => Err(DescriptorMissing)
         }
@@ -184,7 +177,7 @@ impl DeviceData {
             INVALID_EP_NUM => Invalid,
             FRAMING_EP_NUM => Framing,
             0 => Normal(usb::EndpointType::Control),
-            n => match self.endpoint_types.get(n as usize) {
+            _ => match self.endpoint_types.get(number) {
                 Some(ep_type) => *ep_type,
                 None => Unidentified
             }
@@ -193,18 +186,14 @@ impl DeviceData {
 
     pub fn update_endpoint_types(&mut self) {
         if let Some(number) = self.config_number {
-            let idx = number.0 as usize;
-            if let Some(Some(config)) = &self.configurations.get(idx) {
+            if let Some(config) = &self.configurations.get(number) {
                 for iface in &config.interfaces {
                     for ep_desc in &iface.endpoint_descriptors {
                         let ep_number = ep_desc.endpoint_address.number();
-                        let index = ep_number.0 as usize;
-                        if let Some(ep_type) =
-                            self.endpoint_types.get_mut(index)
-                        {
-                            *ep_type = EndpointType::Normal(
-                                ep_desc.attributes.endpoint_type());
-                        }
+                        let ep_type = ep_desc.attributes.endpoint_type();
+                        self.endpoint_types.set(
+                            ep_number,
+                            EndpointType::Normal(ep_type));
                     }
                 }
             }
@@ -216,7 +205,7 @@ impl Configuration {
     pub fn get_interface(&self, number: &InterfaceNum)
         -> Result<&Interface, CaptureError>
     {
-        match self.interfaces.get(number.0 as usize) {
+        match self.interfaces.get(*number) {
             Some(iface) => Ok(iface),
             _ => Err(IndexError)
         }
@@ -227,7 +216,7 @@ impl Interface {
     pub fn get_endpoint_descriptor(&self, number: &EndpointNum)
         -> Result<&EndpointDescriptor, CaptureError>
     {
-        match self.endpoint_descriptors.get(number.0 as usize) {
+        match self.endpoint_descriptors.get(*number) {
             Some(desc) => Ok(desc),
             _ => Err(IndexError)
         }
@@ -497,6 +486,12 @@ impl Capture {
         -> Result<&mut DeviceData, CaptureError>
     {
         self.device_data.get_mut(id.value as usize).ok_or(IndexError)
+    }
+
+    pub fn try_get_configuration(&self, dev: &DeviceId, conf: &ConfigNum)
+        -> Option<&Configuration>
+    {
+        self.get_device_data(dev).ok()?.configurations.get(*conf)
     }
 
     fn transfer_extended(&mut self,
@@ -837,17 +832,17 @@ impl ItemSource<DeviceItem> for Capture {
                     None => 0,
                 },
             Configuration(dev, conf) =>
-                match self.get_device_data(dev)?.try_get_configuration(conf) {
+                match self.try_get_configuration(dev, conf) {
                     Some(conf) => 1 + conf.interfaces.len(),
                     None => 0
                 },
             ConfigurationDescriptor(dev, conf) =>
-                match self.get_device_data(dev)?.try_get_configuration(conf) {
+                match self.try_get_configuration(dev, conf) {
                     Some(_) => usb::ConfigDescriptor::NUM_FIELDS,
                     None => 0
                 },
             Interface(dev, conf, iface) =>
-                match self.get_device_data(dev)?.try_get_configuration(conf) {
+                match self.try_get_configuration(dev, conf) {
                     Some(conf) =>
                         conf.get_interface(iface)?.endpoint_descriptors.len(),
                     None => 0

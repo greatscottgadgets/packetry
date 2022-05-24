@@ -5,6 +5,8 @@ use bytemuck::pod_read_unaligned;
 use num_enum::{IntoPrimitive, FromPrimitive};
 use derive_more::{From, Into, Display};
 
+use crate::vec_map::VecMap;
+
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Copy, Clone, Debug, IntoPrimitive, FromPrimitive, PartialEq)]
 #[repr(u8)]
@@ -394,7 +396,7 @@ impl DeviceDescriptor {
     }
 
     pub fn field_text(&self, id: DeviceField,
-                      strings: &[Option<UTF16ByteVec>])
+                      strings: &VecMap<StringId, UTF16ByteVec>)
         -> String
     {
         match id.0 {
@@ -437,7 +439,7 @@ pub struct ConfigDescriptor {
 #[allow(clippy::useless_format)]
 impl ConfigDescriptor {
     pub fn field_text(&self, id: ConfigField,
-                      strings: &[Option<UTF16ByteVec>])
+                      strings: &VecMap<StringId, UTF16ByteVec>)
         -> String
     {
         match id.0 {
@@ -475,7 +477,7 @@ pub struct InterfaceDescriptor {
 #[allow(clippy::useless_format)]
 impl InterfaceDescriptor {
     pub fn field_text(&self, id: InterfaceField,
-                      strings: &[Option<UTF16ByteVec>])
+                      strings: &VecMap<StringId, UTF16ByteVec>)
         -> String
     {
         match id.0 {
@@ -527,12 +529,12 @@ impl EndpointDescriptor {
 
 pub struct Interface {
     pub descriptor: InterfaceDescriptor,
-    pub endpoint_descriptors: Vec<EndpointDescriptor>
+    pub endpoint_descriptors: VecMap<EndpointNum, EndpointDescriptor>
 }
 
 pub struct Configuration {
     pub descriptor: ConfigDescriptor,
-    pub interfaces: Vec<Interface>,
+    pub interfaces: VecMap<InterfaceNum, Interface>,
 }
 
 impl Configuration {
@@ -552,7 +554,7 @@ impl Configuration {
         let mut config = Configuration {
             descriptor: config_desc,
             interfaces:
-                Vec::with_capacity(config_desc.num_interfaces as usize),
+                VecMap::with_capacity(config_desc.num_interfaces),
         };
         let mut offset = config_size;
         for _ in 0 .. config.descriptor.num_interfaces {
@@ -569,7 +571,7 @@ impl Configuration {
             let mut iface = Interface {
                 descriptor: iface_desc,
                 endpoint_descriptors:
-                    Vec::with_capacity(iface_desc.num_endpoints as usize),
+                    VecMap::with_capacity(iface_desc.num_endpoints),
             };
             while iface.endpoint_descriptors.len() <
                 iface.descriptor.num_endpoints as usize
@@ -661,10 +663,12 @@ impl ControlTransfer {
     }
 }
 
-fn fmt_str_id(strings: &[Option<UTF16ByteVec>], id: StringId) -> String {
+fn fmt_str_id(strings: &VecMap<StringId, UTF16ByteVec>, id: StringId)
+    -> String
+{
     match id.0 {
         0 => "(none)".to_string(),
-        n => match &strings[n as usize] {
+        _ => match &strings.get(id) {
             Some(utf16) => format!("#{} {}", id, utf16),
             None => format!("#{} (not seen)", id)
         }

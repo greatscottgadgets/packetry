@@ -16,6 +16,7 @@ use crate::usb::{
     DeviceAddr,
     ConfigNum,
     EndpointNum,
+    StringId,
     UTF16ByteVec,
 };
 
@@ -38,6 +39,7 @@ use crate::capture::{
 };
 
 use crate::hybrid_index::HybridIndex;
+use crate::vec_map::VecMap;
 
 use CaptureError::IndexError;
 
@@ -269,11 +271,10 @@ impl<'cap> Decoder<'cap> {
         self.capture.devices.push(&device)?;
         let dev_data = DeviceData {
             device_descriptor: None,
-            configurations: Vec::new(),
+            configurations: VecMap::new(),
             config_number: None,
-            endpoint_types: vec![
-                EndpointType::Unidentified; USB_MAX_ENDPOINTS],
-            strings: Vec::new(),
+            endpoint_types: VecMap::new(),
+            strings: VecMap::new(),
         };
         self.capture.device_data.push(dev_data);
         Ok(id)
@@ -380,12 +381,9 @@ impl<'cap> Decoder<'cap> {
                     let dev_data = self.current_device_data_mut()?;
                     if let Some(config) = configuration {
                         let configurations = &mut dev_data.configurations;
-                        let config_id =
-                            config.descriptor.config_value as usize;
-                        while configurations.len() <= config_id {
-                            configurations.push(None);
-                        }
-                        configurations[config_id] = Some(config);
+                        let config_num = ConfigNum::from(
+                            config.descriptor.config_value);
+                        configurations.set(config_num, config);
                         dev_data.update_endpoint_types();
                     }
                 }
@@ -395,11 +393,9 @@ impl<'cap> Decoder<'cap> {
                     let string = UTF16ByteVec(payload[2..length].to_vec());
                     let dev_data = self.current_device_data_mut()?;
                     let strings = &mut dev_data.strings;
-                    let string_id = (fields.value & 0xFF) as usize;
-                    while strings.len() <= string_id {
-                        strings.push(None);
-                    }
-                    strings[string_id] = Some(string);
+                    let string_id =
+                        StringId::from((fields.value & 0xFF) as u8);
+                    strings.set(string_id, string);
                 }
             },
             _ => {}
