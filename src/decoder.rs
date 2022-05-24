@@ -155,7 +155,7 @@ pub struct Decoder<'cap> {
     capture: &'cap mut Capture,
     device_index: VecMap<DeviceAddr, DeviceId>,
     endpoint_index: VecMap<EndpointKey, EndpointId>,
-    endpoint_data: Vec<EndpointData>,
+    endpoint_data: VecMap<EndpointId, EndpointData>,
     last_endpoint_state: Vec<u8>,
     last_item_endpoint: Option<EndpointId>,
     transaction_state: TransactionState,
@@ -167,7 +167,7 @@ impl<'cap> Decoder<'cap> {
             capture,
             device_index: VecMap::new(),
             endpoint_index: VecMap::new(),
-            endpoint_data: Vec::new(),
+            endpoint_data: VecMap::new(),
             last_endpoint_state: Vec::new(),
             last_item_endpoint: None,
             transaction_state: TransactionState::default(),
@@ -330,8 +330,7 @@ impl<'cap> Decoder<'cap> {
     {
         let endpoint_id = self.transaction_state.endpoint_id
                                                 .ok_or(IndexError)?;
-        self.endpoint_data.get(endpoint_id.value as usize)
-                          .ok_or(IndexError)
+        self.endpoint_data.get(endpoint_id).ok_or(IndexError)
     }
 
     fn current_endpoint_data_mut(&mut self)
@@ -339,8 +338,7 @@ impl<'cap> Decoder<'cap> {
     {
         let endpoint_id = self.transaction_state.endpoint_id
                                                 .ok_or(IndexError)?;
-        self.endpoint_data.get_mut(endpoint_id.value as usize)
-                          .ok_or(IndexError)
+        self.endpoint_data.get_mut(endpoint_id).ok_or(IndexError)
     }
 
     fn current_device_data(&self)
@@ -557,10 +555,10 @@ impl<'cap> Decoder<'cap> {
         self.last_item_endpoint = Some(endpoint_id);
         self.add_transfer_entry(endpoint_id, true)?;
         let ep_data =
-            self.endpoint_data.get_mut(endpoint_id.value as usize)
+            self.endpoint_data.get_mut(endpoint_id)
                               .ok_or(IndexError)?;
         let ep_traf =
-            self.capture.endpoint_traffic.get_mut(endpoint_id.value as usize)
+            self.capture.endpoint_traffic.get_mut(endpoint_id)
                                          .ok_or(IndexError)?;
         ep_data.transaction_start = ep_traf.transaction_ids.next_id();
         ep_data.transaction_count = 0;
@@ -572,8 +570,7 @@ impl<'cap> Decoder<'cap> {
         -> Result<(), CaptureError>
     {
         let endpoint_id = self.transaction_state.endpoint_id
-                                                .ok_or(IndexError)?
-                                                .value as usize;
+                                                .ok_or(IndexError)?;
         let ep_data = self.endpoint_data.get_mut(endpoint_id)
                                         .ok_or(IndexError)?;
         let ep_traf = self.capture.endpoint_traffic.get_mut(endpoint_id)

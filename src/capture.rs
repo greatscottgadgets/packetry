@@ -230,9 +230,9 @@ pub struct Capture {
     pub transaction_index: HybridIndex<PacketId>,
     pub transfer_index: FileVec<TransferIndexEntry>,
     pub devices: FileVec<Device>,
-    pub device_data: Vec<DeviceData>,
+    pub device_data: VecMap<DeviceId, DeviceData>,
     pub endpoints: FileVec<Endpoint>,
-    pub endpoint_traffic: Vec<EndpointTraffic>,
+    pub endpoint_traffic: VecMap<EndpointId, EndpointTraffic>,
     pub endpoint_states: FileVec<u8>,
     pub endpoint_state_index: HybridIndex<Id<u8>>,
 }
@@ -308,9 +308,9 @@ impl Capture {
             transaction_index: HybridIndex::new(1)?,
             transfer_index: FileVec::new()?,
             devices: FileVec::new()?,
-            device_data: Vec::new(),
+            device_data: VecMap::new(),
             endpoints: FileVec::new()?,
-            endpoint_traffic: Vec::new(),
+            endpoint_traffic: VecMap::new(),
             endpoint_states: FileVec::new()?,
             endpoint_state_index: HybridIndex::new(1)?,
         })
@@ -366,8 +366,7 @@ impl Capture {
     pub fn endpoint_traffic(&mut self, endpoint_id: EndpointId)
         -> Result<&mut EndpointTraffic, CaptureError>
     {
-        let idx = endpoint_id.value as usize;
-        self.endpoint_traffic.get_mut(idx).ok_or(IndexError)
+        self.endpoint_traffic.get_mut(endpoint_id).ok_or(IndexError)
     }
 
     fn transfer_range(&mut self, entry: &TransferIndexEntry)
@@ -479,13 +478,13 @@ impl Capture {
     pub fn get_device_data(&self, id: &DeviceId)
         -> Result<&DeviceData, CaptureError>
     {
-        self.device_data.get(id.value as usize).ok_or(IndexError)
+        self.device_data.get(*id).ok_or(IndexError)
     }
 
     pub fn get_device_data_mut(&mut self, id: &DeviceId)
         -> Result<&mut DeviceData, CaptureError>
     {
-        self.device_data.get_mut(id.value as usize).ok_or(IndexError)
+        self.device_data.get_mut(*id).ok_or(IndexError)
     }
 
     pub fn try_get_configuration(&self, dev: &DeviceId, conf: &ConfigNum)

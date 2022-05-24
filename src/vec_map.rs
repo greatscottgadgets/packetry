@@ -2,6 +2,8 @@ use std::marker::PhantomData;
 use std::iter::FilterMap;
 use std::slice::Iter;
 
+use crate::id::Id;
+
 pub trait Key {
     fn id(self) -> usize;
 }
@@ -66,6 +68,12 @@ impl<K, V> Default for VecMap<K, V> where K: Key {
 impl<T> Key for T where T: Into<u8> {
     fn id(self) -> usize {
         self.into() as usize
+    }
+}
+
+impl<T> Key for Id<T> {
+    fn id(self) -> usize {
+        self.value as usize
     }
 }
 
