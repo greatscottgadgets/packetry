@@ -525,8 +525,7 @@ impl<'cap> Decoder<'cap> {
         let endpoint_id = self.current_endpoint_id()?;
         let ep_data = self.endpoint_data.get_mut(endpoint_id)
                                         .ok_or(IndexError)?;
-        let ep_traf = self.capture.endpoint_traffic.get_mut(endpoint_id)
-                                                   .ok_or(IndexError)?;
+        let ep_traf = self.capture.endpoint_traffic(endpoint_id)?;
         let ep_transaction_id = ep_traf.transaction_ids.push(transaction_id)?;
         ep_data.transaction_count = 1;
         if success {
@@ -546,8 +545,7 @@ impl<'cap> Decoder<'cap> {
         -> Result<(), CaptureError>
     {
         let endpoint_id = self.current_endpoint_id()?;
-        let ep_traf = self.capture.endpoint_traffic.get_mut(endpoint_id)
-                                                   .ok_or(IndexError)?;
+        let ep_traf = self.capture.endpoint_traffic(endpoint_id)?;
         ep_traf.transaction_ids.push(transaction_id)?;
         let ep_data = self.endpoint_data.get_mut(endpoint_id)
                                         .ok_or(IndexError)?;
