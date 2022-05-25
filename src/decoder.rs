@@ -299,19 +299,19 @@ impl<'cap> Decoder<'cap> {
         Ok(endpoint_id)
     }
 
-    fn current_endpoint_data(&self)
-        -> Result<&EndpointData, CaptureError>
-    {
-        let endpoint_id = self.transaction_state.endpoint_id
-                                                .ok_or(IndexError)?;
+    fn current_endpoint_id(&self) -> Result<EndpointId, CaptureError> {
+        self.transaction_state.endpoint_id.ok_or(IndexError)
+    }
+
+    fn current_endpoint_data(&self) -> Result<&EndpointData, CaptureError> {
+        let endpoint_id = self.current_endpoint_id()?;
         self.endpoint_data.get(endpoint_id).ok_or(IndexError)
     }
 
     fn current_endpoint_data_mut(&mut self)
         -> Result<&mut EndpointData, CaptureError>
     {
-        let endpoint_id = self.transaction_state.endpoint_id
-                                                .ok_or(IndexError)?;
+        let endpoint_id = self.current_endpoint_id()?;
         self.endpoint_data.get_mut(endpoint_id).ok_or(IndexError)
     }
 
@@ -522,8 +522,7 @@ impl<'cap> Decoder<'cap> {
                       success: bool)
         -> Result<(), CaptureError>
     {
-        let endpoint_id = self.transaction_state.endpoint_id
-                                                .ok_or(IndexError)?;
+        let endpoint_id = self.current_endpoint_id()?;
         let ep_data = self.endpoint_data.get_mut(endpoint_id)
                                         .ok_or(IndexError)?;
         let ep_traf = self.capture.endpoint_traffic.get_mut(endpoint_id)
@@ -546,8 +545,7 @@ impl<'cap> Decoder<'cap> {
                        success: bool)
         -> Result<(), CaptureError>
     {
-        let endpoint_id = self.transaction_state.endpoint_id
-                                                .ok_or(IndexError)?;
+        let endpoint_id = self.current_endpoint_id()?;
         let ep_traf = self.capture.endpoint_traffic.get_mut(endpoint_id)
                                                    .ok_or(IndexError)?;
         ep_traf.transaction_ids.push(transaction_id)?;
@@ -563,8 +561,7 @@ impl<'cap> Decoder<'cap> {
     fn transfer_end(&mut self)
         -> Result<(), CaptureError>
     {
-        let endpoint_id = self.transaction_state.endpoint_id
-                                                .ok_or(IndexError)?;
+        let endpoint_id = self.current_endpoint_id()?;
         let ep_data = self.current_endpoint_data()?;
         if ep_data.transaction_count > 0 {
             let transfer_end_id =
