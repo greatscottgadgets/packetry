@@ -522,17 +522,17 @@ impl<'cap> Decoder<'cap> {
                       success: bool)
         -> Result<(), CaptureError>
     {
+        let transaction_type = self.transaction_state.first;
         let endpoint_id = self.current_endpoint_id()?;
-        let ep_data = self.endpoint_data.get_mut(endpoint_id)
-                                        .ok_or(IndexError)?;
         let ep_traf = self.capture.endpoint_traffic(endpoint_id)?;
         let ep_transaction_id = ep_traf.transaction_ids.push(transaction_id)?;
+        let ep_transfer_id = ep_traf.transfer_index.push(ep_transaction_id)?;
+        let ep_data = self.current_endpoint_data_mut()?;
+        ep_data.transfer_id = Some(ep_transfer_id);
         ep_data.transaction_count = 1;
         if success {
-            ep_data.last = self.transaction_state.first;
+            ep_data.last = transaction_type;
         }
-        ep_data.transfer_id =
-            Some(ep_traf.transfer_index.push(ep_transaction_id)?);
         let transfer_start_id = self.add_transfer_entry(endpoint_id, true)?;
         self.capture.item_index.push(transfer_start_id)?;
         self.last_item_endpoint = Some(endpoint_id);
@@ -544,14 +544,14 @@ impl<'cap> Decoder<'cap> {
                        success: bool)
         -> Result<(), CaptureError>
     {
+        let transaction_type = self.transaction_state.first;
         let endpoint_id = self.current_endpoint_id()?;
         let ep_traf = self.capture.endpoint_traffic(endpoint_id)?;
         ep_traf.transaction_ids.push(transaction_id)?;
-        let ep_data = self.endpoint_data.get_mut(endpoint_id)
-                                        .ok_or(IndexError)?;
+        let ep_data = self.current_endpoint_data_mut()?;
         ep_data.transaction_count += 1;
         if success {
-            ep_data.last = self.transaction_state.first;
+            ep_data.last = transaction_type;
         }
         Ok(())
     }
