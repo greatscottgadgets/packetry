@@ -973,9 +973,13 @@ pub mod prelude {
         EndpointId,
         EndpointType,
         EndpointState,
+        EndpointStateId,
         EndpointTraffic,
         EndpointTransactionId,
+        EndpointTransferId,
         PacketId,
+        TransactionId,
+        TransferId,
         TransferIndexEntry,
     };
 }

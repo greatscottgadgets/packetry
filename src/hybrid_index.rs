@@ -183,10 +183,6 @@ impl<T: Number + Copy> HybridIndex<T> {
         })
     }
 
-    pub fn next_id(&self) -> Id<T> {
-        Id::<T>::from(self.total_count)
-    }
-
     pub fn len(&self) -> u64 {
         self.total_count
     }

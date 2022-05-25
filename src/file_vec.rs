@@ -82,10 +82,6 @@ impl<T: Pod + Default> FileVec<T> {
         Ok(result)
     }
 
-    pub fn next_id(&self) -> Id<T> {
-       Id::<T>::from(self.item_count)
-    }
-
     pub fn len(&self) -> u64 {
         self.item_count
     }
