@@ -153,6 +153,9 @@ impl<'cap> Decoder<'cap> {
         Ok(decoder)
     }
 
+    const INVALID_EP_ID: EndpointId = EndpointId::constant(0);
+    const FRAMING_EP_ID: EndpointId = EndpointId::constant(1);
+
     pub fn handle_raw_packet(&mut self, packet: &[u8])
         -> Result<(), CaptureError>
     {
@@ -214,9 +217,9 @@ impl<'cap> Decoder<'cap> {
         state.last = state.first;
         self.transaction_state.endpoint_id = Some(
             match PacketFields::from_packet(packet) {
-                PacketFields::SOF(_) => EndpointId::from(1),
+                PacketFields::SOF(_) => Decoder::FRAMING_EP_ID,
                 PacketFields::Token(token) => self.token_endpoint(&token)?,
-                _ => EndpointId::from(0)
+                _ => Decoder::INVALID_EP_ID,
             }
         );
         Ok(())
