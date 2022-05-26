@@ -31,6 +31,7 @@ use capture::{Capture, CaptureError};
 mod decoder;
 use decoder::Decoder;
 
+mod id;
 mod file_vec;
 mod hybrid_index;
 mod usb;

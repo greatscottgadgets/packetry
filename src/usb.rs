@@ -3,6 +3,7 @@ use std::mem::size_of;
 use bytemuck_derive::{Pod, Zeroable};
 use bytemuck::pod_read_unaligned;
 use num_enum::{IntoPrimitive, FromPrimitive};
+use derive_more::{From, Into, Display};
 
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Copy, Clone, Debug, IntoPrimitive, FromPrimitive, PartialEq)]
@@ -40,6 +41,46 @@ impl std::fmt::Display for PID {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Default,
+         Pod, Zeroable, From, Into, Display)]
+#[repr(transparent)]
+pub struct DeviceAddr(pub u8);
+
+#[derive(Copy, Clone, Debug, PartialEq, Default,
+         Pod, Zeroable, From, Into, Display)]
+#[repr(transparent)]
+pub struct DeviceField(pub u8);
+
+#[derive(Copy, Clone, Debug, PartialEq, Default,
+         Pod, Zeroable, From, Into, Display)]
+#[repr(transparent)]
+pub struct ConfigNum(pub u8);
+
+#[derive(Copy, Clone, Debug, PartialEq, Default,
+         Pod, Zeroable, From, Into, Display)]
+#[repr(transparent)]
+pub struct ConfigField(pub u8);
+
+#[derive(Copy, Clone, Debug, PartialEq, Default,
+         Pod, Zeroable, From, Into, Display)]
+#[repr(transparent)]
+pub struct InterfaceNum(pub u8);
+
+#[derive(Copy, Clone, Debug, PartialEq, Default,
+         Pod, Zeroable, From, Into, Display)]
+#[repr(transparent)]
+pub struct InterfaceField(pub u8);
+
+#[derive(Copy, Clone, Debug, PartialEq, Default,
+         Pod, Zeroable, From, Into, Display)]
+#[repr(transparent)]
+pub struct EndpointNum(pub u8);
+
+#[derive(Copy, Clone, Debug, PartialEq, Default,
+         Pod, Zeroable, From, Into, Display)]
+#[repr(transparent)]
+pub struct EndpointField(pub u8);
+
 bitfield! {
     #[derive(Debug)]
     pub struct SOFFields(u16);
@@ -50,8 +91,8 @@ bitfield! {
 bitfield! {
     #[derive(Debug)]
     pub struct TokenFields(u16);
-    pub u8, device_address, _: 6, 0;
-    pub u8, endpoint_number, _: 10, 7;
+    pub u8, into DeviceAddr, device_address, _: 6, 0;
+    pub u8, into EndpointNum, endpoint_number, _: 10, 7;
     pub u8, crc, _: 15, 11;
 }
 
@@ -122,15 +163,9 @@ bitfield! {
     #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
     #[repr(C)]
     pub struct RequestTypeFields(u8);
-    pub u8, _recipient, _: 4, 0;
-    pub u8, _type, _: 6, 5;
-    pub u8, _direction, _: 7, 7;
-}
-
-impl RequestTypeFields {
-    pub fn recipient(&self) -> Recipient { Recipient::from(self._recipient()) }
-    pub fn request_type(&self) -> RequestType { RequestType::from(self._type()) }
-    pub fn direction(&self) -> Direction { Direction::from(self._direction()) }
+    pub u8, into Recipient, recipient, _: 4, 0;
+    pub u8, into RequestType, request_type, _: 6, 5;
+    pub u8, into Direction, direction, _: 7, 7;
 }
 
 #[derive(Copy, Clone)]
@@ -300,8 +335,10 @@ impl DeviceDescriptor {
         pod_read_unaligned::<DeviceDescriptor>(bytes)
     }
 
-    pub fn field_text(&self, id: u8, strings: &[Option<Vec<u8>>]) -> String {
-        match id {
+    pub fn field_text(&self, id: DeviceField, strings: &[Option<Vec<u8>>])
+        -> String
+    {
+        match id.0 {
         0  => format!("Length: {} bytes", self.length),
         1  => format!("Type: 0x{:02X}", self.descriptor_type),
         2  => format!("USB Version: {:X}.{:02X}",
@@ -323,6 +360,8 @@ impl DeviceDescriptor {
         i  => format!("Error: Invalid field ID {}", i)
         }
     }
+
+    pub const NUM_FIELDS: usize = 13;
 }
 
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
@@ -340,8 +379,10 @@ pub struct ConfigDescriptor {
 
 #[allow(clippy::useless_format)]
 impl ConfigDescriptor {
-    pub fn field_text(&self, id: u8, strings: &[Option<Vec<u8>>]) -> String {
-        match id {
+    pub fn field_text(&self, id: ConfigField, strings: &[Option<Vec<u8>>])
+        -> String
+    {
+        match id.0 {
         0 => format!("Length: {} bytes", self.length),
         1 => format!("Type: 0x{:02X}", self.descriptor_type),
         2 => format!("Total length: {} bytes", {
@@ -355,6 +396,8 @@ impl ConfigDescriptor {
         i => format!("Error: Invalid field ID {}", i)
         }
     }
+
+    pub const NUM_FIELDS: usize = 8;
 }
 
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
@@ -373,8 +416,10 @@ pub struct InterfaceDescriptor {
 
 #[allow(clippy::useless_format)]
 impl InterfaceDescriptor {
-    pub fn field_text(&self, id: u8, strings: &[Option<Vec<u8>>]) -> String {
-        match id {
+    pub fn field_text(&self, id: InterfaceField, strings: &[Option<Vec<u8>>])
+        -> String
+    {
+        match id.0 {
         0 => format!("Length: {} bytes", self.length),
         1 => format!("Type: 0x{:02X}", self.descriptor_type),
         2 => format!("Interface number: {}", self.interface_number),
@@ -388,6 +433,8 @@ impl InterfaceDescriptor {
         i => format!("Error: Invalid field ID {}", i)
         }
     }
+
+    pub const NUM_FIELDS: usize = 9;
 }
 
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
@@ -403,8 +450,8 @@ pub struct EndpointDescriptor {
 
 #[allow(clippy::useless_format)]
 impl EndpointDescriptor {
-    pub fn field_text(&self, id: u8) -> String {
-        match id {
+    pub fn field_text(&self, id: EndpointField) -> String {
+        match id.0 {
         0 => format!("Length: {} bytes", self.length),
         1 => format!("Type: 0x{:02X}", self.descriptor_type),
         2 => format!("Endpoint address: 0x{:02X}", self.endpoint_address),
@@ -415,6 +462,8 @@ impl EndpointDescriptor {
         i => format!("Error: Invalid field ID {}", i)
         }
     }
+
+    pub const NUM_FIELDS: usize = 6;
 }
 
 pub struct Interface {
@@ -486,7 +535,7 @@ impl Configuration {
 }
 
 pub struct ControlTransfer {
-    pub address: u8,
+    pub address: DeviceAddr,
     pub fields: SetupFields,
     pub data: Vec<u8>,
 }
@@ -597,8 +646,8 @@ mod tests {
     fn test_parse_setup() {
         let p = PacketFields::from_packet(&vec![0x2d, 0x02, 0xa8]);
         if let PacketFields::Token(tok) = p {
-            assert!(tok.device_address() == 2);
-            assert!(tok.endpoint_number() == 0);
+            assert!(tok.device_address() == DeviceAddr(2));
+            assert!(tok.endpoint_number() == EndpointNum(0));
             assert!(tok.crc() == 0x15);
         } else {
             panic!("Expected Token but got {:?}", p);
@@ -610,8 +659,8 @@ mod tests {
     fn test_parse_in() {
         let p = PacketFields::from_packet(&vec![0x69, 0x82, 0x18]);
         if let PacketFields::Token(tok) = p {
-            assert!(tok.device_address() == 2);
-            assert!(tok.endpoint_number() == 1);
+            assert!(tok.device_address() == DeviceAddr(2));
+            assert!(tok.endpoint_number() == EndpointNum(1));
             assert!(tok.crc() == 0x03);
         } else {
             panic!("Expected Token but got {:?}", p);

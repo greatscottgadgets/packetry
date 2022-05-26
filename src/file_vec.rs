@@ -9,6 +9,8 @@ use bytemuck::{bytes_of, bytes_of_mut, Pod};
 use tempfile::tempfile;
 use thiserror::Error;
 
+use crate::id::Id;
+
 #[derive(Error, Debug)]
 pub enum FileVecError {
     #[error(transparent)]
@@ -51,26 +53,31 @@ impl<T: Pod + Default> FileVec<T> {
         Ok(())
     }
 
-    pub fn get(&mut self, index: u64) -> Result<T, FileVecError> {
+    pub fn get(&mut self, id: Id<T>) -> Result<T, FileVecError> {
         let mut result: T = Default::default();
-        let start = index * std::mem::size_of::<T>() as u64;
+        let start = id.value * std::mem::size_of::<T>() as u64;
         self.file.seek(SeekFrom::Start(start as u64))?;
         self.file.read_exact(bytes_of_mut(&mut result))?;
         self.file.seek(SeekFrom::Start(self.file_length))?;
         Ok(result)
     }
 
-    pub fn get_range(&mut self, range: Range<u64>) -> Result<Vec<T>, FileVecError> {
+    pub fn get_range(&mut self, range: Range<Id<T>>) -> Result<Vec<T>, FileVecError> {
         let mut buf: T = Default::default();
         let mut result = Vec::new();
-        let start = range.start * std::mem::size_of::<T>() as u64;
+        let start = range.start.value * std::mem::size_of::<T>() as u64;
+        let end = range.end.value;
         self.file.seek(SeekFrom::Start(start as u64))?;
-        for _ in range {
+        for _ in start .. end {
             self.file.read_exact(bytes_of_mut(&mut buf))?;
             result.push(buf);
         }
         self.file.seek(SeekFrom::Start(self.file_length))?;
         Ok(result)
+    }
+
+    pub fn next_id(&self) -> Id<T> {
+       Id::<T>::from(self.item_count)
     }
 
     pub fn len(&self) -> u64 {
@@ -100,7 +107,7 @@ mod tests {
         for i in 0..100 {
             let x= Foo{ bar: i, baz: i};
             v.push(&x).unwrap();
-            assert!(v.get(i as u64).unwrap() == x);
+            assert!(v.get(Id::<Foo>::from(i as u64)).unwrap() == x);
         }
     }
 
@@ -119,7 +126,10 @@ mod tests {
         file_vec.append(&data.as_slice()).unwrap();
 
         // and check
-        let vec: Vec<_> = file_vec.get_range(0..100).unwrap();
+        let start = Id::<Foo>::from(0);
+        let end = Id::<Foo>::from(100);
+        let range = start .. end;
+        let vec: Vec<_> = file_vec.get_range(range).unwrap();
         assert!(vec == data);
     }
 }

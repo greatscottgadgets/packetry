@@ -3,11 +3,14 @@ use std::io::prelude::*;
 use std::io::SeekFrom;
 use std::ops::Range;
 use std::cmp::{min, max};
+use std::marker::PhantomData;
 
 use bufreaderwriter::BufReaderWriter;
 use tempfile::tempfile;
 use thiserror::Error;
 use bisection::bisect_right;
+
+use crate::id::Id;
 
 #[derive(Error, Debug)]
 pub enum HybridIndexError {
@@ -27,7 +30,18 @@ struct Entry {
     increments: IncrementFields,
 }
 
-pub struct HybridIndex {
+pub trait Number {
+    fn from_u64(i: u64) -> Self;
+    fn to_u64(&self) -> u64;
+}
+
+impl<T> Number for Id<T> {
+    fn from_u64(i: u64) -> Self { Id::<T>::from(i) }
+    fn to_u64(&self) -> u64 { self.value }
+}
+
+pub struct HybridIndex<T> where T: Number {
+    _marker: PhantomData<T>,
     min_width: u8,
     file: BufReaderWriter<File>,
     file_length: u64,
@@ -38,10 +52,11 @@ pub struct HybridIndex {
     at_end: bool,
 }
 
-impl HybridIndex {
+impl<T: Number> HybridIndex<T> {
     pub fn new(min_width: u8) -> Result<Self, HybridIndexError> {
         let file = tempfile()?;
         Ok(Self{
+            _marker: PhantomData,
             min_width,
             file: BufReaderWriter::new_writer(file),
             file_length: 0,
@@ -53,10 +68,10 @@ impl HybridIndex {
         })
     }
 
-    pub fn push(&mut self, value: u64) -> Result<(), HybridIndexError> {
+    pub fn push(&mut self, id: T) -> Result<(), HybridIndexError> {
         if self.entries.is_empty() {
             let first_entry = Entry {
-                base_value: value,
+                base_value: id.to_u64(),
                 file_offset: 0,
                 increments: IncrementFields(0),
             };
@@ -64,12 +79,12 @@ impl HybridIndex {
             self.index.push(0);
         } else {
             let last_entry = self.entries.last_mut().unwrap();
-            let increment = value - last_entry.base_value;
+            let increment = id.to_u64() - last_entry.base_value;
             let width = max(byte_width(increment), self.min_width);
             let count = last_entry.increments.count();
             if count > 0 && width > last_entry.increments.width() {
                 let new_entry = Entry {
-                    base_value: value,
+                    base_value: id.to_u64(),
                     file_offset: self.file_length,
                     increments: IncrementFields(0),
                 };
@@ -90,16 +105,16 @@ impl HybridIndex {
             }
         }
         self.total_count += 1;
-        self.last_value = value;
+        self.last_value = id.to_u64();
         Ok(())
     }
 
-    pub fn get(&mut self, i: u64) -> Result<u64, HybridIndexError> {
-        let entry_id = bisect_right(self.index.as_slice(), &i) - 1;
+    pub fn get(&mut self, id: Id<T>) -> Result<T, HybridIndexError> {
+        let entry_id = bisect_right(self.index.as_slice(), &id.value) - 1;
         let entry = &self.entries[entry_id];
-        let increment_id = i - self.index[entry_id];
+        let increment_id = id.value - self.index[entry_id];
         if increment_id == 0 {
-            Ok(entry.base_value)
+            Ok(<T>::from_u64(entry.base_value))
         } else {
             let width = entry.increments.width();
             let start = entry.file_offset + (increment_id - 1) * width as u64;
@@ -109,25 +124,27 @@ impl HybridIndex {
             self.file.read_exact(&mut bytes[0..width as usize])?;
             let increment = u64::from_le_bytes(bytes);
             let value = entry.base_value + increment;
-            Ok(value)
+            Ok(<T>::from_u64(value))
         }
     }
 
-    pub fn get_range(&mut self, range: Range<u64>) -> Result<Vec<u64>, HybridIndexError> {
+    pub fn get_range(&mut self, range: Range<Id<T>>)
+        -> Result<Vec<T>, HybridIndexError>
+    {
         let mut result = Vec::new();
-        let mut i = range.start;
-        while i < range.end {
+        let mut i = range.start.value;
+        while i < range.end.value {
             let entry_id = bisect_right(self.index.as_slice(), &i) - 1;
             let entry = &self.entries[entry_id];
             let mut increment_id = i - self.index[entry_id];
             if increment_id == 0 {
-                result.push(entry.base_value);
+                result.push(<T>::from_u64(entry.base_value));
                 i += 1;
             } else {
                 increment_id -= 1;
             }
             let available = entry.increments.count() - increment_id;
-            let needed = range.end - i;
+            let needed = range.end.value - i;
             let read_count = min(available, needed);
             if read_count == 0 {
                 continue;
@@ -141,11 +158,15 @@ impl HybridIndex {
                 self.file.read_exact(&mut bytes[0..width as usize])?;
                 let increment = u64::from_le_bytes(bytes);
                 let value = entry.base_value + increment;
-                result.push(value);
+                result.push(<T>::from_u64(value));
             }
             i += read_count;
         }
         Ok(result)
+    }
+
+    pub fn next_id(&self) -> Id<T> {
+        Id::<T>::from(self.total_count)
     }
 
     pub fn len(&self) -> u64 {
@@ -191,35 +212,43 @@ mod tests {
     #[test]
     fn test_hybrid_index() {
         let mut v = HybridIndex::new(1).unwrap();
-        let mut expected = Vec::<u64>::new();
+        let mut expected = Vec::<Id<u8>>::new();
         let mut x = 10;
         let n = 321;
         for i in 0..n {
             x += 1 + i % 3;
-            expected.push(x);
-            v.push(x).unwrap();
+            let id = Id::<u8>::from(x);
+            expected.push(id);
+            v.push(id).unwrap();
         }
         for i in 0..n {
-            let vi = v.get(i).unwrap();
+            let id = Id::<Id<u8>>::from(i);
+            let vi = v.get(id).unwrap();
             let xi = expected[i as usize];
             assert!(vi == xi);
         }
+        let end = Id::<Id<u8>>::from(n as u64);
         for i in 0..n {
-            let vrng = i as u64 .. n as u64;
+            let start = Id::<Id<u8>>::from(i as u64);
+            let vrng = start .. end;
             let xrng = i as usize .. n as usize;
             let vr = v.get_range(vrng).unwrap();
             let xr = &expected[xrng];
             assert!(vr == xr);
         }
+        let start = Id::<Id<u8>>::from(0 as u64);
         for i in 0..n {
-            let vrng = 0 as u64 .. i as u64;
+            let end = Id::<Id<u8>>::from(i as u64);
+            let vrng = start .. end;
             let xrng = 0 as usize .. i as usize;
             let vr = v.get_range(vrng).unwrap();
             let xr = &expected[xrng];
             assert!(vr == xr);
         }
         for i in 0..(n - 10) {
-            let vrng = i as u64 .. (i + 10) as u64;
+            let start = Id::<Id<u8>>::from(i as u64);
+            let end = Id::<Id<u8>>::from(i + 10 as u64);
+            let vrng = start .. end;
             let xrng = i as usize .. (i + 10) as usize;
             let vr = v.get_range(vrng).unwrap();
             let xr = &expected[xrng];

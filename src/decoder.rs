@@ -12,17 +12,24 @@ use crate::usb::{
     DeviceDescriptor,
     ConfigDescriptor,
     Configuration,
+    DeviceAddr,
+    ConfigNum,
+    EndpointNum,
 };
 
 use crate::capture::{
     Capture,
     CaptureError,
     Device,
+    DeviceId,
     DeviceData,
     Endpoint,
+    EndpointId,
     EndpointType,
     EndpointState,
     EndpointTraffic,
+    EndpointTransactionId,
+    PacketId,
     TransferIndexEntry,
 };
 
@@ -39,9 +46,9 @@ enum DecodeStatus {
 }
 
 struct EndpointData {
-    device_id: usize,
-    number: usize,
-    transaction_start: u64,
+    device_id: DeviceId,
+    number: EndpointNum,
+    transaction_start: EndpointTransactionId,
     transaction_count: u64,
     last: PID,
     setup: Option<SetupFields>,
@@ -52,9 +59,9 @@ struct EndpointData {
 struct TransactionState {
     first: PID,
     last: PID,
-    start: u64,
+    start: Option<PacketId>,
     count: u64,
-    endpoint_id: usize,
+    endpoint_id: Option<EndpointId>,
     setup: Option<SetupFields>,
     payload: Vec<u8>,
 }
@@ -130,11 +137,11 @@ const USB_MAX_ENDPOINTS: usize = 16;
 
 pub struct Decoder<'cap> {
     capture: &'cap mut Capture,
-    device_index: [Option<usize>; USB_MAX_DEVICES],
-    endpoint_index: [[Option<usize>; USB_MAX_ENDPOINTS]; USB_MAX_DEVICES],
+    device_index: [Option<DeviceId>; USB_MAX_DEVICES],
+    endpoint_index: [[Option<EndpointId>; USB_MAX_ENDPOINTS]; USB_MAX_DEVICES],
     endpoint_data: Vec<EndpointData>,
     last_endpoint_state: Vec<u8>,
-    last_item_endpoint: Option<usize>,
+    last_item_endpoint: Option<EndpointId>,
     transaction_state: TransactionState,
 }
 
@@ -149,8 +156,10 @@ impl<'cap> Decoder<'cap> {
             last_item_endpoint: None,
             transaction_state: TransactionState::default(),
         };
-        decoder.add_endpoint(0, EndpointType::Invalid as usize)?;
-        decoder.add_endpoint(0, EndpointType::Framing as usize)?;
+        decoder.add_endpoint(
+            DeviceAddr(0), EndpointNum(EndpointType::Invalid as u8))?;
+        decoder.add_endpoint(
+            DeviceAddr(0), EndpointNum(EndpointType::Framing as u8))?;
         Ok(decoder)
     }
 
@@ -159,7 +168,7 @@ impl<'cap> Decoder<'cap> {
     {
         self.transaction_update(packet)?;
         self.capture.packet_index.push(
-            self.capture.packet_data.len())?;
+            self.capture.packet_data.next_id())?;
         self.capture.packet_data.append(packet)?;
         Ok(())
     }
@@ -193,32 +202,31 @@ impl<'cap> Decoder<'cap> {
         -> Result<(), CaptureError>
     {
         let state = &mut self.transaction_state;
-        state.start = self.capture.packet_index.len();
+        state.start = Some(self.capture.packet_index.next_id());
         state.count = 1;
         state.first = PID::from(*packet.get(0).ok_or(IndexError)?);
         state.last = state.first;
-        match PacketFields::from_packet(packet) {
-            PacketFields::SOF(_) => {
-                self.transaction_state.endpoint_id = 1;
-            },
-            PacketFields::Token(token) => {
-                let addr = token.device_address() as usize;
-                let num = token.endpoint_number() as usize;
-                let endpoint_id = match self.endpoint_index[addr][num] {
-                    Some(id) => id,
-                    None => {
-                        let id = self.capture.endpoints.len() as usize;
-                        self.endpoint_index[addr][num] = Some(id);
-                        self.add_endpoint(addr, num)?;
-                        id
+        self.transaction_state.endpoint_id = Some(
+            match PacketFields::from_packet(packet) {
+                PacketFields::SOF(_) => EndpointId::from(1),
+                PacketFields::Token(token) => {
+                    let address = token.device_address();
+                    let number = token.endpoint_number();
+                    let addr = address.0 as usize;
+                    let num = number.0 as usize;
+                    match self.endpoint_index[addr][num] {
+                        Some(id) => id,
+                        None => {
+                            let id = self.capture.endpoints.next_id();
+                            self.endpoint_index[addr][num] = Some(id);
+                            self.add_endpoint(address, number)?;
+                            id
+                        }
                     }
-                };
-                self.transaction_state.endpoint_id = endpoint_id as usize;
-            },
-            _ => {
-                self.transaction_state.endpoint_id = 0;
+                },
+                _ => EndpointId::from(0)
             }
-        };
+        );
         Ok(())
     }
 
@@ -246,19 +254,21 @@ impl<'cap> Decoder<'cap> {
         if self.transaction_state.count == 0 { return Ok(()) }
         self.transfer_update()?;
         self.capture.transaction_index.push(
-            self.transaction_state.start)?;
+            self.transaction_state.start.ok_or(IndexError)?)?;
         Ok(())
     }
 
-    fn add_device(&mut self, addr: usize) -> Result<usize, CaptureError> {
-        let id = self.capture.devices.size() as usize;
-        self.device_index[addr] = Some(id);
-        let device = Device { address: addr as u8 };
+    fn add_device(&mut self, address: DeviceAddr)
+        -> Result<DeviceId, CaptureError>
+    {
+        let id = self.capture.devices.next_id();
+        self.device_index[address.0 as usize] = Some(id);
+        let device = Device { address };
         self.capture.devices.push(&device)?;
         let dev_data = DeviceData {
             device_descriptor: None,
             configurations: Vec::new(),
-            configuration_id: None,
+            config_number: None,
             endpoint_types: vec![
                 EndpointType::Unidentified; USB_MAX_ENDPOINTS],
             strings: Vec::new(),
@@ -267,17 +277,17 @@ impl<'cap> Decoder<'cap> {
         Ok(id)
     }
 
-    fn add_endpoint(&mut self, addr: usize, num: usize)
+    fn add_endpoint(&mut self, address: DeviceAddr, number: EndpointNum)
         -> Result<(), CaptureError>
     {
-        let device_id = match self.device_index[addr] {
+        let device_id = match self.device_index[address.0 as usize] {
             Some(id) => id,
-            None => self.add_device(addr)?
+            None => self.add_device(address)?
         };
         let ep_data = EndpointData {
-            number: num as usize,
-            device_id: device_id as usize,
-            transaction_start: 0,
+            number,
+            device_id,
+            transaction_start: EndpointTransactionId::from(0),
             transaction_count: 0,
             last: PID::Malformed,
             setup: None,
@@ -285,9 +295,9 @@ impl<'cap> Decoder<'cap> {
         };
         self.endpoint_data.push(ep_data);
         let mut endpoint = Endpoint::default();
-        endpoint.set_device_id(device_id as u64);
-        endpoint.set_device_address(addr as u8);
-        endpoint.set_number(num as u8);
+        endpoint.set_device_id(device_id);
+        endpoint.set_device_address(address);
+        endpoint.set_number(number);
         self.capture.endpoints.push(&endpoint)?;
         let ep_traf = EndpointTraffic {
             transaction_ids: HybridIndex::new(1)?,
@@ -301,30 +311,33 @@ impl<'cap> Decoder<'cap> {
     fn current_endpoint_data(&self)
         -> Result<&EndpointData, CaptureError>
     {
-        let endpoint_id = self.transaction_state.endpoint_id;
-        self.endpoint_data.get(endpoint_id).ok_or(IndexError)
+        let endpoint_id = self.transaction_state.endpoint_id
+                                                .ok_or(IndexError)?;
+        self.endpoint_data.get(endpoint_id.value as usize)
+                          .ok_or(IndexError)
     }
 
     fn current_endpoint_data_mut(&mut self)
         -> Result<&mut EndpointData, CaptureError>
     {
-        let endpoint_id = self.transaction_state.endpoint_id;
-        self.endpoint_data.get_mut(endpoint_id).ok_or(IndexError)
+        let endpoint_id = self.transaction_state.endpoint_id
+                                                .ok_or(IndexError)?;
+        self.endpoint_data.get_mut(endpoint_id.value as usize)
+                          .ok_or(IndexError)
     }
 
     fn current_device_data(&self)
         -> Result<&DeviceData, CaptureError>
     {
         let ep_data = self.current_endpoint_data()?;
-        let device_id = ep_data.device_id as u64;
-        self.capture.get_device_data(&device_id)
+        self.capture.get_device_data(&ep_data.device_id)
     }
 
     fn current_device_data_mut(&mut self)
         -> Result<&mut DeviceData, CaptureError>
     {
         let ep_data = self.current_endpoint_data()?;
-        let device_id = ep_data.device_id as u64;
+        let device_id = ep_data.device_id;
         self.capture.get_device_data_mut(&device_id)
     }
 
@@ -396,8 +409,7 @@ impl<'cap> Decoder<'cap> {
         -> Result<(), CaptureError>
     {
         let dev_data = self.current_device_data_mut()?;
-        let config_id = fields.value as usize;
-        dev_data.configuration_id = Some(config_id);
+        dev_data.config_number = Some(ConfigNum(fields.value.try_into()?));
         dev_data.update_endpoint_types();
         Ok(())
     }
@@ -526,15 +538,18 @@ impl<'cap> Decoder<'cap> {
         -> Result<(), CaptureError>
     {
         self.capture.item_index.push(
-            self.capture.transfer_index.len())?;
-        let endpoint_id = self.transaction_state.endpoint_id;
+            self.capture.transfer_index.next_id())?;
+        let endpoint_id = self.transaction_state.endpoint_id
+                                                .ok_or(IndexError)?;
         self.last_item_endpoint = Some(endpoint_id);
         self.add_transfer_entry(endpoint_id, true)?;
-        let ep_data = self.endpoint_data.get_mut(endpoint_id)
-                                        .ok_or(IndexError)?;
-        let ep_traf = self.capture.endpoint_traffic.get_mut(endpoint_id)
-                                                   .ok_or(IndexError)?;
-        ep_data.transaction_start = ep_traf.transaction_ids.len();
+        let ep_data =
+            self.endpoint_data.get_mut(endpoint_id.value as usize)
+                              .ok_or(IndexError)?;
+        let ep_traf =
+            self.capture.endpoint_traffic.get_mut(endpoint_id.value as usize)
+                                         .ok_or(IndexError)?;
+        ep_data.transaction_start = ep_traf.transaction_ids.next_id();
         ep_data.transaction_count = 0;
         ep_traf.transfer_index.push(ep_data.transaction_start)?;
         Ok(())
@@ -543,13 +558,15 @@ impl<'cap> Decoder<'cap> {
     fn transfer_append(&mut self, success: bool)
         -> Result<(), CaptureError>
     {
-        let endpoint_id = self.transaction_state.endpoint_id;
+        let endpoint_id = self.transaction_state.endpoint_id
+                                                .ok_or(IndexError)?
+                                                .value as usize;
         let ep_data = self.endpoint_data.get_mut(endpoint_id)
                                         .ok_or(IndexError)?;
         let ep_traf = self.capture.endpoint_traffic.get_mut(endpoint_id)
                                                    .ok_or(IndexError)?;
         ep_traf.transaction_ids.push(
-            self.capture.transaction_index.len())?;
+            self.capture.transaction_index.next_id())?;
         ep_data.transaction_count += 1;
         if success {
             ep_data.last = self.transaction_state.first;
@@ -560,12 +577,13 @@ impl<'cap> Decoder<'cap> {
     fn transfer_end(&mut self)
         -> Result<(), CaptureError>
     {
-        let endpoint_id = self.transaction_state.endpoint_id;
+        let endpoint_id = self.transaction_state.endpoint_id
+                                                .ok_or(IndexError)?;
         let ep_data = self.current_endpoint_data()?;
         if ep_data.transaction_count > 0 {
             if self.last_item_endpoint != Some(endpoint_id) {
                 self.capture.item_index.push(
-                    self.capture.transfer_index.len())?;
+                    self.capture.transfer_index.next_id())?;
                 self.last_item_endpoint = Some(endpoint_id);
             }
             self.add_transfer_entry(endpoint_id, false)?;
@@ -577,28 +595,27 @@ impl<'cap> Decoder<'cap> {
         Ok(())
     }
 
-    fn add_transfer_entry(&mut self, endpoint_id: usize, start: bool)
+    fn add_transfer_entry(&mut self, endpoint_id: EndpointId, start: bool)
         -> Result<(), CaptureError>
     {
-        let ep_traf = self.capture.endpoint_traffic.get_mut(endpoint_id)
-                                                   .ok_or(IndexError)?;
+        let ep_traf = self.capture.endpoint_traffic(endpoint_id)?;
         let mut entry = TransferIndexEntry::default();
-        entry.set_endpoint_id(endpoint_id as u16);
-        entry.set_transfer_id(ep_traf.transfer_index.len());
+        entry.set_endpoint_id(endpoint_id);
+        entry.set_transfer_id(ep_traf.transfer_index.next_id());
         entry.set_is_start(start);
         self.capture.transfer_index.push(&entry)?;
         self.add_endpoint_state(endpoint_id, start)?;
         Ok(())
     }
 
-    fn add_endpoint_state(&mut self, endpoint_id: usize, start: bool)
+    fn add_endpoint_state(&mut self, endpoint_id: EndpointId, start: bool)
         -> Result<(), CaptureError>
     {
         let endpoint_count = self.capture.endpoints.len() as usize;
         for i in 0..endpoint_count {
             use EndpointState::*;
             self.last_endpoint_state[i] = {
-                let same = endpoint_id == i;
+                let same = i == endpoint_id.value as usize;
                 let last = EndpointState::from(self.last_endpoint_state[i]);
                 match (same, start, last) {
                     (true, true,  _)               => Starting,
@@ -609,7 +626,7 @@ impl<'cap> Decoder<'cap> {
             } as u8;
         }
         let last_state = self.last_endpoint_state.as_slice();
-        let state_offset = self.capture.endpoint_states.len();
+        let state_offset = self.capture.endpoint_states.next_id();
         self.capture.endpoint_states.append(last_state)?;
         self.capture.endpoint_state_index.push(state_offset)?;
         Ok(())
