@@ -148,8 +148,12 @@ impl<'cap> Decoder<'cap> {
             last_item_endpoint: None,
             transaction_state: TransactionState::default(),
         };
-        decoder.add_endpoint(DeviceAddr(0), EndpointNum(INVALID_EP_NUM))?;
-        decoder.add_endpoint(DeviceAddr(0), EndpointNum(FRAMING_EP_NUM))?;
+        let invalid_id =
+            decoder.add_endpoint(DeviceAddr(0), EndpointNum(INVALID_EP_NUM))?;
+        let framing_id =
+            decoder.add_endpoint(DeviceAddr(0), EndpointNum(FRAMING_EP_NUM))?;
+        assert!(invalid_id == Decoder::INVALID_EP_ID);
+        assert!(framing_id == Decoder::FRAMING_EP_ID);
         Ok(decoder)
     }
 
