@@ -685,10 +685,10 @@ impl std::fmt::Display for UTF16Bytes<'_> {
                   .map(|a| u16::from_le_bytes([a[0], a[1]]))
                   .collect();
         match String::from_utf16(&chars) {
-            Ok(string) => write!(f, "'{}'", string),
+            Ok(string) => write!(f, "'{}'", string.escape_default()),
             Err(_) => write!(f,
                 "invalid UTF16, partial decode: '{}'",
-                String::from_utf16_lossy(&chars))
+                String::from_utf16_lossy(&chars).escape_default())
         }
     }
 }
