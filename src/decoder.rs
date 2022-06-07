@@ -286,7 +286,7 @@ impl<'cap> Decoder<'cap> {
             device_descriptor: None,
             configurations: VecMap::new(),
             config_number: None,
-            endpoint_types: VecMap::new(),
+            endpoint_details: VecMap::new(),
             strings: VecMap::new(),
         });
         Ok(device_id)
@@ -398,7 +398,7 @@ impl<'cap> Decoder<'cap> {
                         let config_num = ConfigNum::from(
                             config.descriptor.config_value);
                         configurations.set(config_num, config);
-                        dev_data.update_endpoint_types();
+                        dev_data.update_endpoint_details();
                     }
                 }
             },
@@ -422,7 +422,7 @@ impl<'cap> Decoder<'cap> {
     {
         let dev_data = self.current_device_data_mut()?;
         dev_data.config_number = Some(ConfigNum(fields.value.try_into()?));
-        dev_data.update_endpoint_types();
+        dev_data.update_endpoint_details();
         Ok(())
     }
 
@@ -430,7 +430,7 @@ impl<'cap> Decoder<'cap> {
         let next = self.transaction_state.first;
         let ep_data = self.current_endpoint_data()?;
         let dev_data = self.current_device_data()?;
-        let ep_type = &dev_data.endpoint_type(ep_data.address);
+        let (ep_type, _) = dev_data.endpoint_details(ep_data.address);
         use PID::*;
         use EndpointType::*;
         use usb::EndpointType::*;

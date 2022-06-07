@@ -153,7 +153,7 @@ pub struct DeviceData {
     pub device_descriptor: Option<DeviceDescriptor>,
     pub configurations: VecMap<ConfigNum, Configuration>,
     pub config_number: Option<ConfigNum>,
-    pub endpoint_types: VecMap<EndpointAddr, EndpointType>,
+    pub endpoint_details: VecMap<EndpointAddr, (usb::EndpointType, usize)>,
     pub strings: VecMap<StringId, UTF16ByteVec>,
 }
 
@@ -167,28 +167,35 @@ impl DeviceData {
         }
     }
 
-    pub fn endpoint_type(&self, addr: EndpointAddr) -> EndpointType {
+    pub fn endpoint_details(&self, addr: EndpointAddr)
+        -> (EndpointType, Option<usize>)
+    {
         use EndpointType::*;
         match addr.0 {
-            INVALID_EP_NUM => Invalid,
-            FRAMING_EP_NUM => Framing,
-            0 => Normal(usb::EndpointType::Control),
-            _ => match self.endpoint_types.get(addr) {
-                Some(ep_type) => *ep_type,
-                None => Unidentified
+            INVALID_EP_NUM => (Invalid, None),
+            FRAMING_EP_NUM => (Framing, None),
+            0 => (
+                Normal(usb::EndpointType::Control),
+                self.device_descriptor.map(|desc| {
+                    desc.max_packet_size_0 as usize
+                })
+            ),
+            _ => match self.endpoint_details.get(addr) {
+                Some((ep_type, ep_max)) => (Normal(*ep_type), Some(*ep_max)),
+                None => (Unidentified, None)
             }
         }
     }
 
-    pub fn update_endpoint_types(&mut self) {
+    pub fn update_endpoint_details(&mut self) {
         if let Some(number) = self.config_number {
             if let Some(config) = &self.configurations.get(number) {
                 for iface in &config.interfaces {
                     for ep_desc in &iface.endpoint_descriptors {
+                        let ep_addr = ep_desc.endpoint_address;
                         let ep_type = ep_desc.attributes.endpoint_type();
-                        self.endpoint_types.set(
-                            ep_desc.endpoint_address,
-                            EndpointType::Normal(ep_type));
+                        let ep_max = ep_desc.max_packet_size as usize;
+                        self.endpoint_details.set(ep_addr, (ep_type, ep_max));
                     }
                 }
             }
@@ -647,9 +654,9 @@ impl ItemSource<TrafficItem> for Capture {
                 let endpoint_id = entry.endpoint_id();
                 let endpoint = self.endpoints.get(endpoint_id)?;
                 let device_id = endpoint.device_id();
-                let dev_data = &self.device_data(&device_id)?;
+                let dev_data = self.device_data(&device_id)?;
                 let ep_addr = endpoint.address();
-                let ep_type = dev_data.endpoint_type(ep_addr);
+                let (ep_type, _) = dev_data.endpoint_details(ep_addr);
                 if !entry.is_start() {
                     return Ok(match ep_type {
                         Invalid =>
