@@ -219,7 +219,8 @@ impl Interface {
 }
 
 pub struct Transaction {
-    pid: PID,
+    start_pid: PID,
+    end_pid: PID,
     packet_id_range: Range<PacketId>,
     payload_byte_range: Option<Range<Id<u8>>>,
 }
@@ -231,6 +232,14 @@ impl Transaction {
 
     fn payload_size(&self) -> Option<u64> {
         self.payload_byte_range.as_ref().map(|range| range.len())
+    }
+
+    fn successful(&self) -> bool {
+        use PID::*;
+        match (self.packet_count(), self.end_pid) {
+            (3, ACK | NYET) => true,
+            (..)            => false
+        }
     }
 }
 
@@ -271,15 +280,8 @@ impl CompletedTransactions {
             let transaction_id = self.transaction_ids[self.index];
             let transaction = capture.transaction(transaction_id).ok()?;
             self.index += 1;
-            if transaction.packet_count() == 3 {
-                let last_packet_id = transaction.packet_id_range.end - 1;
-                let last_pid = capture.packet_pid(last_packet_id).ok()?;
-                match last_pid {
-                    PID::ACK | PID::NYET => {
-                        return Some(transaction);
-                    },
-                    _ => {}
-                };
+            if transaction.successful() {
+                return Some(transaction);
             }
         }
         None
@@ -410,9 +412,10 @@ impl Capture {
         let packet_id_range = self.transaction_index.target_range(
             id, self.packet_index.len())?;
         let packet_count = packet_id_range.len();
-        let pid = self.packet_pid(packet_id_range.start)?;
+        let start_pid = self.packet_pid(packet_id_range.start)?;
+        let end_pid = self.packet_pid(packet_id_range.end - 1)?;
         use PID::*;
-        let payload_byte_range = match pid {
+        let payload_byte_range = match start_pid {
             IN | OUT if packet_count >= 2 => {
                 let data_packet_id = packet_id_range.start + 1;
                 let packet_byte_range = self.packet_index.target_range(
@@ -428,7 +431,8 @@ impl Capture {
             _ => None
         };
         Ok(Transaction {
-            pid,
+            start_pid,
+            end_pid,
             packet_id_range,
             payload_byte_range,
         })
@@ -455,7 +459,7 @@ impl Capture {
                                   .get_range(range)?;
         let mut transactions = self.completed_transactions(transaction_ids);
         let fields = match transactions.next(self) {
-            Some(transaction) if transaction.pid == PID::SETUP => {
+            Some(transaction) if transaction.start_pid == PID::SETUP => {
                 let data_packet_id = transaction.packet_id_range.start + 1;
                 let data_packet = self.packet(data_packet_id)?;
                 SetupFields::from_data_packet(&data_packet)
@@ -468,7 +472,7 @@ impl Capture {
         let mut data: Vec<u8> = Vec::new();
         while let Some(transaction) = transactions.next(self) {
             match (direction,
-                   transaction.pid,
+                   transaction.start_pid,
                    transaction.payload_byte_range)
             {
                 (Direction::In,  PID::IN,  Some(range)) |
@@ -627,7 +631,7 @@ impl ItemSource<TrafficItem> for Capture {
             Transaction(_, transaction_id) => {
                 let transaction = self.transaction(*transaction_id)?;
                 let count = transaction.packet_count();
-                match (transaction.pid, transaction.payload_size()) {
+                match (transaction.start_pid, transaction.payload_size()) {
                     (PID::SOF, _) => format!(
                         "{} SOF packets", count),
                     (pid, None) => format!(
