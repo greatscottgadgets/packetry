@@ -812,7 +812,7 @@ impl ItemSource<DeviceItem> for Capture {
             Interface(dev, conf, iface) =>
                 match self.try_configuration(dev, conf) {
                     Some(conf) =>
-                        conf.interface(iface)?.endpoint_descriptors.len(),
+                        1 + conf.interface(iface)?.endpoint_descriptors.len(),
                     None => 0
                 },
             InterfaceDescriptor(..) => usb::InterfaceDescriptor::NUM_FIELDS,
