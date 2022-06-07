@@ -59,9 +59,9 @@ pub enum DeviceItem {
     InterfaceDescriptor(DeviceId, ConfigNum, InterfaceNum),
     InterfaceDescriptorField(DeviceId, ConfigNum,
                              InterfaceNum, InterfaceField),
-    EndpointDescriptor(DeviceId, ConfigNum, InterfaceNum, EndpointNum),
+    EndpointDescriptor(DeviceId, ConfigNum, InterfaceNum, InterfaceEpNum),
     EndpointDescriptorField(DeviceId, ConfigNum, InterfaceNum,
-                            EndpointNum, EndpointField),
+                            InterfaceEpNum, EndpointField),
 }
 
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
@@ -192,7 +192,7 @@ impl Configuration {
 }
 
 impl Interface {
-    pub fn endpoint_descriptor(&self, number: &EndpointNum)
+    pub fn endpoint_descriptor(&self, number: &InterfaceEpNum)
         -> Result<&EndpointDescriptor, CaptureError>
     {
         match self.endpoint_descriptors.get(*number) {
@@ -751,7 +751,7 @@ impl ItemSource<DeviceItem> for Capture {
             Interface(dev, conf, iface) => match index {
                 0 => InterfaceDescriptor(*dev, *conf, *iface),
                 n => EndpointDescriptor(*dev, *conf, *iface,
-                    EndpointNum((n - 1).try_into()?))
+                    InterfaceEpNum((n - 1).try_into()?))
             },
             InterfaceDescriptor(dev, conf, iface) =>
                 InterfaceDescriptorField(*dev, *conf, *iface,

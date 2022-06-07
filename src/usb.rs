@@ -81,6 +81,11 @@ pub struct InterfaceField(pub u8);
 #[derive(Copy, Clone, Debug, PartialEq, Default,
          Pod, Zeroable, From, Into, Display)]
 #[repr(transparent)]
+pub struct InterfaceEpNum(pub u8);
+
+#[derive(Copy, Clone, Debug, PartialEq, Default,
+         Pod, Zeroable, From, Into, Display)]
+#[repr(transparent)]
 pub struct EndpointNum(pub u8);
 
 #[derive(Copy, Clone, Debug, PartialEq, Default,
@@ -604,7 +609,7 @@ impl Iterator for DescriptorIterator<'_> {
 
 pub struct Interface {
     pub descriptor: InterfaceDescriptor,
-    pub endpoint_descriptors: VecMap<EndpointNum, EndpointDescriptor>
+    pub endpoint_descriptors: VecMap<InterfaceEpNum, EndpointDescriptor>
 }
 
 pub struct Configuration {
@@ -842,6 +847,7 @@ pub mod prelude {
         ConfigField,
         InterfaceNum,
         InterfaceField,
+        InterfaceEpNum,
         EndpointNum,
         EndpointField,
         UTF16ByteVec,
