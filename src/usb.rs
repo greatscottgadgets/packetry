@@ -483,7 +483,7 @@ impl ConfigDescriptor {
 pub struct InterfaceDescriptor {
     pub length: u8,
     pub descriptor_type: u8,
-    pub interface_number: u8,
+    pub interface_number: InterfaceNum,
     pub alternate_setting: u8,
     pub num_endpoints: u8,
     pub interface_class: u8,
@@ -615,6 +615,7 @@ pub struct Configuration {
 impl Configuration {
     pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
         let mut result: Option<Configuration> = None;
+        let mut iface_num: Option<InterfaceNum> = None;
         for descriptor in DescriptorIterator::from(bytes) {
             match descriptor {
                 Descriptor::Configuration(config_desc) => {
@@ -627,18 +628,26 @@ impl Configuration {
                 },
                 Descriptor::Interface(iface_desc) => {
                     if let Some(config) = result.as_mut() {
-                        config.interfaces.push(Interface {
-                            descriptor: iface_desc,
-                            endpoint_descriptors:
-                                VecMap::with_capacity(
-                                    iface_desc.num_endpoints),
-                        });
+                        iface_num = Some(iface_desc.interface_number);
+                        config.interfaces.set(
+                            iface_desc.interface_number,
+                            Interface {
+                                descriptor: iface_desc,
+                                endpoint_descriptors:
+                                    VecMap::with_capacity(
+                                        iface_desc.num_endpoints),
+                            }
+                        );
                     }
                 },
                 Descriptor::Endpoint(ep_desc) => {
                     if let Some(config) = result.as_mut() {
-                        if let Some(iface) = config.interfaces.last_mut() {
-                            iface.endpoint_descriptors.push(ep_desc);
+                        if let Some(num) = iface_num {
+                            if let Some(iface) =
+                                config.interfaces.get_mut(num)
+                            {
+                                iface.endpoint_descriptors.push(ep_desc);
+                            }
                         }
                     }
                 },
