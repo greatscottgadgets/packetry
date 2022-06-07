@@ -110,6 +110,10 @@ impl EndpointAddr {
             Direction::In
         }
     }
+
+    pub fn from_parts(number: EndpointNum, direction: Direction) -> Self {
+        EndpointAddr((direction as u8) << 7 | number.0 & 0x7F)
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Default,
@@ -216,7 +220,7 @@ pub enum Recipient {
     Reserved = 4,
 }
 
-#[derive(Copy, Clone, Debug, Display, FromPrimitive)]
+#[derive(Copy, Clone, Debug, Display, FromPrimitive, IntoPrimitive)]
 #[repr(u8)]
 pub enum Direction {
     #[default]
@@ -829,6 +833,7 @@ pub mod prelude {
         TokenFields,
         SetupFields,
         Direction,
+        EndpointAddr,
         StandardRequest,
         RequestType,
         Recipient,

@@ -74,9 +74,16 @@ bitfield! {
     #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
     #[repr(C)]
     pub struct Endpoint(u64);
-    pub u64, from into DeviceId, device_id, set_device_id: 51, 0;
-    pub u8, from into DeviceAddr, device_address, set_device_address: 58, 52;
-    pub u8, from into EndpointNum, number, set_number: 63, 59;
+    pub u64, from into DeviceId, device_id, set_device_id: 50, 0;
+    pub u8, from into DeviceAddr, device_address, set_device_address: 57, 51;
+    pub u8, from into EndpointNum, number, set_number: 62, 58;
+    pub u8, from into Direction, direction, set_direction: 63, 63;
+}
+
+impl Endpoint {
+    fn address(&self) -> EndpointAddr {
+        EndpointAddr::from_parts(self.number(), self.direction())
+    }
 }
 
 bitfield! {
@@ -136,7 +143,7 @@ pub struct DeviceData {
     pub device_descriptor: Option<DeviceDescriptor>,
     pub configurations: VecMap<ConfigNum, Configuration>,
     pub config_number: Option<ConfigNum>,
-    pub endpoint_types: VecMap<EndpointNum, EndpointType>,
+    pub endpoint_types: VecMap<EndpointAddr, EndpointType>,
     pub strings: VecMap<StringId, UTF16ByteVec>,
 }
 
@@ -150,13 +157,13 @@ impl DeviceData {
         }
     }
 
-    pub fn endpoint_type(&self, number: EndpointNum) -> EndpointType {
+    pub fn endpoint_type(&self, addr: EndpointAddr) -> EndpointType {
         use EndpointType::*;
-        match number.0 {
+        match addr.0 {
             INVALID_EP_NUM => Invalid,
             FRAMING_EP_NUM => Framing,
             0 => Normal(usb::EndpointType::Control),
-            _ => match self.endpoint_types.get(number) {
+            _ => match self.endpoint_types.get(addr) {
                 Some(ep_type) => *ep_type,
                 None => Unidentified
             }
@@ -168,10 +175,9 @@ impl DeviceData {
             if let Some(config) = &self.configurations.get(number) {
                 for iface in &config.interfaces {
                     for ep_desc in &iface.endpoint_descriptors {
-                        let ep_number = ep_desc.endpoint_address.number();
                         let ep_type = ep_desc.attributes.endpoint_type();
                         self.endpoint_types.set(
-                            ep_number,
+                            ep_desc.endpoint_address,
                             EndpointType::Normal(ep_type));
                     }
                 }
@@ -589,8 +595,8 @@ impl ItemSource<TrafficItem> for Capture {
                 let endpoint = self.endpoints.get(endpoint_id)?;
                 let device_id = endpoint.device_id();
                 let dev_data = &self.device_data(&device_id)?;
-                let num = endpoint.number();
-                let ep_type = dev_data.endpoint_type(num);
+                let ep_addr = endpoint.address();
+                let ep_type = dev_data.endpoint_type(ep_addr);
                 if !entry.is_start() {
                     return Ok(match ep_type {
                         Invalid =>
@@ -599,7 +605,8 @@ impl ItemSource<TrafficItem> for Capture {
                             "End of SOF groups".to_string(),
                         endpoint_type => format!(
                             "{} transfer ending on endpoint {}.{}",
-                            endpoint_type, endpoint.device_address(), num),
+                            endpoint_type, endpoint.device_address(),
+                            ep_addr.number()),
                     })
                 }
                 let range = self.transfer_range(&entry)?;

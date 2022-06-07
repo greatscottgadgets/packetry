@@ -23,7 +23,7 @@ enum DecodeStatus {
 
 struct EndpointData {
     device_id: DeviceId,
-    number: EndpointNum,
+    address: EndpointAddr,
     transfer_id: Option<EndpointTransferId>,
     transaction_count: u64,
     last: PID,
@@ -111,17 +111,21 @@ impl TransactionState {
 #[derive(Copy, Clone)]
 struct EndpointKey {
     dev_addr: DeviceAddr,
+    direction: Direction,
     ep_num: EndpointNum,
 }
 
 impl Key for EndpointKey {
     fn id(self) -> usize {
-        self.dev_addr.0 as usize * 16 + self.ep_num.0 as usize
+        self.dev_addr.0 as usize * 32 +
+            self.direction as usize * 16 +
+                self.ep_num.0 as usize
     }
 
     fn key(id: usize) -> EndpointKey {
         EndpointKey {
-            dev_addr: DeviceAddr((id / 16) as u8),
+            dev_addr: DeviceAddr((id / 32) as u8),
+            direction: Direction::from(((id / 16) % 2) as u8),
             ep_num: EndpointNum((id % 16) as u8),
         }
     }
@@ -148,10 +152,10 @@ impl<'cap> Decoder<'cap> {
             last_item_endpoint: None,
             transaction_state: TransactionState::default(),
         };
-        let invalid_id =
-            decoder.add_endpoint(DeviceAddr(0), EndpointNum(INVALID_EP_NUM))?;
-        let framing_id =
-            decoder.add_endpoint(DeviceAddr(0), EndpointNum(FRAMING_EP_NUM))?;
+        let invalid_id = decoder.add_endpoint(
+            DeviceAddr(0), EndpointNum(INVALID_EP_NUM), Direction::Out)?;
+        let framing_id = decoder.add_endpoint(
+            DeviceAddr(0), EndpointNum(FRAMING_EP_NUM), Direction::Out)?;
         assert!(invalid_id == Decoder::INVALID_EP_ID);
         assert!(framing_id == Decoder::FRAMING_EP_ID);
         Ok(decoder)
@@ -169,17 +173,27 @@ impl<'cap> Decoder<'cap> {
         Ok(())
     }
 
-    pub fn token_endpoint(&mut self, token: &TokenFields)
+    pub fn token_endpoint(&mut self, pid: PID, token: &TokenFields)
         -> Result<EndpointId, CaptureError>
     {
+        let dev_addr = token.device_address();
+        let ep_num = token.endpoint_number();
+        let direction = match (ep_num.0, pid) {
+            (0, _)        => Direction::Out,
+            (_, PID::IN)  => Direction::In,
+            (_, PID::OUT) => Direction::Out,
+            _ => return Err(IndexError)
+        };
         let key = EndpointKey {
-            dev_addr: token.device_address(),
-            ep_num: token.endpoint_number()
+            dev_addr,
+            ep_num,
+            direction
         };
         Ok(match self.endpoint_index.get(key) {
             Some(id) => *id,
             None => {
-                let id = self.add_endpoint(key.dev_addr, key.ep_num)?;
+                let id = self.add_endpoint(
+                    key.dev_addr, key.ep_num, key.direction)?;
                 self.endpoint_index.set(key, id);
                 id
             }
@@ -214,15 +228,17 @@ impl<'cap> Decoder<'cap> {
     fn transaction_start(&mut self, packet_id: PacketId, packet: &[u8])
         -> Result<(), CaptureError>
     {
+        let pid = PID::from_packet(packet)?;
         let state = &mut self.transaction_state;
         state.start = Some(packet_id);
         state.count = 1;
-        state.first = PID::from_packet(packet)?;
+        state.first = pid;
         state.last = state.first;
         self.transaction_state.endpoint_id = Some(
             match PacketFields::from_packet(packet) {
                 PacketFields::SOF(_) => Decoder::FRAMING_EP_ID,
-                PacketFields::Token(token) => self.token_endpoint(&token)?,
+                PacketFields::Token(token) =>
+                    self.token_endpoint(pid, &token)?,
                 _ => Decoder::INVALID_EP_ID,
             }
         );
@@ -276,20 +292,25 @@ impl<'cap> Decoder<'cap> {
         Ok(device_id)
     }
 
-    fn add_endpoint(&mut self, address: DeviceAddr, number: EndpointNum)
+    fn add_endpoint(&mut self,
+                    dev_addr: DeviceAddr,
+                    number: EndpointNum,
+                    direction: Direction)
         -> Result<EndpointId, CaptureError>
     {
-        let device_id = match self.device_index.get(address) {
+        let device_id = match self.device_index.get(dev_addr) {
             Some(id) => *id,
-            None => self.add_device(address)?
+            None => self.add_device(dev_addr)?
         };
         let mut endpoint = Endpoint::default();
         endpoint.set_device_id(device_id);
-        endpoint.set_device_address(address);
+        endpoint.set_device_address(dev_addr);
         endpoint.set_number(number);
+        endpoint.set_direction(direction);
         let endpoint_id = self.capture.endpoints.push(&endpoint)?;
+        let address = EndpointAddr::from_parts(number, direction);
         self.endpoint_data.set(endpoint_id, EndpointData {
-            number,
+            address,
             device_id,
             transfer_id: None,
             transaction_count: 0,
@@ -409,7 +430,7 @@ impl<'cap> Decoder<'cap> {
         let next = self.transaction_state.first;
         let ep_data = self.current_endpoint_data()?;
         let dev_data = self.current_device_data()?;
-        let ep_type = &dev_data.endpoint_type(ep_data.number);
+        let ep_type = &dev_data.endpoint_type(ep_data.address);
         use PID::*;
         use EndpointType::*;
         use usb::EndpointType::*;
