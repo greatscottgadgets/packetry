@@ -260,6 +260,32 @@ pub fn fmt_index<T>(idx: &HybridIndex<T>) -> String
             fmt_size(idx.size()))
 }
 
+pub struct CompletedTransactions {
+    transaction_ids: Vec<TransactionId>,
+    index: usize,
+}
+
+impl CompletedTransactions {
+    fn next(&mut self, capture: &mut Capture) -> Option<Transaction> {
+        while self.index < self.transaction_ids.len() {
+            let transaction_id = self.transaction_ids[self.index];
+            let transaction = capture.transaction(transaction_id).ok()?;
+            self.index += 1;
+            if transaction.packet_count() == 3 {
+                let last_packet_id = transaction.packet_id_range.end - 1;
+                let last_pid = capture.packet_pid(last_packet_id).ok()?;
+                match last_pid {
+                    PID::ACK | PID::NYET => {
+                        return Some(transaction);
+                    },
+                    _ => {}
+                };
+            }
+        }
+        None
+    }
+}
+
 pub struct Capture {
     pub packet_data: FileVec<u8>,
     pub packet_index: HybridIndex<PacketByteId>,
@@ -408,6 +434,16 @@ impl Capture {
         })
     }
 
+    fn completed_transactions(&mut self,
+                              transaction_ids: Vec<TransactionId>)
+        -> CompletedTransactions
+    {
+        CompletedTransactions {
+            transaction_ids,
+            index: 0
+        }
+    }
+
     fn control_transfer(&mut self,
                         address: DeviceAddr,
                         endpoint_id: EndpointId,
@@ -417,16 +453,20 @@ impl Capture {
         let transaction_ids = self.endpoint_traffic(endpoint_id)?
                                   .transaction_ids
                                   .get_range(range)?;
-        let setup_transaction_id = transaction_ids.get(0).ok_or(IndexError)?;
-        let setup_packet_id =
-            self.transaction_index.get(*setup_transaction_id)?;
-        let data_packet_id = setup_packet_id + 1;
-        let data_packet = self.packet(data_packet_id)?;
-        let fields = SetupFields::from_data_packet(&data_packet);
+        let mut transactions = self.completed_transactions(transaction_ids);
+        let fields = match transactions.next(self) {
+            Some(transaction) if transaction.pid == PID::SETUP => {
+                let data_packet_id = transaction.packet_id_range.start + 1;
+                let data_packet = self.packet(data_packet_id)?;
+                SetupFields::from_data_packet(&data_packet)
+            },
+            _ => {
+                return Err(IndexError);
+            }
+        };
         let direction = fields.type_fields.direction();
         let mut data: Vec<u8> = Vec::new();
-        for id in transaction_ids {
-            let transaction = self.transaction(id)?;
+        while let Some(transaction) = transactions.next(self) {
             match (direction,
                    transaction.pid,
                    transaction.payload_byte_range)
