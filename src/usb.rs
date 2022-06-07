@@ -331,6 +331,24 @@ pub enum DescriptorType {
 }
 
 impl DescriptorType {
+    fn expected_length(&self) -> Option<usize> {
+        use DescriptorType::*;
+        match self {
+            Device =>
+                Some(size_of::<DeviceDescriptor>()),
+            Configuration =>
+                Some(size_of::<ConfigDescriptor>()),
+            Interface =>
+                Some(size_of::<InterfaceDescriptor>()),
+            Endpoint =>
+                Some(size_of::<EndpointDescriptor>()),
+            _ =>
+                None
+        }
+    }
+}
+
+impl DescriptorType {
     pub fn description(self) -> &'static str {
         const STRINGS: [&str; 10] = [
             "invalid",
@@ -527,6 +545,63 @@ impl EndpointDescriptor {
     pub const NUM_FIELDS: usize = 6;
 }
 
+pub enum Descriptor {
+    Device(DeviceDescriptor),
+    Configuration(ConfigDescriptor),
+    Interface(InterfaceDescriptor),
+    Endpoint(EndpointDescriptor),
+    Other(DescriptorType)
+}
+
+pub struct DescriptorIterator<'bytes> {
+    bytes: &'bytes [u8],
+    offset: usize,
+}
+
+impl<'bytes> DescriptorIterator<'bytes> {
+    fn from(bytes: &'bytes [u8]) -> Self {
+        DescriptorIterator {
+            bytes,
+            offset: 0
+        }
+    }
+}
+
+impl Iterator for DescriptorIterator<'_> {
+    type Item = Descriptor;
+
+    fn next(&mut self) -> Option<Descriptor> {
+        while self.offset < self.bytes.len() - 2 {
+            let remaining_bytes = &self.bytes[self.offset .. self.bytes.len()];
+            let desc_length = remaining_bytes[0] as usize;
+            let desc_type = DescriptorType::from(remaining_bytes[1]);
+            self.offset += desc_length;
+            if let Some(expected) = desc_type.expected_length() {
+                if desc_length != expected {
+                    continue
+                }
+                let bytes = &remaining_bytes[0 .. desc_length];
+                return Some(match desc_type {
+                    DescriptorType::Device =>
+                        Descriptor::Device(
+                            DeviceDescriptor::from_bytes(bytes)),
+                    DescriptorType::Configuration =>
+                        Descriptor::Configuration(
+                            pod_read_unaligned::<ConfigDescriptor>(bytes)),
+                    DescriptorType::Interface =>
+                        Descriptor::Interface(
+                            pod_read_unaligned::<InterfaceDescriptor>(bytes)),
+                    DescriptorType::Endpoint =>
+                        Descriptor::Endpoint(
+                            pod_read_unaligned::<EndpointDescriptor>(bytes)),
+                    _ => Descriptor::Other(desc_type)
+                });
+            }
+        }
+        None
+    }
+}
+
 pub struct Interface {
     pub descriptor: InterfaceDescriptor,
     pub endpoint_descriptors: VecMap<EndpointNum, EndpointDescriptor>
@@ -539,59 +614,38 @@ pub struct Configuration {
 
 impl Configuration {
     pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
-        let config_size = size_of::<ConfigDescriptor>();
-        let iface_size = size_of::<InterfaceDescriptor>();
-        let ep_size = size_of::<EndpointDescriptor>();
-        if bytes.len() < config_size {
-            return None;
-        }
-        let config_bytes = &bytes[0 .. config_size];
-        let config_desc =
-            pod_read_unaligned::<ConfigDescriptor>(config_bytes);
-        if config_desc.descriptor_type != DescriptorType::Configuration as u8 {
-            return None;
-        }
-        let mut config = Configuration {
-            descriptor: config_desc,
-            interfaces:
-                VecMap::with_capacity(config_desc.num_interfaces),
-        };
-        let mut offset = config_size;
-        for _ in 0 .. config.descriptor.num_interfaces {
-            if offset + iface_size > bytes.len() {
-                break;
-            }
-            let iface_bytes = &bytes[offset .. offset + iface_size];
-            let iface_desc =
-                pod_read_unaligned::<InterfaceDescriptor>(iface_bytes);
-            offset += iface_size;
-            if iface_desc.descriptor_type != DescriptorType::Interface as u8{
-                break;
-            }
-            let mut iface = Interface {
-                descriptor: iface_desc,
-                endpoint_descriptors:
-                    VecMap::with_capacity(iface_desc.num_endpoints),
+        let mut result: Option<Configuration> = None;
+        for descriptor in DescriptorIterator::from(bytes) {
+            match descriptor {
+                Descriptor::Configuration(config_desc) => {
+                    result = Some(Configuration {
+                        descriptor: config_desc,
+                        interfaces:
+                            VecMap::with_capacity(
+                                config_desc.num_interfaces),
+                    });
+                },
+                Descriptor::Interface(iface_desc) => {
+                    if let Some(config) = result.as_mut() {
+                        config.interfaces.push(Interface {
+                            descriptor: iface_desc,
+                            endpoint_descriptors:
+                                VecMap::with_capacity(
+                                    iface_desc.num_endpoints),
+                        });
+                    }
+                },
+                Descriptor::Endpoint(ep_desc) => {
+                    if let Some(config) = result.as_mut() {
+                        if let Some(iface) = config.interfaces.last_mut() {
+                            iface.endpoint_descriptors.push(ep_desc);
+                        }
+                    }
+                },
+                _ => {},
             };
-            while iface.endpoint_descriptors.len() <
-                iface.descriptor.num_endpoints as usize
-            {
-                if offset + ep_size > bytes.len() {
-                    break;
-                }
-                let ep_bytes = &bytes[offset .. offset + ep_size];
-                let ep_desc =
-                    pod_read_unaligned::<EndpointDescriptor>(ep_bytes);
-                offset += ep_desc.length as usize;
-                if ep_desc.descriptor_type != DescriptorType::Endpoint as u8 {
-                    // Could be HID or other class descriptor; skip over it.
-                    continue;
-                }
-                iface.endpoint_descriptors.push(ep_desc);
-            };
-            config.interfaces.push(iface);
-        };
-        Some(config)
+        }
+        result
     }
 }
 

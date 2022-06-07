@@ -53,6 +53,13 @@ impl<K, V> VecMap<K, V> where K: Key {
         }
     }
 
+    pub fn last_mut(&mut self) -> Option<&mut V> {
+        match self.vec.len() {
+            0 => None,
+            n => self.get_mut(K::key(n - 1)),
+        }
+    }
+
     pub fn set(&mut self, index: K, value: V) {
         let id = index.id();
         if id >= self.vec.len() {
