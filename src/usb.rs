@@ -220,12 +220,20 @@ pub enum Recipient {
     Reserved = 4,
 }
 
-#[derive(Copy, Clone, Debug, Display, FromPrimitive, IntoPrimitive)]
+#[derive(Copy, Clone, Debug, FromPrimitive, IntoPrimitive)]
 #[repr(u8)]
 pub enum Direction {
     #[default]
     Out = 0,
     In = 1,
+}
+
+impl std::fmt::Display for Direction {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", match self {
+            Direction::In  => "IN",
+            Direction::Out => "OUT"})
+    }
 }
 
 bitfield! {

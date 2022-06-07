@@ -86,6 +86,16 @@ impl Endpoint {
     }
 }
 
+impl std::fmt::Display for Endpoint {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}.{} {}",
+               self.device_address(),
+               self.number(),
+               self.direction()
+               )
+    }
+}
+
 bitfield! {
     #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
     #[repr(C)]
@@ -604,9 +614,8 @@ impl ItemSource<TrafficItem> for Capture {
                         Framing =>
                             "End of SOF groups".to_string(),
                         endpoint_type => format!(
-                            "{} transfer ending on endpoint {}.{}",
-                            endpoint_type, endpoint.device_address(),
-                            ep_addr.number()),
+                            "{} transfer ending on endpoint {}",
+                            endpoint_type, endpoint)
                     })
                 }
                 let range = self.transfer_range(&entry)?;
@@ -622,9 +631,8 @@ impl ItemSource<TrafficItem> for Capture {
                         transfer.summary()
                     },
                     endpoint_type => format!(
-                        "{} transfer with {} transactions on endpoint {}.{}",
-                        endpoint_type, count,
-                        endpoint.device_address(), endpoint.number())
+                        "{} transfer with {} transactions on endpoint {}",
+                        endpoint_type, count, endpoint)
                 }
             }
         })

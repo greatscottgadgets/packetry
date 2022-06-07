@@ -456,7 +456,7 @@ Getting unknown descriptor #0 for interface 4.0, reading 75 bytes
   OUT packet on 4.0, CRC 05: [E1, 04, 28]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
-Interrupt transfer with 855 transactions on endpoint 4.1
+Interrupt transfer with 855 transactions on endpoint 4.1 IN
  IN transaction, 2 packets
   IN packet on 4.1, CRC 13: [69, 84, 98]
   NAK packet: [5A]
