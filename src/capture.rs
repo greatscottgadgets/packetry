@@ -630,15 +630,14 @@ impl ItemSource<TrafficItem> for Capture {
             },
             Transaction(_, transaction_id) => {
                 let transaction = self.transaction(*transaction_id)?;
-                let count = transaction.packet_count();
                 match (transaction.start_pid, transaction.payload_size()) {
                     (PID::SOF, _) => format!(
-                        "{} SOF packets", count),
+                        "{} SOF packets", transaction.packet_count()),
                     (pid, None) => format!(
-                        "{} transaction, {} packets", pid, count),
+                        "{} transaction, {}", pid, transaction.end_pid),
                     (pid, Some(size)) => format!(
-                        "{} transaction, {} packets with {} data bytes",
-                        pid, count, size)
+                        "{} transaction with {} data bytes, {}",
+                        pid, size, transaction.end_pid)
                 }
             },
             Transfer(transfer_id) => {

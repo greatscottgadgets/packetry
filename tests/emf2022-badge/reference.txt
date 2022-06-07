@@ -3771,1344 +3771,1344 @@
   SOF packet with frame number 343, CRC 1F: [A5, 57, F9]
   SOF packet with frame number 344, CRC 1E: [A5, 58, F1]
 Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 0.0, CRC 02: [2D, 00, 10]
   DATA0 packet with 8 data bytes and CRC 94DD: [C3, 80, 06, 00, 01, 00, 00, 40, 00, DD, 94]
   ACK packet: [D2]
- IN transaction, 3 packets with 18 data bytes
+ IN transaction with 18 data bytes, ACK
   IN packet on 0.0, CRC 02: [69, 00, 10]
   DATA1 packet with 18 data bytes and CRC 5640: [4B, 12, 01, 00, 02, EF, 02, 01, 40, 3A, 30, 01, 10, 01, 01, 01, 02, 03, 01, 40, 56]
   ACK packet: [D2]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, ACK
   OUT packet on 0.0, CRC 02: [E1, 00, 10]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Setting address to 1 for device 0
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 0.0, CRC 02: [2D, 00, 10]
   DATA0 packet with 8 data bytes and CRC 25EB: [C3, 00, 05, 01, 00, 00, 00, 00, 00, EB, 25]
   ACK packet: [D2]
- IN transaction, 3 packets with 0 data bytes
+ IN transaction with 0 data bytes, ACK
   IN packet on 0.0, CRC 02: [69, 00, 10]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Getting device descriptor #0 for device 1, reading 18 bytes
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 1.0, CRC 1D: [2D, 01, E8]
   DATA0 packet with 8 data bytes and CRC F4E0: [C3, 80, 06, 00, 01, 00, 00, 12, 00, E0, F4]
   ACK packet: [D2]
- IN transaction, 3 packets with 18 data bytes
+ IN transaction with 18 data bytes, ACK
   IN packet on 1.0, CRC 1D: [69, 01, E8]
   DATA1 packet with 18 data bytes and CRC 5640: [4B, 12, 01, 00, 02, EF, 02, 01, 40, 3A, 30, 01, 10, 01, 01, 01, 02, 03, 01, 40, 56]
   ACK packet: [D2]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, ACK
   OUT packet on 1.0, CRC 1D: [E1, 01, E8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Getting device qualifier descriptor #0 for device 1, reading 0 of 10 requested bytes
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 1.0, CRC 1D: [2D, 01, E8]
   DATA0 packet with 8 data bytes and CRC 345F: [C3, 80, 06, 00, 06, 00, 00, 0A, 00, 5F, 34]
   ACK packet: [D2]
- IN transaction, 2 packets
+ IN transaction, STALL
   IN packet on 1.0, CRC 1D: [69, 01, E8]
   STALL packet: [1E]
 Getting device qualifier descriptor #0 for device 1, reading 0 of 10 requested bytes
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 1.0, CRC 1D: [2D, 01, E8]
   DATA0 packet with 8 data bytes and CRC 345F: [C3, 80, 06, 00, 06, 00, 00, 0A, 00, 5F, 34]
   ACK packet: [D2]
- IN transaction, 2 packets
+ IN transaction, STALL
   IN packet on 1.0, CRC 1D: [69, 01, E8]
   STALL packet: [1E]
 Getting device qualifier descriptor #0 for device 1, reading 0 of 10 requested bytes
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 1.0, CRC 1D: [2D, 01, E8]
   DATA0 packet with 8 data bytes and CRC 345F: [C3, 80, 06, 00, 06, 00, 00, 0A, 00, 5F, 34]
   ACK packet: [D2]
- IN transaction, 2 packets
+ IN transaction, STALL
   IN packet on 1.0, CRC 1D: [69, 01, E8]
   STALL packet: [1E]
 Getting configuration descriptor #0 for device 1, reading 9 bytes
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 1.0, CRC 1D: [2D, 01, E8]
   DATA0 packet with 8 data bytes and CRC 04AE: [C3, 80, 06, 00, 02, 00, 00, 09, 00, AE, 04]
   ACK packet: [D2]
- IN transaction, 3 packets with 9 data bytes
+ IN transaction with 9 data bytes, ACK
   IN packet on 1.0, CRC 1D: [69, 01, E8]
   DATA1 packet with 9 data bytes and CRC FFC8: [4B, 09, 02, 62, 00, 03, 01, 00, C0, FA, C8, FF]
   ACK packet: [D2]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, ACK
   OUT packet on 1.0, CRC 1D: [E1, 01, E8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Getting configuration descriptor #0 for device 1, reading 98 bytes
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 1.0, CRC 1D: [2D, 01, E8]
   DATA0 packet with 8 data bytes and CRC 3481: [C3, 80, 06, 00, 02, 00, 00, 62, 00, 81, 34]
   ACK packet: [D2]
- IN transaction, 3 packets with 64 data bytes
+ IN transaction with 64 data bytes, ACK
   IN packet on 1.0, CRC 1D: [69, 01, E8]
   DATA1 packet with 64 data bytes and CRC 2175: [4B, 09, 02, 62, 00, 03, 01, 00, C0, FA, 08, 0B, 00, 02, 02, 02, 00, 00, 09, 04, 00, 00, 01, 02, 02, 00, 00, 05, 24, 00, 10, 01, 04, 24, 02, 02, 05, 24, 06, 00, 01, 05, 24, 01, 03, 01, 07, 05, 82, 03, 40, 00, 01, 09, 04, 01, 00, 02, 0A, 02, 00, 00, 07, 05, 01, 75, 21]
   ACK packet: [D2]
- IN transaction, 3 packets with 34 data bytes
+ IN transaction with 34 data bytes, ACK
   IN packet on 1.0, CRC 1D: [69, 01, E8]
   DATA0 packet with 34 data bytes and CRC 3DED: [C3, 02, 40, 00, 01, 07, 05, 81, 02, 40, 00, 01, 09, 04, 02, 00, 02, FF, FF, 01, 00, 07, 05, 02, 02, 40, 00, 01, 07, 05, 83, 02, 40, 00, 01, ED, 3D]
   ACK packet: [D2]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, ACK
   OUT packet on 1.0, CRC 1D: [E1, 01, E8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Getting string descriptor #0 for device 1, reading 4 of 255 requested bytes
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 1.0, CRC 1D: [2D, 01, E8]
   DATA0 packet with 8 data bytes and CRC 64D4: [C3, 80, 06, 00, 03, 00, 00, FF, 00, D4, 64]
   ACK packet: [D2]
- IN transaction, 3 packets with 4 data bytes
+ IN transaction with 4 data bytes, ACK
   IN packet on 1.0, CRC 1D: [69, 01, E8]
   DATA1 packet with 4 data bytes and CRC 7809: [4B, 04, 03, 09, 04, 09, 78]
   ACK packet: [D2]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, ACK
   OUT packet on 1.0, CRC 1D: [E1, 01, E8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Getting string descriptor #2, language 0x0409 for device 1, reading 56 of 255 requested bytes: 'USB JTAG/serial debug unit\u{0}'
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 1.0, CRC 1D: [2D, 01, E8]
   DATA0 packet with 8 data bytes and CRC DB97: [C3, 80, 06, 02, 03, 09, 04, FF, 00, 97, DB]
   ACK packet: [D2]
- IN transaction, 3 packets with 56 data bytes
+ IN transaction with 56 data bytes, ACK
   IN packet on 1.0, CRC 1D: [69, 01, E8]
   DATA1 packet with 56 data bytes and CRC 5EC0: [4B, 38, 03, 55, 00, 53, 00, 42, 00, 20, 00, 4A, 00, 54, 00, 41, 00, 47, 00, 2F, 00, 73, 00, 65, 00, 72, 00, 69, 00, 61, 00, 6C, 00, 20, 00, 64, 00, 65, 00, 62, 00, 75, 00, 67, 00, 20, 00, 75, 00, 6E, 00, 69, 00, 74, 00, 00, 00, C0, 5E]
   ACK packet: [D2]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, ACK
   OUT packet on 1.0, CRC 1D: [E1, 01, E8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Getting string descriptor #1, language 0x0409 for device 1, reading 22 of 255 requested bytes: 'Espressif\u{0}'
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 1.0, CRC 1D: [2D, 01, E8]
   DATA0 packet with 8 data bytes and CRC E897: [C3, 80, 06, 01, 03, 09, 04, FF, 00, 97, E8]
   ACK packet: [D2]
- IN transaction, 3 packets with 22 data bytes
+ IN transaction with 22 data bytes, ACK
   IN packet on 1.0, CRC 1D: [69, 01, E8]
   DATA1 packet with 22 data bytes and CRC 5B31: [4B, 16, 03, 45, 00, 73, 00, 70, 00, 72, 00, 65, 00, 73, 00, 73, 00, 69, 00, 66, 00, 00, 00, 31, 5B]
   ACK packet: [D2]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, ACK
   OUT packet on 1.0, CRC 1D: [E1, 01, E8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Getting string descriptor #3, language 0x0409 for device 1, reading 36 of 255 requested bytes: 'F4:12:FA:4D:F1:7C'
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 1.0, CRC 1D: [2D, 01, E8]
   DATA0 packet with 8 data bytes and CRC 0A96: [C3, 80, 06, 03, 03, 09, 04, FF, 00, 96, 0A]
   ACK packet: [D2]
- IN transaction, 3 packets with 36 data bytes
+ IN transaction with 36 data bytes, ACK
   IN packet on 1.0, CRC 1D: [69, 01, E8]
   DATA1 packet with 36 data bytes and CRC 8C7F: [4B, 24, 03, 46, 00, 34, 00, 3A, 00, 31, 00, 32, 00, 3A, 00, 46, 00, 41, 00, 3A, 00, 34, 00, 44, 00, 3A, 00, 46, 00, 31, 00, 3A, 00, 37, 00, 43, 00, 7F, 8C]
   ACK packet: [D2]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, ACK
   OUT packet on 1.0, CRC 1D: [E1, 01, E8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Setting configuration 1 for device 1
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 1.0, CRC 1D: [2D, 01, E8]
   DATA0 packet with 8 data bytes and CRC 2527: [C3, 00, 09, 01, 00, 00, 00, 00, 00, 27, 25]
   ACK packet: [D2]
- IN transaction, 3 packets with 0 data bytes
+ IN transaction with 0 data bytes, ACK
   IN packet on 1.0, CRC 1D: [69, 01, E8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Class request #32, index 0, value 0 for interface 1.0, writing 7 bytes
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 1.0, CRC 1D: [2D, 01, E8]
   DATA0 packet with 8 data bytes and CRC D25F: [C3, 21, 20, 00, 00, 00, 00, 07, 00, 5F, D2]
   ACK packet: [D2]
- OUT transaction, 3 packets with 7 data bytes
+ OUT transaction with 7 data bytes, ACK
   OUT packet on 1.0, CRC 1D: [E1, 01, E8]
   DATA1 packet with 7 data bytes and CRC C463: [4B, 80, 25, 00, 00, 00, 00, 08, 63, C4]
   ACK packet: [D2]
- IN transaction, 3 packets with 0 data bytes
+ IN transaction with 0 data bytes, ACK
   IN packet on 1.0, CRC 1D: [69, 01, E8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 0.0, CRC 02: [2D, 00, 10]
   DATA0 packet with 8 data bytes and CRC 94DD: [C3, 80, 06, 00, 01, 00, 00, 40, 00, DD, 94]
   ACK packet: [D2]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 0.0, CRC 02: [69, 00, 10]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 0.0, CRC 02: [69, 00, 10]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 0.0, CRC 02: [69, 00, 10]
   NAK packet: [5A]
- IN transaction, 3 packets with 18 data bytes
+ IN transaction with 18 data bytes, ACK
   IN packet on 0.0, CRC 02: [69, 00, 10]
   DATA1 packet with 18 data bytes and CRC 6306: [4B, 12, 01, 00, 02, EF, 02, 01, 40, D0, 16, 14, 11, 00, 01, 01, 02, 03, 01, 06, 63]
   ACK packet: [D2]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, NAK
   OUT packet on 0.0, CRC 02: [E1, 00, 10]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   NAK packet: [5A]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, ACK
   OUT packet on 0.0, CRC 02: [E1, 00, 10]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Setting address to 2 for device 0
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 0.0, CRC 02: [2D, 00, 10]
   DATA0 packet with 8 data bytes and CRC 16EB: [C3, 00, 05, 02, 00, 00, 00, 00, 00, EB, 16]
   ACK packet: [D2]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 0.0, CRC 02: [69, 00, 10]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 0.0, CRC 02: [69, 00, 10]
   NAK packet: [5A]
- IN transaction, 3 packets with 0 data bytes
+ IN transaction with 0 data bytes, ACK
   IN packet on 0.0, CRC 02: [69, 00, 10]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Getting device descriptor #0 for device 2, reading 18 bytes
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 2.0, CRC 15: [2D, 02, A8]
   DATA0 packet with 8 data bytes and CRC F4E0: [C3, 80, 06, 00, 01, 00, 00, 12, 00, E0, F4]
   ACK packet: [D2]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   NAK packet: [5A]
- IN transaction, 3 packets with 18 data bytes
+ IN transaction with 18 data bytes, ACK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   DATA1 packet with 18 data bytes and CRC 6306: [4B, 12, 01, 00, 02, EF, 02, 01, 40, D0, 16, 14, 11, 00, 01, 01, 02, 03, 01, 06, 63]
   ACK packet: [D2]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, NAK
   OUT packet on 2.0, CRC 15: [E1, 02, A8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   NAK packet: [5A]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, ACK
   OUT packet on 2.0, CRC 15: [E1, 02, A8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Getting device qualifier descriptor #0 for device 2, reading 0 of 10 requested bytes
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 2.0, CRC 15: [2D, 02, A8]
   DATA0 packet with 8 data bytes and CRC 345F: [C3, 80, 06, 00, 06, 00, 00, 0A, 00, 5F, 34]
   ACK packet: [D2]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, STALL
   IN packet on 2.0, CRC 15: [69, 02, A8]
   STALL packet: [1E]
 Getting device qualifier descriptor #0 for device 2, reading 0 of 10 requested bytes
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 2.0, CRC 15: [2D, 02, A8]
   DATA0 packet with 8 data bytes and CRC 345F: [C3, 80, 06, 00, 06, 00, 00, 0A, 00, 5F, 34]
   ACK packet: [D2]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, STALL
   IN packet on 2.0, CRC 15: [69, 02, A8]
   STALL packet: [1E]
 Getting device qualifier descriptor #0 for device 2, reading 0 of 10 requested bytes
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 2.0, CRC 15: [2D, 02, A8]
   DATA0 packet with 8 data bytes and CRC 345F: [C3, 80, 06, 00, 06, 00, 00, 0A, 00, 5F, 34]
   ACK packet: [D2]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, STALL
   IN packet on 2.0, CRC 15: [69, 02, A8]
   STALL packet: [1E]
 Getting configuration descriptor #0 for device 2, reading 9 bytes
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 2.0, CRC 15: [2D, 02, A8]
   DATA0 packet with 8 data bytes and CRC 04AE: [C3, 80, 06, 00, 02, 00, 00, 09, 00, AE, 04]
   ACK packet: [D2]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   NAK packet: [5A]
- IN transaction, 3 packets with 9 data bytes
+ IN transaction with 9 data bytes, ACK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   DATA1 packet with 9 data bytes and CRC 3F9F: [4B, 09, 02, 64, 00, 03, 01, 00, 80, FA, 9F, 3F]
   ACK packet: [D2]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, NAK
   OUT packet on 2.0, CRC 15: [E1, 02, A8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   NAK packet: [5A]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, ACK
   OUT packet on 2.0, CRC 15: [E1, 02, A8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Getting configuration descriptor #0 for device 2, reading 100 bytes
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 2.0, CRC 15: [2D, 02, A8]
   DATA0 packet with 8 data bytes and CRC 9482: [C3, 80, 06, 00, 02, 00, 00, 64, 00, 82, 94]
   ACK packet: [D2]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   NAK packet: [5A]
- IN transaction, 3 packets with 64 data bytes
+ IN transaction with 64 data bytes, ACK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   DATA1 packet with 64 data bytes and CRC 3693: [4B, 09, 02, 64, 00, 03, 01, 00, 80, FA, 08, 0B, 00, 02, 02, 02, 00, 00, 09, 04, 00, 00, 01, 02, 02, 00, 04, 05, 24, 00, 20, 01, 05, 24, 01, 00, 01, 04, 24, 02, 02, 05, 24, 06, 00, 01, 07, 05, 81, 03, 08, 00, 10, 09, 04, 01, 00, 02, 0A, 00, 00, 00, 07, 05, 02, 93, 36]
   ACK packet: [D2]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   NAK packet: [5A]
- IN transaction, 3 packets with 36 data bytes
+ IN transaction with 36 data bytes, ACK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   DATA0 packet with 36 data bytes and CRC 9841: [C3, 02, 40, 00, 00, 07, 05, 82, 02, 40, 00, 00, 09, 04, 02, 00, 01, 03, 01, 01, 05, 09, 21, 11, 01, 00, 01, 22, 90, 00, 07, 05, 83, 03, 08, 00, 0A, 41, 98]
   ACK packet: [D2]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, ACK
   OUT packet on 2.0, CRC 15: [E1, 02, A8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Getting string descriptor #0 for device 2, reading 4 of 255 requested bytes
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 2.0, CRC 15: [2D, 02, A8]
   DATA0 packet with 8 data bytes and CRC 64D4: [C3, 80, 06, 00, 03, 00, 00, FF, 00, D4, 64]
   ACK packet: [D2]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   NAK packet: [5A]
- IN transaction, 3 packets with 4 data bytes
+ IN transaction with 4 data bytes, ACK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   DATA1 packet with 4 data bytes and CRC 7809: [4B, 04, 03, 09, 04, 09, 78]
   ACK packet: [D2]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, NAK
   OUT packet on 2.0, CRC 15: [E1, 02, A8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   NAK packet: [5A]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, ACK
   OUT packet on 2.0, CRC 15: [E1, 02, A8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Getting string descriptor #2, language 0x0409 for device 2, reading 12 of 255 requested bytes: 'TiDAL'
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 2.0, CRC 15: [2D, 02, A8]
   DATA0 packet with 8 data bytes and CRC DB97: [C3, 80, 06, 02, 03, 09, 04, FF, 00, 97, DB]
   ACK packet: [D2]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   NAK packet: [5A]
- IN transaction, 3 packets with 12 data bytes
+ IN transaction with 12 data bytes, ACK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   DATA1 packet with 12 data bytes and CRC C72F: [4B, 0C, 03, 54, 00, 69, 00, 44, 00, 41, 00, 4C, 00, 2F, C7]
   ACK packet: [D2]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, NAK
   OUT packet on 2.0, CRC 15: [E1, 02, A8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   NAK packet: [5A]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, ACK
   OUT packet on 2.0, CRC 15: [E1, 02, A8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Getting string descriptor #1, language 0x0409 for device 2, reading 44 of 255 requested bytes: 'Electromagnetic Field'
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 2.0, CRC 15: [2D, 02, A8]
   DATA0 packet with 8 data bytes and CRC E897: [C3, 80, 06, 01, 03, 09, 04, FF, 00, 97, E8]
   ACK packet: [D2]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   NAK packet: [5A]
- IN transaction, 3 packets with 44 data bytes
+ IN transaction with 44 data bytes, ACK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   DATA1 packet with 44 data bytes and CRC B234: [4B, 2C, 03, 45, 00, 6C, 00, 65, 00, 63, 00, 74, 00, 72, 00, 6F, 00, 6D, 00, 61, 00, 67, 00, 6E, 00, 65, 00, 74, 00, 69, 00, 63, 00, 20, 00, 46, 00, 69, 00, 65, 00, 6C, 00, 64, 00, 34, B2]
   ACK packet: [D2]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, ACK
   OUT packet on 2.0, CRC 15: [E1, 02, A8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Getting string descriptor #3, language 0x0409 for device 2, reading 14 of 255 requested bytes: '123456'
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 2.0, CRC 15: [2D, 02, A8]
   DATA0 packet with 8 data bytes and CRC 0A96: [C3, 80, 06, 03, 03, 09, 04, FF, 00, 96, 0A]
   ACK packet: [D2]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   NAK packet: [5A]
- IN transaction, 3 packets with 14 data bytes
+ IN transaction with 14 data bytes, ACK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   DATA1 packet with 14 data bytes and CRC 5C1D: [4B, 0E, 03, 31, 00, 32, 00, 33, 00, 34, 00, 35, 00, 36, 00, 1D, 5C]
   ACK packet: [D2]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, ACK
   OUT packet on 2.0, CRC 15: [E1, 02, A8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Setting configuration 1 for device 2
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 2.0, CRC 15: [2D, 02, A8]
   DATA0 packet with 8 data bytes and CRC 2527: [C3, 00, 09, 01, 00, 00, 00, 00, 00, 27, 25]
   ACK packet: [D2]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   NAK packet: [5A]
- IN transaction, 3 packets with 0 data bytes
+ IN transaction with 0 data bytes, ACK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Getting string descriptor #4, language 0x0409 for device 2, reading 42 of 255 requested bytes: 'Espressif CDC Device'
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 2.0, CRC 15: [2D, 02, A8]
   DATA0 packet with 8 data bytes and CRC BD97: [C3, 80, 06, 04, 03, 09, 04, FF, 00, 97, BD]
   ACK packet: [D2]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   NAK packet: [5A]
- IN transaction, 3 packets with 42 data bytes
+ IN transaction with 42 data bytes, ACK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   DATA1 packet with 42 data bytes and CRC 1B8C: [4B, 2A, 03, 45, 00, 73, 00, 70, 00, 72, 00, 65, 00, 73, 00, 73, 00, 69, 00, 66, 00, 20, 00, 43, 00, 44, 00, 43, 00, 20, 00, 44, 00, 65, 00, 76, 00, 69, 00, 63, 00, 65, 00, 8C, 1B]
   ACK packet: [D2]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, NAK
   OUT packet on 2.0, CRC 15: [E1, 02, A8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   NAK packet: [5A]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, ACK
   OUT packet on 2.0, CRC 15: [E1, 02, A8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Class request #32, index 0, value 0 for interface 2.0, writing 7 bytes
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 2.0, CRC 15: [2D, 02, A8]
   DATA0 packet with 8 data bytes and CRC D25F: [C3, 21, 20, 00, 00, 00, 00, 07, 00, 5F, D2]
   ACK packet: [D2]
- OUT transaction, 3 packets with 7 data bytes
+ OUT transaction with 7 data bytes, NAK
   OUT packet on 2.0, CRC 15: [E1, 02, A8]
   DATA1 packet with 7 data bytes and CRC C463: [4B, 80, 25, 00, 00, 00, 00, 08, 63, C4]
   NAK packet: [5A]
- OUT transaction, 3 packets with 7 data bytes
+ OUT transaction with 7 data bytes, ACK
   OUT packet on 2.0, CRC 15: [E1, 02, A8]
   DATA1 packet with 7 data bytes and CRC C463: [4B, 80, 25, 00, 00, 00, 00, 08, 63, C4]
   ACK packet: [D2]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   NAK packet: [5A]
- IN transaction, 3 packets with 0 data bytes
+ IN transaction with 0 data bytes, ACK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Getting string descriptor #5, language 0x0409 for device 2, reading 24 of 255 requested bytes: 'TiDAL badge'
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 2.0, CRC 15: [2D, 02, A8]
   DATA0 packet with 8 data bytes and CRC 6C96: [C3, 80, 06, 05, 03, 09, 04, FF, 00, 96, 6C]
   ACK packet: [D2]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   NAK packet: [5A]
- IN transaction, 3 packets with 24 data bytes
+ IN transaction with 24 data bytes, ACK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   DATA1 packet with 24 data bytes and CRC 4E8F: [4B, 18, 03, 54, 00, 69, 00, 44, 00, 41, 00, 4C, 00, 20, 00, 62, 00, 61, 00, 64, 00, 67, 00, 65, 00, 8F, 4E]
   ACK packet: [D2]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, NAK
   OUT packet on 2.0, CRC 15: [E1, 02, A8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   NAK packet: [5A]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, ACK
   OUT packet on 2.0, CRC 15: [E1, 02, A8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Getting string descriptor #3, language 0x0409 for device 2, reading 14 of 255 requested bytes: '123456'
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 2.0, CRC 15: [2D, 02, A8]
   DATA0 packet with 8 data bytes and CRC 0A96: [C3, 80, 06, 03, 03, 09, 04, FF, 00, 96, 0A]
   ACK packet: [D2]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   NAK packet: [5A]
- IN transaction, 3 packets with 14 data bytes
+ IN transaction with 14 data bytes, ACK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   DATA1 packet with 14 data bytes and CRC 5C1D: [4B, 0E, 03, 31, 00, 32, 00, 33, 00, 34, 00, 35, 00, 36, 00, 1D, 5C]
   ACK packet: [D2]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, NAK
   OUT packet on 2.0, CRC 15: [E1, 02, A8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   NAK packet: [5A]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, ACK
   OUT packet on 2.0, CRC 15: [E1, 02, A8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Class request #10, index 2, value 0 for interface 2.2
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 2.0, CRC 15: [2D, 02, A8]
   DATA0 packet with 8 data bytes and CRC 98D7: [C3, 21, 0A, 00, 00, 02, 00, 00, 00, D7, 98]
   ACK packet: [D2]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   NAK packet: [5A]
- IN transaction, 3 packets with 0 data bytes
+ IN transaction with 0 data bytes, ACK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Getting unknown descriptor #0 for interface 2.2, reading 144 bytes
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 2.0, CRC 15: [2D, 02, A8]
   DATA0 packet with 8 data bytes and CRC E785: [C3, 81, 06, 00, 22, 02, 00, 90, 00, 85, E7]
   ACK packet: [D2]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   NAK packet: [5A]
- IN transaction, 3 packets with 64 data bytes
+ IN transaction with 64 data bytes, ACK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   DATA1 packet with 64 data bytes and CRC 0C52: [4B, 05, 01, 09, 06, A1, 01, 85, 01, 05, 07, 19, E0, 29, E7, 15, 00, 25, 01, 95, 08, 75, 01, 81, 02, 95, 01, 75, 08, 81, 01, 05, 07, 19, 00, 29, FF, 15, 00, 25, FF, 95, 06, 75, 08, 81, 00, 05, 08, 19, 01, 29, 05, 95, 05, 75, 01, 91, 02, 95, 01, 75, 03, 91, 01, 52, 0C]
   ACK packet: [D2]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   NAK packet: [5A]
- IN transaction, 3 packets with 64 data bytes
+ IN transaction with 64 data bytes, ACK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   DATA0 packet with 64 data bytes and CRC EB5B: [C3, C0, 05, 01, 09, 02, A1, 01, 85, 02, 09, 01, A1, 00, 05, 09, 19, 01, 29, 05, 15, 00, 25, 01, 95, 05, 75, 01, 81, 02, 95, 01, 75, 03, 81, 01, 05, 01, 09, 30, 09, 31, 15, 81, 25, 7F, 95, 02, 75, 08, 81, 06, 09, 38, 15, 81, 25, 7F, 95, 01, 75, 08, 81, 06, 05, 5B, EB]
   ACK packet: [D2]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   NAK packet: [5A]
- IN transaction, 3 packets with 16 data bytes
+ IN transaction with 16 data bytes, ACK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   DATA1 packet with 16 data bytes and CRC 680E: [4B, 0C, 0A, 38, 02, 15, 81, 25, 7F, 95, 01, 75, 08, 81, 06, C0, C0, 0E, 68]
   ACK packet: [D2]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, NAK
   OUT packet on 2.0, CRC 15: [E1, 02, A8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   NAK packet: [5A]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, ACK
   OUT packet on 2.0, CRC 15: [E1, 02, A8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Class request #9, index 2, value 513 for interface 2.2, writing 2 bytes
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 2.0, CRC 15: [2D, 02, A8]
   DATA0 packet with 8 data bytes and CRC E99D: [C3, 21, 09, 01, 02, 02, 00, 02, 00, 9D, E9]
   ACK packet: [D2]
- OUT transaction, 3 packets with 2 data bytes
+ OUT transaction with 2 data bytes, NAK
   OUT packet on 2.0, CRC 15: [E1, 02, A8]
   DATA1 packet with 2 data bytes and CRC DFFF: [4B, 01, 00, FF, DF]
   NAK packet: [5A]
- OUT transaction, 3 packets with 2 data bytes
+ OUT transaction with 2 data bytes, ACK
   OUT packet on 2.0, CRC 15: [E1, 02, A8]
   DATA1 packet with 2 data bytes and CRC DFFF: [4B, 01, 00, FF, DF]
   ACK packet: [D2]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   NAK packet: [5A]
- IN transaction, 3 packets with 0 data bytes
+ IN transaction with 0 data bytes, ACK
   IN packet on 2.0, CRC 15: [69, 02, A8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Interrupt transfer with 263 transactions on endpoint 2.3 IN
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
- IN transaction, 10 packets
+ IN transaction, SOF
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]
   SOF packet with frame number 345, CRC 01: [A5, 59, 09]

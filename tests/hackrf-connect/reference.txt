@@ -802,153 +802,153 @@
   SOF packet with frame number 382, CRC 1F: [A5, 7E, F9]
   SOF packet with frame number 382, CRC 1F: [A5, 7E, F9]
 Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 0.0, CRC 02: [2D, 00, 10]
   DATA0 packet with 8 data bytes and CRC 94DD: [C3, 80, 06, 00, 01, 00, 00, 40, 00, DD, 94]
   ACK packet: [D2]
- IN transaction, 3 packets with 18 data bytes
+ IN transaction with 18 data bytes, ACK
   IN packet on 0.0, CRC 02: [69, 00, 10]
   DATA1 packet with 18 data bytes and CRC B1CD: [4B, 12, 01, 00, 02, 00, 00, 00, 40, 50, 1D, 89, 60, 06, 01, 01, 02, 04, 01, CD, B1]
   ACK packet: [D2]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, ACK
   OUT packet on 0.0, CRC 02: [E1, 00, 10]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Setting address to 29 for device 0
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 0.0, CRC 02: [2D, 00, 10]
   DATA0 packet with 8 data bytes and CRC 79E9: [C3, 00, 05, 1D, 00, 00, 00, 00, 00, E9, 79]
   ACK packet: [D2]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 0.0, CRC 02: [69, 00, 10]
   NAK packet: [5A]
- IN transaction, 3 packets with 0 data bytes
+ IN transaction with 0 data bytes, ACK
   IN packet on 0.0, CRC 02: [69, 00, 10]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Getting device descriptor #0 for device 29, reading 18 bytes
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 29.0, CRC 08: [2D, 1D, 40]
   DATA0 packet with 8 data bytes and CRC F4E0: [C3, 80, 06, 00, 01, 00, 00, 12, 00, E0, F4]
   ACK packet: [D2]
- IN transaction, 3 packets with 18 data bytes
+ IN transaction with 18 data bytes, ACK
   IN packet on 29.0, CRC 08: [69, 1D, 40]
   DATA1 packet with 18 data bytes and CRC B1CD: [4B, 12, 01, 00, 02, 00, 00, 00, 40, 50, 1D, 89, 60, 06, 01, 01, 02, 04, 01, CD, B1]
   ACK packet: [D2]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, ACK
   OUT packet on 29.0, CRC 08: [E1, 1D, 40]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Getting configuration descriptor #0 for device 29, reading 9 bytes
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 29.0, CRC 08: [2D, 1D, 40]
   DATA0 packet with 8 data bytes and CRC 04AE: [C3, 80, 06, 00, 02, 00, 00, 09, 00, AE, 04]
   ACK packet: [D2]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 29.0, CRC 08: [69, 1D, 40]
   NAK packet: [5A]
- IN transaction, 3 packets with 9 data bytes
+ IN transaction with 9 data bytes, ACK
   IN packet on 29.0, CRC 08: [69, 1D, 40]
   DATA1 packet with 9 data bytes and CRC FB12: [4B, 09, 02, 20, 00, 01, 01, 03, 80, FA, 12, FB]
   ACK packet: [D2]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, ACK
   OUT packet on 29.0, CRC 08: [E1, 1D, 40]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Getting configuration descriptor #0 for device 29, reading 32 bytes
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 29.0, CRC 08: [2D, 1D, 40]
   DATA0 packet with 8 data bytes and CRC 94B1: [C3, 80, 06, 00, 02, 00, 00, 20, 00, B1, 94]
   ACK packet: [D2]
- IN transaction, 3 packets with 32 data bytes
+ IN transaction with 32 data bytes, ACK
   IN packet on 29.0, CRC 08: [69, 1D, 40]
   DATA1 packet with 32 data bytes and CRC 86EA: [4B, 09, 02, 20, 00, 01, 01, 03, 80, FA, 09, 04, 00, 00, 02, FF, FF, FF, 00, 07, 05, 81, 02, 00, 02, 00, 07, 05, 02, 02, 00, 02, 00, EA, 86]
   ACK packet: [D2]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, ACK
   OUT packet on 29.0, CRC 08: [E1, 1D, 40]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Getting string descriptor #0 for device 29, reading 4 of 255 requested bytes
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 29.0, CRC 08: [2D, 1D, 40]
   DATA0 packet with 8 data bytes and CRC 64D4: [C3, 80, 06, 00, 03, 00, 00, FF, 00, D4, 64]
   ACK packet: [D2]
- IN transaction, 3 packets with 4 data bytes
+ IN transaction with 4 data bytes, ACK
   IN packet on 29.0, CRC 08: [69, 1D, 40]
   DATA1 packet with 4 data bytes and CRC 7809: [4B, 04, 03, 09, 04, 09, 78]
   ACK packet: [D2]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, ACK
   OUT packet on 29.0, CRC 08: [E1, 1D, 40]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Getting string descriptor #2, language 0x0409 for device 29, reading 22 of 255 requested bytes: 'HackRF One'
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 29.0, CRC 08: [2D, 1D, 40]
   DATA0 packet with 8 data bytes and CRC DB97: [C3, 80, 06, 02, 03, 09, 04, FF, 00, 97, DB]
   ACK packet: [D2]
- IN transaction, 3 packets with 22 data bytes
+ IN transaction with 22 data bytes, ACK
   IN packet on 29.0, CRC 08: [69, 1D, 40]
   DATA1 packet with 22 data bytes and CRC A522: [4B, 16, 03, 48, 00, 61, 00, 63, 00, 6B, 00, 52, 00, 46, 00, 20, 00, 4F, 00, 6E, 00, 65, 00, 22, A5]
   ACK packet: [D2]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, ACK
   OUT packet on 29.0, CRC 08: [E1, 1D, 40]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Getting string descriptor #1, language 0x0409 for device 29, reading 40 of 255 requested bytes: 'Great Scott Gadgets'
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 29.0, CRC 08: [2D, 1D, 40]
   DATA0 packet with 8 data bytes and CRC E897: [C3, 80, 06, 01, 03, 09, 04, FF, 00, 97, E8]
   ACK packet: [D2]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 29.0, CRC 08: [69, 1D, 40]
   NAK packet: [5A]
- IN transaction, 3 packets with 40 data bytes
+ IN transaction with 40 data bytes, ACK
   IN packet on 29.0, CRC 08: [69, 1D, 40]
   DATA1 packet with 40 data bytes and CRC 39EA: [4B, 28, 03, 47, 00, 72, 00, 65, 00, 61, 00, 74, 00, 20, 00, 53, 00, 63, 00, 6F, 00, 74, 00, 74, 00, 20, 00, 47, 00, 61, 00, 64, 00, 67, 00, 65, 00, 74, 00, 73, 00, EA, 39]
   ACK packet: [D2]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, ACK
   OUT packet on 29.0, CRC 08: [E1, 1D, 40]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Getting string descriptor #4, language 0x0409 for device 29, reading 66 of 255 requested bytes: '0000000000000000325866e6215c4023'
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 29.0, CRC 08: [2D, 1D, 40]
   DATA0 packet with 8 data bytes and CRC BD97: [C3, 80, 06, 04, 03, 09, 04, FF, 00, 97, BD]
   ACK packet: [D2]
- IN transaction, 3 packets with 64 data bytes
+ IN transaction with 64 data bytes, ACK
   IN packet on 29.0, CRC 08: [69, 1D, 40]
   DATA1 packet with 64 data bytes and CRC 28F6: [4B, 42, 03, 30, 00, 30, 00, 30, 00, 30, 00, 30, 00, 30, 00, 30, 00, 30, 00, 30, 00, 30, 00, 30, 00, 30, 00, 30, 00, 30, 00, 30, 00, 30, 00, 33, 00, 32, 00, 35, 00, 38, 00, 36, 00, 36, 00, 65, 00, 36, 00, 32, 00, 31, 00, 35, 00, 63, 00, 34, 00, 30, 00, 32, 00, F6, 28]
   ACK packet: [D2]
- IN transaction, 3 packets with 2 data bytes
+ IN transaction with 2 data bytes, ACK
   IN packet on 29.0, CRC 08: [69, 1D, 40]
   DATA0 packet with 2 data bytes and CRC BFEA: [C3, 33, 00, EA, BF]
   ACK packet: [D2]
- OUT transaction, 3 packets with 0 data bytes
+ OUT transaction with 0 data bytes, ACK
   OUT packet on 29.0, CRC 08: [E1, 1D, 40]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Setting configuration 1 for device 29
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 29.0, CRC 08: [2D, 1D, 40]
   DATA0 packet with 8 data bytes and CRC 2527: [C3, 00, 09, 01, 00, 00, 00, 00, 00, 27, 25]
   ACK packet: [D2]
- IN transaction, 2 packets
+ IN transaction, NAK
   IN packet on 29.0, CRC 08: [69, 1D, 40]
   NAK packet: [5A]
- IN transaction, 3 packets with 0 data bytes
+ IN transaction with 0 data bytes, ACK
   IN packet on 29.0, CRC 08: [69, 1D, 40]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
 Getting string descriptor #3, language 0x0409 for device 29, reading 24 of 255 requested bytes: 'Transceiver'
- SETUP transaction, 3 packets
+ SETUP transaction, ACK
   SETUP packet on 29.0, CRC 08: [2D, 1D, 40]
   DATA0 packet with 8 data bytes and CRC 0A96: [C3, 80, 06, 03, 03, 09, 04, FF, 00, 96, 0A]
   ACK packet: [D2]
- IN transaction, 3 packets with 24 data bytes
+ IN transaction with 24 data bytes, ACK
   IN packet on 29.0, CRC 08: [69, 1D, 40]
   DATA1 packet with 24 data bytes and CRC CE28: [4B, 18, 03, 54, 00, 72, 00, 61, 00, 6E, 00, 73, 00, 63, 00, 65, 00, 69, 00, 76, 00, 65, 00, 72, 00, 28, CE]
   ACK packet: [D2]
- OUT transaction, 12 packets with 0 data bytes
+ OUT transaction with 0 data bytes, SOF
   OUT packet on 29.0, CRC 08: [E1, 1D, 40]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
