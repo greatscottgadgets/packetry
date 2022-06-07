@@ -15,6 +15,7 @@ impl PID {
 
 #[derive(PartialEq)]
 enum DecodeStatus {
+    Single,
     New,
     Continue,
     Done,
@@ -205,6 +206,11 @@ impl<'cap> Decoder<'cap> {
     {
         let pid = PID::from_packet(packet)?;
         match self.transaction_state.status(packet)? {
+            DecodeStatus::Single => {
+                self.transaction_end()?;
+                self.transaction_start(packet_id, packet)?;
+                self.transaction_end()?;
+            },
             DecodeStatus::New => {
                 self.transaction_end()?;
                 self.transaction_start(packet_id, packet)?;
@@ -525,6 +531,11 @@ impl<'cap> Decoder<'cap> {
             return Ok(());
         }
         match status {
+            DecodeStatus::Single => {
+                self.transfer_end()?;
+                self.transfer_start(transaction_id, true)?;
+                self.transfer_end()?;
+            },
             DecodeStatus::New => {
                 self.transfer_end()?;
                 self.transfer_start(transaction_id, true)?;
