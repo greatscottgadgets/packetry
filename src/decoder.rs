@@ -439,7 +439,8 @@ impl<'cap> Decoder<'cap> {
         let next = self.transaction_state.first;
         let ep_data = self.current_endpoint_data()?;
         let dev_data = self.current_device_data()?;
-        let (ep_type, _) = dev_data.endpoint_details(ep_data.address);
+        let (ep_type, ep_max) = dev_data.endpoint_details(ep_data.address);
+        let length = self.transaction_state.payload.len();
         use PID::*;
         use EndpointType::*;
         use usb::EndpointType::*;
@@ -515,7 +516,11 @@ impl<'cap> Decoder<'cap> {
                 let success = self.transaction_state.completed();
                 let ep_data = self.current_endpoint_data_mut()?;
                 ep_data.last_success = success;
-                DecodeStatus::New
+                match (success, ep_max) {
+                    // A short packet ends the new transfer immediately.
+                    (true, Some(max)) if length < max => DecodeStatus::Single,
+                    (..)                              => DecodeStatus::New,
+                }
             },
 
             // IN or OUT may then be repeated.
@@ -528,7 +533,11 @@ impl<'cap> Decoder<'cap> {
                     ep_data.last_success = success;
                     DecodeStatus::New
                 } else if success {
-                    DecodeStatus::Continue
+                    match ep_max {
+                        // A short packet ends the transfer.
+                        Some(max) if length < max => DecodeStatus::Done,
+                        _                         => DecodeStatus::Continue,
+                    }
                 } else {
                     DecodeStatus::Retry
                 }
