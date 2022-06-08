@@ -29,6 +29,7 @@ struct EndpointData {
     transfer_id: Option<EndpointTransferId>,
     transaction_count: u64,
     last: PID,
+    last_success: bool,
     setup: Option<SetupFields>,
     payload: Vec<u8>,
 }
@@ -322,6 +323,7 @@ impl<'cap> Decoder<'cap> {
             transfer_id: None,
             transaction_count: 0,
             last: PID::Malformed,
+            last_success: false,
             setup: None,
             payload: Vec::new(),
         });
@@ -509,7 +511,12 @@ impl<'cap> Decoder<'cap> {
 
             // An IN or OUT transaction on a non-control endpoint,
             // with no transfer in progress, starts a new transfer.
-            (_, Malformed, IN | OUT) => DecodeStatus::New,
+            (_, Malformed, IN | OUT) => {
+                let success = self.transaction_state.completed();
+                let ep_data = self.current_endpoint_data_mut()?;
+                ep_data.last_success = success;
+                DecodeStatus::New
+            },
 
             // IN or OUT may then be repeated.
             (_, IN, IN) |
