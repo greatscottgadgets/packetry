@@ -18,6 +18,7 @@ enum DecodeStatus {
     Single,
     New,
     Continue,
+    Retry,
     Done,
     Invalid
 }
@@ -215,7 +216,7 @@ impl<'cap> Decoder<'cap> {
                 self.transaction_end()?;
                 self.transaction_start(packet_id, packet)?;
             },
-            DecodeStatus::Continue => {
+            DecodeStatus::Continue | DecodeStatus::Retry => {
                 self.transaction_append(pid);
             },
             DecodeStatus::Done => {
@@ -474,9 +475,12 @@ impl<'cap> Decoder<'cap> {
                                     self.transaction_state.payload.clone();
                                 let ep_data = self.current_endpoint_data_mut()?;
                                 ep_data.payload.extend(payload);
+                                // Await status stage.
+                                DecodeStatus::Continue
+                            } else {
+                                // Retry data stage.
+                                DecodeStatus::Retry
                             }
-                            // Await status stage.
-                            DecodeStatus::Continue
                         },
 
                         // If there is no data to transfer, setup stage is
@@ -487,9 +491,15 @@ impl<'cap> Decoder<'cap> {
                         (Out, false, SETUP, IN ) |
                         (In,  true,  IN,    OUT) |
                         (Out, true,  OUT,   IN ) => {
-                            let fields_copy = *fields;
-                            self.decode_request(fields_copy)?;
-                            DecodeStatus::Done
+                            if self.transaction_state.completed() {
+                                let fields_copy = *fields;
+                                self.decode_request(fields_copy)?;
+                                // Status stage complete.
+                                DecodeStatus::Done
+                            } else {
+                                // Retry status stage.
+                                DecodeStatus::Retry
+                            }
                         },
                         // Any other sequence is invalid.
                         (..) => DecodeStatus::Invalid
@@ -502,8 +512,14 @@ impl<'cap> Decoder<'cap> {
             (_, Malformed, IN | OUT) => DecodeStatus::New,
 
             // IN or OUT may then be repeated.
-            (_, IN, IN) => DecodeStatus::Continue,
-            (_, OUT, OUT) => DecodeStatus::Continue,
+            (_, IN, IN) |
+            (_, OUT, OUT) => {
+                if self.transaction_state.completed() {
+                    DecodeStatus::Continue
+                } else {
+                    DecodeStatus::Retry
+                }
+            },
 
             // A SOF group starts a special transfer, unless
             // one is already in progress.
@@ -520,17 +536,7 @@ impl<'cap> Decoder<'cap> {
     fn transfer_update(&mut self, transaction_id: TransactionId)
         -> Result<(), CaptureError>
     {
-        let status = self.transfer_status()?;
-        let ep_data = self.current_endpoint_data()?;
-        let retry_needed =
-            ep_data.transaction_count > 0 &&
-            status != DecodeStatus::Invalid &&
-            !self.transaction_state.completed();
-        if retry_needed {
-            self.transfer_append(transaction_id, false)?;
-            return Ok(());
-        }
-        match status {
+        match self.transfer_status()? {
             DecodeStatus::Single => {
                 self.transfer_end()?;
                 self.transfer_start(transaction_id, true)?;
@@ -542,6 +548,9 @@ impl<'cap> Decoder<'cap> {
             },
             DecodeStatus::Continue => {
                 self.transfer_append(transaction_id, true)?;
+            },
+            DecodeStatus::Retry => {
+                self.transfer_append(transaction_id, false)?;
             },
             DecodeStatus::Done => {
                 self.transfer_append(transaction_id, true)?;
