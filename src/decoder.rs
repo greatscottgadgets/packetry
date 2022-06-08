@@ -441,6 +441,7 @@ impl<'cap> Decoder<'cap> {
         let dev_data = self.current_device_data()?;
         let (ep_type, ep_max) = dev_data.endpoint_details(ep_data.address);
         let length = self.transaction_state.payload.len();
+        let success = self.transaction_state.completed();
         use PID::*;
         use EndpointType::*;
         use usb::EndpointType::*;
@@ -473,7 +474,7 @@ impl<'cap> Decoder<'cap> {
                         (Out, true, SETUP, OUT) |
                         (In,  true, IN,    IN ) |
                         (Out, true, OUT,   OUT) => {
-                            if self.transaction_state.completed() {
+                            if success {
                                 let payload =
                                     self.transaction_state.payload.clone();
                                 let ep_data = self.current_endpoint_data_mut()?;
@@ -494,7 +495,7 @@ impl<'cap> Decoder<'cap> {
                         (Out, false, SETUP, IN ) |
                         (In,  true,  IN,    OUT) |
                         (Out, true,  OUT,   IN ) => {
-                            if self.transaction_state.completed() {
+                            if success {
                                 let fields_copy = *fields;
                                 self.decode_request(fields_copy)?;
                                 // Status stage complete.
@@ -513,7 +514,6 @@ impl<'cap> Decoder<'cap> {
             // An IN or OUT transaction on a non-control endpoint,
             // with no transfer in progress, starts a new transfer.
             (_, Malformed, IN | OUT) => {
-                let success = self.transaction_state.completed();
                 let ep_data = self.current_endpoint_data_mut()?;
                 ep_data.last_success = success;
                 match (success, ep_max) {
@@ -526,7 +526,6 @@ impl<'cap> Decoder<'cap> {
             // IN or OUT may then be repeated.
             (_, IN, IN) |
             (_, OUT, OUT) => {
-                let success = self.transaction_state.completed();
                 if success != ep_data.last_success {
                     // We went from polling to transferring, or vice versa.
                     let ep_data = self.current_endpoint_data_mut()?;
