@@ -521,7 +521,13 @@ impl<'cap> Decoder<'cap> {
             // IN or OUT may then be repeated.
             (_, IN, IN) |
             (_, OUT, OUT) => {
-                if self.transaction_state.completed() {
+                let success = self.transaction_state.completed();
+                if success != ep_data.last_success {
+                    // We went from polling to transferring, or vice versa.
+                    let ep_data = self.current_endpoint_data_mut()?;
+                    ep_data.last_success = success;
+                    DecodeStatus::New
+                } else if success {
                     DecodeStatus::Continue
                 } else {
                     DecodeStatus::Retry

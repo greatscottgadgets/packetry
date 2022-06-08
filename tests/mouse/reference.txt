@@ -456,7 +456,7 @@ Getting unknown descriptor #0 for interface 4.0, reading 75 bytes
   OUT packet on 4.0, CRC 05: [E1, 04, 28]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
-Interrupt transfer with 855 transactions on endpoint 4.1 IN
+Polling 423 times for interrupt transfer on endpoint 4.1 IN
  IN transaction, NAK
   IN packet on 4.1, CRC 13: [69, 84, 98]
   NAK packet: [5A]
@@ -1726,6 +1726,7 @@ Interrupt transfer with 855 transactions on endpoint 4.1 IN
  IN transaction, NAK
   IN packet on 4.1, CRC 13: [69, 84, 98]
   NAK packet: [5A]
+Interrupt transfer with 22 transactions on endpoint 4.1 IN
  IN transaction with 7 data bytes, ACK
   IN packet on 4.1, CRC 13: [69, 84, 98]
   DATA0 packet with 7 data bytes and CRC 3FE3: [C3, 01, 00, FF, 0F, 00, 00, 00, E3, 3F]
@@ -1814,12 +1815,14 @@ Interrupt transfer with 855 transactions on endpoint 4.1 IN
   IN packet on 4.1, CRC 13: [69, 84, 98]
   DATA1 packet with 7 data bytes and CRC CFE4: [4B, 01, 00, FF, EF, FF, 00, 00, E4, CF]
   ACK packet: [D2]
+Polling 2 times for interrupt transfer on endpoint 4.1 IN
  IN transaction, NAK
   IN packet on 4.1, CRC 13: [69, 84, 98]
   NAK packet: [5A]
  IN transaction, NAK
   IN packet on 4.1, CRC 13: [69, 84, 98]
   NAK packet: [5A]
+Interrupt transfer with 114 transactions on endpoint 4.1 IN
  IN transaction with 7 data bytes, ACK
   IN packet on 4.1, CRC 13: [69, 84, 98]
   DATA0 packet with 7 data bytes and CRC 3FF4: [C3, 01, 00, 00, 00, 00, 00, 00, F4, 3F]
@@ -2276,9 +2279,11 @@ Interrupt transfer with 855 transactions on endpoint 4.1 IN
   IN packet on 4.1, CRC 13: [69, 84, 98]
   DATA1 packet with 7 data bytes and CRC CF11: [4B, 01, 00, FB, FF, FF, 00, 00, 11, CF]
   ACK packet: [D2]
+Polling 1 times for interrupt transfer on endpoint 4.1 IN
  IN transaction, NAK
   IN packet on 4.1, CRC 13: [69, 84, 98]
   NAK packet: [5A]
+Interrupt transfer with 22 transactions on endpoint 4.1 IN
  IN transaction with 7 data bytes, ACK
   IN packet on 4.1, CRC 13: [69, 84, 98]
   DATA0 packet with 7 data bytes and CRC CFDD: [C3, 01, 00, FE, FF, FF, 00, 00, DD, CF]
@@ -2367,6 +2372,7 @@ Interrupt transfer with 855 transactions on endpoint 4.1 IN
   IN packet on 4.1, CRC 13: [69, 84, 98]
   DATA1 packet with 7 data bytes and CRC CF11: [4B, 01, 00, FB, FF, FF, 00, 00, 11, CF]
   ACK packet: [D2]
+Polling 271 times for interrupt transfer on endpoint 4.1 IN
  IN transaction, NAK
   IN packet on 4.1, CRC 13: [69, 84, 98]
   NAK packet: [5A]

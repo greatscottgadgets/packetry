@@ -4321,7 +4321,7 @@ Class request #9, index 2, value 513 for interface 2.2, writing 2 bytes
   IN packet on 2.0, CRC 15: [69, 02, A8]
   DATA1 packet with 0 data bytes and CRC 0000: [4B, 00, 00]
   ACK packet: [D2]
-Interrupt transfer with 263 transactions on endpoint 2.3 IN
+Polling 263 times for interrupt transfer on endpoint 2.3 IN
  IN transaction, NAK
   IN packet on 2.3, CRC 06: [69, 82, 31]
   NAK packet: [5A]

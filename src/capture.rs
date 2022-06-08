@@ -657,32 +657,47 @@ impl ItemSource<TrafficItem> for Capture {
                 let dev_data = self.device_data(&device_id)?;
                 let ep_addr = endpoint.address();
                 let (ep_type, _) = dev_data.endpoint_details(ep_addr);
-                if !entry.is_start() {
-                    return Ok(match ep_type {
-                        Invalid =>
-                            "End of invalid groups".to_string(),
-                        Framing =>
-                            "End of SOF groups".to_string(),
-                        endpoint_type => format!(
-                            "{} transfer ending on endpoint {}",
-                            endpoint_type, endpoint)
-                    })
-                }
                 let range = self.transfer_range(&entry)?;
                 let count = range.len();
-                match ep_type {
-                    Invalid => format!(
+                match (ep_type, entry.is_start()) {
+                    (Invalid, true) => format!(
                         "{} invalid groups", count),
-                    Framing => format!(
+                    (Invalid, false) =>
+                        "End of invalid groups".to_string(),
+                    (Framing, true) => format!(
                         "{} SOF groups", count),
-                    Normal(Control) => {
+                    (Framing, false) =>
+                        "End of SOF groups".to_string(),
+                    (Normal(Control), true) => {
                         let transfer = self.control_transfer(
                             endpoint.device_address(), endpoint_id, range)?;
                         transfer.summary()
                     },
-                    endpoint_type => format!(
-                        "{} transfer with {} transactions on endpoint {}",
-                        endpoint_type, count, endpoint)
+                    (endpoint_type, starting) => {
+                        let ep_transfer_id = entry.transfer_id();
+                        let ep_traf = self.endpoint_traffic(endpoint_id)?;
+                        let ep_transaction_id =
+                            ep_traf.transfer_index.get(ep_transfer_id)?;
+                        let transaction_id =
+                            ep_traf.transaction_ids.get(ep_transaction_id)?;
+                        let transaction = self.transaction(transaction_id)?;
+                        let ep_type_string = format!("{}", endpoint_type);
+                        let ep_type_lower = ep_type_string.to_lowercase();
+                        match (transaction.successful(), starting) {
+                            (true, true) => format!(
+                                "{} transfer with {} transactions on endpoint {}",
+                                ep_type_string, count, endpoint),
+                            (true, false) => format!(
+                                "End of {} transfer on endpoint {}",
+                                ep_type_lower, endpoint),
+                            (false, true) => format!(
+                                "Polling {} times for {} transfer on endpoint {}",
+                                count, ep_type_lower, endpoint),
+                            (false, false) => format!(
+                                "End polling for {} transfer on endpoint {}",
+                                ep_type_lower, endpoint)
+                        }
+                    }
                 }
             }
         })
