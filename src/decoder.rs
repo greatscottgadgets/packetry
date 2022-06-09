@@ -595,12 +595,10 @@ impl<'cap> Decoder<'cap> {
     {
         match self.transfer_status()? {
             DecodeStatus::Single => {
-                self.transfer_end()?;
                 self.transfer_start(transaction_id, true)?;
                 self.transfer_end()?;
             },
             DecodeStatus::New => {
-                self.transfer_end()?;
                 self.transfer_start(transaction_id, true)?;
             },
             DecodeStatus::Continue => {
@@ -614,7 +612,6 @@ impl<'cap> Decoder<'cap> {
                 self.transfer_end()?;
             },
             DecodeStatus::Invalid => {
-                self.transfer_end()?;
                 self.transfer_start(transaction_id, false)?;
                 self.transfer_end()?;
             }
@@ -627,8 +624,17 @@ impl<'cap> Decoder<'cap> {
                       success: bool)
         -> Result<(), CaptureError>
     {
-        let transaction_type = self.transaction_state.first;
         let endpoint_id = self.current_endpoint_id()?;
+        let ep_data = self.current_endpoint_data()?;
+        if ep_data.transaction_count > 0 {
+            let transfer_end_id =
+                self.add_transfer_entry(endpoint_id, false)?;
+            if self.last_item_endpoint != Some(endpoint_id) {
+                self.capture.item_index.push(transfer_end_id)?;
+                self.last_item_endpoint = Some(endpoint_id);
+            }
+        }
+        let transaction_type = self.transaction_state.first;
         let ep_traf = self.capture.endpoint_traffic(endpoint_id)?;
         let ep_transaction_id = ep_traf.transaction_ids.push(transaction_id)?;
         let ep_transfer_id = ep_traf.transfer_index.push(ep_transaction_id)?;
@@ -637,7 +643,10 @@ impl<'cap> Decoder<'cap> {
         ep_data.transaction_count = 1;
         if success {
             ep_data.last = transaction_type;
+        } else {
+            ep_data.last = None
         }
+        ep_data.payload.clear();
         let transfer_start_id = self.add_transfer_entry(endpoint_id, true)?;
         self.capture.item_index.push(transfer_start_id)?;
         self.last_item_endpoint = Some(endpoint_id);
