@@ -1726,7 +1726,7 @@ Polling 423 times for interrupt transfer on endpoint 4.1 IN
  IN transaction, NAK
   IN packet on 4.1, CRC 13: [69, 84, 98]
   NAK packet: [5A]
-Interrupt transfer with 22 transactions on endpoint 4.1 IN
+Interrupt transfer of 154 bytes on endpoint 4.1 IN
  IN transaction with 7 data bytes, ACK
   IN packet on 4.1, CRC 13: [69, 84, 98]
   DATA0 packet with 7 data bytes and CRC 3FE3: [C3, 01, 00, FF, 0F, 00, 00, 00, E3, 3F]
@@ -1822,7 +1822,7 @@ Polling 2 times for interrupt transfer on endpoint 4.1 IN
  IN transaction, NAK
   IN packet on 4.1, CRC 13: [69, 84, 98]
   NAK packet: [5A]
-Interrupt transfer with 114 transactions on endpoint 4.1 IN
+Interrupt transfer of 798 bytes on endpoint 4.1 IN
  IN transaction with 7 data bytes, ACK
   IN packet on 4.1, CRC 13: [69, 84, 98]
   DATA0 packet with 7 data bytes and CRC 3FF4: [C3, 01, 00, 00, 00, 00, 00, 00, F4, 3F]
@@ -2283,7 +2283,7 @@ Polling 1 times for interrupt transfer on endpoint 4.1 IN
  IN transaction, NAK
   IN packet on 4.1, CRC 13: [69, 84, 98]
   NAK packet: [5A]
-Interrupt transfer with 22 transactions on endpoint 4.1 IN
+Interrupt transfer of 154 bytes on endpoint 4.1 IN
  IN transaction with 7 data bytes, ACK
   IN packet on 4.1, CRC 13: [69, 84, 98]
   DATA0 packet with 7 data bytes and CRC CFDD: [C3, 01, 00, FE, FF, FF, 00, 00, DD, CF]

@@ -397,6 +397,24 @@ impl Capture {
             ep_transfer_id, ep_traf.transaction_ids.len())?)
     }
 
+    fn transfer_length(&mut self,
+                       endpoint_id: EndpointId,
+                       range: &Range<EndpointTransactionId>)
+        -> Result<u64, CaptureError>
+    {
+        let ep_traf = self.endpoint_traffic(endpoint_id)?;
+        let index = &mut ep_traf.data_index;
+        let first = Id::<u64>::from(range.start.value);
+        let last = Id::<u64>::from(range.end.value);
+        let start = index.get(first)?;
+        let end = if last.value >= index.len() {
+            ep_traf.total_data
+        } else {
+            index.get(last)?
+        };
+        Ok(end - start)
+    }
+
     fn endpoint_state(&mut self, transfer_id: TransferId)
         -> Result<Vec<u8>, CaptureError>
     {
@@ -693,8 +711,11 @@ impl ItemSource<TrafficItem> for Capture {
                         let ep_type_lower = ep_type_string.to_lowercase();
                         match (transaction.successful(), starting) {
                             (true, true) => format!(
-                                "{} transfer with {} transactions on endpoint {}",
-                                ep_type_string, count, endpoint),
+                                "{} transfer of {} on endpoint {}",
+                                ep_type_string,
+                                fmt_size(self.transfer_length(endpoint_id,
+                                                              &range)?),
+                                endpoint),
                             (true, false) => format!(
                                 "End of {} transfer on endpoint {}",
                                 ep_type_lower, endpoint),
