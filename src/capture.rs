@@ -684,7 +684,7 @@ impl ItemSource<TrafficItem> for Capture {
             Packet(.., packet_id) => {
                 let packet = self.packet(*packet_id)?;
                 let pid = PID::from(*packet.get(0).ok_or(IndexError)?);
-                format!("{} packet{}: {:02X?}",
+                format!("{} packet{}",
                     pid,
                     match PacketFields::from_packet(&packet) {
                         PacketFields::SOF(sof) => format!(
@@ -697,12 +697,12 @@ impl ItemSource<TrafficItem> for Capture {
                             token.endpoint_number(),
                             token.crc()),
                         PacketFields::Data(data) => format!(
-                            " with {} data bytes and CRC {:04X}",
+                            " with CRC {:04X} and {} data bytes: {}",
+                            data.crc,
                             packet.len() - 3,
-                            data.crc),
+                            Bytes(&packet[1 .. packet.len() - 2])),
                         PacketFields::None => "".to_string()
-                    },
-                    packet)
+                    })
             },
             Transaction(_, transaction_id) => {
                 let transaction = self.transaction(*transaction_id)?;
