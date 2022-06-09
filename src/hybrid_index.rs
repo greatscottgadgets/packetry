@@ -35,6 +35,11 @@ pub trait Number {
     fn to_u64(&self) -> u64;
 }
 
+impl Number for u64 {
+    fn from_u64(i: u64) -> Self { i }
+    fn to_u64(&self) -> u64 { *self }
+}
+
 impl<T> Number for Id<T> {
     fn from_u64(i: u64) -> Self { Id::<T>::from(i) }
     fn to_u64(&self) -> u64 { self.value }

@@ -330,6 +330,8 @@ impl<'cap> Decoder<'cap> {
         self.capture.endpoint_traffic.set(endpoint_id, EndpointTraffic {
             transaction_ids: HybridIndex::new(1)?,
             transfer_index: HybridIndex::new(1)?,
+            data_index: HybridIndex::new(1)?,
+            total_data: 0,
         });
         let ep_state = EndpointState::Idle as u8;
         self.last_endpoint_state.push(ep_state);
@@ -437,13 +439,14 @@ impl<'cap> Decoder<'cap> {
 
     fn transfer_status(&mut self) -> Result<DecodeStatus, CaptureError> {
         let next = self.transaction_state.first;
+        let endpoint_id = self.current_endpoint_id()?;
         let ep_data = self.current_endpoint_data()?;
         let dev_data = self.current_device_data()?;
         let (ep_type, ep_max) = dev_data.endpoint_details(ep_data.address);
         let success = self.transaction_state.completed();
-        let length = self.transaction_state.payload.len();
+        let length = self.transaction_state.payload.len() as u64;
         let short = match ep_max {
-            Some(max) => length < max,
+            Some(max) => length < max as u64,
             None      => false
         };
         use PID::*;
@@ -520,6 +523,11 @@ impl<'cap> Decoder<'cap> {
             // This can be either an actual transfer, or a polling
             // group used to collect NAKed transactions.
             (_, Malformed, IN | OUT) => {
+                let ep_traf = self.capture.endpoint_traffic(endpoint_id)?;
+                ep_traf.data_index.push(ep_traf.total_data)?;
+                if success {
+                    ep_traf.total_data += length;
+                }
                 let ep_data = self.current_endpoint_data_mut()?;
                 ep_data.last_success = success;
                 if success && short {
@@ -534,8 +542,13 @@ impl<'cap> Decoder<'cap> {
             // IN or OUT may then be repeated.
             (_, IN, IN) |
             (_, OUT, OUT) => {
-                if success != ep_data.last_success {
-                    // We went from polling to transferring, or vice versa.
+                let success_changed = success != ep_data.last_success;
+                let ep_traf = self.capture.endpoint_traffic(endpoint_id)?;
+                ep_traf.data_index.push(ep_traf.total_data)?;
+                if success {
+                    ep_traf.total_data += length;
+                }
+                if success_changed {
                     let ep_data = self.current_endpoint_data_mut()?;
                     ep_data.last_success = success;
                     if success && short {

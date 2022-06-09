@@ -147,6 +147,8 @@ impl std::fmt::Display for EndpointType {
 pub struct EndpointTraffic {
     pub transaction_ids: HybridIndex<TransactionId>,
     pub transfer_index: HybridIndex<EndpointTransactionId>,
+    pub data_index: HybridIndex<u64>,
+    pub total_data: u64,
 }
 
 pub struct DeviceData {
