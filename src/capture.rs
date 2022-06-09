@@ -704,7 +704,10 @@ impl ItemSource<TrafficItem> for Capture {
                             data.crc,
                             packet.len() - 3,
                             Bytes(&packet[1 .. packet.len() - 2])),
-                        PacketFields::None => "".to_string()
+                        PacketFields::None => match pid {
+                            PID::Malformed => format!(": {:02X?}", packet),
+                            _ => "".to_string()
+                        }
                     })
             },
             Transaction(_, transaction_id) => {

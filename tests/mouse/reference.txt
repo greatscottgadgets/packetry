@@ -1,6 +1,6 @@
 1 invalid groups
  1 malformed packets
-  Malformed packet
+  Malformed packet: [FF]
 Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
  SETUP transaction, ACK
   SETUP packet on 0.0, CRC 02
