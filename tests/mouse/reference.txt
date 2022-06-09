@@ -35,7 +35,7 @@ Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
   ACK packet
  OUT transaction with 0 data bytes, ACK
   OUT packet on 0.0, CRC 02
-  DATA1 packet with CRC 0000 and 0 data bytes: ''
+  DATA1 packet with CRC 0000 and no data
   ACK packet
 Setting address to 4 for device 0
  SETUP transaction, ACK
@@ -47,7 +47,7 @@ Setting address to 4 for device 0
   NAK packet
  IN transaction with 0 data bytes, ACK
   IN packet on 0.0, CRC 02
-  DATA1 packet with CRC 0000 and 0 data bytes: ''
+  DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting device descriptor #0 for device 4, reading 18 bytes
  SETUP transaction, ACK
@@ -83,7 +83,7 @@ Getting device descriptor #0 for device 4, reading 18 bytes
   ACK packet
  OUT transaction with 0 data bytes, ACK
   OUT packet on 4.0, CRC 05
-  DATA1 packet with CRC 0000 and 0 data bytes: ''
+  DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting configuration descriptor #0 for device 4, reading 9 bytes
  SETUP transaction, ACK
@@ -109,7 +109,7 @@ Getting configuration descriptor #0 for device 4, reading 9 bytes
   ACK packet
  OUT transaction with 0 data bytes, ACK
   OUT packet on 4.0, CRC 05
-  DATA1 packet with CRC 0000 and 0 data bytes: ''
+  DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting configuration descriptor #0 for device 4, reading 34 bytes
  SETUP transaction, ACK
@@ -165,7 +165,7 @@ Getting configuration descriptor #0 for device 4, reading 34 bytes
   ACK packet
  OUT transaction with 0 data bytes, ACK
   OUT packet on 4.0, CRC 05
-  DATA1 packet with CRC 0000 and 0 data bytes: ''
+  DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting string descriptor #0 for device 4, reading 4 of 255 requested bytes
  SETUP transaction, ACK
@@ -184,7 +184,7 @@ Getting string descriptor #0 for device 4, reading 4 of 255 requested bytes
   ACK packet
  OUT transaction with 0 data bytes, ACK
   OUT packet on 4.0, CRC 05
-  DATA1 packet with CRC 0000 and 0 data bytes: ''
+  DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting string descriptor #2, language 0x0409 for device 4, reading 36 of 255 requested bytes: 'USB Optical Mouse'
  SETUP transaction, ACK
@@ -234,7 +234,7 @@ Getting string descriptor #2, language 0x0409 for device 4, reading 36 of 255 re
   ACK packet
  OUT transaction with 0 data bytes, ACK
   OUT packet on 4.0, CRC 05
-  DATA1 packet with CRC 0000 and 0 data bytes: ''
+  DATA1 packet with CRC 0000 and no data
   ACK packet
 Setting configuration 1 for device 4
  SETUP transaction, ACK
@@ -357,7 +357,7 @@ Setting configuration 1 for device 4
   NAK packet
  IN transaction with 0 data bytes, ACK
   IN packet on 4.0, CRC 05
-  DATA1 packet with CRC 0000 and 0 data bytes: ''
+  DATA1 packet with CRC 0000 and no data
   ACK packet
 Class request #10, index 0, value 0 for interface 4.0
  SETUP transaction, ACK
@@ -369,7 +369,7 @@ Class request #10, index 0, value 0 for interface 4.0
   NAK packet
  IN transaction with 0 data bytes, ACK
   IN packet on 4.0, CRC 05
-  DATA1 packet with CRC 0000 and 0 data bytes: ''
+  DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting unknown descriptor #0 for interface 4.0, reading 75 bytes
  SETUP transaction, ACK
@@ -454,7 +454,7 @@ Getting unknown descriptor #0 for interface 4.0, reading 75 bytes
   ACK packet
  OUT transaction with 0 data bytes, ACK
   OUT packet on 4.0, CRC 05
-  DATA1 packet with CRC 0000 and 0 data bytes: ''
+  DATA1 packet with CRC 0000 and no data
   ACK packet
 Polling 423 times for interrupt transfer on endpoint 4.1 IN
  IN transaction, NAK

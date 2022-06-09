@@ -812,7 +812,7 @@ Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
   ACK packet
  OUT transaction with 0 data bytes, ACK
   OUT packet on 0.0, CRC 02
-  DATA1 packet with CRC 0000 and 0 data bytes: ''
+  DATA1 packet with CRC 0000 and no data
   ACK packet
 Setting address to 29 for device 0
  SETUP transaction, ACK
@@ -824,7 +824,7 @@ Setting address to 29 for device 0
   NAK packet
  IN transaction with 0 data bytes, ACK
   IN packet on 0.0, CRC 02
-  DATA1 packet with CRC 0000 and 0 data bytes: ''
+  DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting device descriptor #0 for device 29, reading 18 bytes
  SETUP transaction, ACK
@@ -837,7 +837,7 @@ Getting device descriptor #0 for device 29, reading 18 bytes
   ACK packet
  OUT transaction with 0 data bytes, ACK
   OUT packet on 29.0, CRC 08
-  DATA1 packet with CRC 0000 and 0 data bytes: ''
+  DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting configuration descriptor #0 for device 29, reading 9 bytes
  SETUP transaction, ACK
@@ -853,7 +853,7 @@ Getting configuration descriptor #0 for device 29, reading 9 bytes
   ACK packet
  OUT transaction with 0 data bytes, ACK
   OUT packet on 29.0, CRC 08
-  DATA1 packet with CRC 0000 and 0 data bytes: ''
+  DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting configuration descriptor #0 for device 29, reading 32 bytes
  SETUP transaction, ACK
@@ -866,7 +866,7 @@ Getting configuration descriptor #0 for device 29, reading 32 bytes
   ACK packet
  OUT transaction with 0 data bytes, ACK
   OUT packet on 29.0, CRC 08
-  DATA1 packet with CRC 0000 and 0 data bytes: ''
+  DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting string descriptor #0 for device 29, reading 4 of 255 requested bytes
  SETUP transaction, ACK
@@ -879,7 +879,7 @@ Getting string descriptor #0 for device 29, reading 4 of 255 requested bytes
   ACK packet
  OUT transaction with 0 data bytes, ACK
   OUT packet on 29.0, CRC 08
-  DATA1 packet with CRC 0000 and 0 data bytes: ''
+  DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting string descriptor #2, language 0x0409 for device 29, reading 22 of 255 requested bytes: 'HackRF One'
  SETUP transaction, ACK
@@ -892,7 +892,7 @@ Getting string descriptor #2, language 0x0409 for device 29, reading 22 of 255 r
   ACK packet
  OUT transaction with 0 data bytes, ACK
   OUT packet on 29.0, CRC 08
-  DATA1 packet with CRC 0000 and 0 data bytes: ''
+  DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting string descriptor #1, language 0x0409 for device 29, reading 40 of 255 requested bytes: 'Great Scott Gadgets'
  SETUP transaction, ACK
@@ -908,7 +908,7 @@ Getting string descriptor #1, language 0x0409 for device 29, reading 40 of 255 r
   ACK packet
  OUT transaction with 0 data bytes, ACK
   OUT packet on 29.0, CRC 08
-  DATA1 packet with CRC 0000 and 0 data bytes: ''
+  DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting string descriptor #4, language 0x0409 for device 29, reading 66 of 255 requested bytes: '0000000000000000325866e6215c4023'
  SETUP transaction, ACK
@@ -925,7 +925,7 @@ Getting string descriptor #4, language 0x0409 for device 29, reading 66 of 255 r
   ACK packet
  OUT transaction with 0 data bytes, ACK
   OUT packet on 29.0, CRC 08
-  DATA1 packet with CRC 0000 and 0 data bytes: ''
+  DATA1 packet with CRC 0000 and no data
   ACK packet
 Setting configuration 1 for device 29
  SETUP transaction, ACK
@@ -937,7 +937,7 @@ Setting configuration 1 for device 29
   NAK packet
  IN transaction with 0 data bytes, ACK
   IN packet on 29.0, CRC 08
-  DATA1 packet with CRC 0000 and 0 data bytes: ''
+  DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting string descriptor #3, language 0x0409 for device 29, reading 24 of 255 requested bytes: 'Transceiver'
  SETUP transaction, ACK
@@ -950,7 +950,7 @@ Getting string descriptor #3, language 0x0409 for device 29, reading 24 of 255 r
   ACK packet
  OUT transaction with 0 data bytes, SOF
   OUT packet on 29.0, CRC 08
-  DATA1 packet with CRC 0000 and 0 data bytes: ''
+  DATA1 packet with CRC 0000 and no data
   ACK packet
   SOF packet with frame number 382, CRC 1F
   SOF packet with frame number 382, CRC 1F

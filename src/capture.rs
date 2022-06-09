@@ -696,6 +696,9 @@ impl ItemSource<TrafficItem> for Capture {
                             token.device_address(),
                             token.endpoint_number(),
                             token.crc()),
+                        PacketFields::Data(data) if packet.len() <= 3 => format!(
+                            " with CRC {:04X} and no data",
+                            data.crc),
                         PacketFields::Data(data) => format!(
                             " with CRC {:04X} and {} data bytes: {}",
                             data.crc,
