@@ -415,6 +415,33 @@ impl Capture {
         Ok(start .. end)
     }
 
+    fn transfer_bytes(&mut self,
+                      endpoint_id: EndpointId,
+                      transaction_range: &Range<EndpointTransactionId>,
+                      max_length: usize)
+        -> Result<Vec<u8>, CaptureError>
+    {
+        let transaction_ids = self.endpoint_traffic(endpoint_id)?
+                                  .transaction_ids
+                                  .get_range(transaction_range)?;
+        let mut transactions = self.completed_transactions(transaction_ids);
+        let mut result = Vec::new();
+        while let Some(transaction) = transactions.next(self) {
+            let data_packet_id = transaction.packet_id_range.start + 1;
+            let packet_byte_range = self.packet_index.target_range(
+                data_packet_id, self.packet_data.len())?;
+            let data_byte_range =
+                packet_byte_range.start + 1 .. packet_byte_range.end - 2;
+            let data = self.packet_data.get_range(data_byte_range)?;
+            result.extend_from_slice(&data);
+            if result.len() >= max_length {
+                result.truncate(max_length);
+                break
+            }
+        }
+        Ok(result)
+    }
+
     fn endpoint_state(&mut self, transfer_id: TransferId)
         -> Result<Vec<u8>, CaptureError>
     {
@@ -712,12 +739,19 @@ impl ItemSource<TrafficItem> for Capture {
                         let ep_type_string = format!("{}", endpoint_type);
                         let ep_type_lower = ep_type_string.to_lowercase();
                         match (transaction.successful(), starting) {
-                            (true, true) => format!(
-                                "{} transfer of {} on endpoint {}",
-                                ep_type_string,
-                                fmt_size(self.transfer_byte_range(endpoint_id,
-                                                                  &range)?.len()),
-                                endpoint),
+                            (true, true) => {
+                                let byte_range =
+                                    self.transfer_byte_range(endpoint_id,
+                                                             &range)?;
+                                let length = byte_range.len();
+                                let display_bytes =
+                                    self.transfer_bytes(endpoint_id,
+                                                        &range, 100)?;
+                                format!(
+                                    "{} transfer of {} on endpoint {}: {:02X?}",
+                                    ep_type_string, fmt_size(length), endpoint,
+                                    display_bytes)
+                            },
                             (true, false) => format!(
                                 "End of {} transfer on endpoint {}",
                                 ep_type_lower, endpoint),

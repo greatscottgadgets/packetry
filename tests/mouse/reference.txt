@@ -1726,7 +1726,7 @@ Polling 423 times for interrupt transfer on endpoint 4.1 IN
  IN transaction, NAK
   IN packet on 4.1, CRC 13: [69, 84, 98]
   NAK packet: [5A]
-Interrupt transfer of 154 bytes on endpoint 4.1 IN
+Interrupt transfer of 154 bytes on endpoint 4.1 IN: [01, 00, FF, 0F, 00, 00, 00, 01, 00, FE, 0F, 00, 00, 00, 01, 00, FC, FF, FF, 00, 00, 01, 00, FA, FF, FF, 00, 00, 01, 00, F7, EF, FF, 00, 00, 01, 00, F3, DF, FF, 00, 00, 01, 00, ED, DF, FF, 00, 00, 01, 00, EB, DF, FF, 00, 00, 01, 00, EE, CF, FF, 00, 00, 01, 00, EF, CF, FF, 00, 00, 01, 00, F1, CF, FF, 00, 00, 01, 00, F4, CF, FF, 00, 00, 01, 00, F7, BF, FF, 00, 00, 01, 00, F8, AF, FF, 00, 00, 01, 00]
  IN transaction with 7 data bytes, ACK
   IN packet on 4.1, CRC 13: [69, 84, 98]
   DATA0 packet with 7 data bytes and CRC 3FE3: [C3, 01, 00, FF, 0F, 00, 00, 00, E3, 3F]
@@ -1822,7 +1822,7 @@ Polling 2 times for interrupt transfer on endpoint 4.1 IN
  IN transaction, NAK
   IN packet on 4.1, CRC 13: [69, 84, 98]
   NAK packet: [5A]
-Interrupt transfer of 798 bytes on endpoint 4.1 IN
+Interrupt transfer of 798 bytes on endpoint 4.1 IN: [01, 00, 00, 00, 00, 00, 00, 01, 00, 03, 10, 00, 00, 00, 01, 00, 08, 20, 00, 00, 00, 01, 00, 0C, 50, 00, 00, 00, 01, 00, 0F, 60, 00, 00, 00, 01, 00, 12, 60, 00, 00, 00, 01, 00, 14, 70, 00, 00, 00, 01, 00, 19, 90, 00, 00, 00, 01, 00, 18, 80, 00, 00, 00, 01, 00, 18, 90, 00, 00, 00, 01, 00, 18, 80, 00, 00, 00, 01, 00, 17, 80, 00, 00, 00, 01, 00, 15, 70, 00, 00, 00, 01, 00, 13, 70, 00, 00, 00, 01, 00]
  IN transaction with 7 data bytes, ACK
   IN packet on 4.1, CRC 13: [69, 84, 98]
   DATA0 packet with 7 data bytes and CRC 3FF4: [C3, 01, 00, 00, 00, 00, 00, 00, F4, 3F]
@@ -2283,7 +2283,7 @@ Polling 1 times for interrupt transfer on endpoint 4.1 IN
  IN transaction, NAK
   IN packet on 4.1, CRC 13: [69, 84, 98]
   NAK packet: [5A]
-Interrupt transfer of 154 bytes on endpoint 4.1 IN
+Interrupt transfer of 154 bytes on endpoint 4.1 IN: [01, 00, FE, FF, FF, 00, 00, 01, 00, 00, 00, 00, 00, 00, 01, 00, 05, 10, 00, 00, 00, 01, 00, 09, 20, 00, 00, 00, 01, 00, 0D, 20, 00, 00, 00, 01, 00, 10, 10, 00, 00, 00, 01, 00, 10, 00, 00, 00, 00, 01, 00, 10, F0, FF, 00, 00, 01, 00, 0E, E0, FF, 00, 00, 01, 00, 0D, E0, FF, 00, 00, 01, 00, 0C, D0, FF, 00, 00, 01, 00, 07, E0, FF, 00, 00, 01, 00, 01, D0, FF, 00, 00, 01, 00, FE, DF, FF, 00, 00, 01, 00]
  IN transaction with 7 data bytes, ACK
   IN packet on 4.1, CRC 13: [69, 84, 98]
   DATA0 packet with 7 data bytes and CRC CFDD: [C3, 01, 00, FE, FF, FF, 00, 00, DD, CF]
