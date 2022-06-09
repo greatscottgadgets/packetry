@@ -62,6 +62,11 @@ impl TransactionState {
             // Additional SOFs extend this "transaction", more may follow.
             (_, Some(SOF), SOF) => DecodeStatus::Continue,
 
+            // A malformed packet is grouped with previous malformed packets.
+            (_, Some(Malformed), Malformed) => DecodeStatus::Continue,
+            // If preceded by any other packet, it starts a new transaction.
+            (_, _, Malformed) => DecodeStatus::New,
+
             // SETUP must be followed by DATA0.
             (_, Some(SETUP), DATA0) => {
                 // The packet must have the correct size.

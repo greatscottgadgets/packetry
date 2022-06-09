@@ -666,6 +666,8 @@ impl ItemSource<TrafficItem> for Capture {
                 match (transaction.start_pid, transaction.payload_size()) {
                     (PID::SOF, _) => format!(
                         "{} SOF packets", transaction.packet_count()),
+                    (PID::Malformed, _) => format!(
+                        "{} malformed packets", transaction.packet_count()),
                     (pid, None) => format!(
                         "{} transaction, {}", pid, transaction.end_pid),
                     (pid, Some(size)) => format!(

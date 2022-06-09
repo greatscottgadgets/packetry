@@ -1,5 +1,5 @@
 1 invalid groups
- Malformed transaction, Malformed
+ 1 malformed packets
   Malformed packet: [FF]
 Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
  SETUP transaction, ACK
