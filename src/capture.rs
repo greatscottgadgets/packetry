@@ -284,6 +284,22 @@ pub fn fmt_index<T>(idx: &HybridIndex<T>) -> String
             fmt_size(idx.size()))
 }
 
+struct Bytes<'src>(&'src [u8]);
+
+impl std::fmt::Display for Bytes<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if self.0.iter().all(|c| {*c > 0 && *c < 0x80}) {
+            write!(f, "'{}'",
+                String::from_utf8(
+                    self.0.iter()
+                          .flat_map(|c| {std::ascii::escape_default(*c)})
+                          .collect::<Vec<u8>>()).unwrap())
+        } else {
+            write!(f, "{:02X?}", self.0)
+        }
+    }
+}
+
 pub struct CompletedTransactions {
     transaction_ids: Vec<TransactionId>,
     index: usize,
@@ -748,9 +764,9 @@ impl ItemSource<TrafficItem> for Capture {
                                     self.transfer_bytes(endpoint_id,
                                                         &range, 100)?;
                                 format!(
-                                    "{} transfer of {} on endpoint {}: {:02X?}",
+                                    "{} transfer of {} on endpoint {}: {}",
                                     ep_type_string, fmt_size(length), endpoint,
-                                    display_bytes)
+                                    Bytes(&display_bytes))
                             },
                             (true, false) => format!(
                                 "End of {} transfer on endpoint {}",
