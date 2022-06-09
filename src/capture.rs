@@ -489,7 +489,7 @@ impl Capture {
     {
         let transaction_ids = self.endpoint_traffic(endpoint_id)?
                                   .transaction_ids
-                                  .get_range(range)?;
+                                  .get_range(&range)?;
         let mut transactions = self.completed_transactions(transaction_ids);
         let fields = match transactions.next(self) {
             Some(transaction) if transaction.start_pid == PID::SETUP => {

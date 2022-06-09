@@ -135,7 +135,7 @@ impl<T: Number + Copy> HybridIndex<T> {
         }
     }
 
-    pub fn get_range(&mut self, range: Range<Id<T>>)
+    pub fn get_range(&mut self, range: &Range<Id<T>>)
         -> Result<Vec<T>, HybridIndexError>
     {
         let mut result = Vec::new();
@@ -181,7 +181,7 @@ impl<T: Number + Copy> HybridIndex<T> {
             start..end
         } else {
             let limit = Id::<T>::from(id.value + 2);
-            let vec = self.get_range(id .. limit)?;
+            let vec = self.get_range(&(id .. limit))?;
             let start = vec[0];
             let end = vec[1];
             start..end
@@ -251,7 +251,7 @@ mod tests {
             let start = Id::<Id<u8>>::from(i as u64);
             let vrng = start .. end;
             let xrng = i as usize .. n as usize;
-            let vr = v.get_range(vrng).unwrap();
+            let vr = v.get_range(&vrng).unwrap();
             let xr = &expected[xrng];
             assert!(vr == xr);
         }
@@ -260,7 +260,7 @@ mod tests {
             let end = Id::<Id<u8>>::from(i as u64);
             let vrng = start .. end;
             let xrng = 0 as usize .. i as usize;
-            let vr = v.get_range(vrng).unwrap();
+            let vr = v.get_range(&vrng).unwrap();
             let xr = &expected[xrng];
             assert!(vr == xr);
         }
@@ -269,7 +269,7 @@ mod tests {
             let end = Id::<Id<u8>>::from(i + 10 as u64);
             let vrng = start .. end;
             let xrng = i as usize .. (i + 10) as usize;
-            let vr = v.get_range(vrng).unwrap();
+            let vr = v.get_range(&vrng).unwrap();
             let xr = &expected[xrng];
             assert!(vr == xr);
         }
