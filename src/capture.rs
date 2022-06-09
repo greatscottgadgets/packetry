@@ -397,10 +397,10 @@ impl Capture {
             ep_transfer_id, ep_traf.transaction_ids.len())?)
     }
 
-    fn transfer_length(&mut self,
-                       endpoint_id: EndpointId,
-                       range: &Range<EndpointTransactionId>)
-        -> Result<u64, CaptureError>
+    fn transfer_byte_range(&mut self,
+                           endpoint_id: EndpointId,
+                           range: &Range<EndpointTransactionId>)
+        -> Result<Range<u64>, CaptureError>
     {
         let ep_traf = self.endpoint_traffic(endpoint_id)?;
         let index = &mut ep_traf.data_index;
@@ -412,7 +412,7 @@ impl Capture {
         } else {
             index.get(last)?
         };
-        Ok(end - start)
+        Ok(start .. end)
     }
 
     fn endpoint_state(&mut self, transfer_id: TransferId)
@@ -715,8 +715,8 @@ impl ItemSource<TrafficItem> for Capture {
                             (true, true) => format!(
                                 "{} transfer of {} on endpoint {}",
                                 ep_type_string,
-                                fmt_size(self.transfer_length(endpoint_id,
-                                                              &range)?),
+                                fmt_size(self.transfer_byte_range(endpoint_id,
+                                                                  &range)?.len()),
                                 endpoint),
                             (true, false) => format!(
                                 "End of {} transfer on endpoint {}",
