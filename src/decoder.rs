@@ -28,7 +28,7 @@ struct EndpointData {
     address: EndpointAddr,
     transfer_id: Option<EndpointTransferId>,
     transaction_count: u64,
-    last: PID,
+    last: Option<PID>,
     last_success: bool,
     setup: Option<SetupFields>,
     payload: Vec<u8>,
@@ -36,8 +36,8 @@ struct EndpointData {
 
 #[derive(Default)]
 struct TransactionState {
-    first: PID,
-    last: PID,
+    first: Option<PID>,
+    last: Option<PID>,
     start: Option<PacketId>,
     count: u64,
     endpoint_id: Option<EndpointId>,
@@ -58,12 +58,12 @@ impl TransactionState {
 
             // SOF when there is no existing transaction starts a new
             // "transaction" representing an idle period on the bus.
-            (_, Malformed, SOF) => DecodeStatus::New,
+            (_, None, SOF) => DecodeStatus::New,
             // Additional SOFs extend this "transaction", more may follow.
-            (_, SOF, SOF) => DecodeStatus::Continue,
+            (_, Some(SOF), SOF) => DecodeStatus::Continue,
 
             // SETUP must be followed by DATA0.
-            (_, SETUP, DATA0) => {
+            (_, Some(SETUP), DATA0) => {
                 // The packet must have the correct size.
                 match packet.len() {
                     11 => {
@@ -76,12 +76,12 @@ impl TransactionState {
                 }
             }
             // ACK then completes the transaction.
-            (SETUP, DATA0, ACK) => DecodeStatus::Done,
+            (Some(SETUP), Some(DATA0), ACK) => DecodeStatus::Done,
 
             // IN may be followed by NAK or STALL, completing transaction.
-            (_, IN, NAK | STALL) => DecodeStatus::Done,
+            (_, Some(IN), NAK | STALL) => DecodeStatus::Done,
             // IN or OUT may be followed by DATA0 or DATA1, wait for status.
-            (_, IN | OUT, DATA0 | DATA1) => {
+            (_, Some(IN | OUT), DATA0 | DATA1) => {
                 if packet.len() >= 3 {
                     let range = 1 .. (packet.len() - 2);
                     self.payload = packet[range].to_vec();
@@ -91,9 +91,9 @@ impl TransactionState {
                 }
             },
             // An ACK or NYET then completes the transaction.
-            (IN | OUT, DATA0 | DATA1, ACK | NYET) => DecodeStatus::Done,
+            (Some(IN | OUT), Some(DATA0 | DATA1), ACK | NYET) => DecodeStatus::Done,
             // OUT may also be completed by NAK or STALL.
-            (OUT, DATA0 | DATA1, NAK | STALL) => DecodeStatus::Done,
+            (Some(OUT), Some(DATA0 | DATA1), NAK | STALL) => DecodeStatus::Done,
 
             // Any other case is not a valid part of a transaction.
             _ => DecodeStatus::Invalid,
@@ -105,8 +105,8 @@ impl TransactionState {
         // A transaction is completed if it has 3 valid packets and is
         // acknowledged with an ACK or NYET handshake.
         match (self.count, self.last) {
-            (3, ACK | NYET) => true,
-            (..)            => false
+            (3, Some(ACK | NYET)) => true,
+            (..)                  => false
         }
     }
 }
@@ -240,7 +240,7 @@ impl<'cap> Decoder<'cap> {
         let state = &mut self.transaction_state;
         state.start = Some(packet_id);
         state.count = 1;
-        state.first = pid;
+        state.first = Some(pid);
         state.last = state.first;
         self.transaction_state.endpoint_id = Some(
             match PacketFields::from_packet(packet) {
@@ -256,7 +256,7 @@ impl<'cap> Decoder<'cap> {
     fn transaction_append(&mut self, pid: PID) {
         let state = &mut self.transaction_state;
         state.count += 1;
-        state.last = pid;
+        state.last = Some(pid);
     }
 
     fn transaction_end(&mut self)
@@ -266,8 +266,8 @@ impl<'cap> Decoder<'cap> {
         let state = &mut self.transaction_state;
         state.start = None;
         state.count = 0;
-        state.first = PID::Malformed;
-        state.last = PID::Malformed;
+        state.first = None;
+        state.last = None;
         state.setup = None;
         Ok(())
     }
@@ -322,7 +322,7 @@ impl<'cap> Decoder<'cap> {
             device_id,
             transfer_id: None,
             transaction_count: 0,
-            last: PID::Malformed,
+            last: None,
             last_success: false,
             setup: None,
             payload: Vec::new(),
@@ -438,7 +438,7 @@ impl<'cap> Decoder<'cap> {
     }
 
     fn transfer_status(&mut self) -> Result<DecodeStatus, CaptureError> {
-        let next = self.transaction_state.first;
+        let next = self.transaction_state.first.ok_or(IndexError)?;
         let endpoint_id = self.current_endpoint_id()?;
         let ep_data = self.current_endpoint_data()?;
         let dev_data = self.current_device_data()?;
@@ -477,10 +477,10 @@ impl<'cap> Decoder<'cap> {
                         // If there is data to transfer, setup stage is
                         // followed by IN/OUT at data stage in the direction
                         // of the request. IN/OUT may then be repeated.
-                        (In,  true, SETUP, IN ) |
-                        (Out, true, SETUP, OUT) |
-                        (In,  true, IN,    IN ) |
-                        (Out, true, OUT,   OUT) => {
+                        (In,  true, Some(SETUP), IN ) |
+                        (Out, true, Some(SETUP), OUT) |
+                        (In,  true, Some(IN),    IN ) |
+                        (Out, true, Some(OUT),   OUT) => {
                             if success {
                                 let payload =
                                     self.transaction_state.payload.clone();
@@ -498,10 +498,10 @@ impl<'cap> Decoder<'cap> {
                         // followed by IN/OUT at status stage in the opposite
                         // direction to the request. If there is data, then
                         // the status stage follows the data stage.
-                        (In,  false, SETUP, OUT) |
-                        (Out, false, SETUP, IN ) |
-                        (In,  true,  IN,    OUT) |
-                        (Out, true,  OUT,   IN ) => {
+                        (In,  false, Some(SETUP), OUT) |
+                        (Out, false, Some(SETUP), IN ) |
+                        (In,  true,  Some(IN),    OUT) |
+                        (Out, true,  Some(OUT),   IN ) => {
                             if success {
                                 let fields_copy = *fields;
                                 self.decode_request(fields_copy)?;
@@ -522,7 +522,7 @@ impl<'cap> Decoder<'cap> {
             // with no transfer in progress, starts a new transfer.
             // This can be either an actual transfer, or a polling
             // group used to collect NAKed transactions.
-            (_, Malformed, IN | OUT) => {
+            (_, None, IN | OUT) => {
                 let ep_traf = self.capture.endpoint_traffic(endpoint_id)?;
                 ep_traf.data_index.push(ep_traf.total_data)?;
                 if success {
@@ -540,8 +540,8 @@ impl<'cap> Decoder<'cap> {
             },
 
             // IN or OUT may then be repeated.
-            (_, IN, IN) |
-            (_, OUT, OUT) => {
+            (_, Some(IN),  IN ) |
+            (_, Some(OUT), OUT) => {
                 let success_changed = success != ep_data.last_success;
                 let ep_traf = self.capture.endpoint_traffic(endpoint_id)?;
                 ep_traf.data_index.push(ep_traf.total_data)?;
@@ -575,10 +575,10 @@ impl<'cap> Decoder<'cap> {
 
             // A SOF group starts a special transfer, unless
             // one is already in progress.
-            (Framing, Malformed, SOF) => DecodeStatus::New,
+            (Framing, None, SOF) => DecodeStatus::New,
 
             // Further SOF groups continue this transfer.
-            (Framing, SOF, SOF) => DecodeStatus::Continue,
+            (Framing, Some(SOF), SOF) => DecodeStatus::Continue,
 
             // Any other case is not a valid part of a transfer.
             _ => DecodeStatus::Invalid
@@ -671,7 +671,7 @@ impl<'cap> Decoder<'cap> {
         }
         let ep_data = self.current_endpoint_data_mut()?;
         ep_data.transaction_count = 0;
-        ep_data.last = PID::Malformed;
+        ep_data.last = None;
         ep_data.payload.clear();
         Ok(())
     }
