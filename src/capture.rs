@@ -257,9 +257,15 @@ pub fn fmt_count(count: u64) -> String {
 }
 
 pub fn fmt_size(size: u64) -> String {
-    match size.file_size(options::BINARY) {
-        Ok(string) => string,
-        Err(e) => format!("<Error: {}>", e)
+    if size == 1 {
+        "1 byte".to_string()
+    } else if size < 1024 {
+        format!("{} bytes", size)
+    } else {
+        match size.file_size(options::BINARY) {
+            Ok(string) => string,
+            Err(e) => format!("<Error: {}>", e)
+        }
     }
 }
 
