@@ -214,12 +214,10 @@ impl<'cap> Decoder<'cap> {
         let pid = PID::from_packet(packet)?;
         match self.transaction_state.status(packet)? {
             DecodeStatus::Single => {
-                self.transaction_end()?;
                 self.transaction_start(packet_id, packet)?;
                 self.transaction_end()?;
             },
             DecodeStatus::New => {
-                self.transaction_end()?;
                 self.transaction_start(packet_id, packet)?;
             },
             DecodeStatus::Continue | DecodeStatus::Retry => {
@@ -230,7 +228,6 @@ impl<'cap> Decoder<'cap> {
                 self.transaction_end()?;
             },
             DecodeStatus::Invalid => {
-                self.transaction_end()?;
                 self.transaction_start(packet_id, packet)?;
                 self.transaction_end()?;
             },
@@ -241,6 +238,8 @@ impl<'cap> Decoder<'cap> {
     fn transaction_start(&mut self, packet_id: PacketId, packet: &[u8])
         -> Result<(), CaptureError>
     {
+        self.add_transaction()?;
+        self.transaction_state = TransactionState::default();
         let pid = PID::from_packet(packet)?;
         let state = &mut self.transaction_state;
         state.start = Some(packet_id);
