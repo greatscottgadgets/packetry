@@ -268,12 +268,7 @@ impl<'cap> Decoder<'cap> {
         -> Result<(), CaptureError>
     {
         self.add_transaction()?;
-        let state = &mut self.transaction_state;
-        state.start = None;
-        state.count = 0;
-        state.first = None;
-        state.last = None;
-        state.setup = None;
+        self.transaction_state = TransactionState::default();
         Ok(())
     }
 
