@@ -440,8 +440,12 @@ impl<'cap> Decoder<'cap> {
         let ep_data = self.current_endpoint_data()?;
         let dev_data = self.current_device_data()?;
         let (ep_type, ep_max) = dev_data.endpoint_details(ep_data.address);
-        let length = self.transaction_state.payload.len();
         let success = self.transaction_state.completed();
+        let length = self.transaction_state.payload.len();
+        let short = match ep_max {
+            Some(max) => length < max,
+            None      => false
+        };
         use PID::*;
         use EndpointType::*;
         use usb::EndpointType::*;
@@ -513,13 +517,17 @@ impl<'cap> Decoder<'cap> {
 
             // An IN or OUT transaction on a non-control endpoint,
             // with no transfer in progress, starts a new transfer.
+            // This can be either an actual transfer, or a polling
+            // group used to collect NAKed transactions.
             (_, Malformed, IN | OUT) => {
                 let ep_data = self.current_endpoint_data_mut()?;
                 ep_data.last_success = success;
-                match (success, ep_max) {
-                    // A short packet ends the new transfer immediately.
-                    (true, Some(max)) if length < max => DecodeStatus::Single,
-                    (..)                              => DecodeStatus::New,
+                if success && short {
+                    // New transfer, ended immediately by a short packet.
+                    DecodeStatus::Single
+                } else {
+                    // Either a new transfer or a new polling group.
+                    DecodeStatus::New
                 }
             },
 
@@ -530,18 +538,24 @@ impl<'cap> Decoder<'cap> {
                     // We went from polling to transferring, or vice versa.
                     let ep_data = self.current_endpoint_data_mut()?;
                     ep_data.last_success = success;
-                    match (success, ep_max) {
-                        // A short packet ends the new transfer immediately.
-                        (true, Some(max)) if length < max => DecodeStatus::Single,
-                        (..)                              => DecodeStatus::New,
+                    if success && short {
+                        // New transfer, ended immediately by a short packet.
+                        DecodeStatus::Single
+                    } else {
+                        // Either a new transfer or a new polling group.
+                        DecodeStatus::New
                     }
                 } else if success {
-                    match ep_max {
+                    // Continuing an ongoing transfer.
+                    if short {
                         // A short packet ends the transfer.
-                        Some(max) if length < max => DecodeStatus::Done,
-                        _                         => DecodeStatus::Continue,
+                        DecodeStatus::Done
+                    } else {
+                        // A full-length packet continues the transfer.
+                        DecodeStatus::Continue
                     }
                 } else {
+                    // Continuing a polling group.
                     DecodeStatus::Retry
                 }
             },
