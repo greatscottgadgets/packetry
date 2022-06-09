@@ -530,7 +530,11 @@ impl<'cap> Decoder<'cap> {
                     // We went from polling to transferring, or vice versa.
                     let ep_data = self.current_endpoint_data_mut()?;
                     ep_data.last_success = success;
-                    DecodeStatus::New
+                    match (success, ep_max) {
+                        // A short packet ends the new transfer immediately.
+                        (true, Some(max)) if length < max => DecodeStatus::Single,
+                        (..)                              => DecodeStatus::New,
+                    }
                 } else if success {
                     match ep_max {
                         // A short packet ends the transfer.
