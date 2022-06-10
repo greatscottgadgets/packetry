@@ -621,12 +621,7 @@ impl<'cap> Decoder<'cap> {
         let endpoint_id = self.current_endpoint_id()?;
         let ep_data = self.current_endpoint_data()?;
         if ep_data.transaction_count > 0 {
-            let transfer_end_id =
-                self.add_transfer_entry(endpoint_id, false)?;
-            if self.last_item_endpoint != Some(endpoint_id) {
-                self.capture.item_index.push(transfer_end_id)?;
-                self.last_item_endpoint = Some(endpoint_id);
-            }
+            self.add_transfer_entry(endpoint_id, false)?;
         }
         let transaction_type = self.transaction_state.first;
         let ep_traf = self.capture.endpoint_traffic(endpoint_id)?;

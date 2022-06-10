@@ -305,7 +305,6 @@ Unidentified transfer of 16 KiB on endpoint 7.1 IN: [FE, FF, 01, FD, 01, FD, 01,
   SOF packet with frame number 996, CRC 06
  1 SOF packets
   SOF packet with frame number 996, CRC 06
-End of unidentified transfer on endpoint 7.1 IN
 Polling 126 times for unidentified transfer on endpoint 7.1 IN
  IN transaction, NAK
   IN packet on 7.1, CRC 1B
@@ -1046,7 +1045,6 @@ Vendor request #1, index 0, value 1 for device 7
   IN packet on 7.0, CRC 0D
   DATA1 packet with CRC 0000 and no data
   ACK packet
-End polling for unidentified transfer on endpoint 7.1 IN
 Unidentified transfer of 16 KiB on endpoint 7.1 IN: [00, FB, 00, FE, FF, FF, 01, FD, 00, FE, FF, FD, 00, FE, 01, FD, 00, FE, FF, FD, 01, 00, 00, FE, 03, 00, 00, FF, 00, FD, 02, FF, 02, FD, 01, FE, 00, FF, FF, FE, 00, FE, 01, 00, 00, FD, 02, FF, 00, FD, 02, FF, 00, FE, 00, FE, 00, FE, 01, FE, 01, FD, 03, FE, 00, FE, 01, FE, 00, FF, 03, FD, 02, FF, 02, FD, 01, FF, 00, FD, FF, 00, 01, FD, 00, FE, 00, FD, 00, FD, 00, FF, 02, FD, FF, FC, 01, FF, 02, FF]
  IN transaction with 512 data bytes, ACK
   IN packet on 7.1, CRC 1B
