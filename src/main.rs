@@ -174,7 +174,7 @@ fn run() -> Result<(), PacketryError> {
             .build();
 
         let listview = create_view::
-            <capture::Item, model::Model, row_data::RowData>(&capture);
+            <capture::TrafficItem, model::TrafficModel, row_data::TrafficRowData>(&capture);
 
         let scrolled_window = gtk::ScrolledWindow::builder()
             .hscrollbar_policy(gtk::PolicyType::Automatic) // Disable horizontal scrolling

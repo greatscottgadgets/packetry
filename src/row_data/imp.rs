@@ -5,10 +5,10 @@ use crate::capture;
 // The actual data structure that stores our values. This is not accessible
 // directly from the outside.
 #[derive(Default)]
-pub struct RowData {
+pub struct TrafficRowData {
     pub summary: RefCell<String>,
     pub connectors: RefCell<String>,
-    pub(super) item: RefCell<Option<capture::Item>>,
+    pub(super) item: RefCell<Option<capture::TrafficItem>>,
 }
 
 #[derive(Default)]
@@ -19,9 +19,9 @@ pub struct DeviceRowData {
 
 // Basic declaration of our type for the GObject type system
 #[glib::object_subclass]
-impl ObjectSubclass for RowData {
-    const NAME: &'static str = "RowData";
-    type Type = super::RowData;
+impl ObjectSubclass for TrafficRowData {
+    const NAME: &'static str = "TrafficRowData";
+    type Type = super::TrafficRowData;
 }
 
 #[glib::object_subclass]
@@ -30,5 +30,5 @@ impl ObjectSubclass for DeviceRowData {
     type Type = super::DeviceRowData;
 }
 
-impl ObjectImpl for RowData {}
+impl ObjectImpl for TrafficRowData {}
 impl ObjectImpl for DeviceRowData {}

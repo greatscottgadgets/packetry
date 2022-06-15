@@ -7,14 +7,14 @@ use crate::capture::{self, Capture, CaptureError};
 
 use std::cell::RefCell;
 use std::sync::{Arc, Mutex};
-use crate::row_data::{RowData, DeviceRowData};
+use crate::row_data::{TrafficRowData, DeviceRowData};
 
 use thiserror::Error;
 
 #[derive(Default)]
-pub struct Model {
+pub struct TrafficModel {
     pub(super) capture: RefCell<Option<Arc<Mutex<Capture>>>>,
-    pub(super) parent: RefCell<Option<capture::Item>>,
+    pub(super) parent: RefCell<Option<capture::TrafficItem>>,
 }
 
 #[derive(Default)]
@@ -25,9 +25,9 @@ pub struct DeviceModel {
 
 /// Basic declaration of our type for the GObject type system
 #[glib::object_subclass]
-impl ObjectSubclass for Model {
-    const NAME: &'static str = "Model";
-    type Type = super::Model;
+impl ObjectSubclass for TrafficModel {
+    const NAME: &'static str = "TrafficModel";
+    type Type = super::TrafficModel;
     type Interfaces = (gio::ListModel,);
 }
 #[glib::object_subclass]
@@ -48,7 +48,7 @@ pub enum ModelError {
     LockError,
 }
 
-impl Model {
+impl TrafficModel {
     fn try_n_items(&self)
         -> Result<u32, ModelError>
     {
@@ -84,8 +84,8 @@ impl Model {
             Ok(string) => string,
             Err(e) => format!("Error: {:?}", e)
         };
-        Ok(Some(RowData::new(Some(item), summary, connectors)
-                        .upcast::<glib::Object>()))
+        Ok(Some(TrafficRowData::new(Some(item), summary, connectors)
+                               .upcast::<glib::Object>()))
     }
 }
 
@@ -126,12 +126,12 @@ impl DeviceModel {
     }
 }
 
-impl ObjectImpl for Model {}
+impl ObjectImpl for TrafficModel {}
 impl ObjectImpl for DeviceModel {}
 
-impl ListModelImpl for Model {
+impl ListModelImpl for TrafficModel {
     fn item_type(&self, _list_model: &Self::Type) -> glib::Type {
-        RowData::static_type()
+        TrafficRowData::static_type()
     }
 
     fn n_items(&self, _list_model: &Self::Type) -> u32 {

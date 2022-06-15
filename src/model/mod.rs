@@ -11,7 +11,7 @@ use crate::capture::{self, Capture};
 
 // Public part of the Model type.
 glib::wrapper! {
-    pub struct Model(ObjectSubclass<imp::Model>) @implements gio::ListModel;
+    pub struct TrafficModel(ObjectSubclass<imp::TrafficModel>) @implements gio::ListModel;
 }
 glib::wrapper! {
     pub struct DeviceModel(ObjectSubclass<imp::DeviceModel>) @implements gio::ListModel;
@@ -24,9 +24,10 @@ pub trait GenericModel<Item> {
 }
 
 // Constructor for new instances. This simply calls glib::Object::new()
-impl GenericModel<capture::Item> for Model {
-    fn new(capture: Arc<Mutex<Capture>>, parent: Option<capture::Item>) -> Model {
-        let mut model: Model = glib::Object::new(&[]).expect("Failed to create Model");
+impl GenericModel<capture::TrafficItem> for TrafficModel {
+    fn new(capture: Arc<Mutex<Capture>>, parent: Option<capture::TrafficItem>) -> Self {
+        let mut model: TrafficModel =
+            glib::Object::new(&[]).expect("Failed to create TrafficModel");
         model.set_capture(capture);
         model.set_parent(parent);
         model
@@ -36,7 +37,7 @@ impl GenericModel<capture::Item> for Model {
         self.imp().capture.replace(Some(capture));
     }
 
-    fn set_parent(&mut self, parent: Option<capture::Item>) {
+    fn set_parent(&mut self, parent: Option<capture::TrafficItem>) {
         self.imp().parent.replace(parent);
     }
 }

@@ -13,17 +13,17 @@ use crate::capture;
 // Public part of the RowData type. This behaves like a normal gtk-rs-style GObject
 // binding
 glib::wrapper! {
-    pub struct RowData(ObjectSubclass<imp::RowData>);
+    pub struct TrafficRowData(ObjectSubclass<imp::TrafficRowData>);
 }
 glib::wrapper! {
     pub struct DeviceRowData(ObjectSubclass<imp::DeviceRowData>);
 }
 
-impl RowData {
-    pub fn new(item: Option<capture::Item>, summary: String, connectors: String)
-        -> RowData
+impl TrafficRowData {
+    pub fn new(item: Option<capture::TrafficItem>, summary: String, connectors: String)
+        -> TrafficRowData
     {
-        let mut row: RowData =
+        let mut row: TrafficRowData =
             glib::Object::new(&[]).expect("Failed to create row data");
         row.set_item(item);
         row.set_summary(summary);
@@ -31,7 +31,7 @@ impl RowData {
         row
     }
 
-    fn set_item(&mut self, item: Option<capture::Item>) {
+    fn set_item(&mut self, item: Option<capture::TrafficItem>) {
         self.imp().item.replace(item);
     }
 
@@ -71,10 +71,10 @@ pub trait GenericRowData<Item> {
     fn get_connectors(&self) -> Option<String>;
 }
 
-impl GenericRowData<capture::Item> for RowData {
+impl GenericRowData<capture::TrafficItem> for TrafficRowData {
     const CONNECTORS: bool = true;
 
-    fn get_item(&self) -> Option<capture::Item> {
+    fn get_item(&self) -> Option<capture::TrafficItem> {
         self.imp().item.borrow().clone()
     }
 

@@ -53,13 +53,13 @@ pub type TransactionId = Id<PacketId>;
 pub type TransferId = Id<TransferIndexEntry>;
 pub type EndpointTransactionId = Id<TransactionId>;
 pub type EndpointTransferId = Id<EndpointTransactionId>;
-pub type ItemId = Id<TransferId>;
+pub type TrafficItemId = Id<TransferId>;
 pub type DeviceId = Id<Device>;
 pub type EndpointId = Id<Endpoint>;
 pub type EndpointStateId = Id<Id<u8>>;
 
 #[derive(Clone)]
-pub enum Item {
+pub enum TrafficItem {
     Transfer(TransferId),
     Transaction(TransferId, TransactionId),
     Packet(TransferId, TransactionId, PacketId),
@@ -373,23 +373,23 @@ impl Capture {
         self.endpoint_traffic.get_mut(idx).ok_or(IndexError)
     }
 
-    pub fn get_item(&mut self, parent: &Option<Item>, index: u64)
-        -> Result<Item, CaptureError>
+    pub fn get_item(&mut self, parent: &Option<TrafficItem>, index: u64)
+        -> Result<TrafficItem, CaptureError>
     {
         match parent {
             None => {
-                let item_id = ItemId::from(index);
+                let item_id = TrafficItemId::from(index);
                 let transfer_id = self.item_index.get(item_id)?;
-                Ok(Item::Transfer(transfer_id))
+                Ok(TrafficItem::Transfer(transfer_id))
             },
             Some(item) => self.get_child(item, index)
         }
     }
 
-    pub fn get_child(&mut self, parent: &Item, index: u64)
-        -> Result<Item, CaptureError>
+    pub fn get_child(&mut self, parent: &TrafficItem, index: u64)
+        -> Result<TrafficItem, CaptureError>
     {
-        use Item::*;
+        use TrafficItem::*;
         Ok(match parent {
             Transfer(transfer_id) =>
                 Transaction(*transfer_id, {
@@ -417,7 +417,7 @@ impl Capture {
                         ep_traf.transaction_ids.len(), ep_transfer_id)
     }
 
-    pub fn item_count(&mut self, parent: &Option<Item>)
+    pub fn item_count(&mut self, parent: &Option<TrafficItem>)
         -> Result<u64, CaptureError>
     {
         match parent {
@@ -426,10 +426,10 @@ impl Capture {
         }
     }
 
-    pub fn child_count(&mut self, parent: &Item)
+    pub fn child_count(&mut self, parent: &TrafficItem)
         -> Result<u64, CaptureError>
     {
-        use Item::*;
+        use TrafficItem::*;
         Ok(match parent {
             Transfer(transfer_id) => {
                 let entry = self.transfer_index.get(*transfer_id)?;
@@ -447,10 +447,10 @@ impl Capture {
         })
     }
 
-    pub fn get_summary(&mut self, item: &Item)
+    pub fn get_summary(&mut self, item: &TrafficItem)
         -> Result<String, CaptureError>
     {
-        use Item::*;
+        use TrafficItem::*;
         Ok(match item {
             Packet(.., packet_id) => {
                 let packet = self.get_packet(*packet_id)?;
@@ -528,11 +528,11 @@ impl Capture {
         })
     }
 
-    pub fn get_connectors(&mut self, item: &Item)
+    pub fn get_connectors(&mut self, item: &TrafficItem)
         -> Result<String, CaptureError>
     {
         use EndpointState::*;
-        use Item::*;
+        use TrafficItem::*;
         let endpoint_count = self.endpoints.len() as usize;
         const MIN_LEN: usize = " └─".len();
         let string_length = MIN_LEN + endpoint_count;
@@ -915,7 +915,7 @@ mod tests {
     use std::io::{BufReader, BufWriter, BufRead, Write};
     use crate::decoder::Decoder;
 
-    fn write_item(cap: &mut Capture, item: &Item, depth: u8,
+    fn write_item(cap: &mut Capture, item: &TrafficItem, depth: u8,
                   writer: &mut dyn Write)
     {
         let summary = cap.get_summary(&item).unwrap();
