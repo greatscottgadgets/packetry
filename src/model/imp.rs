@@ -3,7 +3,7 @@
 use gio::subclass::prelude::*;
 use gtk::{gio, glib, prelude::*};
 
-use crate::capture::{self, Capture, CaptureError};
+use crate::capture::{self, Capture, CaptureError, ItemSource};
 
 use std::cell::RefCell;
 use std::sync::{Arc, Mutex};
@@ -74,17 +74,9 @@ impl TrafficModel {
             },
             None => return Err(ModelError::CaptureNotSet)
         };
-        let item = cap.get_item(&self.parent.borrow(),
-                                position as u64)?;
-        let summary = match cap.get_summary(&item) {
-            Ok(string) => string,
-            Err(e) => format!("Error: {:?}", e)
-        };
-        let connectors = match cap.get_connectors(&item) {
-            Ok(string) => string,
-            Err(e) => format!("Error: {:?}", e)
-        };
-        Ok(Some(TrafficRowData::new(Some(item), summary, connectors)
+        let item = cap.item(&self.parent.borrow(),
+                            position as u64)?;
+        Ok(Some(TrafficRowData::new(Some(item))
                                .upcast::<glib::Object>()))
     }
 }
@@ -101,7 +93,7 @@ impl DeviceModel {
             },
             None => return Err(ModelError::CaptureNotSet)
         };
-        Ok(cap.device_item_count(&self.parent.borrow())? as u32)
+        Ok(cap.item_count(&self.parent.borrow())? as u32)
     }
 
     fn try_item(&self, position: u32)
@@ -115,13 +107,9 @@ impl DeviceModel {
             },
             None => return Err(ModelError::CaptureNotSet)
         };
-        let item = cap.get_device_item(&self.parent.borrow(),
-                                       position as u64)?;
-        let summary = match cap.get_device_summary(&item) {
-            Ok(string) => string,
-            Err(e) => format!("Error: {:?}", e)
-        };
-        Ok(Some(DeviceRowData::new(Some(item), summary)
+        let item = cap.item(&self.parent.borrow(),
+                            position as u64)?;
+        Ok(Some(DeviceRowData::new(Some(item))
                               .upcast::<glib::Object>()))
     }
 }

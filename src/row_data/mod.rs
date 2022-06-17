@@ -6,9 +6,12 @@
 
 mod imp;
 
+use std::sync::{Arc, Mutex};
+use std::ops::DerefMut;
+
 use gtk::glib;
 use gtk::subclass::prelude::*;
-use crate::capture;
+use crate::capture::{Capture, CaptureError, TrafficItem, DeviceItem};
 
 // Public part of the RowData type. This behaves like a normal gtk-rs-style GObject
 // binding
@@ -20,97 +23,94 @@ glib::wrapper! {
 }
 
 impl TrafficRowData {
-    pub fn new(item: Option<capture::TrafficItem>, summary: String, connectors: String)
-        -> TrafficRowData
-    {
-        let mut row: TrafficRowData =
+    pub fn new(item: Option<TrafficItem>) -> TrafficRowData {
+        let row: TrafficRowData =
             glib::Object::new(&[]).expect("Failed to create row data");
-        row.set_item(item);
-        row.set_summary(summary);
-        row.set_connectors(connectors);
+        row.imp().item.replace(item);
         row
-    }
-
-    fn set_item(&mut self, item: Option<capture::TrafficItem>) {
-        self.imp().item.replace(item);
-    }
-
-    fn set_summary(&mut self, summary: String) {
-        self.imp().summary.replace(summary);
-    }
-
-    fn set_connectors(&mut self, connectors: String) {
-        self.imp().connectors.replace(connectors);
     }
 }
 
 impl DeviceRowData {
-    pub fn new(item: Option<capture::DeviceItem>, summary: String) -> DeviceRowData {
-        let mut row: DeviceRowData =
+    pub fn new(item: Option<DeviceItem>) -> DeviceRowData {
+        let row: DeviceRowData =
             glib::Object::new(&[]).expect("Failed to create row data");
-        row.set_item(item);
-        row.set_summary(summary);
+        row.imp().item.replace(item);
         row
-    }
-
-    fn set_item(&mut self, item: Option<capture::DeviceItem>) {
-        self.imp().item.replace(item);
-    }
-
-    fn set_summary(&mut self, summary: String) {
-        self.imp().summary.replace(summary);
     }
 }
 
 pub trait GenericRowData<Item> {
     const CONNECTORS: bool;
     fn get_item(&self) -> Option<Item>;
-    fn child_count(&self, capture: &mut capture::Capture)
-        -> Result<u64, capture::CaptureError>;
-    fn get_summary(&self) -> String;
-    fn get_connectors(&self) -> Option<String>;
+    fn field(&self,
+             capture: &Arc<Mutex<Capture>>,
+             func: Box<dyn
+                Fn(&mut Capture, &Item)
+                    -> Result<String, CaptureError>>)
+        -> String;
 }
 
-impl GenericRowData<capture::TrafficItem> for TrafficRowData {
+impl GenericRowData<TrafficItem> for TrafficRowData {
     const CONNECTORS: bool = true;
 
-    fn get_item(&self) -> Option<capture::TrafficItem> {
+    fn get_item(&self) -> Option<TrafficItem> {
         self.imp().item.borrow().clone()
     }
 
-    fn child_count(&self, capture: &mut capture::Capture)
-        -> Result<u64, capture::CaptureError>
+    fn field(&self,
+             capture: &Arc<Mutex<Capture>>,
+             func: Box<dyn
+                Fn(&mut Capture, &TrafficItem)
+                    -> Result<String, CaptureError>>)
+        -> String
     {
-        capture.item_count(&self.imp().item.borrow())
-    }
-
-    fn get_summary(&self) -> String {
-        self.imp().summary.borrow().clone()
-    }
-
-    fn get_connectors(&self) -> Option<String> {
-        Some(self.imp().connectors.borrow().clone())
+        match self.get_item() {
+            None => "Error: row has no item".to_string(),
+            Some(item) => {
+                match capture.lock() {
+                    Err(_) => "Error: failed to lock capture".to_string(),
+                    Ok(mut guard) => {
+                        let cap = guard.deref_mut();
+                        match func(cap, &item) {
+                            Err(e) => format!("Error: {:?}", e),
+                            Ok(string) => string
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
-impl GenericRowData<capture::DeviceItem> for DeviceRowData {
+impl GenericRowData<DeviceItem> for DeviceRowData {
     const CONNECTORS: bool = false;
 
-    fn get_item(&self) -> Option<capture::DeviceItem> {
+    fn get_item(&self) -> Option<DeviceItem> {
         self.imp().item.borrow().clone()
     }
 
-    fn child_count(&self, capture: &mut capture::Capture)
-        -> Result<u64, capture::CaptureError>
+    fn field(&self,
+             capture: &Arc<Mutex<Capture>>,
+             func: Box<dyn
+                Fn(&mut Capture, &DeviceItem)
+                    -> Result<String, CaptureError>>)
+        -> String
     {
-        capture.device_item_count(&self.imp().item.borrow())
-    }
-
-    fn get_summary(&self) -> String {
-        self.imp().summary.borrow().clone()
-    }
-
-    fn get_connectors(&self) -> Option<String> {
-        None
+        match self.get_item() {
+            None => "Error: row has no item".to_string(),
+            Some(item) => {
+                match capture.lock() {
+                    Err(_) => "Error: failed to lock capture".to_string(),
+                    Ok(mut guard) => {
+                        let cap = guard.deref_mut();
+                        match func(cap, &item) {
+                            Err(e) => format!("Error: {:?}", e),
+                            Ok(string) => string
+                        }
+                    }
+                }
+            }
+        }
     }
 }

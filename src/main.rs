@@ -26,7 +26,7 @@ use model::GenericModel;
 use expander::ExpanderWrapper;
 
 mod capture;
-use capture::{Capture, CaptureError};
+use capture::{Capture, CaptureError, ItemSource};
 
 mod decoder;
 use decoder::Decoder;
@@ -36,21 +36,25 @@ mod file_vec;
 mod hybrid_index;
 mod usb;
 
-fn create_view<Item, Model, RowData>(capture: &Arc<Mutex<Capture>>)
+fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
         -> ListView
     where
         Model: GenericModel<Item> + IsA<ListModel>,
-        RowData: GenericRowData<Item> + IsA<Object>
+        RowData: GenericRowData<Item> + IsA<Object>,
+        Capture: ItemSource<Item>
 {
     let model = Model::new(capture.clone(), None);
     let cap_arc = capture.clone();
     let tree_model = TreeListModel::new(&model, false, false, move |o| {
         match (cap_arc.lock(), o.downcast_ref::<RowData>()) {
-            (Ok(mut cap), Some(row)) => match row.child_count(&mut cap) {
-                Ok(0) | Err(_) => None,
-                Ok(_) => Some(
-                    Model::new(cap_arc.clone(), row.get_item())
-                          .upcast::<ListModel>())
+            (Ok(mut cap), Some(row)) => {
+                let item = row.get_item();
+                match cap.item_count(&item) {
+                    Ok(0) | Err(_) => None,
+                    Ok(_) => Some(
+                        Model::new(cap_arc.clone(), item)
+                              .upcast::<ListModel>())
+                }
             },
             _ => None
         }
@@ -68,6 +72,7 @@ fn create_view<Item, Model, RowData>(capture: &Arc<Mutex<Capture>>)
             list_item.set_child(Some(&expander));
         }
     });
+    let cap_arc = capture.clone();
     factory.connect_bind(move |_, list_item| {
         let treelistrow = list_item
             .item()
@@ -91,15 +96,16 @@ fn create_view<Item, Model, RowData>(capture: &Arc<Mutex<Capture>>)
             .downcast::<Label>()
             .expect("The child must be a Label.");
 
-        let summary = row.get_summary();
+
+        let summary = row.field(&cap_arc, Box::new(Capture::summary));
         text_label.set_text(&summary);
 
         if RowData::CONNECTORS {
             let expander_wrapper = container
                 .downcast::<ExpanderWrapper>()
                 .expect("The child must be a ExpanderWrapper.");
-
-            expander_wrapper.set_connectors(row.get_connectors());
+            let connectors = row.field(&cap_arc, Box::new(Capture::connectors));
+            expander_wrapper.set_connectors(Some(connectors));
             let expander = expander_wrapper.expander();
             expander.set_visible(treelistrow.is_expandable());
             expander.set_expanded(treelistrow.is_expanded());
