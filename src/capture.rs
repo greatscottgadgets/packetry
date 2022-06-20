@@ -920,8 +920,22 @@ impl ItemSource<DeviceItem> for Capture {
         })
     }
 
-    fn connectors(&mut self, _item: &DeviceItem) -> Result<String, CaptureError> {
-        unimplemented!()
+    fn connectors(&mut self, item: &DeviceItem) -> Result<String, CaptureError> {
+        use DeviceItem::*;
+        let depth = match item {
+            Device(..) => 0,
+            DeviceDescriptor(..) => 1,
+            DeviceDescriptorField(..) => 2,
+            Configuration(..) => 1,
+            ConfigurationDescriptor(..) => 2,
+            ConfigurationDescriptorField(..) => 3,
+            Interface(..) => 2,
+            InterfaceDescriptor(..) => 3,
+            InterfaceDescriptorField(..) => 4,
+            EndpointDescriptor(..) => 3,
+            EndpointDescriptorField(..) => 4,
+        };
+        Ok("   ".repeat(depth))
     }
 }
 

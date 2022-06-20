@@ -84,7 +84,7 @@ impl GenericRowData<TrafficItem> for TrafficRowData {
 }
 
 impl GenericRowData<DeviceItem> for DeviceRowData {
-    const CONNECTORS: bool = false;
+    const CONNECTORS: bool = true;
 
     fn get_item(&self) -> Option<DeviceItem> {
         self.imp().item.borrow().clone()
