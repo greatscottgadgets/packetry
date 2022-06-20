@@ -3,8 +3,9 @@ extern crate bitfield;
 use thiserror::Error;
 
 mod model;
-pub mod row_data;
+mod row_data;
 mod expander;
+mod tree_list_model;
 
 use std::sync::{Arc, Mutex};
 
@@ -13,14 +14,13 @@ use gtk::glib::Object;
 use gtk::{
     prelude::*,
     ListView,
-    TreeListModel,
-    TreeListRow,
     SignalListItemFactory,
     SingleSelection,
     Orientation,
 };
-use row_data::GenericRowData;
+
 use model::GenericModel;
+use row_data::GenericRowData;
 use expander::ExpanderWrapper;
 
 mod capture;
@@ -37,41 +37,22 @@ mod usb;
 fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
         -> ListView
     where
+        Item: Copy,
         Model: GenericModel<Item> + IsA<ListModel>,
         RowData: GenericRowData<Item> + IsA<Object>,
         Capture: ItemSource<Item>
 {
-    let model = Model::new(capture.clone(), None);
+    let model = Model::new(capture.clone())
+                      .expect("Failed to create model");
     let cap_arc = capture.clone();
-    let tree_model = TreeListModel::new(&model, false, false, move |o| {
-        match (cap_arc.lock(), o.downcast_ref::<RowData>()) {
-            (Ok(mut cap), Some(row)) => {
-                let item = row.get_item();
-                match cap.item_count(&item) {
-                    Ok(0) | Err(_) => None,
-                    Ok(_) => Some(
-                        Model::new(cap_arc.clone(), item)
-                              .upcast::<ListModel>())
-                }
-            },
-            _ => None
-        }
-    });
-    let selection_model = SingleSelection::new(Some(&tree_model));
+    let selection_model = SingleSelection::new(Some(&model));
     let factory = SignalListItemFactory::new();
     factory.connect_setup(move |_, list_item| {
         let expander = ExpanderWrapper::new();
         list_item.set_child(Some(&expander));
     });
-    let cap_arc = capture.clone();
     factory.connect_bind(move |_, list_item| {
-        let treelistrow = list_item
-            .item()
-            .expect("The item has to exist.")
-            .downcast::<TreeListRow>()
-            .expect("The item has to be a TreeListRow.");
-
-        let row = treelistrow
+        let row = list_item
             .item()
             .expect("The item has to exist.")
             .downcast::<RowData>()
@@ -83,15 +64,20 @@ fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
             .downcast::<ExpanderWrapper>()
             .expect("The child must be a ExpanderWrapper.");
 
-        let summary = row.field(&cap_arc, Box::new(Capture::summary));
+        let node_ref = row.node();
+        let node = node_ref.borrow();
+        let summary = node.field(&cap_arc, Box::new(Capture::summary));
         expander_wrapper.set_text(summary);
-        let connectors = row.field(&cap_arc, Box::new(Capture::connectors));
+        let connectors = node.field(&cap_arc, Box::new(Capture::connectors));
         expander_wrapper.set_connectors(connectors);
         let expander = expander_wrapper.expander();
-        expander.set_visible(treelistrow.is_expandable());
-        expander.set_expanded(treelistrow.is_expanded());
+        expander.set_visible(node.expandable());
+        expander.set_expanded(node.expanded());
+        let model = model.clone();
+        let node_ref = node_ref.clone();
         let handler = expander.connect_expanded_notify(move |expander| {
-            treelistrow.set_expanded(expander.is_expanded());
+            model.set_expanded(&node_ref, expander.is_expanded())
+                 .expect("Failed to expand node")
         });
         expander_wrapper.set_handler(handler);
     });
