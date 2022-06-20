@@ -41,7 +41,6 @@ impl DeviceRowData {
 }
 
 pub trait GenericRowData<Item> {
-    const CONNECTORS: bool;
     fn get_item(&self) -> Option<Item>;
     fn field(&self,
              capture: &Arc<Mutex<Capture>>,
@@ -52,8 +51,6 @@ pub trait GenericRowData<Item> {
 }
 
 impl GenericRowData<TrafficItem> for TrafficRowData {
-    const CONNECTORS: bool = true;
-
     fn get_item(&self) -> Option<TrafficItem> {
         self.imp().item.borrow().clone()
     }
@@ -84,8 +81,6 @@ impl GenericRowData<TrafficItem> for TrafficRowData {
 }
 
 impl GenericRowData<DeviceItem> for DeviceRowData {
-    const CONNECTORS: bool = true;
-
     fn get_item(&self) -> Option<DeviceItem> {
         self.imp().item.borrow().clone()
     }

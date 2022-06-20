@@ -13,8 +13,6 @@ use gtk::glib::Object;
 use gtk::{
     prelude::*,
     ListView,
-    Label,
-    TreeExpander,
     TreeListModel,
     TreeListRow,
     SignalListItemFactory,
@@ -62,15 +60,8 @@ fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
     let selection_model = SingleSelection::new(Some(&tree_model));
     let factory = SignalListItemFactory::new();
     factory.connect_setup(move |_, list_item| {
-        let text_label = Label::new(None);
-        if RowData::CONNECTORS {
-            let expander = ExpanderWrapper::new();
-            list_item.set_child(Some(&expander));
-        } else {
-            let expander = TreeExpander::new();
-            expander.set_child(Some(&text_label));
-            list_item.set_child(Some(&expander));
-        }
+        let expander = ExpanderWrapper::new();
+        list_item.set_child(Some(&expander));
     });
     let cap_arc = capture.clone();
     factory.connect_bind(move |_, list_item| {
@@ -86,63 +77,36 @@ fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
             .downcast::<RowData>()
             .expect("The item has to be RowData.");
 
-        let container = list_item
+        let expander_wrapper = list_item
             .child()
-            .expect("The child has to exist");
-
-        let text_label = container
-            .last_child()
             .expect("The child has to exist")
-            .downcast::<Label>()
-            .expect("The child must be a Label.");
-
+            .downcast::<ExpanderWrapper>()
+            .expect("The child must be a ExpanderWrapper.");
 
         let summary = row.field(&cap_arc, Box::new(Capture::summary));
-        text_label.set_text(&summary);
-
-        if RowData::CONNECTORS {
-            let expander_wrapper = container
-                .downcast::<ExpanderWrapper>()
-                .expect("The child must be a ExpanderWrapper.");
-            let connectors = row.field(&cap_arc, Box::new(Capture::connectors));
-            expander_wrapper.set_connectors(Some(connectors));
-            let expander = expander_wrapper.expander();
-            expander.set_visible(treelistrow.is_expandable());
-            expander.set_expanded(treelistrow.is_expanded());
-            let handler = expander.connect_expanded_notify(move |expander| {
-                treelistrow.set_expanded(expander.is_expanded());
-            });
-            expander_wrapper.set_handler(handler);
-        } else {
-            let tree_expander = container
-                .downcast::<TreeExpander>()
-                .expect("The child must be a TreeExpander.");
-
-            tree_expander.set_list_row(Some(&treelistrow));
-        }
+        expander_wrapper.set_text(summary);
+        let connectors = row.field(&cap_arc, Box::new(Capture::connectors));
+        expander_wrapper.set_connectors(connectors);
+        let expander = expander_wrapper.expander();
+        expander.set_visible(treelistrow.is_expandable());
+        expander.set_expanded(treelistrow.is_expanded());
+        let handler = expander.connect_expanded_notify(move |expander| {
+            treelistrow.set_expanded(expander.is_expanded());
+        });
+        expander_wrapper.set_handler(handler);
     });
     factory.connect_unbind(move |_, list_item| {
-        let container = list_item
+        let expander_wrapper = list_item
             .child()
-            .expect("The child has to exist");
+            .expect("The child has to exist")
+            .downcast::<ExpanderWrapper>()
+            .expect("The child must be a ExpanderWrapper.");
 
-        if RowData::CONNECTORS {
-            let expander_wrapper = container
-                .downcast::<ExpanderWrapper>()
-                .expect("The child must be a ExpanderWrapper.");
-
-            let expander = expander_wrapper.expander();
-            match expander_wrapper.take_handler() {
-                Some(handler) => expander.disconnect(handler),
-                None => panic!("Handler was not set")
-            };
-        } else {
-            let tree_expander = container
-                .downcast::<TreeExpander>()
-                .expect("The child must be a TreeExpander.");
-
-            tree_expander.set_list_row(None);
-        }
+        let expander = expander_wrapper.expander();
+        match expander_wrapper.take_handler() {
+            Some(handler) => expander.disconnect(handler),
+            None => panic!("Handler was not set")
+        };
     });
     ListView::new(Some(&selection_model), Some(&factory))
 }

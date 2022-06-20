@@ -45,11 +45,13 @@ impl ExpanderWrapper {
         self.imp().handler.take().take()
     }
 
-    pub fn set_connectors(&self, connectors: Option<String>) {
-        if let Some(text) = connectors {
-            self.imp().conn_label.borrow_mut().set_markup(
-                    format!("<tt>{}</tt>", text).as_str());
-        }
+    pub fn set_text(&self, text: String) {
+        self.imp().text_label.borrow_mut().set_text(&text);
+    }
+
+    pub fn set_connectors(&self, connectors: String) {
+        self.imp().conn_label.borrow_mut().set_markup(
+                format!("<tt>{}</tt>", connectors).as_str());
     }
 }
 
