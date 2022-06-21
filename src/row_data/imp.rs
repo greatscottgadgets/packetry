@@ -1,20 +1,20 @@
 use gtk::glib::{self, subclass::prelude::*};
+use std::rc::Rc;
 use std::cell::RefCell;
-use crate::capture;
+
+use crate::capture::{TrafficItem, DeviceItem};
+use crate::tree_list_model::{TreeNode};
 
 // The actual data structure that stores our values. This is not accessible
 // directly from the outside.
 #[derive(Default)]
 pub struct TrafficRowData {
-    pub summary: RefCell<String>,
-    pub connectors: RefCell<String>,
-    pub(super) item: RefCell<Option<capture::TrafficItem>>,
+    pub(super) node: RefCell<Option<Rc<RefCell<TreeNode<TrafficItem>>>>>,
 }
 
 #[derive(Default)]
 pub struct DeviceRowData {
-    pub summary: RefCell<String>,
-    pub(super) item: RefCell<Option<capture::DeviceItem>>,
+    pub(super) node: RefCell<Option<Rc<RefCell<TreeNode<DeviceItem>>>>>,
 }
 
 // Basic declaration of our type for the GObject type system

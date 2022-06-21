@@ -2,12 +2,15 @@
 
 mod imp;
 
+use std::rc::Rc;
+use std::cell::RefCell;
 use std::sync::{Arc, Mutex};
 
 use gtk::subclass::prelude::*;
 use gtk::{gio, glib};
 
-use crate::capture::{self, Capture};
+use crate::capture::{Capture, TrafficItem, DeviceItem};
+use crate::tree_list_model::{TreeListModel, TreeNode, ModelError};
 
 // Public part of the Model type.
 glib::wrapper! {
@@ -17,47 +20,50 @@ glib::wrapper! {
     pub struct DeviceModel(ObjectSubclass<imp::DeviceModel>) @implements gio::ListModel;
 }
 
-pub trait GenericModel<Item> {
-    fn new(capture: Arc<Mutex<Capture>>, parent: Option<Item>) -> Self;
-    fn set_capture(&mut self, capture: Arc<Mutex<Capture>>);
-    fn set_parent(&mut self, parent: Option<Item>);
+pub trait GenericModel<Item> where Self: Sized {
+    fn new(capture: Arc<Mutex<Capture>>) -> Result<Self, ModelError>;
+    fn set_expanded(&self,
+                    node: &Rc<RefCell<TreeNode<Item>>>,
+                    expanded: bool)
+        -> Result<(), ModelError>;
 }
 
-// Constructor for new instances. This simply calls glib::Object::new()
-impl GenericModel<capture::TrafficItem> for TrafficModel {
-    fn new(capture: Arc<Mutex<Capture>>, parent: Option<capture::TrafficItem>) -> Self {
-        let mut model: TrafficModel =
+impl GenericModel<TrafficItem> for TrafficModel {
+    fn new(capture: Arc<Mutex<Capture>>) -> Result<Self, ModelError> {
+        let model: TrafficModel =
             glib::Object::new(&[]).expect("Failed to create TrafficModel");
-        model.set_capture(capture);
-        model.set_parent(parent);
-        model
+        let tree = TreeListModel::new(capture)?;
+        model.imp().tree.replace(Some(tree));
+        Ok(model)
     }
 
-    fn set_capture(&mut self, capture: Arc<Mutex<Capture>>) {
-        self.imp().capture.replace(Some(capture));
-    }
-
-    fn set_parent(&mut self, parent: Option<capture::TrafficItem>) {
-        self.imp().parent.replace(parent);
+    fn set_expanded(&self,
+                    node: &Rc<RefCell<TreeNode<TrafficItem>>>,
+                    expanded: bool)
+        -> Result<(), ModelError>
+    {
+        let tree_opt  = self.imp().tree.borrow();
+        let tree = tree_opt.as_ref().unwrap();
+        tree.set_expanded(self, node, expanded)
     }
 }
 
-impl GenericModel<capture::DeviceItem> for DeviceModel {
-    fn new(capture: Arc<Mutex<Capture>>, parent: Option<capture::DeviceItem>)
-        -> DeviceModel
-    {
-        let mut model: DeviceModel =
+impl GenericModel<DeviceItem> for DeviceModel {
+    fn new(capture: Arc<Mutex<Capture>>) -> Result<Self, ModelError> {
+        let model: DeviceModel =
             glib::Object::new(&[]).expect("Failed to create DeviceModel");
-        model.set_capture(capture);
-        model.set_parent(parent);
-        model
+        let tree = TreeListModel::new(capture)?;
+        model.imp().tree.replace(Some(tree));
+        Ok(model)
     }
 
-    fn set_capture(&mut self, capture: Arc<Mutex<Capture>>) {
-        self.imp().capture.replace(Some(capture));
-    }
-
-    fn set_parent(&mut self, parent: Option<capture::DeviceItem>) {
-        self.imp().parent.replace(parent);
+    fn set_expanded(&self,
+                    node: &Rc<RefCell<TreeNode<DeviceItem>>>,
+                    expanded: bool)
+        -> Result<(), ModelError>
+    {
+        let tree_opt  = self.imp().tree.borrow();
+        let tree = tree_opt.as_ref().unwrap();
+        tree.set_expanded(self, node, expanded)
     }
 }

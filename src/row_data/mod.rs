@@ -6,12 +6,14 @@
 
 mod imp;
 
-use std::sync::{Arc, Mutex};
-use std::ops::DerefMut;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 use gtk::glib;
 use gtk::subclass::prelude::*;
-use crate::capture::{Capture, CaptureError, TrafficItem, DeviceItem};
+
+use crate::capture::{TrafficItem, DeviceItem};
+use crate::tree_list_model::TreeNode;
 
 // Public part of the RowData type. This behaves like a normal gtk-rs-style GObject
 // binding
@@ -22,90 +24,33 @@ glib::wrapper! {
     pub struct DeviceRowData(ObjectSubclass<imp::DeviceRowData>);
 }
 
-impl TrafficRowData {
-    pub fn new(item: Option<TrafficItem>) -> TrafficRowData {
-        let row: TrafficRowData =
-            glib::Object::new(&[]).expect("Failed to create row data");
-        row.imp().item.replace(item);
-        row
-    }
-}
-
-impl DeviceRowData {
-    pub fn new(item: Option<DeviceItem>) -> DeviceRowData {
-        let row: DeviceRowData =
-            glib::Object::new(&[]).expect("Failed to create row data");
-        row.imp().item.replace(item);
-        row
-    }
-}
-
-pub trait GenericRowData<Item> {
-    fn get_item(&self) -> Option<Item>;
-    fn field(&self,
-             capture: &Arc<Mutex<Capture>>,
-             func: Box<dyn
-                Fn(&mut Capture, &Item)
-                    -> Result<String, CaptureError>>)
-        -> String;
+pub trait GenericRowData<Item> where Item: Copy {
+    fn new(node: Rc<RefCell<TreeNode<Item>>>) -> Self;
+    fn node(&self) -> Rc<RefCell<TreeNode<Item>>>;
 }
 
 impl GenericRowData<TrafficItem> for TrafficRowData {
-    fn get_item(&self) -> Option<TrafficItem> {
-        self.imp().item.borrow().clone()
+    fn new(node: Rc<RefCell<TreeNode<TrafficItem>>>) -> TrafficRowData {
+        let row: TrafficRowData =
+            glib::Object::new(&[]).expect("Failed to create row data");
+        row.imp().node.replace(Some(node));
+        row
     }
 
-    fn field(&self,
-             capture: &Arc<Mutex<Capture>>,
-             func: Box<dyn
-                Fn(&mut Capture, &TrafficItem)
-                    -> Result<String, CaptureError>>)
-        -> String
-    {
-        match self.get_item() {
-            None => "Error: row has no item".to_string(),
-            Some(item) => {
-                match capture.lock() {
-                    Err(_) => "Error: failed to lock capture".to_string(),
-                    Ok(mut guard) => {
-                        let cap = guard.deref_mut();
-                        match func(cap, &item) {
-                            Err(e) => format!("Error: {:?}", e),
-                            Ok(string) => string
-                        }
-                    }
-                }
-            }
-        }
+    fn node(&self) -> Rc<RefCell<TreeNode<TrafficItem>>> {
+        self.imp().node.borrow().as_ref().unwrap().clone()
     }
 }
 
 impl GenericRowData<DeviceItem> for DeviceRowData {
-    fn get_item(&self) -> Option<DeviceItem> {
-        self.imp().item.borrow().clone()
+    fn new(node: Rc<RefCell<TreeNode<DeviceItem>>>) -> DeviceRowData {
+        let row: DeviceRowData =
+            glib::Object::new(&[]).expect("Failed to create row data");
+        row.imp().node.replace(Some(node));
+        row
     }
 
-    fn field(&self,
-             capture: &Arc<Mutex<Capture>>,
-             func: Box<dyn
-                Fn(&mut Capture, &DeviceItem)
-                    -> Result<String, CaptureError>>)
-        -> String
-    {
-        match self.get_item() {
-            None => "Error: row has no item".to_string(),
-            Some(item) => {
-                match capture.lock() {
-                    Err(_) => "Error: failed to lock capture".to_string(),
-                    Ok(mut guard) => {
-                        let cap = guard.deref_mut();
-                        match func(cap, &item) {
-                            Err(e) => format!("Error: {:?}", e),
-                            Ok(string) => string
-                        }
-                    }
-                }
-            }
-        }
+    fn node(&self) -> Rc<RefCell<TreeNode<DeviceItem>>> {
+        self.imp().node.borrow().as_ref().unwrap().clone()
     }
 }

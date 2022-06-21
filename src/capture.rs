@@ -58,14 +58,14 @@ pub type DeviceId = Id<Device>;
 pub type EndpointId = Id<Endpoint>;
 pub type EndpointStateId = Id<Id<u8>>;
 
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 pub enum TrafficItem {
     Transfer(TransferId),
     Transaction(TransferId, TransactionId),
     Packet(TransferId, TransactionId, PacketId),
 }
 
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 pub enum DeviceItem {
     Device(DeviceId),
     DeviceDescriptor(DeviceId),
