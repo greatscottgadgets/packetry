@@ -53,19 +53,19 @@ pub type TransactionId = Id<PacketId>;
 pub type TransferId = Id<TransferIndexEntry>;
 pub type EndpointTransactionId = Id<TransactionId>;
 pub type EndpointTransferId = Id<EndpointTransactionId>;
-pub type ItemId = Id<TransferId>;
+pub type TrafficItemId = Id<TransferId>;
 pub type DeviceId = Id<Device>;
 pub type EndpointId = Id<Endpoint>;
 pub type EndpointStateId = Id<Id<u8>>;
 
-#[derive(Clone)]
-pub enum Item {
+#[derive(Copy, Clone)]
+pub enum TrafficItem {
     Transfer(TransferId),
     Transaction(TransferId, TransactionId),
     Packet(TransferId, TransactionId, PacketId),
 }
 
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 pub enum DeviceItem {
     Device(DeviceId),
     DeviceDescriptor(DeviceId),
@@ -373,40 +373,6 @@ impl Capture {
         self.endpoint_traffic.get_mut(idx).ok_or(IndexError)
     }
 
-    pub fn get_item(&mut self, parent: &Option<Item>, index: u64)
-        -> Result<Item, CaptureError>
-    {
-        match parent {
-            None => {
-                let item_id = ItemId::from(index);
-                let transfer_id = self.item_index.get(item_id)?;
-                Ok(Item::Transfer(transfer_id))
-            },
-            Some(item) => self.get_child(item, index)
-        }
-    }
-
-    pub fn get_child(&mut self, parent: &Item, index: u64)
-        -> Result<Item, CaptureError>
-    {
-        use Item::*;
-        Ok(match parent {
-            Transfer(transfer_id) =>
-                Transaction(*transfer_id, {
-                    let entry = self.transfer_index.get(*transfer_id)?;
-                    let endpoint_id = entry.endpoint_id();
-                    let ep_transfer_id = entry.transfer_id();
-                    let ep_traf = self.endpoint_traffic(endpoint_id)?;
-                    let offset = ep_traf.transfer_index.get(ep_transfer_id)?;
-                    ep_traf.transaction_ids.get(offset + index)?
-                }),
-            Transaction(transfer_id, transaction_id) =>
-                Packet(*transfer_id, *transaction_id, {
-                    self.transaction_index.get(*transaction_id)? + index}),
-            Packet(..) => return Err(IndexError)
-        })
-    }
-
     fn transfer_range(&mut self, entry: &TransferIndexEntry)
         -> Result<Range<EndpointTransactionId>, CaptureError>
     {
@@ -415,228 +381,6 @@ impl Capture {
         let ep_traf = self.endpoint_traffic(endpoint_id)?;
         get_index_range(&mut ep_traf.transfer_index,
                         ep_traf.transaction_ids.len(), ep_transfer_id)
-    }
-
-    pub fn item_count(&mut self, parent: &Option<Item>)
-        -> Result<u64, CaptureError>
-    {
-        match parent {
-            None => Ok(self.item_index.len()),
-            Some(item) => self.child_count(item)
-        }
-    }
-
-    pub fn child_count(&mut self, parent: &Item)
-        -> Result<u64, CaptureError>
-    {
-        use Item::*;
-        Ok(match parent {
-            Transfer(transfer_id) => {
-                let entry = self.transfer_index.get(*transfer_id)?;
-                if entry.is_start() {
-                    self.transfer_range(&entry)?.len()
-                } else {
-                    0
-                }
-            },
-            Transaction(_, transaction_id) => {
-                get_index_range(&mut self.transaction_index,
-                    self.packet_index.len(), *transaction_id)?.len()
-            },
-            Packet(..) => 0,
-        })
-    }
-
-    pub fn get_summary(&mut self, item: &Item)
-        -> Result<String, CaptureError>
-    {
-        use Item::*;
-        Ok(match item {
-            Packet(.., packet_id) => {
-                let packet = self.get_packet(*packet_id)?;
-                let pid = PID::from(*packet.get(0).ok_or(IndexError)?);
-                format!("{} packet{}: {:02X?}",
-                    pid,
-                    match PacketFields::from_packet(&packet) {
-                        PacketFields::SOF(sof) => format!(
-                            " with frame number {}, CRC {:02X}",
-                            sof.frame_number(),
-                            sof.crc()),
-                        PacketFields::Token(token) => format!(
-                            " on {}.{}, CRC {:02X}",
-                            token.device_address(),
-                            token.endpoint_number(),
-                            token.crc()),
-                        PacketFields::Data(data) => format!(
-                            " with {} data bytes and CRC {:04X}",
-                            packet.len() - 3,
-                            data.crc),
-                        PacketFields::None => "".to_string()
-                    },
-                    packet)
-            },
-            Transaction(_, transaction_id) => {
-                let transaction = self.get_transaction(*transaction_id)?;
-                let count = transaction.packet_count();
-                match (transaction.pid, transaction.payload_size()) {
-                    (PID::SOF, _) => format!(
-                        "{} SOF packets", count),
-                    (pid, None) => format!(
-                        "{} transaction, {} packets", pid, count),
-                    (pid, Some(size)) => format!(
-                        "{} transaction, {} packets with {} data bytes",
-                        pid, count, size)
-                }
-            },
-            Transfer(transfer_id) => {
-                let entry = self.transfer_index.get(*transfer_id)?;
-                let endpoint_id = entry.endpoint_id();
-                let endpoint = self.endpoints.get(endpoint_id)?;
-                let device_id = endpoint.device_id();
-                let dev_data = &self.get_device_data(&device_id)?;
-                let num = endpoint.number();
-                let ep_type = dev_data.endpoint_type(num);
-                if !entry.is_start() {
-                    return Ok(match ep_type {
-                        EndpointType::Invalid =>
-                            "End of invalid groups".to_string(),
-                        EndpointType::Framing =>
-                            "End of SOF groups".to_string(),
-                        endpoint_type => format!(
-                            "{:?} transfer ending on endpoint {}.{}",
-                            endpoint_type, endpoint.device_address(), num)
-                    })
-                }
-                let range = self.transfer_range(&entry)?;
-                let count = range.len();
-                match ep_type {
-                    EndpointType::Invalid => format!(
-                        "{} invalid groups", count),
-                    EndpointType::Framing => format!(
-                        "{} SOF groups", count),
-                    EndpointType::Control => {
-                        let transfer = self.get_control_transfer(
-                            endpoint.device_address(), endpoint_id, range)?;
-                        transfer.summary()
-                    },
-                    endpoint_type => format!(
-                        "{:?} transfer with {} transactions on endpoint {}.{}",
-                        endpoint_type, count,
-                        endpoint.device_address(), endpoint.number())
-                }
-            }
-        })
-    }
-
-    pub fn get_connectors(&mut self, item: &Item)
-        -> Result<String, CaptureError>
-    {
-        use EndpointState::*;
-        use Item::*;
-        let endpoint_count = self.endpoints.len() as usize;
-        const MIN_LEN: usize = " └─".len();
-        let string_length = MIN_LEN + endpoint_count;
-        let mut connectors = String::with_capacity(string_length);
-        let transfer_id = match item {
-            Transfer(i) | Transaction(i, _) | Packet(i, ..) => *i
-        };
-        let entry = self.transfer_index.get(transfer_id)?;
-        let endpoint_id = entry.endpoint_id();
-        let endpoint_state = self.get_endpoint_state(transfer_id)?;
-        let extended = self.transfer_extended(endpoint_id, transfer_id)?;
-        let ep_traf = self.endpoint_traffic(endpoint_id)?;
-        let last_transaction = match item {
-            Transaction(_, transaction_id) | Packet(_, transaction_id, _) => {
-                let range = get_index_range(&mut ep_traf.transfer_index,
-                    ep_traf.transaction_ids.len(), entry.transfer_id())?;
-                let last_transaction_id =
-                    ep_traf.transaction_ids.get(range.end - 1)?;
-                *transaction_id == last_transaction_id
-            }, _ => false
-        };
-        let last_packet = match item {
-            Packet(_, transaction_id, packet_id) => {
-                let range = get_index_range(&mut self.transaction_index,
-                    self.packet_index.len(), *transaction_id)?;
-                *packet_id == range.end - 1
-            }, _ => false
-        };
-        let last = last_transaction && !extended;
-        let mut thru = false;
-        for (i, &state) in endpoint_state.iter().enumerate() {
-            let state = EndpointState::from(state);
-            let active = state != Idle;
-            let on_endpoint = i == endpoint_id.value as usize;
-            thru |= match (item, state, on_endpoint) {
-                (Transfer(..), Starting | Ending, _) => true,
-                (Transaction(..) | Packet(..), _, true) => on_endpoint,
-                _ => false,
-            };
-            connectors.push(match item {
-                Transfer(..) => {
-                    match (state, thru) {
-                        (Idle,     _    ) => ' ',
-                        (Starting, _    ) => '○',
-                        (Ongoing,  false) => '│',
-                        (Ongoing,  true ) => '┼',
-                        (Ending,   _    ) => '└',
-                    }
-                },
-                Transaction(..) => {
-                    match (on_endpoint, active, thru, last) {
-                        (false, false, false, _    ) => ' ',
-                        (false, false, true,  _    ) => '─',
-                        (false, true,  false, _    ) => '│',
-                        (false, true,  true,  _    ) => '┼',
-                        (true,  _,     _,     false) => '├',
-                        (true,  _,     _,     true ) => '└',
-                    }
-                },
-                Packet(..) => {
-                    match (on_endpoint, active, last) {
-                        (false, false, _    ) => ' ',
-                        (false, true,  _    ) => '│',
-                        (true,  _,     false) => '│',
-                        (true,  _,     true ) => ' ',
-                    }
-                }
-            });
-        };
-        let state_length = endpoint_state.len();
-        for _ in state_length..endpoint_count {
-            connectors.push(match item {
-                Transfer(..)    => '─',
-                Transaction(..) => '─',
-                Packet(..)      => ' ',
-            });
-        }
-        connectors.push_str(
-            match (item, last_packet) {
-                (Transfer(_), _) if entry.is_start() => "─",
-                (Transfer(_), _)                     => "──□ ",
-                (Transaction(..), _)                 => "───",
-                (Packet(..), false)                  => "    ├──",
-                (Packet(..), true)                   => "    └──",
-            }
-        );
-        Ok(connectors)
-    }
-
-    fn transfer_extended(&mut self,
-                         endpoint_id: EndpointId,
-                         transfer_id: TransferId)
-        -> Result<bool, CaptureError>
-    {
-        use EndpointState::*;
-        let count = self.transfer_index.len();
-        if transfer_id.value + 1 >= count {
-            return Ok(false);
-        };
-        let state = self.get_endpoint_state(transfer_id + 1)?;
-        Ok(match state.get(endpoint_id.value as usize) {
-            Some(ep_state) => EndpointState::from(*ep_state) == Ongoing,
-            None => false
-        })
     }
 
     fn get_endpoint_state(&mut self, transfer_id: TransferId)
@@ -735,20 +479,301 @@ impl Capture {
         })
     }
 
-    pub fn get_device_item(&mut self, parent: &Option<DeviceItem>, index: u64)
+    pub fn get_device_data(&self, id: &DeviceId)
+        -> Result<&DeviceData, CaptureError>
+    {
+        self.device_data.get(id.value as usize).ok_or(IndexError)
+    }
+
+    pub fn get_device_data_mut(&mut self, id: &DeviceId)
+        -> Result<&mut DeviceData, CaptureError>
+    {
+        self.device_data.get_mut(id.value as usize).ok_or(IndexError)
+    }
+
+    fn transfer_extended(&mut self,
+                         endpoint_id: EndpointId,
+                         transfer_id: TransferId)
+        -> Result<bool, CaptureError>
+    {
+        use EndpointState::*;
+        let count = self.transfer_index.len();
+        if transfer_id.value + 1 >= count {
+            return Ok(false);
+        };
+        let state = self.get_endpoint_state(transfer_id + 1)?;
+        Ok(match state.get(endpoint_id.value as usize) {
+            Some(ep_state) => EndpointState::from(*ep_state) == Ongoing,
+            None => false
+        })
+    }
+}
+
+pub trait ItemSource<Item> {
+    fn item(&mut self, parent: &Option<Item>, index: u64) -> Result<Item, CaptureError>;
+    fn child_item(&mut self, parent: &Item, index: u64) -> Result<Item, CaptureError>;
+    fn item_count(&mut self, parent: &Option<Item>) -> Result<u64, CaptureError>;
+    fn child_count(&mut self, parent: &Item) -> Result<u64, CaptureError>;
+    fn summary(&mut self, item: &Item) -> Result<String, CaptureError>;
+    fn connectors(&mut self, item: &Item) -> Result<String, CaptureError>;
+}
+
+impl ItemSource<TrafficItem> for Capture {
+    fn item(&mut self, parent: &Option<TrafficItem>, index: u64)
+        -> Result<TrafficItem, CaptureError>
+    {
+        match parent {
+            None => {
+                let item_id = TrafficItemId::from(index);
+                let transfer_id = self.item_index.get(item_id)?;
+                Ok(TrafficItem::Transfer(transfer_id))
+            },
+            Some(item) => self.child_item(item, index)
+        }
+    }
+
+    fn child_item(&mut self, parent: &TrafficItem, index: u64)
+        -> Result<TrafficItem, CaptureError>
+    {
+        use TrafficItem::*;
+        Ok(match parent {
+            Transfer(transfer_id) =>
+                Transaction(*transfer_id, {
+                    let entry = self.transfer_index.get(*transfer_id)?;
+                    let endpoint_id = entry.endpoint_id();
+                    let ep_transfer_id = entry.transfer_id();
+                    let ep_traf = self.endpoint_traffic(endpoint_id)?;
+                    let offset = ep_traf.transfer_index.get(ep_transfer_id)?;
+                    ep_traf.transaction_ids.get(offset + index)?
+                }),
+            Transaction(transfer_id, transaction_id) =>
+                Packet(*transfer_id, *transaction_id, {
+                    self.transaction_index.get(*transaction_id)? + index}),
+            Packet(..) => return Err(IndexError)
+        })
+    }
+
+    fn item_count(&mut self, parent: &Option<TrafficItem>)
+        -> Result<u64, CaptureError>
+    {
+        match parent {
+            None => Ok(self.item_index.len()),
+            Some(item) => self.child_count(item)
+        }
+    }
+
+    fn child_count(&mut self, parent: &TrafficItem)
+        -> Result<u64, CaptureError>
+    {
+        use TrafficItem::*;
+        Ok(match parent {
+            Transfer(transfer_id) => {
+                let entry = self.transfer_index.get(*transfer_id)?;
+                if entry.is_start() {
+                    self.transfer_range(&entry)?.len()
+                } else {
+                    0
+                }
+            },
+            Transaction(_, transaction_id) => {
+                get_index_range(&mut self.transaction_index,
+                    self.packet_index.len(), *transaction_id)?.len()
+            },
+            Packet(..) => 0,
+        })
+    }
+
+    fn summary(&mut self, item: &TrafficItem)
+        -> Result<String, CaptureError>
+    {
+        use TrafficItem::*;
+        Ok(match item {
+            Packet(.., packet_id) => {
+                let packet = self.get_packet(*packet_id)?;
+                let pid = PID::from(*packet.get(0).ok_or(IndexError)?);
+                format!("{} packet{}: {:02X?}",
+                    pid,
+                    match PacketFields::from_packet(&packet) {
+                        PacketFields::SOF(sof) => format!(
+                            " with frame number {}, CRC {:02X}",
+                            sof.frame_number(),
+                            sof.crc()),
+                        PacketFields::Token(token) => format!(
+                            " on {}.{}, CRC {:02X}",
+                            token.device_address(),
+                            token.endpoint_number(),
+                            token.crc()),
+                        PacketFields::Data(data) => format!(
+                            " with {} data bytes and CRC {:04X}",
+                            packet.len() - 3,
+                            data.crc),
+                        PacketFields::None => "".to_string()
+                    },
+                    packet)
+            },
+            Transaction(_, transaction_id) => {
+                let transaction = self.get_transaction(*transaction_id)?;
+                let count = transaction.packet_count();
+                match (transaction.pid, transaction.payload_size()) {
+                    (PID::SOF, _) => format!(
+                        "{} SOF packets", count),
+                    (pid, None) => format!(
+                        "{} transaction, {} packets", pid, count),
+                    (pid, Some(size)) => format!(
+                        "{} transaction, {} packets with {} data bytes",
+                        pid, count, size)
+                }
+            },
+            Transfer(transfer_id) => {
+                let entry = self.transfer_index.get(*transfer_id)?;
+                let endpoint_id = entry.endpoint_id();
+                let endpoint = self.endpoints.get(endpoint_id)?;
+                let device_id = endpoint.device_id();
+                let dev_data = &self.get_device_data(&device_id)?;
+                let num = endpoint.number();
+                let ep_type = dev_data.endpoint_type(num);
+                if !entry.is_start() {
+                    return Ok(match ep_type {
+                        EndpointType::Invalid =>
+                            "End of invalid groups".to_string(),
+                        EndpointType::Framing =>
+                            "End of SOF groups".to_string(),
+                        endpoint_type => format!(
+                            "{:?} transfer ending on endpoint {}.{}",
+                            endpoint_type, endpoint.device_address(), num)
+                    })
+                }
+                let range = self.transfer_range(&entry)?;
+                let count = range.len();
+                match ep_type {
+                    EndpointType::Invalid => format!(
+                        "{} invalid groups", count),
+                    EndpointType::Framing => format!(
+                        "{} SOF groups", count),
+                    EndpointType::Control => {
+                        let transfer = self.get_control_transfer(
+                            endpoint.device_address(), endpoint_id, range)?;
+                        transfer.summary()
+                    },
+                    endpoint_type => format!(
+                        "{:?} transfer with {} transactions on endpoint {}.{}",
+                        endpoint_type, count,
+                        endpoint.device_address(), endpoint.number())
+                }
+            }
+        })
+    }
+
+    fn connectors(&mut self, item: &TrafficItem)
+        -> Result<String, CaptureError>
+    {
+        use EndpointState::*;
+        use TrafficItem::*;
+        let endpoint_count = self.endpoints.len() as usize;
+        const MIN_LEN: usize = " └─".len();
+        let string_length = MIN_LEN + endpoint_count;
+        let mut connectors = String::with_capacity(string_length);
+        let transfer_id = match item {
+            Transfer(i) | Transaction(i, _) | Packet(i, ..) => *i
+        };
+        let entry = self.transfer_index.get(transfer_id)?;
+        let endpoint_id = entry.endpoint_id();
+        let endpoint_state = self.get_endpoint_state(transfer_id)?;
+        let extended = self.transfer_extended(endpoint_id, transfer_id)?;
+        let ep_traf = self.endpoint_traffic(endpoint_id)?;
+        let last_transaction = match item {
+            Transaction(_, transaction_id) | Packet(_, transaction_id, _) => {
+                let range = get_index_range(&mut ep_traf.transfer_index,
+                    ep_traf.transaction_ids.len(), entry.transfer_id())?;
+                let last_transaction_id =
+                    ep_traf.transaction_ids.get(range.end - 1)?;
+                *transaction_id == last_transaction_id
+            }, _ => false
+        };
+        let last_packet = match item {
+            Packet(_, transaction_id, packet_id) => {
+                let range = get_index_range(&mut self.transaction_index,
+                    self.packet_index.len(), *transaction_id)?;
+                *packet_id == range.end - 1
+            }, _ => false
+        };
+        let last = last_transaction && !extended;
+        let mut thru = false;
+        for (i, &state) in endpoint_state.iter().enumerate() {
+            let state = EndpointState::from(state);
+            let active = state != Idle;
+            let on_endpoint = i == endpoint_id.value as usize;
+            thru |= match (item, state, on_endpoint) {
+                (Transfer(..), Starting | Ending, _) => true,
+                (Transaction(..) | Packet(..), _, true) => on_endpoint,
+                _ => false,
+            };
+            connectors.push(match item {
+                Transfer(..) => {
+                    match (state, thru) {
+                        (Idle,     _    ) => ' ',
+                        (Starting, _    ) => '○',
+                        (Ongoing,  false) => '│',
+                        (Ongoing,  true ) => '┼',
+                        (Ending,   _    ) => '└',
+                    }
+                },
+                Transaction(..) => {
+                    match (on_endpoint, active, thru, last) {
+                        (false, false, false, _    ) => ' ',
+                        (false, false, true,  _    ) => '─',
+                        (false, true,  false, _    ) => '│',
+                        (false, true,  true,  _    ) => '┼',
+                        (true,  _,     _,     false) => '├',
+                        (true,  _,     _,     true ) => '└',
+                    }
+                },
+                Packet(..) => {
+                    match (on_endpoint, active, last) {
+                        (false, false, _    ) => ' ',
+                        (false, true,  _    ) => '│',
+                        (true,  _,     false) => '│',
+                        (true,  _,     true ) => ' ',
+                    }
+                }
+            });
+        };
+        let state_length = endpoint_state.len();
+        for _ in state_length..endpoint_count {
+            connectors.push(match item {
+                Transfer(..)    => '─',
+                Transaction(..) => '─',
+                Packet(..)      => ' ',
+            });
+        }
+        connectors.push_str(
+            match (item, last_packet) {
+                (Transfer(_), _) if entry.is_start() => "─",
+                (Transfer(_), _)                     => "──□ ",
+                (Transaction(..), _)                 => "───",
+                (Packet(..), false)                  => "    ├──",
+                (Packet(..), true)                   => "    └──",
+            }
+        );
+        Ok(connectors)
+    }
+}
+
+impl ItemSource<DeviceItem> for Capture {
+    fn item(&mut self, parent: &Option<DeviceItem>, index: u64)
         -> Result<DeviceItem, CaptureError>
     {
         match parent {
             None => Ok(DeviceItem::Device(DeviceId::from(index + 1))),
-            Some(item) => self.device_child(item, index)
+            Some(item) => self.child_item(item, index)
         }
     }
 
-    fn device_child(&self, item: &DeviceItem, index: u64)
+    fn child_item(&mut self, parent: &DeviceItem, index: u64)
         -> Result<DeviceItem, CaptureError>
     {
         use DeviceItem::*;
-        Ok(match item {
+        Ok(match parent {
             Device(dev) => match index {
                 0 => DeviceDescriptor(*dev),
                 conf => Configuration(*dev,
@@ -780,32 +805,20 @@ impl Capture {
         })
     }
 
-    pub fn device_item_count(&mut self, parent: &Option<DeviceItem>)
+    fn item_count(&mut self, parent: &Option<DeviceItem>)
         -> Result<u64, CaptureError>
     {
         Ok(match parent {
             None => (self.device_data.len() - 1) as u64,
-            Some(item) => self.device_child_count(item)?,
+            Some(item) => self.child_count(item)?,
         })
     }
 
-    pub fn get_device_data(&self, id: &DeviceId)
-        -> Result<&DeviceData, CaptureError>
-    {
-        self.device_data.get(id.value as usize).ok_or(IndexError)
-    }
-
-    pub fn get_device_data_mut(&mut self, id: &DeviceId)
-        -> Result<&mut DeviceData, CaptureError>
-    {
-        self.device_data.get_mut(id.value as usize).ok_or(IndexError)
-    }
-
-    fn device_child_count(&self, item: &DeviceItem)
+    fn child_count(&mut self, parent: &DeviceItem)
         -> Result<u64, CaptureError>
     {
         use DeviceItem::*;
-        Ok((match item {
+        Ok((match parent {
             Device(dev) =>
                 self.get_device_data(dev)?.configurations.len(),
             DeviceDescriptor(dev) =>
@@ -835,7 +848,7 @@ impl Capture {
         }) as u64)
     }
 
-    pub fn get_device_summary(&mut self, item: &DeviceItem)
+    fn summary(&mut self, item: &DeviceItem)
         -> Result<String, CaptureError>
     {
         use DeviceItem::*;
@@ -906,6 +919,24 @@ impl Capture {
             }
         })
     }
+
+    fn connectors(&mut self, item: &DeviceItem) -> Result<String, CaptureError> {
+        use DeviceItem::*;
+        let depth = match item {
+            Device(..) => 0,
+            DeviceDescriptor(..) => 1,
+            DeviceDescriptorField(..) => 2,
+            Configuration(..) => 1,
+            ConfigurationDescriptor(..) => 2,
+            ConfigurationDescriptorField(..) => 3,
+            Interface(..) => 2,
+            InterfaceDescriptor(..) => 3,
+            InterfaceDescriptorField(..) => 4,
+            EndpointDescriptor(..) => 3,
+            EndpointDescriptorField(..) => 4,
+        };
+        Ok("   ".repeat(depth))
+    }
 }
 
 #[cfg(test)]
@@ -915,18 +946,18 @@ mod tests {
     use std::io::{BufReader, BufWriter, BufRead, Write};
     use crate::decoder::Decoder;
 
-    fn write_item(cap: &mut Capture, item: &Item, depth: u8,
+    fn write_item(cap: &mut Capture, item: &TrafficItem, depth: u8,
                   writer: &mut dyn Write)
     {
-        let summary = cap.get_summary(&item).unwrap();
+        let summary = cap.summary(item).unwrap();
         for _ in 0..depth {
             writer.write(b" ").unwrap();
         }
         writer.write(summary.as_bytes()).unwrap();
         writer.write(b"\n").unwrap();
-        let num_children = cap.child_count(&item).unwrap();
+        let num_children = cap.child_count(item).unwrap();
         for child_id in 0..num_children {
-            let child = cap.get_child(&item, child_id).unwrap();
+            let child = cap.child_item(item, child_id).unwrap();
             write_item(cap, &child, depth + 1, writer);
         }
     }
@@ -955,7 +986,7 @@ mod tests {
                     let mut out_writer = BufWriter::new(out_file);
                     let num_items = cap.item_index.len();
                     for item_id in 0 .. num_items {
-                        let item = cap.get_item(&None, item_id).unwrap();
+                        let item = cap.item(&None, item_id).unwrap();
                         write_item(&mut cap, &item, 0, &mut out_writer);
                     }
                 }

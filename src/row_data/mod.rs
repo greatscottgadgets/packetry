@@ -6,111 +6,51 @@
 
 mod imp;
 
+use std::rc::Rc;
+use std::cell::RefCell;
+
 use gtk::glib;
 use gtk::subclass::prelude::*;
-use crate::capture;
+
+use crate::capture::{TrafficItem, DeviceItem};
+use crate::tree_list_model::TreeNode;
 
 // Public part of the RowData type. This behaves like a normal gtk-rs-style GObject
 // binding
 glib::wrapper! {
-    pub struct RowData(ObjectSubclass<imp::RowData>);
+    pub struct TrafficRowData(ObjectSubclass<imp::TrafficRowData>);
 }
 glib::wrapper! {
     pub struct DeviceRowData(ObjectSubclass<imp::DeviceRowData>);
 }
 
-impl RowData {
-    pub fn new(item: Option<capture::Item>, summary: String, connectors: String)
-        -> RowData
-    {
-        let mut row: RowData =
+pub trait GenericRowData<Item> where Item: Copy {
+    fn new(node: Rc<RefCell<TreeNode<Item>>>) -> Self;
+    fn node(&self) -> Rc<RefCell<TreeNode<Item>>>;
+}
+
+impl GenericRowData<TrafficItem> for TrafficRowData {
+    fn new(node: Rc<RefCell<TreeNode<TrafficItem>>>) -> TrafficRowData {
+        let row: TrafficRowData =
             glib::Object::new(&[]).expect("Failed to create row data");
-        row.set_item(item);
-        row.set_summary(summary);
-        row.set_connectors(connectors);
+        row.imp().node.replace(Some(node));
         row
     }
 
-    fn set_item(&mut self, item: Option<capture::Item>) {
-        self.imp().item.replace(item);
-    }
-
-    fn set_summary(&mut self, summary: String) {
-        self.imp().summary.replace(summary);
-    }
-
-    fn set_connectors(&mut self, connectors: String) {
-        self.imp().connectors.replace(connectors);
+    fn node(&self) -> Rc<RefCell<TreeNode<TrafficItem>>> {
+        self.imp().node.borrow().as_ref().unwrap().clone()
     }
 }
 
-impl DeviceRowData {
-    pub fn new(item: Option<capture::DeviceItem>, summary: String) -> DeviceRowData {
-        let mut row: DeviceRowData =
+impl GenericRowData<DeviceItem> for DeviceRowData {
+    fn new(node: Rc<RefCell<TreeNode<DeviceItem>>>) -> DeviceRowData {
+        let row: DeviceRowData =
             glib::Object::new(&[]).expect("Failed to create row data");
-        row.set_item(item);
-        row.set_summary(summary);
+        row.imp().node.replace(Some(node));
         row
     }
 
-    fn set_item(&mut self, item: Option<capture::DeviceItem>) {
-        self.imp().item.replace(item);
-    }
-
-    fn set_summary(&mut self, summary: String) {
-        self.imp().summary.replace(summary);
-    }
-}
-
-pub trait GenericRowData<Item> {
-    const CONNECTORS: bool;
-    fn get_item(&self) -> Option<Item>;
-    fn child_count(&self, capture: &mut capture::Capture)
-        -> Result<u64, capture::CaptureError>;
-    fn get_summary(&self) -> String;
-    fn get_connectors(&self) -> Option<String>;
-}
-
-impl GenericRowData<capture::Item> for RowData {
-    const CONNECTORS: bool = true;
-
-    fn get_item(&self) -> Option<capture::Item> {
-        self.imp().item.borrow().clone()
-    }
-
-    fn child_count(&self, capture: &mut capture::Capture)
-        -> Result<u64, capture::CaptureError>
-    {
-        capture.item_count(&self.imp().item.borrow())
-    }
-
-    fn get_summary(&self) -> String {
-        self.imp().summary.borrow().clone()
-    }
-
-    fn get_connectors(&self) -> Option<String> {
-        Some(self.imp().connectors.borrow().clone())
-    }
-}
-
-impl GenericRowData<capture::DeviceItem> for DeviceRowData {
-    const CONNECTORS: bool = false;
-
-    fn get_item(&self) -> Option<capture::DeviceItem> {
-        self.imp().item.borrow().clone()
-    }
-
-    fn child_count(&self, capture: &mut capture::Capture)
-        -> Result<u64, capture::CaptureError>
-    {
-        capture.device_item_count(&self.imp().item.borrow())
-    }
-
-    fn get_summary(&self) -> String {
-        self.imp().summary.borrow().clone()
-    }
-
-    fn get_connectors(&self) -> Option<String> {
-        None
+    fn node(&self) -> Rc<RefCell<TreeNode<DeviceItem>>> {
+        self.imp().node.borrow().as_ref().unwrap().clone()
     }
 }
