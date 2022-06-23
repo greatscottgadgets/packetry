@@ -5,6 +5,8 @@ use bytemuck::pod_read_unaligned;
 use num_enum::{IntoPrimitive, FromPrimitive};
 use derive_more::{From, Into, Display};
 
+use crate::vec_map::VecMap;
+
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Copy, Clone, Debug, IntoPrimitive, FromPrimitive, PartialEq)]
 #[repr(u8)]
@@ -54,6 +56,11 @@ pub struct DeviceField(pub u8);
 #[derive(Copy, Clone, Debug, PartialEq, Default,
          Pod, Zeroable, From, Into, Display)]
 #[repr(transparent)]
+pub struct StringId(pub u8);
+
+#[derive(Copy, Clone, Debug, PartialEq, Default,
+         Pod, Zeroable, From, Into, Display)]
+#[repr(transparent)]
 pub struct ConfigNum(pub u8);
 
 #[derive(Copy, Clone, Debug, PartialEq, Default,
@@ -80,6 +87,59 @@ pub struct EndpointNum(pub u8);
          Pod, Zeroable, From, Into, Display)]
 #[repr(transparent)]
 pub struct EndpointField(pub u8);
+
+#[derive(Copy, Clone, Debug, PartialEq, Default,
+         Pod, Zeroable, From, Into, Display)]
+#[repr(transparent)]
+pub struct EndpointAddr(pub u8);
+
+impl EndpointAddr {
+    pub fn number(&self) -> EndpointNum {
+        EndpointNum(self.0 & 0x7F)
+    }
+
+    pub fn direction(&self) -> Direction {
+        if self.0 & 0x80 == 0 {
+            Direction::Out
+        } else {
+            Direction::In
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Default,
+         Pod, Zeroable, From, Into, Display)]
+#[repr(transparent)]
+pub struct EndpointAttr(pub u8);
+
+impl EndpointAttr {
+    pub fn endpoint_type(&self) -> EndpointType {
+        EndpointType::from(self.0 & 0x03)
+    }
+}
+
+#[derive(Copy, Clone, Debug, FromPrimitive)]
+#[repr(u8)]
+pub enum EndpointType {
+    #[default]
+    Control     = 0,
+    Isochronous = 1,
+    Bulk        = 2,
+    Interrupt   = 3,
+}
+
+#[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
+#[repr(C)]
+pub struct BCDVersion {
+    pub minor: u8,
+    pub major: u8,
+}
+
+impl std::fmt::Display for BCDVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:X}.{:02X}", self.major, self.minor)
+    }
+}
 
 bitfield! {
     #[derive(Debug)]
@@ -151,7 +211,7 @@ pub enum Recipient {
     Reserved = 4,
 }
 
-#[derive(Copy, Clone, Debug, FromPrimitive)]
+#[derive(Copy, Clone, Debug, Display, FromPrimitive)]
 #[repr(u8)]
 pub enum Direction {
     #[default]
@@ -315,17 +375,17 @@ impl StandardFeature {
 pub struct DeviceDescriptor {
     pub length: u8,
     pub descriptor_type: u8,
-    pub usb: u16,
+    pub usb_version: BCDVersion,
     pub device_class: u8,
     pub device_subclass: u8,
     pub device_protocol: u8,
     pub max_packet_size_0: u8,
     pub vendor_id: u16,
     pub product_id: u16,
-    pub device_version: u16,
-    pub manufacturer_str_id: u8,
-    pub product_str_id: u8,
-    pub serial_str_id: u8,
+    pub device_version: BCDVersion,
+    pub manufacturer_str_id: StringId,
+    pub product_str_id: StringId,
+    pub serial_str_id: StringId,
     pub num_configurations: u8
 }
 
@@ -335,22 +395,21 @@ impl DeviceDescriptor {
         pod_read_unaligned::<DeviceDescriptor>(bytes)
     }
 
-    pub fn field_text(&self, id: DeviceField, strings: &[Option<Vec<u8>>])
+    pub fn field_text(&self, id: DeviceField,
+                      strings: &VecMap<StringId, UTF16ByteVec>)
         -> String
     {
         match id.0 {
         0  => format!("Length: {} bytes", self.length),
         1  => format!("Type: 0x{:02X}", self.descriptor_type),
-        2  => format!("USB Version: {:X}.{:02X}",
-                      self.usb >> 8, self.usb & 0xFF),
+        2  => format!("USB Version: {}", self.usb_version),
         3  => format!("Class: 0x{:02X}", self.device_class),
         4  => format!("Subclass: 0x{:02X}", self.device_subclass),
         5  => format!("Protocol: 0x{:02X}", self.device_protocol),
         6  => format!("Max EP0 packet size: {} bytes", self.max_packet_size_0),
         7  => format!("Vendor ID: 0x{:04X}", self.vendor_id),
         8  => format!("Product ID: 0x{:04X}", self.product_id),
-        9  => format!("Version: {:X}.{:02X}",
-                      self.device_version >> 8, self.device_version & 0xFF),
+        9  => format!("Version: {}", self.device_version),
         10 => format!("Manufacturer string: {}",
                       fmt_str_id(strings, self.manufacturer_str_id)),
         11 => format!("Product string: {}",
@@ -372,14 +431,15 @@ pub struct ConfigDescriptor {
     pub total_length: u16,
     pub num_interfaces: u8,
     pub config_value: u8,
-    pub config_str_id: u8,
+    pub config_str_id: StringId,
     pub attributes: u8,
     pub max_power: u8
 }
 
 #[allow(clippy::useless_format)]
 impl ConfigDescriptor {
-    pub fn field_text(&self, id: ConfigField, strings: &[Option<Vec<u8>>])
+    pub fn field_text(&self, id: ConfigField,
+                      strings: &VecMap<StringId, UTF16ByteVec>)
         -> String
     {
         match id.0 {
@@ -411,12 +471,13 @@ pub struct InterfaceDescriptor {
     pub interface_class: u8,
     pub interface_subclass: u8,
     pub interface_protocol: u8,
-    pub interface_str_id: u8,
+    pub interface_str_id: StringId,
 }
 
 #[allow(clippy::useless_format)]
 impl InterfaceDescriptor {
-    pub fn field_text(&self, id: InterfaceField, strings: &[Option<Vec<u8>>])
+    pub fn field_text(&self, id: InterfaceField,
+                      strings: &VecMap<StringId, UTF16ByteVec>)
         -> String
     {
         match id.0 {
@@ -442,8 +503,8 @@ impl InterfaceDescriptor {
 pub struct EndpointDescriptor {
     pub length: u8,
     pub descriptor_type: u8,
-    pub endpoint_address: u8,
-    pub attributes: u8,
+    pub endpoint_address: EndpointAddr,
+    pub attributes: EndpointAttr,
     pub max_packet_size: u16,
     pub interval: u8,
 }
@@ -454,8 +515,8 @@ impl EndpointDescriptor {
         match id.0 {
         0 => format!("Length: {} bytes", self.length),
         1 => format!("Type: 0x{:02X}", self.descriptor_type),
-        2 => format!("Endpoint address: 0x{:02X}", self.endpoint_address),
-        3 => format!("Attributes: 0x{:02X}", self.attributes),
+        2 => format!("Endpoint address: 0x{:02X}", self.endpoint_address.0),
+        3 => format!("Attributes: 0x{:02X}", self.attributes.0),
         4 => format!("Max packet size: {} bytes", {
             let size: u16 = self.max_packet_size; size }),
         5 => format!("Interval: 0x{:02X}", self.interval),
@@ -468,12 +529,12 @@ impl EndpointDescriptor {
 
 pub struct Interface {
     pub descriptor: InterfaceDescriptor,
-    pub endpoint_descriptors: Vec<EndpointDescriptor>
+    pub endpoint_descriptors: VecMap<EndpointNum, EndpointDescriptor>
 }
 
 pub struct Configuration {
     pub descriptor: ConfigDescriptor,
-    pub interfaces: Vec<Interface>,
+    pub interfaces: VecMap<InterfaceNum, Interface>,
 }
 
 impl Configuration {
@@ -493,7 +554,7 @@ impl Configuration {
         let mut config = Configuration {
             descriptor: config_desc,
             interfaces:
-                Vec::with_capacity(config_desc.num_interfaces as usize),
+                VecMap::with_capacity(config_desc.num_interfaces),
         };
         let mut offset = config_size;
         for _ in 0 .. config.descriptor.num_interfaces {
@@ -510,7 +571,7 @@ impl Configuration {
             let mut iface = Interface {
                 descriptor: iface_desc,
                 endpoint_descriptors:
-                    Vec::with_capacity(iface_desc.num_endpoints as usize),
+                    VecMap::with_capacity(iface_desc.num_endpoints),
             };
             while iface.endpoint_descriptors.len() <
                 iface.descriptor.num_endpoints as usize
@@ -567,11 +628,11 @@ impl ControlTransfer {
                     "device {}", self.address),
                 Recipient::Interface => format!(
                     "interface {}.{}", self.address, self.fields.index),
-                Recipient::Endpoint => format!(
-                    "endpoint {}.{} {}",
-                    self.address,
-                    self.fields.index & 0x7F,
-                    if (self.fields.index & 0x80) == 0 {"OUT"} else {"IN"}),
+                Recipient::Endpoint => {
+                    let ep_addr = EndpointAddr(self.fields.index as u8);
+                    format!("endpoint {}.{} {}",
+                            self.address, ep_addr.number(), ep_addr.direction())
+                }
                 _ => format!(
                     "device {}, index {}", self.address, self.fields.index)
             }
@@ -594,7 +655,7 @@ impl ControlTransfer {
                 self.fields.index != 0 =>
             {
                 parts.push(
-                    format!(": {}", fmt_utf16(&self.data[2..size])));
+                    format!(": {}", UTF16Bytes(&self.data[2..size])));
             },
             (..) => {}
         };
@@ -602,28 +663,42 @@ impl ControlTransfer {
     }
 }
 
-fn fmt_str_id(strings: &[Option<Vec<u8>>], id: u8) -> String {
-    match id {
+fn fmt_str_id(strings: &VecMap<StringId, UTF16ByteVec>, id: StringId)
+    -> String
+{
+    match id.0 {
         0 => "(none)".to_string(),
-        _ => match &strings[id as usize] {
-            Some(bytes) => format!("#{} {}", id, fmt_utf16(bytes)),
+        _ => match &strings.get(id) {
+            Some(utf16) => format!("#{} {}", id, utf16),
             None => format!("#{} (not seen)", id)
         }
     }
 }
 
-fn fmt_utf16(bytes: &[u8]) -> String {
+pub struct UTF16Bytes<'b>(&'b [u8]);
+
+impl std::fmt::Display for UTF16Bytes<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let chars: Vec<u16> =
-            bytes.chunks_exact(2)
-                 .into_iter()
-                 .map(|a| u16::from_le_bytes([a[0], a[1]]))
-                 .collect();
+            self.0.chunks_exact(2)
+                  .into_iter()
+                  .map(|a| u16::from_le_bytes([a[0], a[1]]))
+                  .collect();
         match String::from_utf16(&chars) {
-            Ok(string) => format!("'{}'", string),
-            Err(_) => format!(
+            Ok(string) => write!(f, "'{}'", string),
+            Err(_) => write!(f,
                 "invalid UTF16, partial decode: '{}'",
                 String::from_utf16_lossy(&chars))
         }
+    }
+}
+
+pub struct UTF16ByteVec(pub Vec<u8>);
+
+impl std::fmt::Display for UTF16ByteVec {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        UTF16Bytes(self.0.as_slice()).fmt(f)
+    }
 }
 
 #[cfg(test)]
@@ -677,4 +752,35 @@ mod tests {
             panic!("Expected Data but got {:?}", p);
         }
     }
+}
+
+pub mod prelude {
+    pub use super::{
+        PID,
+        PacketFields,
+        TokenFields,
+        SetupFields,
+        Direction,
+        StandardRequest,
+        RequestType,
+        Recipient,
+        DescriptorType,
+        DeviceDescriptor,
+        ConfigDescriptor,
+        InterfaceDescriptor,
+        EndpointDescriptor,
+        Configuration,
+        Interface,
+        ControlTransfer,
+        DeviceAddr,
+        DeviceField,
+        StringId,
+        ConfigNum,
+        ConfigField,
+        InterfaceNum,
+        InterfaceField,
+        EndpointNum,
+        EndpointField,
+        UTF16ByteVec,
+    };
 }

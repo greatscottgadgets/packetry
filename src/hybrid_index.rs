@@ -40,7 +40,7 @@ impl<T> Number for Id<T> {
     fn to_u64(&self) -> u64 { self.value }
 }
 
-pub struct HybridIndex<T> where T: Number {
+pub struct HybridIndex<T> where T: Number + Copy {
     _marker: PhantomData<T>,
     min_width: u8,
     file: BufReaderWriter<File>,
@@ -52,7 +52,7 @@ pub struct HybridIndex<T> where T: Number {
     at_end: bool,
 }
 
-impl<T: Number> HybridIndex<T> {
+impl<T: Number + Copy> HybridIndex<T> {
     pub fn new(min_width: u8) -> Result<Self, HybridIndexError> {
         let file = tempfile()?;
         Ok(Self{
@@ -68,7 +68,8 @@ impl<T: Number> HybridIndex<T> {
         })
     }
 
-    pub fn push(&mut self, id: T) -> Result<(), HybridIndexError> {
+    pub fn push(&mut self, id: T) -> Result<Id<T>, HybridIndexError>
+    {
         if self.entries.is_empty() {
             let first_entry = Entry {
                 base_value: id.to_u64(),
@@ -104,9 +105,10 @@ impl<T: Number> HybridIndex<T> {
                 last_entry.increments.set_count(count + 1);
             }
         }
+        let new_id = Id::<T>::from(self.total_count);
         self.total_count += 1;
         self.last_value = id.to_u64();
-        Ok(())
+        Ok(new_id)
     }
 
     pub fn get(&mut self, id: Id<T>) -> Result<T, HybridIndexError> {
@@ -165,8 +167,20 @@ impl<T: Number> HybridIndex<T> {
         Ok(result)
     }
 
-    pub fn next_id(&self) -> Id<T> {
-        Id::<T>::from(self.total_count)
+    pub fn target_range(&mut self, id: Id<T>, target_length: u64)
+        -> Result<Range<T>, HybridIndexError>
+    {
+        Ok(if id.value + 2 > self.len() {
+            let start = self.get(id)?;
+            let end = <T>::from_u64(target_length);
+            start..end
+        } else {
+            let limit = Id::<T>::from(id.value + 2);
+            let vec = self.get_range(id .. limit)?;
+            let start = vec[0];
+            let end = vec[1];
+            start..end
+        })
     }
 
     pub fn len(&self) -> u64 {

@@ -60,3 +60,12 @@ impl<T> From<Id<T>> for u64 {
       id.value
    }
 }
+
+impl<T> Id<T> {
+   pub const fn constant(i: u64) -> Self {
+      Id::<T> {
+         _marker: PhantomData,
+         value: i
+      }
+   }
+}
