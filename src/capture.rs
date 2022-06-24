@@ -431,6 +431,17 @@ impl Capture {
         Ok(start .. end)
     }
 
+    fn transaction_bytes(&mut self, transaction: &Transaction)
+        -> Result<Vec<u8>, CaptureError>
+    {
+        let data_packet_id = transaction.packet_id_range.start + 1;
+        let packet_byte_range = self.packet_index.target_range(
+            data_packet_id, self.packet_data.len())?;
+        let data_byte_range =
+            packet_byte_range.start + 1 .. packet_byte_range.end - 2;
+        Ok(self.packet_data.get_range(data_byte_range)?)
+    }
+
     fn transfer_bytes(&mut self,
                       endpoint_id: EndpointId,
                       transaction_range: &Range<EndpointTransactionId>,
@@ -443,12 +454,7 @@ impl Capture {
         let mut transactions = self.completed_transactions(transaction_ids);
         let mut result = Vec::new();
         while let Some(transaction) = transactions.next(self) {
-            let data_packet_id = transaction.packet_id_range.start + 1;
-            let packet_byte_range = self.packet_index.target_range(
-                data_packet_id, self.packet_data.len())?;
-            let data_byte_range =
-                packet_byte_range.start + 1 .. packet_byte_range.end - 2;
-            let data = self.packet_data.get_range(data_byte_range)?;
+            let data = self.transaction_bytes(&transaction)?;
             result.extend_from_slice(&data);
             if result.len() >= max_length {
                 result.truncate(max_length);
