@@ -178,9 +178,9 @@ Getting string descriptor #0 for device 4, reading 4 of 255 requested bytes
  IN transaction, NAK
   IN packet on 4.0, CRC 05
   NAK packet
- IN transaction with 4 data bytes, ACK: '\x04\x03\t\x04'
+ IN transaction with 4 data bytes, ACK: [04, 03, 09, 04]
   IN packet on 4.0, CRC 05
-  DATA1 packet with CRC 7809 and 4 data bytes: '\x04\x03\t\x04'
+  DATA1 packet with CRC 7809 and 4 data bytes: [04, 03, 09, 04]
   ACK packet
  OUT transaction with no data, ACK
   OUT packet on 4.0, CRC 05

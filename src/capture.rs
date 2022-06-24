@@ -303,11 +303,34 @@ impl<'src> Bytes<'src> {
             }
         }
     }
+
+    fn looks_like_ascii(&self) -> bool {
+        let mut num_printable = 0;
+        for &byte in self.bytes {
+            if byte == 0 || byte >= 0x80 {
+                // Outside ASCII range.
+                return false;
+            }
+            // Count printable and pseudo-printable characters.
+            let printable = match byte {
+                c if (0x20..0x7E).contains(&c) => true, // printable range
+                0x09                           => true, // tab
+                0x0A                           => true, // new line
+                0x0D                           => true, // carriage return
+                _ => false
+            };
+            if printable {
+                num_printable += 1;
+            }
+        }
+        // If the string is at least half printable, treat as ASCII.
+        num_printable > 0 && num_printable >= self.bytes.len() / 2
+    }
 }
 
 impl std::fmt::Display for Bytes<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if self.bytes.iter().all(|c| {*c > 0 && *c < 0x80}) {
+        if self.looks_like_ascii() {
             write!(f, "'{}'", String::from_utf8(
                 self.bytes.iter()
                           .flat_map(|c| {std::ascii::escape_default(*c)})

@@ -3864,9 +3864,9 @@ Getting string descriptor #0 for device 1, reading 4 of 255 requested bytes
   SETUP packet on 1.0, CRC 1D
   DATA0 packet with CRC 64D4 and 8 data bytes: [80, 06, 00, 03, 00, 00, FF, 00]
   ACK packet
- IN transaction with 4 data bytes, ACK: '\x04\x03\t\x04'
+ IN transaction with 4 data bytes, ACK: [04, 03, 09, 04]
   IN packet on 1.0, CRC 1D
-  DATA1 packet with CRC 7809 and 4 data bytes: '\x04\x03\t\x04'
+  DATA1 packet with CRC 7809 and 4 data bytes: [04, 03, 09, 04]
   ACK packet
  OUT transaction with no data, ACK
   OUT packet on 1.0, CRC 1D
@@ -4081,9 +4081,9 @@ Getting string descriptor #0 for device 2, reading 4 of 255 requested bytes
  IN transaction, NAK
   IN packet on 2.0, CRC 15
   NAK packet
- IN transaction with 4 data bytes, ACK: '\x04\x03\t\x04'
+ IN transaction with 4 data bytes, ACK: [04, 03, 09, 04]
   IN packet on 2.0, CRC 15
-  DATA1 packet with CRC 7809 and 4 data bytes: '\x04\x03\t\x04'
+  DATA1 packet with CRC 7809 and 4 data bytes: [04, 03, 09, 04]
   ACK packet
  OUT transaction with no data, NAK
   OUT packet on 2.0, CRC 15
