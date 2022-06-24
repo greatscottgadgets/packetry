@@ -284,18 +284,41 @@ pub fn fmt_index<T>(idx: &HybridIndex<T>) -> String
             fmt_size(idx.size()))
 }
 
-struct Bytes<'src>(&'src [u8]);
+struct Bytes<'src> {
+    partial: bool,
+    bytes: &'src [u8],
+}
+
+impl<'src> Bytes<'src> {
+    fn first(max: usize, bytes: &'src [u8]) -> Self {
+        if bytes.len() > max {
+            Bytes {
+                partial: true,
+                bytes: &bytes[0..max],
+            }
+        } else {
+            Bytes {
+                partial: false,
+                bytes,
+            }
+        }
+    }
+}
 
 impl std::fmt::Display for Bytes<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if self.0.iter().all(|c| {*c > 0 && *c < 0x80}) {
-            write!(f, "'{}'",
-                String::from_utf8(
-                    self.0.iter()
+        if self.bytes.iter().all(|c| {*c > 0 && *c < 0x80}) {
+            write!(f, "'{}'", String::from_utf8(
+                self.bytes.iter()
                           .flat_map(|c| {std::ascii::escape_default(*c)})
-                          .collect::<Vec<u8>>()).unwrap())
+                          .collect::<Vec<u8>>()).unwrap())?
         } else {
-            write!(f, "{:02X?}", self.0)
+            write!(f, "{:02X?}", self.bytes)?
+        };
+        if self.partial {
+            write!(f, "...")
+        } else {
+            Ok(())
         }
     }
 }
@@ -709,7 +732,7 @@ impl ItemSource<TrafficItem> for Capture {
                             " with CRC {:04X} and {} data bytes: {}",
                             data.crc,
                             packet.len() - 3,
-                            Bytes(&packet[1 .. packet.len() - 2])),
+                            Bytes::first(100, &packet[1 .. packet.len() - 2])),
                         PacketFields::None => match pid {
                             PID::Malformed => format!(": {:02X?}", packet),
                             _ => "".to_string()
@@ -731,7 +754,7 @@ impl ItemSource<TrafficItem> for Capture {
                     (pid, Some(size)) => format!(
                         "{} transaction with {} data bytes, {}: {}",
                         pid, size, transaction.end_pid,
-                        Bytes(&self.transaction_bytes(&transaction)?))
+                        Bytes::first(100, &self.transaction_bytes(&transaction)?))
                 }
             },
             Transfer(transfer_id) => {
@@ -776,13 +799,16 @@ impl ItemSource<TrafficItem> for Capture {
                                     self.transfer_byte_range(endpoint_id,
                                                              &range)?;
                                 let length = byte_range.len();
-                                let display_bytes =
-                                    self.transfer_bytes(endpoint_id,
-                                                        &range, 100)?;
+                                let bytes = self.transfer_bytes(endpoint_id,
+                                                                &range, 100)?;
+                                let display_bytes = Bytes {
+                                    partial: length > 100,
+                                    bytes: &bytes,
+                                };
                                 format!(
                                     "{} transfer of {} on endpoint {}: {}",
                                     ep_type_string, fmt_size(length), endpoint,
-                                    Bytes(&display_bytes))
+                                    display_bytes)
                             },
                             (true, false) => format!(
                                 "End of {} transfer on endpoint {}",
