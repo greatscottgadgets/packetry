@@ -725,9 +725,13 @@ impl ItemSource<TrafficItem> for Capture {
                         "{} malformed packets", transaction.packet_count()),
                     (pid, None) => format!(
                         "{} transaction, {}", pid, transaction.end_pid),
+                    (pid, Some(size)) if size == 0 => format!(
+                        "{} transaction with no data, {}",
+                        pid, transaction.end_pid),
                     (pid, Some(size)) => format!(
-                        "{} transaction with {} data bytes, {}",
-                        pid, size, transaction.end_pid)
+                        "{} transaction with {} data bytes, {}: {}",
+                        pid, size, transaction.end_pid,
+                        Bytes(&self.transaction_bytes(&transaction)?))
                 }
             },
             Transfer(transfer_id) => {
