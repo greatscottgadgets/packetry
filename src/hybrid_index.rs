@@ -45,8 +45,8 @@ impl<T> Number for Id<T> {
     fn to_u64(&self) -> u64 { self.value }
 }
 
-pub struct HybridIndex<T> where T: Number + Copy {
-    _marker: PhantomData<T>,
+pub struct HybridIndex<I, T> {
+    _marker: PhantomData<(I, T)>,
     min_width: u8,
     file: BufReaderWriter<File>,
     file_length: u64,
@@ -57,7 +57,7 @@ pub struct HybridIndex<T> where T: Number + Copy {
     at_end: bool,
 }
 
-impl<T: Number + Copy> HybridIndex<T> {
+impl<I: Number, T: Number + Copy> HybridIndex<I, T> {
     pub fn new(min_width: u8) -> Result<Self, HybridIndexError> {
         let file = tempfile()?;
         Ok(Self{
@@ -73,7 +73,7 @@ impl<T: Number + Copy> HybridIndex<T> {
         })
     }
 
-    pub fn push(&mut self, id: T) -> Result<Id<T>, HybridIndexError>
+    pub fn push(&mut self, id: T) -> Result<I, HybridIndexError>
     {
         if self.entries.is_empty() {
             let first_entry = Entry {
@@ -110,16 +110,17 @@ impl<T: Number + Copy> HybridIndex<T> {
                 last_entry.increments.set_count(count + 1);
             }
         }
-        let new_id = Id::<T>::from(self.total_count);
+        let new_id = I::from_u64(self.total_count);
         self.total_count += 1;
         self.last_value = id.to_u64();
         Ok(new_id)
     }
 
-    pub fn get(&mut self, id: Id<T>) -> Result<T, HybridIndexError> {
-        let entry_id = bisect_right(self.index.as_slice(), &id.value) - 1;
+    pub fn get(&mut self, id: I) -> Result<T, HybridIndexError> {
+        let id_value = id.to_u64();
+        let entry_id = bisect_right(self.index.as_slice(), &id_value) - 1;
         let entry = &self.entries[entry_id];
-        let increment_id = id.value - self.index[entry_id];
+        let increment_id = id_value - self.index[entry_id];
         if increment_id == 0 {
             Ok(<T>::from_u64(entry.base_value))
         } else {
@@ -135,12 +136,13 @@ impl<T: Number + Copy> HybridIndex<T> {
         }
     }
 
-    pub fn get_range(&mut self, range: &Range<Id<T>>)
+    pub fn get_range(&mut self, range: &Range<I>)
         -> Result<Vec<T>, HybridIndexError>
     {
         let mut result = Vec::new();
-        let mut i = range.start.value;
-        while i < range.end.value {
+        let mut i = range.start.to_u64();
+        let end = range.end.to_u64();
+        while i < end {
             let entry_id = bisect_right(self.index.as_slice(), &i) - 1;
             let entry = &self.entries[entry_id];
             let mut increment_id = i - self.index[entry_id];
@@ -151,7 +153,7 @@ impl<T: Number + Copy> HybridIndex<T> {
                 increment_id -= 1;
             }
             let available = entry.increments.count() - increment_id;
-            let needed = range.end.value - i;
+            let needed = end - i;
             let read_count = min(available, needed);
             if read_count == 0 {
                 continue;
@@ -172,15 +174,16 @@ impl<T: Number + Copy> HybridIndex<T> {
         Ok(result)
     }
 
-    pub fn target_range(&mut self, id: Id<T>, target_length: u64)
+    pub fn target_range(&mut self, id: I, target_length: u64)
         -> Result<Range<T>, HybridIndexError>
     {
-        Ok(if id.value + 2 > self.len() {
+        let id_value = id.to_u64();
+        Ok(if id_value + 2 > self.len() {
             let start = self.get(id)?;
             let end = <T>::from_u64(target_length);
             start..end
         } else {
-            let limit = Id::<T>::from(id.value + 2);
+            let limit = I::from_u64(id_value + 2);
             let vec = self.get_range(&(id .. limit))?;
             let start = vec[0];
             let end = vec[1];

@@ -696,7 +696,7 @@ impl<'cap> Decoder<'cap> {
     }
 
     fn add_endpoint_state(&mut self, endpoint_id: EndpointId, start: bool)
-        -> Result<EndpointStateId, CaptureError>
+        -> Result<TransferId, CaptureError>
     {
         let endpoint_count = self.capture.endpoints.len() as usize;
         for i in 0..endpoint_count {

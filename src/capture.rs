@@ -38,7 +38,6 @@ pub type EndpointTransferId = Id<EndpointTransactionId>;
 pub type TrafficItemId = Id<TransferId>;
 pub type DeviceId = Id<Device>;
 pub type EndpointId = Id<Endpoint>;
-pub type EndpointStateId = Id<Id<u8>>;
 
 #[derive(Copy, Clone)]
 pub enum TrafficItem {
@@ -145,9 +144,9 @@ impl std::fmt::Display for EndpointType {
 }
 
 pub struct EndpointTraffic {
-    pub transaction_ids: HybridIndex<TransactionId>,
-    pub transfer_index: HybridIndex<EndpointTransactionId>,
-    pub data_index: HybridIndex<u64>,
+    pub transaction_ids: HybridIndex<EndpointTransactionId, TransactionId>,
+    pub transfer_index: HybridIndex<EndpointTransferId, EndpointTransactionId>,
+    pub data_index: HybridIndex<EndpointTransactionId, u64>,
     pub total_data: u64,
 }
 
@@ -275,8 +274,8 @@ pub fn fmt_vec<T>(vec: &FileVec<T>) -> String
     format!("{} entries, {}", fmt_count(vec.len()), fmt_size(vec.size()))
 }
 
-pub fn fmt_index<T>(idx: &HybridIndex<T>) -> String
-    where T: Number + Copy
+pub fn fmt_index<I, T>(idx: &HybridIndex<I, T>) -> String
+    where I: Number, T: Number + Copy
 {
     format!("{} values in {} entries, {}",
             fmt_count(idx.len()),
@@ -367,16 +366,16 @@ impl CompletedTransactions {
 
 pub struct Capture {
     pub packet_data: FileVec<u8>,
-    pub packet_index: HybridIndex<PacketByteId>,
-    pub transaction_index: HybridIndex<PacketId>,
+    pub packet_index: HybridIndex<PacketId, PacketByteId>,
+    pub transaction_index: HybridIndex<TransactionId, PacketId>,
     pub transfer_index: FileVec<TransferIndexEntry>,
-    pub item_index: HybridIndex<TransferId>,
+    pub item_index: HybridIndex<TrafficItemId, TransferId>,
     pub devices: FileVec<Device>,
     pub device_data: VecMap<DeviceId, DeviceData>,
     pub endpoints: FileVec<Endpoint>,
     pub endpoint_traffic: VecMap<EndpointId, EndpointTraffic>,
     pub endpoint_states: FileVec<u8>,
-    pub endpoint_state_index: HybridIndex<Id<u8>>,
+    pub endpoint_state_index: HybridIndex<TransferId, Id<u8>>,
 }
 
 impl Capture {
@@ -466,13 +465,11 @@ impl Capture {
     {
         let ep_traf = self.endpoint_traffic(endpoint_id)?;
         let index = &mut ep_traf.data_index;
-        let first = Id::<u64>::from(range.start.value);
-        let last = Id::<u64>::from(range.end.value);
-        let start = index.get(first)?;
-        let end = if last.value >= index.len() {
+        let start = index.get(range.start)?;
+        let end = if range.end.value >= index.len() {
             ep_traf.total_data
         } else {
-            index.get(last)?
+            index.get(range.end)?
         };
         Ok(start .. end)
     }
@@ -513,9 +510,8 @@ impl Capture {
     fn endpoint_state(&mut self, transfer_id: TransferId)
         -> Result<Vec<u8>, CaptureError>
     {
-        let endpoint_state_id = EndpointStateId::from(transfer_id.value);
         let range = self.endpoint_state_index.target_range(
-            endpoint_state_id, self.endpoint_states.len())?;
+            transfer_id, self.endpoint_states.len())?;
         Ok(self.endpoint_states.get_range(range)?)
     }
 
@@ -1200,7 +1196,6 @@ pub mod prelude {
         EndpointId,
         EndpointType,
         EndpointState,
-        EndpointStateId,
         EndpointTraffic,
         EndpointTransactionId,
         EndpointTransferId,
