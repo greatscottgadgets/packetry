@@ -655,15 +655,20 @@ impl Capture {
 }
 
 pub trait ItemSource<Item> {
+    type ItemId;
     fn item(&mut self, parent: &Option<Item>, index: u64) -> Result<Item, CaptureError>;
     fn child_item(&mut self, parent: &Item, index: u64) -> Result<Item, CaptureError>;
     fn item_count(&mut self, parent: &Option<Item>) -> Result<u64, CaptureError>;
     fn child_count(&mut self, parent: &Item) -> Result<u64, CaptureError>;
+    fn item_end(&mut self, item_id: Self::ItemId)
+        -> Result<Option<Self::ItemId>, CaptureError>;
     fn summary(&mut self, item: &Item) -> Result<String, CaptureError>;
     fn connectors(&mut self, item: &Item) -> Result<String, CaptureError>;
 }
 
 impl ItemSource<TrafficItem> for Capture {
+    type ItemId = TrafficItemId;
+
     fn item(&mut self, parent: &Option<TrafficItem>, index: u64)
         -> Result<TrafficItem, CaptureError>
     {
@@ -726,6 +731,23 @@ impl ItemSource<TrafficItem> for Capture {
             },
             Packet(..) => 0,
         })
+    }
+
+    fn item_end(&mut self, item_id: TrafficItemId)
+        -> Result<Option<TrafficItemId>, CaptureError>
+    {
+        let transfer_id = self.item_index.get(item_id)?;
+        let entry = self.transfer_index.get(transfer_id)?;
+        let ep_transfer_id = entry.transfer_id();
+        if !entry.is_start() {
+            return Err(IndexError)
+        }
+        let ep_traf = self.endpoint_traffic(entry.endpoint_id())?;
+        if ep_transfer_id.value >= ep_traf.end_index.len() {
+            return Ok(None)
+        }
+        let end_item_id = ep_traf.end_index.get(ep_transfer_id)?;
+        Ok(Some(end_item_id))
     }
 
     fn summary(&mut self, item: &TrafficItem)
@@ -945,6 +967,8 @@ impl ItemSource<TrafficItem> for Capture {
 }
 
 impl ItemSource<DeviceItem> for Capture {
+    type ItemId = DeviceId;
+
     fn item(&mut self, parent: &Option<DeviceItem>, index: u64)
         -> Result<DeviceItem, CaptureError>
     {
@@ -1031,6 +1055,12 @@ impl ItemSource<DeviceItem> for Capture {
             EndpointDescriptor(..) => usb::EndpointDescriptor::NUM_FIELDS,
             _ => 0
         }) as u64)
+    }
+
+    fn item_end(&mut self, _item_id: DeviceId)
+        -> Result<Option<DeviceId>, CaptureError>
+    {
+        Ok(None)
     }
 
     fn summary(&mut self, item: &DeviceItem)
