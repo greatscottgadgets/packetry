@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::marker::PhantomData;
+use std::mem::drop;
 use std::num::TryFromIntError;
 use std::rc::{Rc, Weak};
 use std::sync::{Arc, Mutex};
@@ -138,46 +139,46 @@ where Item: Copy,
                         expanded: bool)
         -> Result<(), ModelError>
     {
-        {
-            let node = node_ref.borrow();
-            if node.expanded() == expanded {
-                return Ok(());
-            }
-
-            {
-                let node_parent_ref = node.parent
-                    .as_ref().ok_or(ModelError::ParentNotSet)?
-                    .upgrade().ok_or(ModelError::ParentDropped)?;
-                let mut node_parent = node_parent_ref.borrow_mut();
-
-                // Add this node to the parent's list of expanded child nodes.
-                if expanded {
-                    node_parent.children.insert(node.item_index, node_ref.clone());
-                } else {
-                    node_parent.children.remove(&node.item_index);
-                }
-            }
-
-            // Traverse back up the tree, modifying `child_count` for expanded/collapsed entries.
-            let mut position = node.relative_position()?;
-            let mut current_node = node_ref.clone();
-            while let Some(parent_weak) = current_node.clone().borrow().parent.as_ref() {
-                let parent = parent_weak.upgrade().ok_or(ModelError::ParentDropped)?;
-                if expanded {
-                    parent.borrow_mut().child_count += node.child_count;
-                } else {
-                    parent.borrow_mut().child_count -= node.child_count;
-                }
-                current_node = parent;
-                position += current_node.borrow().relative_position()? + 1;
-            }
-
-            if expanded {
-                model.items_changed(position, 0, node.child_count);
-            } else {
-                model.items_changed(position, node.child_count, 0);
-            }
+        let node = node_ref.borrow();
+        if node.expanded() == expanded {
+            return Ok(());
         }
+
+        let node_parent_ref = node.parent
+            .as_ref().ok_or(ModelError::ParentNotSet)?
+            .upgrade().ok_or(ModelError::ParentDropped)?;
+        let mut node_parent = node_parent_ref.borrow_mut();
+
+        // Add this node to the parent's list of expanded child nodes.
+        if expanded {
+            node_parent.children.insert(node.item_index, node_ref.clone());
+        } else {
+            node_parent.children.remove(&node.item_index);
+        }
+
+        drop(node_parent);
+
+        // Traverse back up the tree, modifying `child_count` for expanded/collapsed entries.
+        let mut position = node.relative_position()?;
+        let mut current_node = node_ref.clone();
+        while let Some(parent_weak) = current_node.clone().borrow().parent.as_ref() {
+            let parent = parent_weak.upgrade().ok_or(ModelError::ParentDropped)?;
+            if expanded {
+                parent.borrow_mut().child_count += node.child_count;
+            } else {
+                parent.borrow_mut().child_count -= node.child_count;
+            }
+            current_node = parent;
+            position += current_node.borrow().relative_position()? + 1;
+        }
+
+        if expanded {
+            model.items_changed(position, 0, node.child_count);
+        } else {
+            model.items_changed(position, node.child_count, 0);
+        }
+
+        drop(node);
 
         node_ref.borrow_mut().expanded = expanded;
         Ok(())
