@@ -2,7 +2,7 @@ use std::mem::size_of;
 
 use crate::usb::{self, prelude::*};
 use crate::capture::{prelude::*, INVALID_EP_NUM, FRAMING_EP_NUM};
-use crate::hybrid_index::HybridIndex;
+use crate::hybrid_index::{HybridIndex, Number};
 use crate::vec_map::{VecMap, Key};
 
 use CaptureError::IndexError;
@@ -26,7 +26,8 @@ enum DecodeStatus {
 struct EndpointData {
     device_id: DeviceId,
     address: EndpointAddr,
-    transfer_id: Option<EndpointTransferId>,
+    active: Option<EndpointTransferId>,
+    ended: Option<EndpointTransferId>,
     transaction_count: u64,
     last: Option<PID>,
     last_success: bool,
@@ -319,7 +320,8 @@ impl<'cap> Decoder<'cap> {
         self.endpoint_data.set(endpoint_id, EndpointData {
             address,
             device_id,
-            transfer_id: None,
+            active: None,
+            ended: None,
             transaction_count: 0,
             last: None,
             last_success: false,
@@ -331,6 +333,7 @@ impl<'cap> Decoder<'cap> {
             transfer_index: HybridIndex::new(1)?,
             data_index: HybridIndex::new(1)?,
             total_data: 0,
+            end_index: HybridIndex::new(1)?,
         });
         let ep_state = EndpointState::Idle as u8;
         self.last_endpoint_state.push(ep_state);
@@ -622,13 +625,15 @@ impl<'cap> Decoder<'cap> {
         let ep_data = self.current_endpoint_data()?;
         if ep_data.transaction_count > 0 {
             self.add_transfer_entry(endpoint_id, false)?;
+            let ep_data = self.current_endpoint_data_mut()?;
+            ep_data.ended = ep_data.active.take();
         }
         let transaction_type = self.transaction_state.first;
         let ep_traf = self.capture.endpoint_traffic(endpoint_id)?;
         let ep_transaction_id = ep_traf.transaction_ids.push(transaction_id)?;
         let ep_transfer_id = ep_traf.transfer_index.push(ep_transaction_id)?;
         let ep_data = self.current_endpoint_data_mut()?;
-        ep_data.transfer_id = Some(ep_transfer_id);
+        ep_data.active = Some(ep_transfer_id);
         ep_data.transaction_count = 1;
         if success {
             ep_data.last = transaction_type;
@@ -669,6 +674,8 @@ impl<'cap> Decoder<'cap> {
             if self.last_item_endpoint != Some(endpoint_id) {
                 self.add_item(endpoint_id, transfer_end_id)?;
             }
+            let ep_data = self.current_endpoint_data_mut()?;
+            ep_data.ended = ep_data.active.take();
         }
         let ep_data = self.current_endpoint_data_mut()?;
         ep_data.transaction_count = 0;
@@ -683,7 +690,7 @@ impl<'cap> Decoder<'cap> {
         -> Result<TransferId, CaptureError>
     {
         let ep_data = self.current_endpoint_data()?;
-        let ep_transfer_id = ep_data.transfer_id.ok_or(IndexError)?;
+        let ep_transfer_id = ep_data.active.ok_or(IndexError)?;
         self.add_endpoint_state(endpoint_id, start)?;
         let mut entry = TransferIndexEntry::default();
         entry.set_endpoint_id(endpoint_id);
@@ -721,6 +728,21 @@ impl<'cap> Decoder<'cap> {
     {
         let item_id = self.capture.item_index.push(transfer_id)?;
         self.last_item_endpoint = Some(endpoint_id);
+
+        // Look for ended transfers which still need to be linked to an item.
+        let endpoint_count = self.capture.endpoints.len();
+        for i in 0..endpoint_count {
+            let endpoint_id = EndpointId::from_u64(i);
+            let ep_data = self.endpoint_data
+                .get_mut(endpoint_id)
+                .ok_or(IndexError)?;
+            if let Some(ep_transfer_id) = ep_data.ended.take() {
+                // This transfer has ended and is not yet linked to an item.
+                let ep_traf = self.capture.endpoint_traffic(endpoint_id)?;
+                assert!(ep_traf.end_index.push(item_id)? == ep_transfer_id);
+            }
+        }
+
         Ok(item_id)
     }
 }

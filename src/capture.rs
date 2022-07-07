@@ -149,6 +149,7 @@ pub struct EndpointTraffic {
     pub transfer_index: HybridIndex<EndpointTransferId, EndpointTransactionId>,
     pub data_index: HybridIndex<EndpointTransactionId, EndpointByteCount>,
     pub total_data: EndpointByteCount,
+    pub end_index: HybridIndex<EndpointTransferId, TrafficItemId>,
 }
 
 pub struct DeviceData {
@@ -377,6 +378,7 @@ pub struct Capture {
     pub endpoint_traffic: VecMap<EndpointId, EndpointTraffic>,
     pub endpoint_states: FileVec<u8>,
     pub endpoint_state_index: HybridIndex<TransferId, Id<u8>>,
+    pub end_index: HybridIndex<TransferId, TrafficItemId>,
 }
 
 impl Capture {
@@ -393,6 +395,7 @@ impl Capture {
             endpoint_traffic: VecMap::new(),
             endpoint_states: FileVec::new()?,
             endpoint_state_index: HybridIndex::new(1)?,
+            end_index: HybridIndex::new(1)?,
         })
     }
 
