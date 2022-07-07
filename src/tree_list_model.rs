@@ -35,9 +35,6 @@ pub struct TreeNode<Item> {
     /// The item at this tree node.
     item: Option<Item>,
 
-    /// Whether this node is currently expanded.
-    expanded: bool,
-
     /// Parent of this node in the tree.
     parent: Option<Weak<RefCell<TreeNode<Item>>>>,
 
@@ -56,7 +53,18 @@ pub struct TreeNode<Item> {
 
 impl<Item> TreeNode<Item> where Item: Copy {
     pub fn expanded(&self) -> bool {
-        self.expanded
+        match self.parent.as_ref() {
+            Some(parent_weak) => match parent_weak.upgrade() {
+                Some(parent_ref) => {
+                    let parent = parent_ref.borrow();
+                    parent.children.contains_key(&self.item_index)
+                },
+                // Parent is dropped, so node cannot be expanded.
+                None => false
+            },
+            // This is the root, which is never expanded.
+            None => false
+        }
     }
 
     pub fn expandable(&self) -> bool {
@@ -124,7 +132,6 @@ where Item: Copy,
             capture: capture.clone(),
             root: Rc::new(RefCell::new(TreeNode {
                 item: None,
-                expanded: false,
                 parent: None,
                 item_index: 0,
                 child_count: u32::try_from(item_count)?,
@@ -178,9 +185,6 @@ where Item: Copy,
             model.items_changed(position, node.child_count, 0);
         }
 
-        drop(node);
-
-        node_ref.borrow_mut().expanded = expanded;
         Ok(())
     }
 
@@ -229,7 +233,6 @@ where Item: Copy,
         let child_count = cap.child_count(&item).ok()?;
         let node = TreeNode {
             item: Some(item),
-            expanded: false,
             parent: Some(Rc::downgrade(&parent_ref)),
             item_index: relative_position,
             child_count: child_count.try_into().ok()?,
