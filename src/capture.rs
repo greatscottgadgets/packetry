@@ -38,6 +38,7 @@ pub type EndpointTransferId = Id<EndpointTransactionId>;
 pub type TrafficItemId = Id<TransferId>;
 pub type DeviceId = Id<Device>;
 pub type EndpointId = Id<Endpoint>;
+pub type EndpointByteCount = u64;
 
 #[derive(Copy, Clone)]
 pub enum TrafficItem {
@@ -146,8 +147,8 @@ impl std::fmt::Display for EndpointType {
 pub struct EndpointTraffic {
     pub transaction_ids: HybridIndex<EndpointTransactionId, TransactionId>,
     pub transfer_index: HybridIndex<EndpointTransferId, EndpointTransactionId>,
-    pub data_index: HybridIndex<EndpointTransactionId, u64>,
-    pub total_data: u64,
+    pub data_index: HybridIndex<EndpointTransactionId, EndpointByteCount>,
+    pub total_data: EndpointByteCount,
 }
 
 pub struct DeviceData {
