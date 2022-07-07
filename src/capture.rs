@@ -1201,6 +1201,7 @@ pub mod prelude {
         EndpointTransactionId,
         EndpointTransferId,
         PacketId,
+        TrafficItemId,
         TransactionId,
         TransferId,
         TransferIndexEntry,

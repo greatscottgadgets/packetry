@@ -637,8 +637,7 @@ impl<'cap> Decoder<'cap> {
         }
         ep_data.payload.clear();
         let transfer_start_id = self.add_transfer_entry(endpoint_id, true)?;
-        self.capture.item_index.push(transfer_start_id)?;
-        self.last_item_endpoint = Some(endpoint_id);
+        self.add_item(endpoint_id, transfer_start_id)?;
         Ok(())
     }
 
@@ -668,8 +667,7 @@ impl<'cap> Decoder<'cap> {
             let transfer_end_id =
                 self.add_transfer_entry(endpoint_id, false)?;
             if self.last_item_endpoint != Some(endpoint_id) {
-                self.capture.item_index.push(transfer_end_id)?;
-                self.last_item_endpoint = Some(endpoint_id);
+                self.add_item(endpoint_id, transfer_end_id)?;
             }
         }
         let ep_data = self.current_endpoint_data_mut()?;
@@ -716,5 +714,13 @@ impl<'cap> Decoder<'cap> {
         let state_offset = self.capture.endpoint_states.append(last_state)?;
         let state_id = self.capture.endpoint_state_index.push(state_offset)?;
         Ok(state_id)
+    }
+
+    fn add_item(&mut self, endpoint_id: EndpointId, transfer_id: TransferId)
+        -> Result<TrafficItemId, CaptureError>
+    {
+        let item_id = self.capture.item_index.push(transfer_id)?;
+        self.last_item_endpoint = Some(endpoint_id);
+        Ok(item_id)
     }
 }
