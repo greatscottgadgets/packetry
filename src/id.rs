@@ -18,6 +18,12 @@ impl<T> HasLength for Range<Id<T>> {
    }
 }
 
+impl HasLength for Range<u64> {
+   fn len(&self) -> u64 {
+      self.end - self.start
+   }
+}
+
 impl<T> PartialEq<Id<T>> for Id<T> {
    fn eq(&self, other: &Id<T>) -> bool {
       self.value.eq(&other.value)

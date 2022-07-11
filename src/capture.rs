@@ -59,9 +59,9 @@ pub enum DeviceItem {
     InterfaceDescriptor(DeviceId, ConfigNum, InterfaceNum),
     InterfaceDescriptorField(DeviceId, ConfigNum,
                              InterfaceNum, InterfaceField),
-    EndpointDescriptor(DeviceId, ConfigNum, InterfaceNum, EndpointNum),
+    EndpointDescriptor(DeviceId, ConfigNum, InterfaceNum, InterfaceEpNum),
     EndpointDescriptorField(DeviceId, ConfigNum, InterfaceNum,
-                            EndpointNum, EndpointField),
+                            InterfaceEpNum, EndpointField),
 }
 
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
@@ -74,9 +74,26 @@ bitfield! {
     #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
     #[repr(C)]
     pub struct Endpoint(u64);
-    pub u64, from into DeviceId, device_id, set_device_id: 51, 0;
-    pub u8, from into DeviceAddr, device_address, set_device_address: 58, 52;
-    pub u8, from into EndpointNum, number, set_number: 63, 59;
+    pub u64, from into DeviceId, device_id, set_device_id: 50, 0;
+    pub u8, from into DeviceAddr, device_address, set_device_address: 57, 51;
+    pub u8, from into EndpointNum, number, set_number: 62, 58;
+    pub u8, from into Direction, direction, set_direction: 63, 63;
+}
+
+impl Endpoint {
+    fn address(&self) -> EndpointAddr {
+        EndpointAddr::from_parts(self.number(), self.direction())
+    }
+}
+
+impl std::fmt::Display for Endpoint {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}.{} {}",
+               self.device_address(),
+               self.number(),
+               self.direction()
+               )
+    }
 }
 
 bitfield! {
@@ -130,13 +147,15 @@ impl std::fmt::Display for EndpointType {
 pub struct EndpointTraffic {
     pub transaction_ids: HybridIndex<TransactionId>,
     pub transfer_index: HybridIndex<EndpointTransactionId>,
+    pub data_index: HybridIndex<u64>,
+    pub total_data: u64,
 }
 
 pub struct DeviceData {
     pub device_descriptor: Option<DeviceDescriptor>,
     pub configurations: VecMap<ConfigNum, Configuration>,
     pub config_number: Option<ConfigNum>,
-    pub endpoint_types: VecMap<EndpointNum, EndpointType>,
+    pub endpoint_details: VecMap<EndpointAddr, (usb::EndpointType, usize)>,
     pub strings: VecMap<StringId, UTF16ByteVec>,
 }
 
@@ -150,29 +169,35 @@ impl DeviceData {
         }
     }
 
-    pub fn endpoint_type(&self, number: EndpointNum) -> EndpointType {
+    pub fn endpoint_details(&self, addr: EndpointAddr)
+        -> (EndpointType, Option<usize>)
+    {
         use EndpointType::*;
-        match number.0 {
-            INVALID_EP_NUM => Invalid,
-            FRAMING_EP_NUM => Framing,
-            0 => Normal(usb::EndpointType::Control),
-            _ => match self.endpoint_types.get(number) {
-                Some(ep_type) => *ep_type,
-                None => Unidentified
+        match addr.0 {
+            INVALID_EP_NUM => (Invalid, None),
+            FRAMING_EP_NUM => (Framing, None),
+            0 => (
+                Normal(usb::EndpointType::Control),
+                self.device_descriptor.map(|desc| {
+                    desc.max_packet_size_0 as usize
+                })
+            ),
+            _ => match self.endpoint_details.get(addr) {
+                Some((ep_type, ep_max)) => (Normal(*ep_type), Some(*ep_max)),
+                None => (Unidentified, None)
             }
         }
     }
 
-    pub fn update_endpoint_types(&mut self) {
+    pub fn update_endpoint_details(&mut self) {
         if let Some(number) = self.config_number {
             if let Some(config) = &self.configurations.get(number) {
                 for iface in &config.interfaces {
                     for ep_desc in &iface.endpoint_descriptors {
-                        let ep_number = ep_desc.endpoint_address.number();
+                        let ep_addr = ep_desc.endpoint_address;
                         let ep_type = ep_desc.attributes.endpoint_type();
-                        self.endpoint_types.set(
-                            ep_number,
-                            EndpointType::Normal(ep_type));
+                        let ep_max = ep_desc.max_packet_size as usize;
+                        self.endpoint_details.set(ep_addr, (ep_type, ep_max));
                     }
                 }
             }
@@ -192,7 +217,7 @@ impl Configuration {
 }
 
 impl Interface {
-    pub fn endpoint_descriptor(&self, number: &EndpointNum)
+    pub fn endpoint_descriptor(&self, number: &InterfaceEpNum)
         -> Result<&EndpointDescriptor, CaptureError>
     {
         match self.endpoint_descriptors.get(*number) {
@@ -203,7 +228,8 @@ impl Interface {
 }
 
 pub struct Transaction {
-    pid: PID,
+    start_pid: PID,
+    end_pid: PID,
     packet_id_range: Range<PacketId>,
     payload_byte_range: Option<Range<Id<u8>>>,
 }
@@ -216,6 +242,14 @@ impl Transaction {
     fn payload_size(&self) -> Option<u64> {
         self.payload_byte_range.as_ref().map(|range| range.len())
     }
+
+    fn successful(&self) -> bool {
+        use PID::*;
+        match (self.packet_count(), self.end_pid) {
+            (3, ACK | NYET) => true,
+            (..)            => false
+        }
+    }
 }
 
 pub fn fmt_count(count: u64) -> String {
@@ -223,9 +257,15 @@ pub fn fmt_count(count: u64) -> String {
 }
 
 pub fn fmt_size(size: u64) -> String {
-    match size.file_size(options::BINARY) {
-        Ok(string) => string,
-        Err(e) => format!("<Error: {}>", e)
+    if size == 1 {
+        "1 byte".to_string()
+    } else if size < 1024 {
+        format!("{} bytes", size)
+    } else {
+        match size.file_size(options::BINARY) {
+            Ok(string) => string,
+            Err(e) => format!("<Error: {}>", e)
+        }
     }
 }
 
@@ -242,6 +282,87 @@ pub fn fmt_index<T>(idx: &HybridIndex<T>) -> String
             fmt_count(idx.len()),
             fmt_count(idx.entry_count()),
             fmt_size(idx.size()))
+}
+
+struct Bytes<'src> {
+    partial: bool,
+    bytes: &'src [u8],
+}
+
+impl<'src> Bytes<'src> {
+    fn first(max: usize, bytes: &'src [u8]) -> Self {
+        if bytes.len() > max {
+            Bytes {
+                partial: true,
+                bytes: &bytes[0..max],
+            }
+        } else {
+            Bytes {
+                partial: false,
+                bytes,
+            }
+        }
+    }
+
+    fn looks_like_ascii(&self) -> bool {
+        let mut num_printable = 0;
+        for &byte in self.bytes {
+            if byte == 0 || byte >= 0x80 {
+                // Outside ASCII range.
+                return false;
+            }
+            // Count printable and pseudo-printable characters.
+            let printable = match byte {
+                c if (0x20..0x7E).contains(&c) => true, // printable range
+                0x09                           => true, // tab
+                0x0A                           => true, // new line
+                0x0D                           => true, // carriage return
+                _ => false
+            };
+            if printable {
+                num_printable += 1;
+            }
+        }
+        // If the string is at least half printable, treat as ASCII.
+        num_printable > 0 && num_printable >= self.bytes.len() / 2
+    }
+}
+
+impl std::fmt::Display for Bytes<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if self.looks_like_ascii() {
+            write!(f, "'{}'", String::from_utf8(
+                self.bytes.iter()
+                          .flat_map(|c| {std::ascii::escape_default(*c)})
+                          .collect::<Vec<u8>>()).unwrap())?
+        } else {
+            write!(f, "{:02X?}", self.bytes)?
+        };
+        if self.partial {
+            write!(f, "...")
+        } else {
+            Ok(())
+        }
+    }
+}
+
+pub struct CompletedTransactions {
+    transaction_ids: Vec<TransactionId>,
+    index: usize,
+}
+
+impl CompletedTransactions {
+    fn next(&mut self, capture: &mut Capture) -> Option<Transaction> {
+        while self.index < self.transaction_ids.len() {
+            let transaction_id = self.transaction_ids[self.index];
+            let transaction = capture.transaction(transaction_id).ok()?;
+            self.index += 1;
+            if transaction.successful() {
+                return Some(transaction);
+            }
+        }
+        None
+    }
 }
 
 pub struct Capture {
@@ -338,6 +459,57 @@ impl Capture {
             ep_transfer_id, ep_traf.transaction_ids.len())?)
     }
 
+    fn transfer_byte_range(&mut self,
+                           endpoint_id: EndpointId,
+                           range: &Range<EndpointTransactionId>)
+        -> Result<Range<u64>, CaptureError>
+    {
+        let ep_traf = self.endpoint_traffic(endpoint_id)?;
+        let index = &mut ep_traf.data_index;
+        let first = Id::<u64>::from(range.start.value);
+        let last = Id::<u64>::from(range.end.value);
+        let start = index.get(first)?;
+        let end = if last.value >= index.len() {
+            ep_traf.total_data
+        } else {
+            index.get(last)?
+        };
+        Ok(start .. end)
+    }
+
+    fn transaction_bytes(&mut self, transaction: &Transaction)
+        -> Result<Vec<u8>, CaptureError>
+    {
+        let data_packet_id = transaction.packet_id_range.start + 1;
+        let packet_byte_range = self.packet_index.target_range(
+            data_packet_id, self.packet_data.len())?;
+        let data_byte_range =
+            packet_byte_range.start + 1 .. packet_byte_range.end - 2;
+        Ok(self.packet_data.get_range(data_byte_range)?)
+    }
+
+    fn transfer_bytes(&mut self,
+                      endpoint_id: EndpointId,
+                      transaction_range: &Range<EndpointTransactionId>,
+                      max_length: usize)
+        -> Result<Vec<u8>, CaptureError>
+    {
+        let transaction_ids = self.endpoint_traffic(endpoint_id)?
+                                  .transaction_ids
+                                  .get_range(transaction_range)?;
+        let mut transactions = self.completed_transactions(transaction_ids);
+        let mut result = Vec::new();
+        while let Some(transaction) = transactions.next(self) {
+            let data = self.transaction_bytes(&transaction)?;
+            result.extend_from_slice(&data);
+            if result.len() >= max_length {
+                result.truncate(max_length);
+                break
+            }
+        }
+        Ok(result)
+    }
+
     fn endpoint_state(&mut self, transfer_id: TransferId)
         -> Result<Vec<u8>, CaptureError>
     {
@@ -368,9 +540,10 @@ impl Capture {
         let packet_id_range = self.transaction_index.target_range(
             id, self.packet_index.len())?;
         let packet_count = packet_id_range.len();
-        let pid = self.packet_pid(packet_id_range.start)?;
+        let start_pid = self.packet_pid(packet_id_range.start)?;
+        let end_pid = self.packet_pid(packet_id_range.end - 1)?;
         use PID::*;
-        let payload_byte_range = match pid {
+        let payload_byte_range = match start_pid {
             IN | OUT if packet_count >= 2 => {
                 let data_packet_id = packet_id_range.start + 1;
                 let packet_byte_range = self.packet_index.target_range(
@@ -386,10 +559,21 @@ impl Capture {
             _ => None
         };
         Ok(Transaction {
-            pid,
+            start_pid,
+            end_pid,
             packet_id_range,
             payload_byte_range,
         })
+    }
+
+    fn completed_transactions(&mut self,
+                              transaction_ids: Vec<TransactionId>)
+        -> CompletedTransactions
+    {
+        CompletedTransactions {
+            transaction_ids,
+            index: 0
+        }
     }
 
     fn control_transfer(&mut self,
@@ -400,19 +584,23 @@ impl Capture {
     {
         let transaction_ids = self.endpoint_traffic(endpoint_id)?
                                   .transaction_ids
-                                  .get_range(range)?;
-        let setup_transaction_id = transaction_ids.get(0).ok_or(IndexError)?;
-        let setup_packet_id =
-            self.transaction_index.get(*setup_transaction_id)?;
-        let data_packet_id = setup_packet_id + 1;
-        let data_packet = self.packet(data_packet_id)?;
-        let fields = SetupFields::from_data_packet(&data_packet);
+                                  .get_range(&range)?;
+        let mut transactions = self.completed_transactions(transaction_ids);
+        let fields = match transactions.next(self) {
+            Some(transaction) if transaction.start_pid == PID::SETUP => {
+                let data_packet_id = transaction.packet_id_range.start + 1;
+                let data_packet = self.packet(data_packet_id)?;
+                SetupFields::from_data_packet(&data_packet)
+            },
+            _ => {
+                return Err(IndexError);
+            }
+        };
         let direction = fields.type_fields.direction();
         let mut data: Vec<u8> = Vec::new();
-        for id in transaction_ids {
-            let transaction = self.transaction(id)?;
+        while let Some(transaction) = transactions.next(self) {
             match (direction,
-                   transaction.pid,
+                   transaction.start_pid,
                    transaction.payload_byte_range)
             {
                 (Direction::In,  PID::IN,  Some(range)) |
@@ -548,7 +736,7 @@ impl ItemSource<TrafficItem> for Capture {
             Packet(.., packet_id) => {
                 let packet = self.packet(*packet_id)?;
                 let pid = PID::from(*packet.get(0).ok_or(IndexError)?);
-                format!("{} packet{}: {:02X?}",
+                format!("{} packet{}",
                     pid,
                     match PacketFields::from_packet(&packet) {
                         PacketFields::SOF(sof) => format!(
@@ -560,25 +748,36 @@ impl ItemSource<TrafficItem> for Capture {
                             token.device_address(),
                             token.endpoint_number(),
                             token.crc()),
-                        PacketFields::Data(data) => format!(
-                            " with {} data bytes and CRC {:04X}",
-                            packet.len() - 3,
+                        PacketFields::Data(data) if packet.len() <= 3 => format!(
+                            " with CRC {:04X} and no data",
                             data.crc),
-                        PacketFields::None => "".to_string()
-                    },
-                    packet)
+                        PacketFields::Data(data) => format!(
+                            " with CRC {:04X} and {} data bytes: {}",
+                            data.crc,
+                            packet.len() - 3,
+                            Bytes::first(100, &packet[1 .. packet.len() - 2])),
+                        PacketFields::None => match pid {
+                            PID::Malformed => format!(": {:02X?}", packet),
+                            _ => "".to_string()
+                        }
+                    })
             },
             Transaction(_, transaction_id) => {
                 let transaction = self.transaction(*transaction_id)?;
-                let count = transaction.packet_count();
-                match (transaction.pid, transaction.payload_size()) {
+                match (transaction.start_pid, transaction.payload_size()) {
                     (PID::SOF, _) => format!(
-                        "{} SOF packets", count),
+                        "{} SOF packets", transaction.packet_count()),
+                    (PID::Malformed, _) => format!(
+                        "{} malformed packets", transaction.packet_count()),
                     (pid, None) => format!(
-                        "{} transaction, {} packets", pid, count),
+                        "{} transaction, {}", pid, transaction.end_pid),
+                    (pid, Some(size)) if size == 0 => format!(
+                        "{} transaction with no data, {}",
+                        pid, transaction.end_pid),
                     (pid, Some(size)) => format!(
-                        "{} transaction, {} packets with {} data bytes",
-                        pid, count, size)
+                        "{} transaction with {} data bytes, {}: {}",
+                        pid, size, transaction.end_pid,
+                        Bytes::first(100, &self.transaction_bytes(&transaction)?))
                 }
             },
             Transfer(transfer_id) => {
@@ -588,36 +787,63 @@ impl ItemSource<TrafficItem> for Capture {
                 let endpoint_id = entry.endpoint_id();
                 let endpoint = self.endpoints.get(endpoint_id)?;
                 let device_id = endpoint.device_id();
-                let dev_data = &self.device_data(&device_id)?;
-                let num = endpoint.number();
-                let ep_type = dev_data.endpoint_type(num);
-                if !entry.is_start() {
-                    return Ok(match ep_type {
-                        Invalid =>
-                            "End of invalid groups".to_string(),
-                        Framing =>
-                            "End of SOF groups".to_string(),
-                        endpoint_type => format!(
-                            "{} transfer ending on endpoint {}.{}",
-                            endpoint_type, endpoint.device_address(), num),
-                    })
-                }
+                let dev_data = self.device_data(&device_id)?;
+                let ep_addr = endpoint.address();
+                let (ep_type, _) = dev_data.endpoint_details(ep_addr);
                 let range = self.transfer_range(&entry)?;
                 let count = range.len();
-                match ep_type {
-                    Invalid => format!(
+                match (ep_type, entry.is_start()) {
+                    (Invalid, true) => format!(
                         "{} invalid groups", count),
-                    Framing => format!(
+                    (Invalid, false) =>
+                        "End of invalid groups".to_string(),
+                    (Framing, true) => format!(
                         "{} SOF groups", count),
-                    Normal(Control) => {
+                    (Framing, false) =>
+                        "End of SOF groups".to_string(),
+                    (Normal(Control), true) => {
                         let transfer = self.control_transfer(
                             endpoint.device_address(), endpoint_id, range)?;
                         transfer.summary()
                     },
-                    endpoint_type => format!(
-                        "{} transfer with {} transactions on endpoint {}.{}",
-                        endpoint_type, count,
-                        endpoint.device_address(), endpoint.number())
+                    (endpoint_type, starting) => {
+                        let ep_transfer_id = entry.transfer_id();
+                        let ep_traf = self.endpoint_traffic(endpoint_id)?;
+                        let ep_transaction_id =
+                            ep_traf.transfer_index.get(ep_transfer_id)?;
+                        let transaction_id =
+                            ep_traf.transaction_ids.get(ep_transaction_id)?;
+                        let transaction = self.transaction(transaction_id)?;
+                        let ep_type_string = format!("{}", endpoint_type);
+                        let ep_type_lower = ep_type_string.to_lowercase();
+                        match (transaction.successful(), starting) {
+                            (true, true) => {
+                                let byte_range =
+                                    self.transfer_byte_range(endpoint_id,
+                                                             &range)?;
+                                let length = byte_range.len();
+                                let bytes = self.transfer_bytes(endpoint_id,
+                                                                &range, 100)?;
+                                let display_bytes = Bytes {
+                                    partial: length > 100,
+                                    bytes: &bytes,
+                                };
+                                format!(
+                                    "{} transfer of {} on endpoint {}: {}",
+                                    ep_type_string, fmt_size(length), endpoint,
+                                    display_bytes)
+                            },
+                            (true, false) => format!(
+                                "End of {} transfer on endpoint {}",
+                                ep_type_lower, endpoint),
+                            (false, true) => format!(
+                                "Polling {} times for {} transfer on endpoint {}",
+                                count, ep_type_lower, endpoint),
+                            (false, false) => format!(
+                                "End polling for {} transfer on endpoint {}",
+                                ep_type_lower, endpoint)
+                        }
+                    }
                 }
             }
         })
@@ -669,7 +895,8 @@ impl ItemSource<TrafficItem> for Capture {
             connectors.push(match item {
                 Transfer(..) => {
                     match (state, thru) {
-                        (Idle,     _    ) => ' ',
+                        (Idle,     false) => ' ',
+                        (Idle,     true ) => '─',
                         (Starting, _    ) => '○',
                         (Ongoing,  false) => '│',
                         (Ongoing,  true ) => '┼',
@@ -751,7 +978,7 @@ impl ItemSource<DeviceItem> for Capture {
             Interface(dev, conf, iface) => match index {
                 0 => InterfaceDescriptor(*dev, *conf, *iface),
                 n => EndpointDescriptor(*dev, *conf, *iface,
-                    EndpointNum((n - 1).try_into()?))
+                    InterfaceEpNum((n - 1).try_into()?))
             },
             InterfaceDescriptor(dev, conf, iface) =>
                 InterfaceDescriptorField(*dev, *conf, *iface,
@@ -797,7 +1024,7 @@ impl ItemSource<DeviceItem> for Capture {
             Interface(dev, conf, iface) =>
                 match self.try_configuration(dev, conf) {
                     Some(conf) =>
-                        conf.interface(iface)?.endpoint_descriptors.len(),
+                        1 + conf.interface(iface)?.endpoint_descriptors.len(),
                     None => 0
                 },
             InterfaceDescriptor(..) => usb::InterfaceDescriptor::NUM_FIELDS,

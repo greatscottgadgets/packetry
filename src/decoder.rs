@@ -15,26 +15,29 @@ impl PID {
 
 #[derive(PartialEq)]
 enum DecodeStatus {
+    Single,
     New,
     Continue,
+    Retry,
     Done,
     Invalid
 }
 
 struct EndpointData {
     device_id: DeviceId,
-    number: EndpointNum,
+    address: EndpointAddr,
     transfer_id: Option<EndpointTransferId>,
     transaction_count: u64,
-    last: PID,
+    last: Option<PID>,
+    last_success: bool,
     setup: Option<SetupFields>,
     payload: Vec<u8>,
 }
 
 #[derive(Default)]
 struct TransactionState {
-    first: PID,
-    last: PID,
+    first: Option<PID>,
+    last: Option<PID>,
     start: Option<PacketId>,
     count: u64,
     endpoint_id: Option<EndpointId>,
@@ -55,12 +58,17 @@ impl TransactionState {
 
             // SOF when there is no existing transaction starts a new
             // "transaction" representing an idle period on the bus.
-            (_, Malformed, SOF) => DecodeStatus::New,
+            (_, None, SOF) => DecodeStatus::New,
             // Additional SOFs extend this "transaction", more may follow.
-            (_, SOF, SOF) => DecodeStatus::Continue,
+            (_, Some(SOF), SOF) => DecodeStatus::Continue,
+
+            // A malformed packet is grouped with previous malformed packets.
+            (_, Some(Malformed), Malformed) => DecodeStatus::Continue,
+            // If preceded by any other packet, it starts a new transaction.
+            (_, _, Malformed) => DecodeStatus::New,
 
             // SETUP must be followed by DATA0.
-            (_, SETUP, DATA0) => {
+            (_, Some(SETUP), DATA0) => {
                 // The packet must have the correct size.
                 match packet.len() {
                     11 => {
@@ -73,12 +81,12 @@ impl TransactionState {
                 }
             }
             // ACK then completes the transaction.
-            (SETUP, DATA0, ACK) => DecodeStatus::Done,
+            (Some(SETUP), Some(DATA0), ACK) => DecodeStatus::Done,
 
             // IN may be followed by NAK or STALL, completing transaction.
-            (_, IN, NAK | STALL) => DecodeStatus::Done,
+            (_, Some(IN), NAK | STALL) => DecodeStatus::Done,
             // IN or OUT may be followed by DATA0 or DATA1, wait for status.
-            (_, IN | OUT, DATA0 | DATA1) => {
+            (_, Some(IN | OUT), DATA0 | DATA1) => {
                 if packet.len() >= 3 {
                     let range = 1 .. (packet.len() - 2);
                     self.payload = packet[range].to_vec();
@@ -88,9 +96,9 @@ impl TransactionState {
                 }
             },
             // An ACK or NYET then completes the transaction.
-            (IN | OUT, DATA0 | DATA1, ACK | NYET) => DecodeStatus::Done,
+            (Some(IN | OUT), Some(DATA0 | DATA1), ACK | NYET) => DecodeStatus::Done,
             // OUT may also be completed by NAK or STALL.
-            (OUT, DATA0 | DATA1, NAK | STALL) => DecodeStatus::Done,
+            (Some(OUT), Some(DATA0 | DATA1), NAK | STALL) => DecodeStatus::Done,
 
             // Any other case is not a valid part of a transaction.
             _ => DecodeStatus::Invalid,
@@ -102,8 +110,8 @@ impl TransactionState {
         // A transaction is completed if it has 3 valid packets and is
         // acknowledged with an ACK or NYET handshake.
         match (self.count, self.last) {
-            (3, ACK | NYET) => true,
-            (..)            => false
+            (3, Some(ACK | NYET)) => true,
+            (..)                  => false
         }
     }
 }
@@ -111,17 +119,21 @@ impl TransactionState {
 #[derive(Copy, Clone)]
 struct EndpointKey {
     dev_addr: DeviceAddr,
+    direction: Direction,
     ep_num: EndpointNum,
 }
 
 impl Key for EndpointKey {
     fn id(self) -> usize {
-        self.dev_addr.0 as usize * 16 + self.ep_num.0 as usize
+        self.dev_addr.0 as usize * 32 +
+            self.direction as usize * 16 +
+                self.ep_num.0 as usize
     }
 
     fn key(id: usize) -> EndpointKey {
         EndpointKey {
-            dev_addr: DeviceAddr((id / 16) as u8),
+            dev_addr: DeviceAddr((id / 32) as u8),
+            direction: Direction::from(((id / 16) % 2) as u8),
             ep_num: EndpointNum((id % 16) as u8),
         }
     }
@@ -148,10 +160,10 @@ impl<'cap> Decoder<'cap> {
             last_item_endpoint: None,
             transaction_state: TransactionState::default(),
         };
-        let invalid_id =
-            decoder.add_endpoint(DeviceAddr(0), EndpointNum(INVALID_EP_NUM))?;
-        let framing_id =
-            decoder.add_endpoint(DeviceAddr(0), EndpointNum(FRAMING_EP_NUM))?;
+        let invalid_id = decoder.add_endpoint(
+            DeviceAddr(0), EndpointNum(INVALID_EP_NUM), Direction::Out)?;
+        let framing_id = decoder.add_endpoint(
+            DeviceAddr(0), EndpointNum(FRAMING_EP_NUM), Direction::Out)?;
         assert!(invalid_id == Decoder::INVALID_EP_ID);
         assert!(framing_id == Decoder::FRAMING_EP_ID);
         Ok(decoder)
@@ -169,17 +181,27 @@ impl<'cap> Decoder<'cap> {
         Ok(())
     }
 
-    pub fn token_endpoint(&mut self, token: &TokenFields)
+    pub fn token_endpoint(&mut self, pid: PID, token: &TokenFields)
         -> Result<EndpointId, CaptureError>
     {
+        let dev_addr = token.device_address();
+        let ep_num = token.endpoint_number();
+        let direction = match (ep_num.0, pid) {
+            (0, _)        => Direction::Out,
+            (_, PID::IN)  => Direction::In,
+            (_, PID::OUT) => Direction::Out,
+            _ => return Err(IndexError)
+        };
         let key = EndpointKey {
-            dev_addr: token.device_address(),
-            ep_num: token.endpoint_number()
+            dev_addr,
+            ep_num,
+            direction
         };
         Ok(match self.endpoint_index.get(key) {
             Some(id) => *id,
             None => {
-                let id = self.add_endpoint(key.dev_addr, key.ep_num)?;
+                let id = self.add_endpoint(
+                    key.dev_addr, key.ep_num, key.direction)?;
                 self.endpoint_index.set(key, id);
                 id
             }
@@ -191,11 +213,14 @@ impl<'cap> Decoder<'cap> {
     {
         let pid = PID::from_packet(packet)?;
         match self.transaction_state.status(packet)? {
-            DecodeStatus::New => {
+            DecodeStatus::Single => {
+                self.transaction_start(packet_id, packet)?;
                 self.transaction_end()?;
+            },
+            DecodeStatus::New => {
                 self.transaction_start(packet_id, packet)?;
             },
-            DecodeStatus::Continue => {
+            DecodeStatus::Continue | DecodeStatus::Retry => {
                 self.transaction_append(pid);
             },
             DecodeStatus::Done => {
@@ -203,7 +228,6 @@ impl<'cap> Decoder<'cap> {
                 self.transaction_end()?;
             },
             DecodeStatus::Invalid => {
-                self.transaction_end()?;
                 self.transaction_start(packet_id, packet)?;
                 self.transaction_end()?;
             },
@@ -214,15 +238,19 @@ impl<'cap> Decoder<'cap> {
     fn transaction_start(&mut self, packet_id: PacketId, packet: &[u8])
         -> Result<(), CaptureError>
     {
+        self.add_transaction()?;
+        self.transaction_state = TransactionState::default();
+        let pid = PID::from_packet(packet)?;
         let state = &mut self.transaction_state;
         state.start = Some(packet_id);
         state.count = 1;
-        state.first = PID::from_packet(packet)?;
+        state.first = Some(pid);
         state.last = state.first;
         self.transaction_state.endpoint_id = Some(
             match PacketFields::from_packet(packet) {
                 PacketFields::SOF(_) => Decoder::FRAMING_EP_ID,
-                PacketFields::Token(token) => self.token_endpoint(&token)?,
+                PacketFields::Token(token) =>
+                    self.token_endpoint(pid, &token)?,
                 _ => Decoder::INVALID_EP_ID,
             }
         );
@@ -232,19 +260,14 @@ impl<'cap> Decoder<'cap> {
     fn transaction_append(&mut self, pid: PID) {
         let state = &mut self.transaction_state;
         state.count += 1;
-        state.last = pid;
+        state.last = Some(pid);
     }
 
     fn transaction_end(&mut self)
         -> Result<(), CaptureError>
     {
         self.add_transaction()?;
-        let state = &mut self.transaction_state;
-        state.start = None;
-        state.count = 0;
-        state.first = PID::Malformed;
-        state.last = PID::Malformed;
-        state.setup = None;
+        self.transaction_state = TransactionState::default();
         Ok(())
     }
 
@@ -270,36 +293,44 @@ impl<'cap> Decoder<'cap> {
             device_descriptor: None,
             configurations: VecMap::new(),
             config_number: None,
-            endpoint_types: VecMap::new(),
+            endpoint_details: VecMap::new(),
             strings: VecMap::new(),
         });
         Ok(device_id)
     }
 
-    fn add_endpoint(&mut self, address: DeviceAddr, number: EndpointNum)
+    fn add_endpoint(&mut self,
+                    dev_addr: DeviceAddr,
+                    number: EndpointNum,
+                    direction: Direction)
         -> Result<EndpointId, CaptureError>
     {
-        let device_id = match self.device_index.get(address) {
+        let device_id = match self.device_index.get(dev_addr) {
             Some(id) => *id,
-            None => self.add_device(address)?
+            None => self.add_device(dev_addr)?
         };
         let mut endpoint = Endpoint::default();
         endpoint.set_device_id(device_id);
-        endpoint.set_device_address(address);
+        endpoint.set_device_address(dev_addr);
         endpoint.set_number(number);
+        endpoint.set_direction(direction);
         let endpoint_id = self.capture.endpoints.push(&endpoint)?;
+        let address = EndpointAddr::from_parts(number, direction);
         self.endpoint_data.set(endpoint_id, EndpointData {
-            number,
+            address,
             device_id,
             transfer_id: None,
             transaction_count: 0,
-            last: PID::Malformed,
+            last: None,
+            last_success: false,
             setup: None,
             payload: Vec::new(),
         });
         self.capture.endpoint_traffic.set(endpoint_id, EndpointTraffic {
             transaction_ids: HybridIndex::new(1)?,
             transfer_index: HybridIndex::new(1)?,
+            data_index: HybridIndex::new(1)?,
+            total_data: 0,
         });
         let ep_state = EndpointState::Idle as u8;
         self.last_endpoint_state.push(ep_state);
@@ -377,7 +408,7 @@ impl<'cap> Decoder<'cap> {
                         let config_num = ConfigNum::from(
                             config.descriptor.config_value);
                         configurations.set(config_num, config);
-                        dev_data.update_endpoint_types();
+                        dev_data.update_endpoint_details();
                     }
                 }
             },
@@ -401,15 +432,22 @@ impl<'cap> Decoder<'cap> {
     {
         let dev_data = self.current_device_data_mut()?;
         dev_data.config_number = Some(ConfigNum(fields.value.try_into()?));
-        dev_data.update_endpoint_types();
+        dev_data.update_endpoint_details();
         Ok(())
     }
 
     fn transfer_status(&mut self) -> Result<DecodeStatus, CaptureError> {
-        let next = self.transaction_state.first;
+        let next = self.transaction_state.first.ok_or(IndexError)?;
+        let endpoint_id = self.current_endpoint_id()?;
         let ep_data = self.current_endpoint_data()?;
         let dev_data = self.current_device_data()?;
-        let ep_type = &dev_data.endpoint_type(ep_data.number);
+        let (ep_type, ep_max) = dev_data.endpoint_details(ep_data.address);
+        let success = self.transaction_state.completed();
+        let length = self.transaction_state.payload.len() as u64;
+        let short = match ep_max {
+            Some(max) => length < max as u64,
+            None      => false
+        };
         use PID::*;
         use EndpointType::*;
         use usb::EndpointType::*;
@@ -438,31 +476,40 @@ impl<'cap> Decoder<'cap> {
                         // If there is data to transfer, setup stage is
                         // followed by IN/OUT at data stage in the direction
                         // of the request. IN/OUT may then be repeated.
-                        (In,  true, SETUP, IN ) |
-                        (Out, true, SETUP, OUT) |
-                        (In,  true, IN,    IN ) |
-                        (Out, true, OUT,   OUT) => {
-                            if self.transaction_state.completed() {
+                        (In,  true, Some(SETUP), IN ) |
+                        (Out, true, Some(SETUP), OUT) |
+                        (In,  true, Some(IN),    IN ) |
+                        (Out, true, Some(OUT),   OUT) => {
+                            if success {
                                 let payload =
                                     self.transaction_state.payload.clone();
                                 let ep_data = self.current_endpoint_data_mut()?;
                                 ep_data.payload.extend(payload);
+                                // Await status stage.
+                                DecodeStatus::Continue
+                            } else {
+                                // Retry data stage.
+                                DecodeStatus::Retry
                             }
-                            // Await status stage.
-                            DecodeStatus::Continue
                         },
 
                         // If there is no data to transfer, setup stage is
                         // followed by IN/OUT at status stage in the opposite
                         // direction to the request. If there is data, then
                         // the status stage follows the data stage.
-                        (In,  false, SETUP, OUT) |
-                        (Out, false, SETUP, IN ) |
-                        (In,  true,  IN,    OUT) |
-                        (Out, true,  OUT,   IN ) => {
-                            let fields_copy = *fields;
-                            self.decode_request(fields_copy)?;
-                            DecodeStatus::Done
+                        (In,  false, Some(SETUP), OUT) |
+                        (Out, false, Some(SETUP), IN ) |
+                        (In,  true,  Some(IN),    OUT) |
+                        (Out, true,  Some(OUT),   IN ) => {
+                            if success {
+                                let fields_copy = *fields;
+                                self.decode_request(fields_copy)?;
+                                // Status stage complete.
+                                DecodeStatus::Done
+                            } else {
+                                // Retry status stage.
+                                DecodeStatus::Retry
+                            }
                         },
                         // Any other sequence is invalid.
                         (..) => DecodeStatus::Invalid
@@ -472,18 +519,65 @@ impl<'cap> Decoder<'cap> {
 
             // An IN or OUT transaction on a non-control endpoint,
             // with no transfer in progress, starts a new transfer.
-            (_, Malformed, IN | OUT) => DecodeStatus::New,
+            // This can be either an actual transfer, or a polling
+            // group used to collect NAKed transactions.
+            (_, None, IN | OUT) => {
+                let ep_traf = self.capture.endpoint_traffic(endpoint_id)?;
+                ep_traf.data_index.push(ep_traf.total_data)?;
+                if success {
+                    ep_traf.total_data += length;
+                }
+                let ep_data = self.current_endpoint_data_mut()?;
+                ep_data.last_success = success;
+                if success && short {
+                    // New transfer, ended immediately by a short packet.
+                    DecodeStatus::Single
+                } else {
+                    // Either a new transfer or a new polling group.
+                    DecodeStatus::New
+                }
+            },
 
             // IN or OUT may then be repeated.
-            (_, IN, IN) => DecodeStatus::Continue,
-            (_, OUT, OUT) => DecodeStatus::Continue,
+            (_, Some(IN),  IN ) |
+            (_, Some(OUT), OUT) => {
+                let success_changed = success != ep_data.last_success;
+                let ep_traf = self.capture.endpoint_traffic(endpoint_id)?;
+                ep_traf.data_index.push(ep_traf.total_data)?;
+                if success {
+                    ep_traf.total_data += length;
+                }
+                if success_changed {
+                    let ep_data = self.current_endpoint_data_mut()?;
+                    ep_data.last_success = success;
+                    if success && short {
+                        // New transfer, ended immediately by a short packet.
+                        DecodeStatus::Single
+                    } else {
+                        // Either a new transfer or a new polling group.
+                        DecodeStatus::New
+                    }
+                } else if success {
+                    // Continuing an ongoing transfer.
+                    if short {
+                        // A short packet ends the transfer.
+                        DecodeStatus::Done
+                    } else {
+                        // A full-length packet continues the transfer.
+                        DecodeStatus::Continue
+                    }
+                } else {
+                    // Continuing a polling group.
+                    DecodeStatus::Retry
+                }
+            },
 
             // A SOF group starts a special transfer, unless
             // one is already in progress.
-            (Framing, Malformed, SOF) => DecodeStatus::New,
+            (Framing, None, SOF) => DecodeStatus::New,
 
             // Further SOF groups continue this transfer.
-            (Framing, SOF, SOF) => DecodeStatus::Continue,
+            (Framing, Some(SOF), SOF) => DecodeStatus::Continue,
 
             // Any other case is not a valid part of a transfer.
             _ => DecodeStatus::Invalid
@@ -493,30 +587,25 @@ impl<'cap> Decoder<'cap> {
     fn transfer_update(&mut self, transaction_id: TransactionId)
         -> Result<(), CaptureError>
     {
-        let status = self.transfer_status()?;
-        let ep_data = self.current_endpoint_data()?;
-        let retry_needed =
-            ep_data.transaction_count > 0 &&
-            status != DecodeStatus::Invalid &&
-            !self.transaction_state.completed();
-        if retry_needed {
-            self.transfer_append(transaction_id, false)?;
-            return Ok(());
-        }
-        match status {
-            DecodeStatus::New => {
+        match self.transfer_status()? {
+            DecodeStatus::Single => {
+                self.transfer_start(transaction_id, true)?;
                 self.transfer_end()?;
+            },
+            DecodeStatus::New => {
                 self.transfer_start(transaction_id, true)?;
             },
             DecodeStatus::Continue => {
                 self.transfer_append(transaction_id, true)?;
+            },
+            DecodeStatus::Retry => {
+                self.transfer_append(transaction_id, false)?;
             },
             DecodeStatus::Done => {
                 self.transfer_append(transaction_id, true)?;
                 self.transfer_end()?;
             },
             DecodeStatus::Invalid => {
-                self.transfer_end()?;
                 self.transfer_start(transaction_id, false)?;
                 self.transfer_end()?;
             }
@@ -529,8 +618,12 @@ impl<'cap> Decoder<'cap> {
                       success: bool)
         -> Result<(), CaptureError>
     {
-        let transaction_type = self.transaction_state.first;
         let endpoint_id = self.current_endpoint_id()?;
+        let ep_data = self.current_endpoint_data()?;
+        if ep_data.transaction_count > 0 {
+            self.add_transfer_entry(endpoint_id, false)?;
+        }
+        let transaction_type = self.transaction_state.first;
         let ep_traf = self.capture.endpoint_traffic(endpoint_id)?;
         let ep_transaction_id = ep_traf.transaction_ids.push(transaction_id)?;
         let ep_transfer_id = ep_traf.transfer_index.push(ep_transaction_id)?;
@@ -539,7 +632,10 @@ impl<'cap> Decoder<'cap> {
         ep_data.transaction_count = 1;
         if success {
             ep_data.last = transaction_type;
+        } else {
+            ep_data.last = None
         }
+        ep_data.payload.clear();
         let transfer_start_id = self.add_transfer_entry(endpoint_id, true)?;
         self.capture.item_index.push(transfer_start_id)?;
         self.last_item_endpoint = Some(endpoint_id);
@@ -578,7 +674,7 @@ impl<'cap> Decoder<'cap> {
         }
         let ep_data = self.current_endpoint_data_mut()?;
         ep_data.transaction_count = 0;
-        ep_data.last = PID::Malformed;
+        ep_data.last = None;
         ep_data.payload.clear();
         Ok(())
     }
