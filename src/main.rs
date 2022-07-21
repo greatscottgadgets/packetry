@@ -74,22 +74,32 @@ fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
             .downcast::<ExpanderWrapper>()
             .expect("The child must be a ExpanderWrapper.");
 
-        let node_ref = row.node();
-        let node = node_ref.borrow();
-        let summary = node.field(&cap_arc, Box::new(Capture::summary));
-        expander_wrapper.set_text(summary);
-        let connectors = node.field(&cap_arc, Box::new(Capture::connectors));
-        expander_wrapper.set_connectors(connectors);
         let expander = expander_wrapper.expander();
-        expander.set_visible(node.expandable());
-        expander.set_expanded(node.expanded());
-        let model = model.clone();
-        let node_ref = node_ref.clone();
-        let handler = expander.connect_expanded_notify(move |expander| {
-            model.set_expanded(&node_ref, expander.is_expanded())
-                 .expect("Failed to expand node")
-        });
-        expander_wrapper.set_handler(handler);
+        match row.node() {
+            Ok(node_ref) => {
+                let node = node_ref.borrow();
+                let summary = node.field(
+                    &cap_arc, Box::new(Capture::summary));
+                expander_wrapper.set_text(summary);
+                let connectors = node.field(
+                    &cap_arc, Box::new(Capture::connectors));
+                expander_wrapper.set_connectors(connectors);
+                expander.set_visible(node.expandable());
+                expander.set_expanded(node.expanded());
+                let model = model.clone();
+                let node_ref = node_ref.clone();
+                let handler = expander.connect_expanded_notify(move |expander| {
+                    model.set_expanded(&node_ref, expander.is_expanded())
+                         .expect("Failed to expand node")
+                });
+                expander_wrapper.set_handler(handler);
+            },
+            Err(msg) => {
+                expander_wrapper.set_connectors("".to_string());
+                expander_wrapper.set_text(format!("Error: {}", msg));
+                expander.set_visible(false);
+            }
+        };
     });
     factory.connect_unbind(move |_, list_item| {
         let expander_wrapper = list_item
@@ -99,10 +109,10 @@ fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
             .expect("The child must be a ExpanderWrapper.");
 
         let expander = expander_wrapper.expander();
-        match expander_wrapper.take_handler() {
-            Some(handler) => expander.disconnect(handler),
-            None => panic!("Handler was not set")
-        };
+
+        if let Some(handler) = expander_wrapper.take_handler() {
+            expander.disconnect(handler);
+        }
     });
     ListView::new(Some(&selection_model), Some(&factory))
 }
