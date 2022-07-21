@@ -23,8 +23,8 @@ pub enum CaptureError {
     RangeError(#[from] TryFromIntError),
     #[error("Descriptor missing")]
     DescriptorMissing,
-    #[error("Invalid index")]
-    IndexError,
+    #[error("Indexing error: {0}")]
+    IndexError(String),
 }
 
 use CaptureError::{DescriptorMissing, IndexError};
@@ -212,7 +212,8 @@ impl Configuration {
     {
         match self.interfaces.get(*number) {
             Some(iface) => Ok(iface),
-            _ => Err(IndexError)
+            _ => Err(IndexError(format!(
+                "Configuration has no interface {}", number)))
         }
     }
 }
@@ -223,7 +224,8 @@ impl Interface {
     {
         match self.endpoint_descriptors.get(*number) {
             Some(desc) => Ok(desc),
-            _ => Err(IndexError)
+            _ => Err(IndexError(format!(
+                "Interface has no endpoint descriptor {}", number)))
         }
     }
 }
@@ -455,7 +457,8 @@ impl Capture {
     pub fn endpoint_traffic(&mut self, endpoint_id: EndpointId)
         -> Result<&mut EndpointTraffic, CaptureError>
     {
-        self.endpoint_traffic.get_mut(endpoint_id).ok_or(IndexError)
+        self.endpoint_traffic.get_mut(endpoint_id).ok_or_else(||
+            IndexError(format!("Capture has no endpoint ID {}", endpoint_id)))
     }
 
     fn transfer_range(&mut self, entry: &TransferIndexEntry)
@@ -599,7 +602,8 @@ impl Capture {
                 SetupFields::from_data_packet(&data_packet)
             },
             _ => {
-                return Err(IndexError);
+                return Err(IndexError(String::from(
+                    "Control transfer did not start with SETUP packet")))
             }
         };
         let direction = fields.type_fields.direction();
@@ -627,13 +631,15 @@ impl Capture {
     pub fn device_data(&self, id: &DeviceId)
         -> Result<&DeviceData, CaptureError>
     {
-        self.device_data.get(*id).ok_or(IndexError)
+        self.device_data.get(*id).ok_or_else(||
+            IndexError(format!("Capture has no device with ID {}", id)))
     }
 
     pub fn device_data_mut(&mut self, id: &DeviceId)
         -> Result<&mut DeviceData, CaptureError>
     {
-        self.device_data.get_mut(*id).ok_or(IndexError)
+        self.device_data.get_mut(*id).ok_or_else(||
+            IndexError(format!("Capture has no device with ID {}", id)))
     }
 
     pub fn try_configuration(&self, dev: &DeviceId, conf: &ConfigNum)
@@ -706,7 +712,8 @@ impl ItemSource<TrafficItem> for Capture {
             Transaction(transfer_id, transaction_id) =>
                 Packet(*transfer_id, *transaction_id, {
                     self.transaction_index.get(*transaction_id)? + index}),
-            Packet(..) => return Err(IndexError)
+            Packet(..) => return Err(IndexError(String::from(
+                "Packets have no child items")))
         })
     }
 
@@ -747,7 +754,8 @@ impl ItemSource<TrafficItem> for Capture {
         let entry = self.transfer_index.get(transfer_id)?;
         let ep_transfer_id = entry.transfer_id();
         if !entry.is_start() {
-            return Err(IndexError)
+            return Err(IndexError(
+                String::from("Transfer entry for item_end is an end")))
         }
         let ep_traf = self.endpoint_traffic(entry.endpoint_id())?;
         if ep_transfer_id.value >= ep_traf.end_index.len() {
@@ -784,7 +792,11 @@ impl ItemSource<TrafficItem> for Capture {
         Ok(match item {
             Packet(.., packet_id) => {
                 let packet = self.packet(*packet_id)?;
-                let pid = PID::from(*packet.first().ok_or(IndexError)?);
+                let first_byte = *packet.first().ok_or_else(||
+                    IndexError(format!(
+                        "Packet {} is empty, cannot retrieve PID",
+                        packet_id)))?;
+                let pid = PID::from(first_byte);
                 format!("{} packet{}",
                     pid,
                     match PacketFields::from_packet(&packet) {
@@ -1037,7 +1049,8 @@ impl ItemSource<DeviceItem> for Capture {
             EndpointDescriptor(dev, conf, iface, ep) =>
                 EndpointDescriptorField(*dev, *conf, *iface, *ep,
                     EndpointField(index.try_into()?)),
-            _ => return Err(IndexError)
+            _ => return Err(IndexError(String::from(
+                "This device item type cannot have children")))
         })
     }
 
