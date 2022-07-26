@@ -117,7 +117,7 @@ fn run() -> Result<(), PacketryError> {
     let mut cap = Capture::new()?;
     let mut decoder = Decoder::new(&mut cap)?;
     while let Ok(packet) = pcap.next() {
-        decoder.handle_raw_packet(&packet)?;
+        decoder.handle_raw_packet(&mut cap, &packet)?;
     }
     cap.print_storage_summary();
     let capture = Arc::new(Mutex::new(cap));

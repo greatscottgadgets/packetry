@@ -1227,7 +1227,7 @@ mod tests {
                     let mut cap = Capture::new().unwrap();
                     let mut decoder = Decoder::new(&mut cap).unwrap();
                     while let Ok(packet) = pcap.next() {
-                        decoder.handle_raw_packet(&packet).unwrap();
+                        decoder.handle_raw_packet(&mut cap, &packet).unwrap();
                     }
                     let out_file = File::create(out_path.clone()).unwrap();
                     let mut out_writer = BufWriter::new(out_file);
