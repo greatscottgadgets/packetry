@@ -7,6 +7,7 @@ mod row_data;
 mod expander;
 mod tree_list_model;
 
+use std::cell::RefCell;
 use std::sync::{Arc, Mutex};
 
 use gtk::gio::ListModel;
@@ -35,16 +36,22 @@ mod hybrid_index;
 mod usb;
 mod vec_map;
 
+thread_local!(
+    static MODELS: RefCell<Vec<Object>>  = RefCell::new(Vec::new());
+);
+
 fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
         -> ListView
     where
         Item: Copy,
-        Model: GenericModel<Item> + IsA<ListModel>,
+        Model: GenericModel<Item> + IsA<ListModel> + IsA<Object>,
         RowData: GenericRowData<Item> + IsA<Object>,
         Capture: ItemSource<Item>
 {
     let model = Model::new(capture.clone())
                       .expect("Failed to create model");
+
+    MODELS.with(|models| models.borrow_mut().push(model.clone().upcast()));
     let cap_arc = capture.clone();
     let selection_model = SingleSelection::new(Some(&model));
     let factory = SignalListItemFactory::new();
@@ -113,15 +120,12 @@ fn run() -> Result<(), PacketryError> {
     );
 
     let args: Vec<_> = std::env::args().collect();
-    let mut pcap = pcap::Capture::from_file(&args[1])?;
     let mut cap = Capture::new()?;
     let mut decoder = Decoder::new(&mut cap)?;
-    while let Ok(packet) = pcap.next() {
-        decoder.handle_raw_packet(&mut cap, &packet)?;
-    }
     cap.print_storage_summary();
     let capture = Arc::new(Mutex::new(cap));
 
+    let app_capture = capture.clone();
     application.connect_activate(move |application| {
         let window = gtk::ApplicationWindow::builder()
             .default_width(320)
@@ -131,7 +135,7 @@ fn run() -> Result<(), PacketryError> {
             .build();
 
         let listview = create_view::
-            <capture::TrafficItem, model::TrafficModel, row_data::TrafficRowData>(&capture);
+            <capture::TrafficItem, model::TrafficModel, row_data::TrafficRowData>(&app_capture);
 
         let scrolled_window = gtk::ScrolledWindow::builder()
             .hscrollbar_policy(gtk::PolicyType::Automatic) // Disable horizontal scrolling
@@ -143,7 +147,7 @@ fn run() -> Result<(), PacketryError> {
 
         let device_tree = create_view::<capture::DeviceItem,
                                         model::DeviceModel,
-                                        row_data::DeviceRowData>(&capture);
+                                        row_data::DeviceRowData>(&app_capture);
         let device_window = gtk::ScrolledWindow::builder()
             .hscrollbar_policy(gtk::PolicyType::Automatic)
             .min_content_height(480)
@@ -161,6 +165,31 @@ fn run() -> Result<(), PacketryError> {
         window.set_child(Some(&paned));
         window.show();
     });
+
+    let mut pcap = pcap::Capture::from_file(&args[1])?;
+    let update_capture = capture.clone();
+    gtk::glib::timeout_add_local(std::time::Duration::from_millis(1), move || {
+        let mut cap = update_capture.lock().ok().unwrap();
+        for _ in 1..10 {
+            if let Ok(packet) = pcap.next() {
+                decoder.handle_raw_packet(&mut cap, &packet).unwrap();
+            }
+        }
+        drop(cap);
+
+        MODELS.with(|models|
+            for model in models.borrow().iter() {
+                let model = model.clone();
+                match model.downcast::<crate::model::TrafficModel>() {
+                    Ok(tree_model) => tree_model.update().unwrap(),
+                    _ => (),
+                };
+            }
+        );
+
+        Continue(true)
+    });
+
     application.run_with_args::<&str>(&[]);
     Ok(())
 }

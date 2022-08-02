@@ -190,6 +190,23 @@ where Item: Copy,
         Ok(())
     }
 
+    pub fn update(&mut self) -> Result<Option<(u32, u32, u32)>, ModelError> {
+        let mut cap = self.capture.lock().or(Err(ModelError::LockError))?;
+
+        let mut node_borrow = self.root.borrow_mut();
+
+        let new_child_count = cap.item_count(&None)? as u32;
+        if node_borrow.direct_child_count == new_child_count {
+            return Ok(None);
+        }
+
+        let position = node_borrow.total_child_count;
+        let added = new_child_count - node_borrow.direct_child_count;
+        node_borrow.direct_child_count = new_child_count;
+        node_borrow.total_child_count += added;
+        Ok(Some((position, 0, added)))
+    }
+
     // The following methods correspond to the ListModel interface, and can be
     // called by a GObject wrapper class to implement that interface.
 

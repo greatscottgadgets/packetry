@@ -6,6 +6,7 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use std::sync::{Arc, Mutex};
 
+use gtk::prelude::ListModelExt;
 use gtk::subclass::prelude::*;
 use gtk::{gio, glib};
 
@@ -18,6 +19,18 @@ glib::wrapper! {
 }
 glib::wrapper! {
     pub struct DeviceModel(ObjectSubclass<imp::DeviceModel>) @implements gio::ListModel;
+}
+
+impl TrafficModel {
+    pub fn update(&self) -> Result<(), ModelError> {
+        let mut tree_opt  = self.imp().tree.borrow_mut();
+        let tree = tree_opt.as_mut().unwrap();
+        if let Some((position, _, added)) = tree.update()? {
+            drop(tree_opt);
+            self.items_changed(position, 0, added);
+        }
+        Ok(())
+    }
 }
 
 pub trait GenericModel<Item> where Self: Sized {
