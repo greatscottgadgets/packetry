@@ -2,6 +2,7 @@
 extern crate bitfield;
 use thiserror::Error;
 
+mod backend;
 mod model;
 mod row_data;
 mod expander;
@@ -166,29 +167,37 @@ fn run() -> Result<(), PacketryError> {
         window.show();
     });
 
-    let mut pcap = pcap::Capture::from_file(&args[1])?;
-    let update_capture = capture.clone();
-    gtk::glib::timeout_add_local(std::time::Duration::from_millis(1), move || {
-        let mut cap = update_capture.lock().ok().unwrap();
-        for _ in 1..10 {
-            if let Ok(packet) = pcap.next() {
+    if args.len() > 1 {
+        let mut pcap = pcap::Capture::from_file(&args[1])?;
+        let mut cap = capture.lock().ok().unwrap();
+        while let Ok(packet) = pcap.next() {
+            decoder.handle_raw_packet(&mut cap, &packet).unwrap();
+        }
+    } else {
+        let mut luna = backend::luna::LunaDevice::open()
+            .unwrap()
+            .start()
+            .unwrap();
+        let update_capture = capture.clone();
+        gtk::glib::timeout_add_local(std::time::Duration::from_millis(1), move || {
+            let mut cap = update_capture.lock().ok().unwrap();
+            while let Some(packet) = luna.next() {
                 decoder.handle_raw_packet(&mut cap, &packet).unwrap();
             }
-        }
-        drop(cap);
+            drop(cap);
 
-        MODELS.with(|models|
-            for model in models.borrow().iter() {
-                let model = model.clone();
-                match model.downcast::<crate::model::TrafficModel>() {
-                    Ok(tree_model) => tree_model.update().unwrap(),
-                    _ => (),
-                };
-            }
-        );
+            MODELS.with(|models|
+                for model in models.borrow().iter() {
+                    let model = model.clone();
+                    if let Ok(tree_model) = model.downcast::<crate::model::TrafficModel>() {
+                        tree_model.update().unwrap();
+                    };
+                }
+            );
 
-        Continue(true)
-    });
+            Continue(true)
+        });
+    }
 
     application.run_with_args::<&str>(&[]);
     Ok(())
