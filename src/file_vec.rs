@@ -96,7 +96,7 @@ mod tests {
     use super::*;
     use bytemuck_derive::{Pod, Zeroable};
 
-    #[derive(Copy, Clone, Debug, Default, PartialEq, Pod, Zeroable)]
+    #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Pod, Zeroable)]
     #[repr(C)]
     struct Foo {
         bar: u32,

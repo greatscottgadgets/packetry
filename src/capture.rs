@@ -114,7 +114,7 @@ impl TransferIndexEntry {
     }
 }
 
-#[derive(Copy, Clone, IntoPrimitive, FromPrimitive, PartialEq)]
+#[derive(Copy, Clone, IntoPrimitive, FromPrimitive, PartialEq, Eq)]
 #[repr(u8)]
 pub enum EndpointState {
     #[default]
@@ -735,7 +735,7 @@ impl ItemSource<TrafficItem> for Capture {
         Ok(match item {
             Packet(.., packet_id) => {
                 let packet = self.packet(*packet_id)?;
-                let pid = PID::from(*packet.get(0).ok_or(IndexError)?);
+                let pid = PID::from(*packet.first().ok_or(IndexError)?);
                 format!("{} packet{}",
                     pid,
                     match PacketFields::from_packet(&packet) {

@@ -9,11 +9,11 @@ use CaptureError::IndexError;
 
 impl PID {
     fn from_packet(packet: &[u8]) -> Result<PID, CaptureError> {
-        Ok(PID::from(*packet.get(0).ok_or(IndexError)?))
+        Ok(PID::from(*packet.first().ok_or(IndexError)?))
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 enum DecodeStatus {
     Single,
     New,

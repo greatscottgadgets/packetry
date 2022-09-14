@@ -8,7 +8,7 @@ use derive_more::{From, Into, Display};
 use crate::vec_map::VecMap;
 
 #[allow(clippy::upper_case_acronyms)]
-#[derive(Copy, Clone, Debug, IntoPrimitive, FromPrimitive, PartialEq)]
+#[derive(Copy, Clone, Debug, IntoPrimitive, FromPrimitive, PartialEq, Eq)]
 #[repr(u8)]
 pub enum PID {
     RSVD  = 0xF0,
@@ -43,57 +43,57 @@ impl std::fmt::Display for PID {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Default,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
          Pod, Zeroable, From, Into, Display)]
 #[repr(transparent)]
 pub struct DeviceAddr(pub u8);
 
-#[derive(Copy, Clone, Debug, PartialEq, Default,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
          Pod, Zeroable, From, Into, Display)]
 #[repr(transparent)]
 pub struct DeviceField(pub u8);
 
-#[derive(Copy, Clone, Debug, PartialEq, Default,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
          Pod, Zeroable, From, Into, Display)]
 #[repr(transparent)]
 pub struct StringId(pub u8);
 
-#[derive(Copy, Clone, Debug, PartialEq, Default,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
          Pod, Zeroable, From, Into, Display)]
 #[repr(transparent)]
 pub struct ConfigNum(pub u8);
 
-#[derive(Copy, Clone, Debug, PartialEq, Default,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
          Pod, Zeroable, From, Into, Display)]
 #[repr(transparent)]
 pub struct ConfigField(pub u8);
 
-#[derive(Copy, Clone, Debug, PartialEq, Default,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
          Pod, Zeroable, From, Into, Display)]
 #[repr(transparent)]
 pub struct InterfaceNum(pub u8);
 
-#[derive(Copy, Clone, Debug, PartialEq, Default,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
          Pod, Zeroable, From, Into, Display)]
 #[repr(transparent)]
 pub struct InterfaceField(pub u8);
 
-#[derive(Copy, Clone, Debug, PartialEq, Default,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
          Pod, Zeroable, From, Into, Display)]
 #[repr(transparent)]
 pub struct InterfaceEpNum(pub u8);
 
-#[derive(Copy, Clone, Debug, PartialEq, Default,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
          Pod, Zeroable, From, Into, Display)]
 #[repr(transparent)]
 pub struct EndpointNum(pub u8);
 
-#[derive(Copy, Clone, Debug, PartialEq, Default,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
          Pod, Zeroable, From, Into, Display)]
 #[repr(transparent)]
 pub struct EndpointField(pub u8);
 
-#[derive(Copy, Clone, Debug, PartialEq, Default,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
          Pod, Zeroable, From, Into, Display)]
 #[repr(transparent)]
 pub struct EndpointAddr(pub u8);
@@ -116,7 +116,7 @@ impl EndpointAddr {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Default,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
          Pod, Zeroable, From, Into, Display)]
 #[repr(transparent)]
 pub struct EndpointAttr(pub u8);
@@ -332,7 +332,7 @@ impl StandardRequest {
     }
 }
 
-#[derive(Copy, Clone, Debug, FromPrimitive, PartialEq)]
+#[derive(Copy, Clone, Debug, FromPrimitive, PartialEq, Eq)]
 #[repr(u8)]
 pub enum DescriptorType {
     Device = 1,
