@@ -79,6 +79,7 @@ impl<Item> TreeNode<Item> where Item: Copy {
 
     }
 
+    #[allow(clippy::type_complexity)]
     pub fn field(&self,
              capture: &Arc<Mutex<Capture>>,
              func: Box<dyn

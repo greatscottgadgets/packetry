@@ -1,6 +1,11 @@
 on:
   push:
   pull_request:
+  workflow_dispatch:
+
+  # Run automatically every monday
+  schedule:
+    - cron: 1 12 * * 1
 
 name: CI
 
