@@ -6,6 +6,7 @@ use gtk::{
     prelude::*,
     subclass::prelude::*,
     glib::{self, SignalHandlerId},
+    pango::EllipsizeMode,
     Expander,
     Label,
     Orientation,
@@ -22,7 +23,10 @@ impl ExpanderWrapper {
         let wrapper: ExpanderWrapper =
             glib::Object::new(&[])
                          .expect("Failed to create new expander wrapper");
-        wrapper.imp().text_label.replace(Label::new(None));
+        wrapper.imp().text_label.replace(
+            Label::builder()
+                .ellipsize(EllipsizeMode::End)
+                .build());
         wrapper.imp().conn_label.replace(Label::new(None));
         wrapper.imp().expander.replace(Expander::new(None));
         wrapper.append(&wrapper.imp().conn_label.borrow().clone());

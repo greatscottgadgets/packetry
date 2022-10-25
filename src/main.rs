@@ -136,7 +136,7 @@ fn run() -> Result<(), PacketryError> {
         let scrolled_window = gtk::ScrolledWindow::builder()
             .hscrollbar_policy(gtk::PolicyType::Automatic) // Disable horizontal scrolling
             .min_content_height(480)
-            .min_content_width(640)
+            .min_content_width(240)
             .build();
 
         scrolled_window.set_child(Some(&listview));
@@ -147,7 +147,7 @@ fn run() -> Result<(), PacketryError> {
         let device_window = gtk::ScrolledWindow::builder()
             .hscrollbar_policy(gtk::PolicyType::Automatic)
             .min_content_height(480)
-            .min_content_width(240)
+            .min_content_width(100)
             .child(&device_tree)
             .build();
 
