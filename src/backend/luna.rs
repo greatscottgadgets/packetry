@@ -48,6 +48,7 @@ impl LunaDevice {
             let mut buffer = [0u8; READ_LEN];
             let mut packet_queue = PacketQueue::new();
             self.enable_capture(true)?;
+            println!("Capture enabled");
             while stop_rx.try_recv().is_err() {
                 let result = self.handle.read_bulk(
                     ENDPOINT, &mut buffer, Duration::from_millis(100));
@@ -63,6 +64,7 @@ impl LunaDevice {
                 }
             }
             self.enable_capture(false)?;
+            println!("Capture disabled");
             Ok(())
         });
         Ok(LunaCapture {
@@ -94,6 +96,7 @@ impl LunaCapture {
 impl Drop for LunaCapture {
     #[allow(unused_must_use)]
     fn drop(&mut self) {
+        println!("Requesting capture stop");
         self.stop_request.send(());
     }
 }

@@ -167,6 +167,8 @@ fn run() -> Result<(), PacketryError> {
         window.show();
     });
 
+    let mut source_id: Option<gtk::glib::source::SourceId> = None;
+
     if args.len() > 1 {
         let mut pcap = pcap::Capture::from_file(&args[1])?;
         let mut cap = capture.lock().ok().unwrap();
@@ -179,7 +181,7 @@ fn run() -> Result<(), PacketryError> {
             .start()
             .unwrap();
         let update_capture = capture.clone();
-        gtk::glib::timeout_add_local(std::time::Duration::from_millis(1), move || {
+        source_id = Some(gtk::glib::timeout_add_local(std::time::Duration::from_millis(1), move || {
             let mut cap = update_capture.lock().ok().unwrap();
             while let Some(packet) = luna.next() {
                 decoder.handle_raw_packet(&mut cap, &packet).unwrap();
@@ -196,10 +198,13 @@ fn run() -> Result<(), PacketryError> {
             );
 
             Continue(true)
-        });
+        }));
     }
 
     application.run_with_args::<&str>(&[]);
+    if let Some(source) = source_id {
+        source.remove();
+    }
     Ok(())
 }
 
