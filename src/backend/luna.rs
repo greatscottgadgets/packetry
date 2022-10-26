@@ -2,8 +2,8 @@ use rusb::{
     GlobalContext, DeviceHandle,
 };
 use std::collections::VecDeque;
-use std::thread;
-use std::sync::mpsc::{channel, Receiver};
+use std::thread::{spawn, JoinHandle};
+use std::sync::mpsc::{channel, Sender, Receiver};
 use std::time::Duration;
 
 const VID: u16 = 0x1d50;
@@ -21,6 +21,8 @@ pub enum Error {
     ChannelSend,
     #[error("device not found")]
     NotFound,
+    #[error("thread panicked")]
+    ThreadPanicked,
 }
 
 pub struct LunaDevice {
@@ -29,6 +31,8 @@ pub struct LunaDevice {
 
 pub struct LunaCapture {
     receiver: Receiver<Vec<u8>>,
+    stop_request: Sender<()>,
+    worker: JoinHandle<Result<LunaDevice, Error>>,
 }
 
 impl LunaDevice {
@@ -42,13 +46,14 @@ impl LunaDevice {
     pub fn start(mut self) -> Result<LunaCapture, Error> {
         self.handle.claim_interface(0)?;
         let (tx, rx) = channel();
-        thread::spawn::<_, Result<(), Error>>(move || {
+        let (stop_tx, stop_rx) = channel();
+        let thread = spawn(move || {
             let mut buffer = [0u8; READ_LEN];
             let mut packet_queue = PacketQueue::new();
-            self.enable_capture()?;
-            loop {
+            self.enable_capture(true)?;
+            while stop_rx.try_recv().is_err() {
                 let result = self.handle.read_bulk(
-                    ENDPOINT, &mut buffer, Duration::from_secs(1));
+                    ENDPOINT, &mut buffer, Duration::from_millis(100));
                 match result {
                     Ok(count) => {
                         packet_queue.extend(&buffer[..count]);
@@ -60,18 +65,22 @@ impl LunaDevice {
                     Err(error) => return Err(Error::from(error)),
                 }
             }
+            self.enable_capture(false)?;
+            Ok(self)
         });
         Ok(LunaCapture {
+            worker: thread,
+            stop_request: stop_tx,
             receiver: rx,
         })
     }
 
-    fn enable_capture(&mut self) -> Result<(), Error> {
+    fn enable_capture(&mut self, enable: bool) -> Result<(), Error> {
         use rusb::{Direction, RequestType, Recipient, request_type};
         self.handle.write_control(
             request_type(Direction::Out, RequestType::Vendor, Recipient::Device),
             1,
-            1,
+            if enable { 1 } else { 0 },
             0,
             &[],
             Duration::from_secs(5),
@@ -83,6 +92,11 @@ impl LunaDevice {
 impl LunaCapture {
     pub fn next(&mut self) -> Option<Vec<u8>> {
         self.receiver.try_recv().ok()
+    }
+
+    pub fn stop(self) -> Result<LunaDevice, Error> {
+        self.stop_request.send(()).or(Err(Error::ChannelSend))?;
+        self.worker.join().or(Err(Error::ThreadPanicked))?
     }
 }
 
