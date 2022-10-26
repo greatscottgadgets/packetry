@@ -128,6 +128,10 @@ pub enum PacketryError {
     IoError(#[from] std::io::Error),
     #[error(transparent)]
     PcapError(#[from] PcapError),
+    #[error(transparent)]
+    LunaError(#[from] crate::backend::luna::Error),
+    #[error("locking failed")]
+    LockError,
 }
 
 fn run() -> Result<(), PacketryError> {
@@ -188,20 +192,18 @@ fn run() -> Result<(), PacketryError> {
     if args.len() > 1 {
         let pcap_file = File::open(&args[1])?;
         let pcap_reader = PcapReader::new(pcap_file)?;
-        let mut cap = capture.lock().ok().unwrap();
+        let mut cap = capture.lock().or(Err(PacketryError::LockError))?;
         for result in pcap_reader {
             let packet = result?.data;
-            decoder.handle_raw_packet(&mut cap, &packet).unwrap();
+            decoder.handle_raw_packet(&mut cap, &packet)?;
         }
     } else {
-        LUNA.with(|cell| {
+        LUNA.with::<_, Result<(), PacketryError>>(|cell| {
             cell.borrow_mut().replace(
-                backend::luna::LunaDevice::open()
-                    .unwrap()
-                    .start()
-                    .unwrap()
+                backend::luna::LunaDevice::open()?.start()?
             );
-        });
+            Ok(())
+        })?;
         let update_capture = capture.clone();
         source_id = Some(gtk::glib::timeout_add_local(std::time::Duration::from_millis(1), move || {
             let mut cap = update_capture.lock().ok().unwrap();
