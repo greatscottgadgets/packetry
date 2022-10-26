@@ -13,9 +13,14 @@ use std::fs::File;
 use std::sync::{Arc, Mutex};
 
 use gtk::gio::ListModel;
-use gtk::glib::Object;
+use gtk::glib::{self, Object};
 use gtk::{
     prelude::*,
+    ApplicationWindow,
+    MessageDialog,
+    DialogFlags,
+    MessageType,
+    ButtonsType,
     ListView,
     SignalListItemFactory,
     SingleSelection,
@@ -43,6 +48,7 @@ mod vec_map;
 thread_local!(
     static MODELS: RefCell<Vec<Object>>  = RefCell::new(Vec::new());
     static LUNA: RefCell<Option<backend::luna::LunaCapture>> = RefCell::new(None);
+    static WINDOW: RefCell<Option<ApplicationWindow>> = RefCell::new(None);
 );
 
 fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
@@ -187,6 +193,7 @@ fn run() -> Result<(), PacketryError> {
 
         window.set_child(Some(&paned));
         window.show();
+        WINDOW.with(|win_opt| win_opt.replace(Some(window.clone())));
     });
 
     let mut source_id: Option<gtk::glib::source::SourceId> = None;
@@ -240,7 +247,10 @@ fn run() -> Result<(), PacketryError> {
             move || {
                 match update_routine() {
                     Ok(_) => Continue(true),
-                    Err(_) => Continue(false),
+                    Err(e) => {
+                        display_error(e);
+                        Continue(false)
+                    }
                 }
             }
         ));
@@ -253,10 +263,33 @@ fn run() -> Result<(), PacketryError> {
     Ok(())
 }
 
+fn display_error(e: PacketryError) {
+    let message = format!("Error: {:?}", e);
+    WINDOW.with(|win_opt| {
+        match win_opt.borrow().as_ref() {
+            None => println!("{}", message),
+            Some(window) => {
+                let dialog = MessageDialog::new(
+                    Some(window),
+                    DialogFlags::MODAL,
+                    MessageType::Error,
+                    ButtonsType::Close,
+                    &message
+                );
+                dialog.set_transient_for(Some(window));
+                dialog.set_modal(true);
+                dialog.connect_response(
+                    glib::clone!(@weak window => move |_, _| window.destroy()));
+                dialog.show();
+            }
+        }
+    });
+}
+
 fn main() {
     let result = run();
     if let Err(e) = result {
-        println!("Error: {:?}", e)
+        display_error(e);
     }
     let stop_result = LUNA.with(|cell| {
         if let Some(luna) = cell.take() {
@@ -266,6 +299,6 @@ fn main() {
         }
     });
     if let Err(e) = stop_result {
-        println!("Error stopping analyzer: {:?}", e)
+        display_error(PacketryError::LunaError(e));
     }
 }
