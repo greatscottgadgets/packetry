@@ -132,6 +132,8 @@ pub enum PacketryError {
     LunaError(#[from] crate::backend::luna::Error),
     #[error("locking failed")]
     LockError,
+    #[error("internal error")]
+    InternalError,
 }
 
 fn run() -> Result<(), PacketryError> {
@@ -205,16 +207,20 @@ fn run() -> Result<(), PacketryError> {
             Ok(())
         })?;
         let update_capture = capture.clone();
-        source_id = Some(gtk::glib::timeout_add_local(std::time::Duration::from_millis(1), move || {
-            let mut cap = update_capture.lock().ok().unwrap();
 
-            LUNA.with(|cell| {
+        let mut update_routine = move || -> Result<(), PacketryError> {
+            use PacketryError::*;
+
+            let mut cap = update_capture.lock().or(Err(LockError))?;
+
+            LUNA.with::<_, Result<(), PacketryError>>(|cell| {
                 let mut borrow = cell.borrow_mut();
-                let luna = borrow.as_mut().unwrap();
+                let luna = borrow.as_mut().ok_or(InternalError)?;
                 while let Some(packet) = luna.next() {
-                    decoder.handle_raw_packet(&mut cap, &packet).unwrap();
+                    decoder.handle_raw_packet(&mut cap, &packet)?;
                 }
-            });
+                Ok(())
+            })?;
 
             drop(cap);
 
@@ -226,9 +232,18 @@ fn run() -> Result<(), PacketryError> {
                     };
                 }
             );
+            Ok(())
+        };
 
-            Continue(true)
-        }));
+        source_id = Some(gtk::glib::timeout_add_local(
+            std::time::Duration::from_millis(1),
+            move || {
+                match update_routine() {
+                    Ok(_) => Continue(true),
+                    Err(_) => Continue(false),
+                }
+            }
+        ));
     }
 
     application.run_with_args::<&str>(&[]);
