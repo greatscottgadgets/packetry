@@ -32,6 +32,7 @@ use pcap_file::{PcapError, pcap::PcapReader};
 use model::GenericModel;
 use row_data::GenericRowData;
 use expander::ExpanderWrapper;
+use tree_list_model::ModelError;
 
 mod capture;
 use capture::{Capture, CaptureError, ItemSource};
@@ -130,6 +131,8 @@ fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
 pub enum PacketryError {
     #[error(transparent)]
     CaptureError(#[from] CaptureError),
+    #[error(transparent)]
+    ModelError(#[from] ModelError),
     #[error(transparent)]
     IoError(#[from] std::io::Error),
     #[error(transparent)]
@@ -231,14 +234,15 @@ fn run() -> Result<(), PacketryError> {
 
             drop(cap);
 
-            MODELS.with(|models|
+            MODELS.with::<_, Result<(), PacketryError>>(|models| {
                 for model in models.borrow().iter() {
                     let model = model.clone();
                     if let Ok(tree_model) = model.downcast::<crate::model::TrafficModel>() {
-                        tree_model.update().unwrap();
+                        tree_model.update()?;
                     };
                 }
-            );
+                Ok(())
+            })?;
             Ok(())
         };
 
