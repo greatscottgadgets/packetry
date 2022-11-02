@@ -21,6 +21,7 @@ use gtk::{
     DialogFlags,
     MessageType,
     ButtonsType,
+    ListItem,
     ListView,
     SignalListItemFactory,
     SingleSelection,
@@ -71,18 +72,18 @@ fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
         let expander = ExpanderWrapper::new();
         list_item.set_child(Some(&expander));
     });
-    factory.connect_bind(move |_, list_item| {
+    let bind = move |list_item: &ListItem| {
         let row = list_item
             .item()
-            .expect("The item has to exist.")
+            .or_bug("ListItem has no item")?
             .downcast::<RowData>()
-            .expect("The item has to be RowData.");
+            .or_bug("Item is not RowData")?;
 
         let expander_wrapper = list_item
             .child()
-            .expect("The child has to exist")
+            .or_bug("ListItem has no child widget")?
             .downcast::<ExpanderWrapper>()
-            .expect("The child must be a ExpanderWrapper.");
+            .or_bug("Child widget is not an ExpanderWrapper")?;
 
         let expander = expander_wrapper.expander();
         match row.node() {
@@ -110,19 +111,26 @@ fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
                 expander.set_visible(false);
             }
         };
-    });
-    factory.connect_unbind(move |_, list_item| {
+        Ok(())
+    };
+    let unbind = move |list_item: &ListItem| {
         let expander_wrapper = list_item
             .child()
-            .expect("The child has to exist")
+            .or_bug("ListItem has no child widget")?
             .downcast::<ExpanderWrapper>()
-            .expect("The child must be a ExpanderWrapper.");
-
+            .or_bug("Child widget is not an ExpanderWrapper")?;
         let expander = expander_wrapper.expander();
-
-        if let Some(handler) = expander_wrapper.take_handler() {
-            expander.disconnect(handler);
-        }
+        let handler = expander_wrapper
+            .take_handler()
+            .or_bug("ExpanderWrapper handler was not set")?;
+        expander.disconnect(handler);
+        Ok(())
+    };
+    factory.connect_bind(move |_, list_item| {
+        if let Err(e) = bind(list_item) { display_error(&e); }
+    });
+    factory.connect_unbind(move |_, list_item| {
+        if let Err(e) = unbind(list_item) { display_error(&e); }
     });
     ListView::new(Some(&selection_model), Some(&factory))
 }
