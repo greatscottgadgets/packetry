@@ -101,11 +101,9 @@ fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
                 let model = model.clone();
                 let node_ref = node_ref.clone();
                 let handler = expander.connect_expanded_notify(move |expander| {
-                    if let Err(e) =
+                    display_error(
                         model.set_expanded(&node_ref, expander.is_expanded())
-                    {
-                        display_error(&PacketryError::Model(e));
-                    }
+                            .map_err(PacketryError::Model));
                 });
                 expander_wrapper.set_handler(handler);
             },
@@ -130,12 +128,8 @@ fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
         expander.disconnect(handler);
         Ok(())
     };
-    factory.connect_bind(move |_, list_item| {
-        if let Err(e) = bind(list_item) { display_error(&e); }
-    });
-    factory.connect_unbind(move |_, list_item| {
-        if let Err(e) = unbind(list_item) { display_error(&e); }
-    });
+    factory.connect_bind(move |_, item| display_error(bind(item)));
+    factory.connect_unbind(move |_, item| display_error(unbind(item)));
     ListView::new(Some(&selection_model), Some(&factory))
 }
 
@@ -223,12 +217,12 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
         gtk::glib::timeout_add_local(
             std::time::Duration::from_millis(1),
             move || {
-                match update_routine() {
-                    Ok(_) => Continue(true),
-                    Err(e) => {
-                        display_error(&e);
-                        Continue(false)
-                    }
+                let result = update_routine();
+                if result.is_ok() {
+                    Continue(true)
+                } else {
+                    display_error(result);
+                    Continue(false)
                 }
             }
         );
@@ -268,27 +262,30 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
     Ok(())
 }
 
-fn display_error(e: &PacketryError) {
-    let message = format!("{}", e);
-    WINDOW.with(|win_opt| {
-        match win_opt.borrow().as_ref() {
-            None => println!("{}", message),
-            Some(window) => {
-                let dialog = MessageDialog::new(
-                    Some(window),
-                    DialogFlags::MODAL,
-                    MessageType::Error,
-                    ButtonsType::Close,
-                    &message
-                );
-                dialog.set_transient_for(Some(window));
-                dialog.set_modal(true);
-                dialog.connect_response(
-                    glib::clone!(@weak window => move |_, _| window.destroy()));
-                dialog.show();
+fn display_error(result: Result<(), PacketryError>) {
+    if let Err(e) = result {
+        let message = format!("{}", e);
+        WINDOW.with(|win_opt| {
+            match win_opt.borrow().as_ref() {
+                None => println!("{}", message),
+                Some(window) => {
+                    let dialog = MessageDialog::new(
+                        Some(window),
+                        DialogFlags::MODAL,
+                        MessageType::Error,
+                        ButtonsType::Close,
+                        &message
+                    );
+                    dialog.set_transient_for(Some(window));
+                    dialog.set_modal(true);
+                    dialog.connect_response(
+                        glib::clone!(@weak window =>
+                                     move |_, _| window.destroy()));
+                    dialog.show();
+                }
             }
-        }
-    });
+        });
+    }
 }
 
 trait OrBug<T> {
@@ -312,18 +309,15 @@ fn main() {
         Some("com.greatscottgadgets.packetry"),
         Default::default(),
     );
-    application.connect_activate(|application| {
-        if let Err(e) = activate(application) { display_error(&e) }
-    });
+    application.connect_activate(|app| display_error(activate(app)));
     application.run_with_args::<&str>(&[]);
-    let stop_result = LUNA.with(|cell| {
-        if let Some(luna) = cell.take() {
-            luna.stop()
-        } else {
-            Ok(())
-        }
-    });
-    if let Err(e) = stop_result {
-        display_error(&PacketryError::Luna(e));
-    }
+    display_error(
+        LUNA.with(|cell|
+            if let Some(luna) = cell.take() {
+                luna.stop().map_err(PacketryError::Luna)
+            } else {
+                Ok(())
+            }
+        )
+    );
 }
