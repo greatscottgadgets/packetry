@@ -252,7 +252,7 @@ fn run() -> Result<(), PacketryError> {
                 match update_routine() {
                     Ok(_) => Continue(true),
                     Err(e) => {
-                        display_error(e);
+                        display_error(&e);
                         Continue(false)
                     }
                 }
@@ -267,7 +267,7 @@ fn run() -> Result<(), PacketryError> {
     Ok(())
 }
 
-fn display_error(e: PacketryError) {
+fn display_error(e: &PacketryError) {
     let message = format!("Error: {:?}", e);
     WINDOW.with(|win_opt| {
         match win_opt.borrow().as_ref() {
@@ -293,7 +293,7 @@ fn display_error(e: PacketryError) {
 fn main() {
     let result = run();
     if let Err(e) = result {
-        display_error(e);
+        display_error(&e);
     }
     let stop_result = LUNA.with(|cell| {
         if let Some(luna) = cell.take() {
@@ -303,6 +303,6 @@ fn main() {
         }
     });
     if let Err(e) = stop_result {
-        display_error(PacketryError::LunaError(e));
+        display_error(&PacketryError::LunaError(e));
     }
 }
