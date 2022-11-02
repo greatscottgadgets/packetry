@@ -141,8 +141,8 @@ pub enum PacketryError {
     LunaError(#[from] crate::backend::luna::Error),
     #[error("locking failed")]
     LockError,
-    #[error("internal error")]
-    InternalError,
+    #[error("internal bug: {0}")]
+    Bug(&'static str)
 }
 
 fn run() -> Result<(), PacketryError> {
@@ -225,7 +225,7 @@ fn run() -> Result<(), PacketryError> {
 
             LUNA.with::<_, Result<(), PacketryError>>(|cell| {
                 let mut borrow = cell.borrow_mut();
-                let luna = borrow.as_mut().ok_or(InternalError)?;
+                let luna = borrow.as_mut().or_bug("LUNA not set")?;
                 while let Some(packet) = luna.next() {
                     decoder.handle_raw_packet(&mut cap, &packet?)?;
                 }
@@ -288,6 +288,22 @@ fn display_error(e: &PacketryError) {
             }
         }
     });
+}
+
+trait OrBug<T> {
+    fn or_bug(self, msg: &'static str) -> Result<T, PacketryError>;
+}
+
+impl<T> OrBug<T> for Option<T> {
+    fn or_bug(self, msg: &'static str) -> Result<T, PacketryError> {
+        self.ok_or(PacketryError::Bug(msg))
+    }
+}
+
+impl<T, E> OrBug<T> for Result<T, E> {
+    fn or_bug(self, msg: &'static str) -> Result<T, PacketryError> {
+        self.or(Err(PacketryError::Bug(msg)))
+    }
 }
 
 fn main() {
