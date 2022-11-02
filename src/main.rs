@@ -39,6 +39,7 @@ mod vec_map;
 
 thread_local!(
     static MODELS: RefCell<Vec<Object>>  = RefCell::new(Vec::new());
+    static LUNA: RefCell<Option<backend::luna::LunaCapture>> = RefCell::new(None);
 );
 
 fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
@@ -176,16 +177,26 @@ fn run() -> Result<(), PacketryError> {
             decoder.handle_raw_packet(&mut cap, &packet).unwrap();
         }
     } else {
-        let mut luna = backend::luna::LunaDevice::open()
-            .unwrap()
-            .start()
-            .unwrap();
+        LUNA.with(|cell| {
+            cell.borrow_mut().replace(
+                backend::luna::LunaDevice::open()
+                    .unwrap()
+                    .start()
+                    .unwrap()
+            );
+        });
         let update_capture = capture.clone();
         source_id = Some(gtk::glib::timeout_add_local(std::time::Duration::from_millis(1), move || {
             let mut cap = update_capture.lock().ok().unwrap();
-            while let Some(packet) = luna.next() {
-                decoder.handle_raw_packet(&mut cap, &packet).unwrap();
-            }
+
+            LUNA.with(|cell| {
+                let mut borrow = cell.borrow_mut();
+                let luna = borrow.as_mut().unwrap();
+                while let Some(packet) = luna.next() {
+                    decoder.handle_raw_packet(&mut cap, &packet).unwrap();
+                }
+            });
+
             drop(cap);
 
             MODELS.with(|models|
@@ -209,8 +220,18 @@ fn run() -> Result<(), PacketryError> {
 }
 
 fn main() {
-    match run() {
-        Ok(()) => {},
-        Err(e) => println!("Error: {:?}", e)
+    let result = run();
+    if let Err(e) = result {
+        println!("Error: {:?}", e)
+    }
+    let stop_result = LUNA.with(|cell| {
+        if let Some(luna) = cell.take() {
+            luna.stop()
+        } else {
+            Ok(())
+        }
+    });
+    if let Err(e) = stop_result {
+        println!("Error stopping analyzer: {:?}", e)
     }
 }

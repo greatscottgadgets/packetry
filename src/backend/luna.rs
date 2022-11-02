@@ -2,7 +2,7 @@ use rusb::{
     GlobalContext, DeviceHandle,
 };
 use std::collections::VecDeque;
-use std::thread::spawn;
+use std::thread::{spawn, JoinHandle};
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::time::Duration;
 
@@ -19,6 +19,8 @@ pub enum Error {
     Usb(#[from] rusb::Error),
     #[error("channel send error")]
     ChannelSend,
+    #[error("worker thread panic")]
+    ThreadPanic,
     #[error("device not found")]
     NotFound,
 }
@@ -30,6 +32,7 @@ pub struct LunaDevice {
 pub struct LunaCapture {
     receiver: Receiver<Vec<u8>>,
     stop_request: Sender<()>,
+    worker: JoinHandle::<Result<(), Error>>,
 }
 
 impl LunaDevice {
@@ -44,7 +47,7 @@ impl LunaDevice {
         self.handle.claim_interface(0)?;
         let (tx, rx) = channel();
         let (stop_tx, stop_rx) = channel();
-        spawn::<_, Result<(), Error>>(move || {
+        let worker = spawn(move || {
             let mut buffer = [0u8; READ_LEN];
             let mut packet_queue = PacketQueue::new();
             self.enable_capture(true)?;
@@ -70,6 +73,7 @@ impl LunaDevice {
         Ok(LunaCapture {
             stop_request: stop_tx,
             receiver: rx,
+            worker,
         })
     }
 
@@ -91,13 +95,12 @@ impl LunaCapture {
     pub fn next(&mut self) -> Option<Vec<u8>> {
         self.receiver.try_recv().ok()
     }
-}
 
-impl Drop for LunaCapture {
-    #[allow(unused_must_use)]
-    fn drop(&mut self) {
+    pub fn stop(self) -> Result<(), Error> {
+        use Error::*;
         println!("Requesting capture stop");
-        self.stop_request.send(());
+        self.stop_request.send(()).or(Err(ChannelSend))?;
+        self.worker.join().or(Err(ThreadPanic))?
     }
 }
 
