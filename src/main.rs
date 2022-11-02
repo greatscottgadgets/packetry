@@ -210,8 +210,6 @@ fn run() -> Result<(), PacketryError> {
         WINDOW.with(|win_opt| win_opt.replace(Some(window.clone())));
     });
 
-    let mut source_id: Option<gtk::glib::source::SourceId> = None;
-
     if args.len() > 1 {
         let pcap_file = File::open(&args[1])?;
         let pcap_reader = PcapReader::new(pcap_file)?;
@@ -257,7 +255,7 @@ fn run() -> Result<(), PacketryError> {
             Ok(())
         };
 
-        source_id = Some(gtk::glib::timeout_add_local(
+        gtk::glib::timeout_add_local(
             std::time::Duration::from_millis(1),
             move || {
                 match update_routine() {
@@ -268,13 +266,10 @@ fn run() -> Result<(), PacketryError> {
                     }
                 }
             }
-        ));
+        );
     }
 
     application.run_with_args::<&str>(&[]);
-    if let Some(source) = source_id {
-        source.remove();
-    }
     Ok(())
 }
 
