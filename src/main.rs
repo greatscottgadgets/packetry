@@ -224,7 +224,7 @@ fn run() -> Result<(), PacketryError> {
                 let mut borrow = cell.borrow_mut();
                 let luna = borrow.as_mut().ok_or(InternalError)?;
                 while let Some(packet) = luna.next() {
-                    decoder.handle_raw_packet(&mut cap, &packet)?;
+                    decoder.handle_raw_packet(&mut cap, &packet?)?;
                 }
                 Ok(())
             })?;
