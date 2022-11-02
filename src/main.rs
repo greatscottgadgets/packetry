@@ -16,6 +16,7 @@ use gtk::gio::ListModel;
 use gtk::glib::{self, Object};
 use gtk::{
     prelude::*,
+    Application,
     ApplicationWindow,
     MessageDialog,
     DialogFlags,
@@ -30,7 +31,7 @@ use gtk::{
 
 use pcap_file::{PcapError, pcap::PcapReader};
 
-use model::GenericModel;
+use model::{GenericModel, TrafficModel};
 use row_data::GenericRowData;
 use expander::ExpanderWrapper;
 use tree_list_model::ModelError;
@@ -156,59 +157,22 @@ pub enum PacketryError {
     Bug(&'static str)
 }
 
-fn run() -> Result<(), PacketryError> {
-    let application = gtk::Application::new(
-        Some("com.greatscottgadgets.packetry"),
-        Default::default(),
-    );
+fn activate(application: &Application) -> Result<(), PacketryError> {
+    let window = gtk::ApplicationWindow::builder()
+        .default_width(320)
+        .default_height(480)
+        .application(application)
+        .title("Packetry")
+        .build();
+
+    window.show();
+    WINDOW.with(|win_opt| win_opt.replace(Some(window.clone())));
 
     let args: Vec<_> = std::env::args().collect();
     let mut cap = Capture::new()?;
     let mut decoder = Decoder::new(&mut cap)?;
-    cap.print_storage_summary();
     let capture = Arc::new(Mutex::new(cap));
-
     let app_capture = capture.clone();
-    application.connect_activate(move |application| {
-        let window = gtk::ApplicationWindow::builder()
-            .default_width(320)
-            .default_height(480)
-            .application(application)
-            .title("Packetry")
-            .build();
-
-        let listview = create_view::
-            <capture::TrafficItem, model::TrafficModel, row_data::TrafficRowData>(&app_capture);
-
-        let scrolled_window = gtk::ScrolledWindow::builder()
-            .hscrollbar_policy(gtk::PolicyType::Automatic) // Disable horizontal scrolling
-            .min_content_height(480)
-            .min_content_width(240)
-            .build();
-
-        scrolled_window.set_child(Some(&listview));
-
-        let device_tree = create_view::<capture::DeviceItem,
-                                        model::DeviceModel,
-                                        row_data::DeviceRowData>(&app_capture);
-        let device_window = gtk::ScrolledWindow::builder()
-            .hscrollbar_policy(gtk::PolicyType::Automatic)
-            .min_content_height(480)
-            .min_content_width(100)
-            .child(&device_tree)
-            .build();
-
-        let paned = gtk::Paned::builder()
-            .orientation(Orientation::Horizontal)
-            .wide_handle(true)
-            .start_child(&scrolled_window)
-            .end_child(&device_window)
-            .build();
-
-        window.set_child(Some(&paned));
-        window.show();
-        WINDOW.with(|win_opt| win_opt.replace(Some(window.clone())));
-    });
 
     if args.len() > 1 {
         let pcap_file = File::open(&args[1])?;
@@ -218,6 +182,7 @@ fn run() -> Result<(), PacketryError> {
             let packet = result?.data;
             decoder.handle_raw_packet(&mut cap, &packet)?;
         }
+        cap.print_storage_summary();
     } else {
         LUNA.with::<_, Result<(), PacketryError>>(|cell| {
             cell.borrow_mut().replace(
@@ -246,7 +211,7 @@ fn run() -> Result<(), PacketryError> {
             MODELS.with::<_, Result<(), PacketryError>>(|models| {
                 for model in models.borrow().iter() {
                     let model = model.clone();
-                    if let Ok(tree_model) = model.downcast::<crate::model::TrafficModel>() {
+                    if let Ok(tree_model) = model.downcast::<TrafficModel>() {
                         tree_model.update()?;
                     };
                 }
@@ -269,7 +234,37 @@ fn run() -> Result<(), PacketryError> {
         );
     }
 
-    application.run_with_args::<&str>(&[]);
+    let listview = create_view::<capture::TrafficItem,
+                                 model::TrafficModel,
+                                 row_data::TrafficRowData>(&app_capture);
+
+    let scrolled_window = gtk::ScrolledWindow::builder()
+        .hscrollbar_policy(gtk::PolicyType::Automatic)
+        .min_content_height(480)
+        .min_content_width(640)
+        .build();
+
+    scrolled_window.set_child(Some(&listview));
+
+    let device_tree = create_view::<capture::DeviceItem,
+                                    model::DeviceModel,
+                                    row_data::DeviceRowData>(&app_capture);
+    let device_window = gtk::ScrolledWindow::builder()
+        .hscrollbar_policy(gtk::PolicyType::Automatic)
+        .min_content_height(480)
+        .min_content_width(240)
+        .child(&device_tree)
+        .build();
+
+    let paned = gtk::Paned::builder()
+        .orientation(Orientation::Horizontal)
+        .wide_handle(true)
+        .start_child(&scrolled_window)
+        .end_child(&device_window)
+        .build();
+
+    window.set_child(Some(&paned));
+
     Ok(())
 }
 
@@ -313,10 +308,14 @@ impl<T, E> OrBug<T> for Result<T, E> {
 }
 
 fn main() {
-    let result = run();
-    if let Err(e) = result {
-        display_error(&e);
-    }
+    let application = gtk::Application::new(
+        Some("com.greatscottgadgets.packetry"),
+        Default::default(),
+    );
+    application.connect_activate(|application| {
+        if let Err(e) = activate(application) { display_error(&e) }
+    });
+    application.run_with_args::<&str>(&[]);
     let stop_result = LUNA.with(|cell| {
         if let Some(luna) = cell.take() {
             luna.stop()
