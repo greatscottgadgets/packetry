@@ -38,7 +38,7 @@ pub type EndpointTransferId = Id<EndpointTransactionId>;
 pub type TrafficItemId = Id<TransferId>;
 pub type DeviceId = Id<Device>;
 pub type EndpointId = Id<Endpoint>;
-pub type EndpointStateId = Id<Id<u8>>;
+pub type EndpointByteCount = u64;
 
 #[derive(Copy, Clone)]
 pub enum TrafficItem {
@@ -145,10 +145,11 @@ impl std::fmt::Display for EndpointType {
 }
 
 pub struct EndpointTraffic {
-    pub transaction_ids: HybridIndex<TransactionId>,
-    pub transfer_index: HybridIndex<EndpointTransactionId>,
-    pub data_index: HybridIndex<u64>,
-    pub total_data: u64,
+    pub transaction_ids: HybridIndex<EndpointTransactionId, TransactionId>,
+    pub transfer_index: HybridIndex<EndpointTransferId, EndpointTransactionId>,
+    pub data_index: HybridIndex<EndpointTransactionId, EndpointByteCount>,
+    pub total_data: EndpointByteCount,
+    pub end_index: HybridIndex<EndpointTransferId, TrafficItemId>,
 }
 
 pub struct DeviceData {
@@ -250,6 +251,12 @@ impl Transaction {
             (..)            => false
         }
     }
+
+    fn complete(&self) -> bool {
+        use PID::*;
+        // TODO: iso transactions end on a DATAx
+        matches!(self.end_pid, ACK | NAK | NYET | STALL | ERR)
+    }
 }
 
 pub fn fmt_count(count: u64) -> String {
@@ -275,8 +282,8 @@ pub fn fmt_vec<T>(vec: &FileVec<T>) -> String
     format!("{} entries, {}", fmt_count(vec.len()), fmt_size(vec.size()))
 }
 
-pub fn fmt_index<T>(idx: &HybridIndex<T>) -> String
-    where T: Number + Copy
+pub fn fmt_index<I, T>(idx: &HybridIndex<I, T>) -> String
+    where I: Number, T: Number + Copy
 {
     format!("{} values in {} entries, {}",
             fmt_count(idx.len()),
@@ -367,16 +374,17 @@ impl CompletedTransactions {
 
 pub struct Capture {
     pub packet_data: FileVec<u8>,
-    pub packet_index: HybridIndex<PacketByteId>,
-    pub transaction_index: HybridIndex<PacketId>,
+    pub packet_index: HybridIndex<PacketId, PacketByteId>,
+    pub transaction_index: HybridIndex<TransactionId, PacketId>,
     pub transfer_index: FileVec<TransferIndexEntry>,
-    pub item_index: HybridIndex<TransferId>,
+    pub item_index: HybridIndex<TrafficItemId, TransferId>,
     pub devices: FileVec<Device>,
     pub device_data: VecMap<DeviceId, DeviceData>,
     pub endpoints: FileVec<Endpoint>,
     pub endpoint_traffic: VecMap<EndpointId, EndpointTraffic>,
     pub endpoint_states: FileVec<u8>,
-    pub endpoint_state_index: HybridIndex<Id<u8>>,
+    pub endpoint_state_index: HybridIndex<TransferId, Id<u8>>,
+    pub end_index: HybridIndex<TransferId, TrafficItemId>,
 }
 
 impl Capture {
@@ -393,6 +401,7 @@ impl Capture {
             endpoint_traffic: VecMap::new(),
             endpoint_states: FileVec::new()?,
             endpoint_state_index: HybridIndex::new(1)?,
+            end_index: HybridIndex::new(1)?,
         })
     }
 
@@ -466,13 +475,11 @@ impl Capture {
     {
         let ep_traf = self.endpoint_traffic(endpoint_id)?;
         let index = &mut ep_traf.data_index;
-        let first = Id::<u64>::from(range.start.value);
-        let last = Id::<u64>::from(range.end.value);
-        let start = index.get(first)?;
-        let end = if last.value >= index.len() {
+        let start = index.get(range.start)?;
+        let end = if range.end.value >= index.len() {
             ep_traf.total_data
         } else {
-            index.get(last)?
+            index.get(range.end)?
         };
         Ok(start .. end)
     }
@@ -513,9 +520,8 @@ impl Capture {
     fn endpoint_state(&mut self, transfer_id: TransferId)
         -> Result<Vec<u8>, CaptureError>
     {
-        let endpoint_state_id = EndpointStateId::from(transfer_id.value);
         let range = self.endpoint_state_index.target_range(
-            endpoint_state_id, self.endpoint_states.len())?;
+            transfer_id, self.endpoint_states.len())?;
         Ok(self.endpoint_states.get_range(range)?)
     }
 
@@ -655,15 +661,21 @@ impl Capture {
 }
 
 pub trait ItemSource<Item> {
+    type ItemId;
     fn item(&mut self, parent: &Option<Item>, index: u64) -> Result<Item, CaptureError>;
     fn child_item(&mut self, parent: &Item, index: u64) -> Result<Item, CaptureError>;
     fn item_count(&mut self, parent: &Option<Item>) -> Result<u64, CaptureError>;
     fn child_count(&mut self, parent: &Item) -> Result<u64, CaptureError>;
+    fn item_end(&mut self, item_id: Self::ItemId)
+        -> Result<Option<Self::ItemId>, CaptureError>;
+    fn complete(&mut self, item: &Item) -> Result<bool, CaptureError>;
     fn summary(&mut self, item: &Item) -> Result<String, CaptureError>;
     fn connectors(&mut self, item: &Item) -> Result<String, CaptureError>;
 }
 
 impl ItemSource<TrafficItem> for Capture {
+    type ItemId = TrafficItemId;
+
     fn item(&mut self, parent: &Option<TrafficItem>, index: u64)
         -> Result<TrafficItem, CaptureError>
     {
@@ -725,6 +737,43 @@ impl ItemSource<TrafficItem> for Capture {
                     *transaction_id, self.packet_index.len())?.len()
             },
             Packet(..) => 0,
+        })
+    }
+
+    fn item_end(&mut self, item_id: TrafficItemId)
+        -> Result<Option<TrafficItemId>, CaptureError>
+    {
+        let transfer_id = self.item_index.get(item_id)?;
+        let entry = self.transfer_index.get(transfer_id)?;
+        let ep_transfer_id = entry.transfer_id();
+        if !entry.is_start() {
+            return Err(IndexError)
+        }
+        let ep_traf = self.endpoint_traffic(entry.endpoint_id())?;
+        if ep_transfer_id.value >= ep_traf.end_index.len() {
+            return Ok(None)
+        }
+        let end_item_id = ep_traf.end_index.get(ep_transfer_id)?;
+        Ok(Some(end_item_id))
+    }
+
+    fn complete(&mut self, item: &TrafficItem)
+        -> Result<bool, CaptureError>
+    {
+        use TrafficItem::*;
+        Ok(match item {
+            Packet(..) => {
+                true
+            },
+            // TODO: switch to using `item_end` after interleaving merge.
+            Transaction(_, transaction_id) => {
+                let transaction = self.transaction(*transaction_id)?;
+                transaction.complete()
+            },
+            // TODO: switch to using `item_end` after interleaving merge.
+            Transfer(..) => {
+                false
+            }
         })
     }
 
@@ -945,6 +994,8 @@ impl ItemSource<TrafficItem> for Capture {
 }
 
 impl ItemSource<DeviceItem> for Capture {
+    type ItemId = DeviceId;
+
     fn item(&mut self, parent: &Option<DeviceItem>, index: u64)
         -> Result<DeviceItem, CaptureError>
     {
@@ -1031,6 +1082,18 @@ impl ItemSource<DeviceItem> for Capture {
             EndpointDescriptor(..) => usb::EndpointDescriptor::NUM_FIELDS,
             _ => 0
         }) as u64)
+    }
+
+    fn item_end(&mut self, _item_id: DeviceId)
+        -> Result<Option<DeviceId>, CaptureError>
+    {
+        Ok(None)
+    }
+
+    fn complete(&mut self, _item: &DeviceItem)
+        -> Result<bool, CaptureError>
+    {
+        Ok(false)
     }
 
     fn summary(&mut self, item: &DeviceItem)
@@ -1164,7 +1227,7 @@ mod tests {
                     let mut cap = Capture::new().unwrap();
                     let mut decoder = Decoder::new(&mut cap).unwrap();
                     while let Ok(packet) = pcap.next() {
-                        decoder.handle_raw_packet(&packet).unwrap();
+                        decoder.handle_raw_packet(&mut cap, &packet).unwrap();
                     }
                     let out_file = File::create(out_path.clone()).unwrap();
                     let mut out_writer = BufWriter::new(out_file);
@@ -1200,11 +1263,11 @@ pub mod prelude {
         EndpointId,
         EndpointType,
         EndpointState,
-        EndpointStateId,
         EndpointTraffic,
         EndpointTransactionId,
         EndpointTransferId,
         PacketId,
+        TrafficItemId,
         TransactionId,
         TransferId,
         TransferIndexEntry,

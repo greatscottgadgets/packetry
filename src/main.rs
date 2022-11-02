@@ -2,11 +2,13 @@
 extern crate bitfield;
 use thiserror::Error;
 
+mod backend;
 mod model;
 mod row_data;
 mod expander;
 mod tree_list_model;
 
+use std::cell::RefCell;
 use std::sync::{Arc, Mutex};
 
 use gtk::gio::ListModel;
@@ -35,16 +37,23 @@ mod hybrid_index;
 mod usb;
 mod vec_map;
 
+thread_local!(
+    static MODELS: RefCell<Vec<Object>>  = RefCell::new(Vec::new());
+    static LUNA: RefCell<Option<backend::luna::LunaCapture>> = RefCell::new(None);
+);
+
 fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
         -> ListView
     where
         Item: Copy,
-        Model: GenericModel<Item> + IsA<ListModel>,
+        Model: GenericModel<Item> + IsA<ListModel> + IsA<Object>,
         RowData: GenericRowData<Item> + IsA<Object>,
         Capture: ItemSource<Item>
 {
     let model = Model::new(capture.clone())
                       .expect("Failed to create model");
+
+    MODELS.with(|models| models.borrow_mut().push(model.clone().upcast()));
     let cap_arc = capture.clone();
     let selection_model = SingleSelection::new(Some(&model));
     let factory = SignalListItemFactory::new();
@@ -113,15 +122,12 @@ fn run() -> Result<(), PacketryError> {
     );
 
     let args: Vec<_> = std::env::args().collect();
-    let mut pcap = pcap::Capture::from_file(&args[1])?;
     let mut cap = Capture::new()?;
     let mut decoder = Decoder::new(&mut cap)?;
-    while let Ok(packet) = pcap.next() {
-        decoder.handle_raw_packet(&packet)?;
-    }
     cap.print_storage_summary();
     let capture = Arc::new(Mutex::new(cap));
 
+    let app_capture = capture.clone();
     application.connect_activate(move |application| {
         let window = gtk::ApplicationWindow::builder()
             .default_width(320)
@@ -131,7 +137,7 @@ fn run() -> Result<(), PacketryError> {
             .build();
 
         let listview = create_view::
-            <capture::TrafficItem, model::TrafficModel, row_data::TrafficRowData>(&capture);
+            <capture::TrafficItem, model::TrafficModel, row_data::TrafficRowData>(&app_capture);
 
         let scrolled_window = gtk::ScrolledWindow::builder()
             .hscrollbar_policy(gtk::PolicyType::Automatic) // Disable horizontal scrolling
@@ -143,7 +149,7 @@ fn run() -> Result<(), PacketryError> {
 
         let device_tree = create_view::<capture::DeviceItem,
                                         model::DeviceModel,
-                                        row_data::DeviceRowData>(&capture);
+                                        row_data::DeviceRowData>(&app_capture);
         let device_window = gtk::ScrolledWindow::builder()
             .hscrollbar_policy(gtk::PolicyType::Automatic)
             .min_content_height(480)
@@ -161,13 +167,71 @@ fn run() -> Result<(), PacketryError> {
         window.set_child(Some(&paned));
         window.show();
     });
+
+    let mut source_id: Option<gtk::glib::source::SourceId> = None;
+
+    if args.len() > 1 {
+        let mut pcap = pcap::Capture::from_file(&args[1])?;
+        let mut cap = capture.lock().ok().unwrap();
+        while let Ok(packet) = pcap.next() {
+            decoder.handle_raw_packet(&mut cap, &packet).unwrap();
+        }
+    } else {
+        LUNA.with(|cell| {
+            cell.borrow_mut().replace(
+                backend::luna::LunaDevice::open()
+                    .unwrap()
+                    .start()
+                    .unwrap()
+            );
+        });
+        let update_capture = capture.clone();
+        source_id = Some(gtk::glib::timeout_add_local(std::time::Duration::from_millis(1), move || {
+            let mut cap = update_capture.lock().ok().unwrap();
+
+            LUNA.with(|cell| {
+                let mut borrow = cell.borrow_mut();
+                let luna = borrow.as_mut().unwrap();
+                while let Some(packet) = luna.next() {
+                    decoder.handle_raw_packet(&mut cap, &packet).unwrap();
+                }
+            });
+
+            drop(cap);
+
+            MODELS.with(|models|
+                for model in models.borrow().iter() {
+                    let model = model.clone();
+                    if let Ok(tree_model) = model.downcast::<crate::model::TrafficModel>() {
+                        tree_model.update().unwrap();
+                    };
+                }
+            );
+
+            Continue(true)
+        }));
+    }
+
     application.run_with_args::<&str>(&[]);
+    if let Some(source) = source_id {
+        source.remove();
+    }
     Ok(())
 }
 
 fn main() {
-    match run() {
-        Ok(()) => {},
-        Err(e) => println!("Error: {:?}", e)
+    let result = run();
+    if let Err(e) = result {
+        println!("Error: {:?}", e)
+    }
+    let stop_result = LUNA.with(|cell| {
+        if let Some(luna) = cell.take() {
+            luna.stop()
+        } else {
+            Ok(())
+        }
+    });
+    if let Err(e) = stop_result {
+        println!("Error stopping analyzer: {:?}", e)
     }
 }
