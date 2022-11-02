@@ -100,8 +100,11 @@ fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
                 let model = model.clone();
                 let node_ref = node_ref.clone();
                 let handler = expander.connect_expanded_notify(move |expander| {
-                    model.set_expanded(&node_ref, expander.is_expanded())
-                         .expect("Failed to expand node")
+                    if let Err(e) =
+                        model.set_expanded(&node_ref, expander.is_expanded())
+                    {
+                        display_error(&PacketryError::ModelError(e));
+                    }
                 });
                 expander_wrapper.set_handler(handler);
             },
