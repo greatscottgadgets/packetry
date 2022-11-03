@@ -82,7 +82,7 @@ impl LunaDevice {
         self.handle.write_control(
             request_type(Direction::Out, RequestType::Vendor, Recipient::Device),
             1,
-            if enable { 1 } else { 0 },
+            u16::from(enable),
             0,
             &[],
             Duration::from_secs(5),
