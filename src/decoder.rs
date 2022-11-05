@@ -18,6 +18,7 @@ struct EndpointData {
     device_id: DeviceId,
     address: EndpointAddr,
     writer: EndpointWriter,
+    start_item: Option<TrafficItemId>,
     early_start: Option<EndpointGroupId>,
     active: Option<GroupState>,
     ended: Option<EndpointGroupId>,
@@ -65,6 +66,7 @@ impl EndpointData {
             address,
             device_id,
             writer,
+            start_item: None,
             early_start: None,
             active: None,
             ended: None,
@@ -940,7 +942,7 @@ impl Decoder {
             let group_end_id =
                 self.add_group_entry(endpoint_id, ep_group_id, false)?;
             if self.last_item_endpoint != Some(endpoint_id) {
-                self.add_item(endpoint_id, group_end_id)?;
+                self.add_item(endpoint_id, group_end_id, false)?;
             }
         }
         Ok(())
@@ -971,7 +973,7 @@ impl Decoder {
             ep_data.writer.group_index.push(ep_transaction_id)?;
         let group_start_id =
             self.add_group_entry(endpoint_id, ep_group_id, true)?;
-        self.add_item(endpoint_id, group_start_id)?;
+        self.add_item(endpoint_id, group_start_id, true)?;
         Ok(ep_group_id)
     }
 
@@ -1015,11 +1017,12 @@ impl Decoder {
         Ok(state_id)
     }
 
-    fn add_item(&mut self,
-                item_endpoint_id: EndpointId,
-                group_id: GroupId)
-        -> Result<TrafficItemId, Error>
-    {
+    fn add_item(
+        &mut self,
+        item_endpoint_id: EndpointId,
+        group_id: GroupId,
+        start: bool,
+    ) -> Result<TrafficItemId, Error> {
         let item_id = self.capture.item_index.push(group_id)?;
         self.last_item_endpoint = Some(item_endpoint_id);
 
@@ -1028,6 +1031,13 @@ impl Decoder {
         for i in 0..endpoint_count {
             let endpoint_id = EndpointId::from(i);
             let ep_data = &mut self.endpoint_data[endpoint_id];
+            if start && endpoint_id == item_endpoint_id &&
+                ep_data.start_item.replace(item_id).is_none()
+            {
+                // This is the first item since this endpoint appeared.
+                let first_item_id = Some(Arc::new(item_id));
+                ep_data.writer.shared.first_item_id.swap(first_item_id);
+            }
             if let Some(ep_group_id) = ep_data.ended.take() {
                 // This group has ended and is not yet linked to an item.
                 let end_id = ep_data.writer.end_index.push(item_id)?;
