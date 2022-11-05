@@ -19,6 +19,7 @@ impl PID {
 struct EndpointData {
     device_id: DeviceId,
     address: EndpointAddr,
+    start_item: Option<TrafficItemId>,
     early_start: Option<EndpointTransferId>,
     active: Option<TransferState>,
     ended: Option<EndpointTransferId>,
@@ -58,6 +59,7 @@ impl EndpointData {
         EndpointData {
             address,
             device_id,
+            start_item: None,
             early_start: None,
             active: None,
             ended: None,
@@ -902,7 +904,7 @@ impl Decoder {
                 self.add_transfer_entry(capture, endpoint_id,
                                         ep_transfer_id, false)?;
             if self.last_item_endpoint != Some(endpoint_id) {
-                self.add_item(capture, endpoint_id, transfer_end_id)?;
+                self.add_item(capture, endpoint_id, transfer_end_id, false)?;
             }
         }
         Ok(())
@@ -932,7 +934,7 @@ impl Decoder {
         let ep_transfer_id = ep_traf.transfer_index.push(ep_transaction_id)?;
         let transfer_start_id = self.add_transfer_entry(capture, endpoint_id,
                                                         ep_transfer_id, true)?;
-        self.add_item(capture, endpoint_id, transfer_start_id)?;
+        self.add_item(capture, endpoint_id, transfer_start_id, true)?;
         Ok(ep_transfer_id)
     }
 
@@ -978,11 +980,15 @@ impl Decoder {
         Ok(state_id)
     }
 
-    fn add_item(&mut self, capture: &mut Capture, endpoint_id: EndpointId, transfer_id: TransferId)
+    fn add_item(&mut self,
+                capture: &mut Capture,
+                item_endpoint_id: EndpointId,
+                transfer_id: TransferId,
+                start: bool)
         -> Result<TrafficItemId, CaptureError>
     {
         let item_id = capture.item_index.push(transfer_id)?;
-        self.last_item_endpoint = Some(endpoint_id);
+        self.last_item_endpoint = Some(item_endpoint_id);
 
         // Look for ended transfers which still need to be linked to an item.
         let endpoint_count = capture.endpoints.len();
@@ -992,6 +998,12 @@ impl Decoder {
                 .get_mut(endpoint_id)
                 .ok_or_else(|| IndexError(
                     format!("Endpoint {i} has no associated data")))?;
+            if start && endpoint_id == item_endpoint_id &&
+                ep_data.start_item.replace(item_id).is_none()
+            {
+                let ep_traf = capture.endpoint_traffic(endpoint_id)?;
+                ep_traf.first_item_id = Some(item_id);
+            }
             if let Some(ep_transfer_id) = ep_data.ended.take() {
                 // This transfer has ended and is not yet linked to an item.
                 let ep_traf = capture.endpoint_traffic(endpoint_id)?;

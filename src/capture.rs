@@ -155,6 +155,7 @@ pub struct EndpointTraffic {
     pub transfer_index: HybridIndex<EndpointTransferId, EndpointTransactionId>,
     pub data_index: HybridIndex<EndpointTransactionId, EndpointByteCount>,
     pub total_data: EndpointByteCount,
+    pub first_item_id: Option<TrafficItemId>,
     pub end_index: HybridIndex<EndpointTransferId, TrafficItemId>,
 }
 
@@ -165,6 +166,7 @@ impl EndpointTraffic {
             transfer_index: HybridIndex::new(1)?,
             data_index: HybridIndex::new(1)?,
             total_data: 0,
+            first_item_id: None,
             end_index: HybridIndex::new(1)?,
         })
     }
