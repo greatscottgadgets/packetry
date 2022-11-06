@@ -1,7 +1,6 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::marker::PhantomData;
-use std::mem::drop;
 use std::num::TryFromIntError;
 use std::rc::{Rc, Weak};
 use std::sync::{Arc, Mutex};
@@ -38,9 +37,6 @@ trait Node<Item> {
 
     /// Parent of this node, or None if the root.
     fn parent(&self) -> Result<Option<AnyNodeRc<Item>>, ModelError>;
-
-    /// Position of this node in a list, relative to its parent node.
-    fn relative_position(&self) -> Result<u32, ModelError>;
 
     /// Access the expanded children of this node.
     fn children(&self) -> &Children<Item>;
@@ -120,10 +116,6 @@ impl<Item> Node<Item> for RootNode<Item> {
         Ok(None)
     }
 
-    fn relative_position(&self) -> Result<u32, ModelError> {
-        Ok(0)
-    }
-
     fn children(&self) -> &Children<Item> {
         &self.children
     }
@@ -140,21 +132,6 @@ impl<Item> Node<Item> for ItemNode<Item> where Item: Copy {
 
     fn parent(&self) -> Result<Option<AnyNodeRc<Item>>, ModelError> {
         Ok(Some(self.parent.upgrade().ok_or(ModelError::ParentDropped)?))
-    }
-
-    fn relative_position(&self) -> Result<u32, ModelError> {
-        let parent = self.parent.upgrade()
-            .ok_or(ModelError::ParentDropped)?;
-        // Sum up the child counts of any expanded nodes before this one,
-        // and add to `item_index`.
-        let position = parent
-            .borrow()
-            .children()
-            .iter_expanded()
-            .take_while(|(&key, _)| key < self.item_index)
-            .map(|(_, node)| node.borrow().children.total_count)
-            .sum::<u32>() + self.item_index;
-        Ok(position)
     }
 
     fn children(&self) -> &Children<Item> {
@@ -231,6 +208,7 @@ where Item: 'static + Copy,
     pub fn set_expanded(&self,
                         model: &Model,
                         node_ref: &ItemNodeRc<Item>,
+                        position: u32,
                         expanded: bool)
         -> Result<(), ModelError>
     {
@@ -238,6 +216,9 @@ where Item: 'static + Copy,
         if node.expanded() == expanded {
             return Ok(());
         }
+
+        // New rows will be added or removed after the current one.
+        let position = position + 1;
 
         node.parent
             .upgrade()
@@ -248,7 +229,6 @@ where Item: 'static + Copy,
 
         // Traverse back up the tree, modifying `children.total_count` for
         // expanded/collapsed entries.
-        let mut position = node.relative_position()?;
         let mut current_node: AnyNodeRc<Item> = node_ref.clone();
         while let Some(parent_ref) = current_node.clone().borrow().parent()? {
             let mut parent = parent_ref.borrow_mut();
@@ -260,7 +240,6 @@ where Item: 'static + Copy,
             }
             drop(parent);
             current_node = parent_ref;
-            position += current_node.borrow().relative_position()? + 1;
         }
 
         if expanded {
