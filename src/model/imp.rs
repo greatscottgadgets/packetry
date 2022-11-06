@@ -5,7 +5,7 @@ use gtk::{gio, glib, prelude::*};
 
 use std::cell::RefCell;
 use crate::capture::{TrafficItem, DeviceItem};
-use crate::row_data::{TrafficRowData, DeviceRowData};
+use crate::row_data::{GenericRowData, TrafficRowData, DeviceRowData};
 use crate::tree_list_model::TreeListModel;
 
 #[derive(Default)]
@@ -42,7 +42,7 @@ impl ListModelImpl for TrafficModel {
 
     fn n_items(&self, _list_model: &Self::Type) -> u32 {
         match self.tree.borrow().as_ref() {
-            Some(tree) => tree.n_items(),
+            Some(tree) => tree.row_count(),
             None => 0
         }
     }
@@ -51,7 +51,15 @@ impl ListModelImpl for TrafficModel {
         -> Option<glib::Object>
     {
         match self.tree.borrow().as_ref() {
-            Some(tree) => tree.item(position),
+            Some(tree) => {
+                if position >= tree.row_count() {
+                    None
+                } else {
+                    let result = tree.fetch(position)
+                        .map_err(|e| format!("{:?}", e));
+                    Some(TrafficRowData::new(result).upcast::<glib::Object>())
+                }
+            }
             None => None
         }
     }
@@ -64,7 +72,7 @@ impl ListModelImpl for DeviceModel {
 
     fn n_items(&self, _list_model: &Self::Type) -> u32 {
         match self.tree.borrow().as_ref() {
-            Some(tree) => tree.n_items(),
+            Some(tree) => tree.row_count(),
             None => 0
         }
     }
@@ -73,7 +81,15 @@ impl ListModelImpl for DeviceModel {
         -> Option<glib::Object>
     {
         match self.tree.borrow().as_ref() {
-            Some(tree) => tree.item(position),
+            Some(tree) => {
+                if position >= tree.row_count() {
+                    None
+                } else {
+                    let result = tree.fetch(position)
+                        .map_err(|e| format!("{:?}", e));
+                    Some(DeviceRowData::new(result).upcast::<glib::Object>())
+                }
+            },
             None => None
         }
     }

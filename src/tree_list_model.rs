@@ -210,6 +210,10 @@ where Item: 'static + Copy,
         })
     }
 
+    pub fn row_count(&self) -> u32 {
+        self.root.borrow().children.total_count
+    }
+
     pub fn set_expanded(&self,
                         node_ref: &ItemNodeRc<Item>,
                         _position: u32,
@@ -267,7 +271,7 @@ where Item: 'static + Copy,
         Ok(Some((position, 0, added)))
     }
 
-    fn fetch(&self, position: u32) -> Result<ItemNodeRc<Item>, ModelError> {
+    pub fn fetch(&self, position: u32) -> Result<ItemNodeRc<Item>, ModelError> {
         let mut parent_ref: Rc<RefCell<dyn Node<Item>>> = self.root.clone();
         let mut relative_position = position;
         'outer: loop {
@@ -311,23 +315,5 @@ where Item: 'static + Copy,
         };
 
         Ok(Rc::new(RefCell::new(node)))
-    }
-
-    // The following methods correspond to the ListModel interface, and can be
-    // called by a GObject wrapper class to implement that interface.
-
-    pub fn n_items(&self) -> u32 {
-        self.root.borrow().children.total_count
-    }
-
-    pub fn item(&self, position: u32) -> Option<Object> {
-        // First check that the position is valid (must be within the root
-        // node's total child count).
-        if position >= self.root.borrow().children.total_count {
-            return None
-        }
-        let node_or_err_msg = self.fetch(position).map_err(|e| format!("{:?}", e));
-        let row_data = RowData::new(node_or_err_msg);
-        Some(row_data.upcast::<Object>())
     }
 }
