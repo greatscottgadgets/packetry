@@ -1,7 +1,6 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::marker::PhantomData;
-use std::mem::drop;
 use std::num::TryFromIntError;
 use std::rc::{Rc, Weak};
 use std::sync::{Arc, Mutex};
@@ -38,9 +37,6 @@ trait Node<Item> {
 
     /// Parent of this node, or None if the root.
     fn parent(&self) -> Result<Option<AnyNodeRc<Item>>, ModelError>;
-
-    /// Position of this node in a list, relative to its parent node.
-    fn relative_position(&self) -> Result<u32, ModelError>;
 
     /// Access the children of this node.
     fn children(&self) -> &Children<Item>;
@@ -120,10 +116,6 @@ impl<Item> Node<Item> for RootNode<Item> {
         Ok(None)
     }
 
-    fn relative_position(&self) -> Result<u32, ModelError> {
-        Ok(0)
-    }
-
     fn children(&self) -> &Children<Item> {
         &self.children
     }
@@ -140,21 +132,6 @@ impl<Item> Node<Item> for ItemNode<Item> where Item: Copy {
 
     fn parent(&self) -> Result<Option<AnyNodeRc<Item>>, ModelError> {
         Ok(Some(self.parent.upgrade().ok_or(ModelError::ParentDropped)?))
-    }
-
-    fn relative_position(&self) -> Result<u32, ModelError> {
-        let parent = self.parent.upgrade()
-            .ok_or(ModelError::ParentDropped)?;
-        // Sum up the child counts of any expanded nodes before this one,
-        // and add to `item_index`.
-        let position = parent
-            .borrow()
-            .children()
-            .iter_expanded()
-            .take_while(|(&key, _)| key < self.item_index)
-            .map(|(_, node)| node.borrow().children.total_count)
-            .sum::<u32>() + self.item_index;
-        Ok(position)
     }
 
     fn children(&self) -> &Children<Item> {
@@ -232,11 +209,12 @@ where Item: 'static + Copy,
     pub fn set_expanded(&self,
                         model: &Model,
                         node_ref: &ItemNodeRc<Item>,
+                        position: u32,
                         expanded: bool)
         -> Result<(), ModelError>
     {
         let node = node_ref.borrow();
-        let mut position = node.relative_position()?;
+
         if node.expanded() == expanded {
             return Ok(());
         }
@@ -250,10 +228,14 @@ where Item: 'static + Copy,
 
         drop(node);
 
+        // The children of this node appear after its own row.
+        let children_position = position + 1;
+
         // If collapsing, first recursively collapse the children of this node.
         if !expanded {
-            for (_index, child_ref) in expanded_children {
-                self.set_expanded(model, &child_ref, false)?;
+            for (index, child_ref) in expanded_children {
+                let child_position = children_position + index;
+                self.set_expanded(model, &child_ref, child_position, false)?;
             }
         }
 
@@ -276,13 +258,12 @@ where Item: 'static + Copy,
             }
             drop(parent);
             current_node = parent_ref;
-            position += current_node.borrow().relative_position()? + 1;
         }
 
         if expanded {
-            model.items_changed(position, 0, rows_affected);
+            model.items_changed(children_position, 0, rows_affected);
         } else {
-            model.items_changed(position, rows_affected, 0);
+            model.items_changed(children_position, rows_affected, 0);
         }
 
         Ok(())

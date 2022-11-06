@@ -138,10 +138,13 @@ fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
                 expander.set_expanded(node.expanded());
                 let model = bind_model.clone();
                 let node_ref = node_ref.clone();
+                let list_item = list_item.clone();
                 let handler = expander.connect_expanded_notify(move |expander| {
+                    let position = list_item.position();
+                    let expanded = expander.is_expanded();
                     display_error(
-                        model.set_expanded(&node_ref, expander.is_expanded())
-                            .map_err(PacketryError::Model));
+                        model.set_expanded(&node_ref, position, expanded)
+                            .map_err(PacketryError::Model))
                 });
                 expander_wrapper.set_handler(handler);
             },
