@@ -26,6 +26,8 @@ pub enum ModelError {
     LockError,
     #[error("Node references a dropped parent")]
     ParentDropped,
+    #[error("Node already in requested expansion state")]
+    AlreadyDone,
 }
 
 pub type ItemNodeRc<Item> = Rc<RefCell<ItemNode<Item>>>;
@@ -214,7 +216,7 @@ where Item: 'static + Copy,
     {
         let node = node_ref.borrow();
         if node.expanded() == expanded {
-            return Ok(());
+            return Err(ModelError::AlreadyDone);
         }
 
         // New rows will be added or removed after the current one.
