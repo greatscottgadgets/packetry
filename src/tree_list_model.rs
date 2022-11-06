@@ -8,12 +8,10 @@ use std::ops::DerefMut;
 
 use gtk::prelude::{IsA, Cast};
 use gtk::glib::Object;
-use gtk::gio::prelude::ListModelExt;
 
 use thiserror::Error;
 
 use crate::capture::{Capture, CaptureError, ItemSource};
-use crate::model::GenericModel;
 use crate::row_data::GenericRowData;
 
 #[derive(Error, Debug)]
@@ -188,15 +186,14 @@ pub struct ModelUpdate {
     pub rows_changed: u32,
 }
 
-pub struct TreeListModel<Item, Model, RowData> {
-    _marker: PhantomData<(Model, RowData)>,
+pub struct TreeListModel<Item, RowData> {
+    _marker: PhantomData<RowData>,
     capture: Arc<Mutex<Capture>>,
     root: Rc<RefCell<RootNode<Item>>>,
 }
 
-impl<Item, Model, RowData> TreeListModel<Item, Model, RowData>
+impl<Item, RowData> TreeListModel<Item, RowData>
 where Item: 'static + Copy,
-      Model: GenericModel<Item> + ListModelExt,
       RowData: GenericRowData<Item> + IsA<Object> + Cast,
       Capture: ItemSource<Item>
 {
