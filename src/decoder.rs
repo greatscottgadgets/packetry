@@ -1009,6 +1009,17 @@ impl Decoder {
                 let ep_traf = capture.endpoint_traffic(endpoint_id)?;
                 assert!(ep_traf.end_index.push(item_id)? == ep_transfer_id);
             }
+            let ep_traf = capture.endpoint_traffic(endpoint_id)?;
+            if ep_traf.first_item_id.is_some() {
+                // Record the total transactions on this endpoint.
+                let mut transaction_count = ep_traf.transaction_ids.len();
+                if start && endpoint_id == item_endpoint_id {
+                    // We just added a transaction, that shouldn't be included.
+                    transaction_count -= 1;
+                }
+                ep_traf.progress_index.push(
+                    EndpointTransactionId::from_u64(transaction_count))?;
+            }
         }
 
         Ok(item_id)

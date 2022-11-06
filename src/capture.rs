@@ -41,6 +41,7 @@ pub type DeviceId = Id<Device>;
 pub type EndpointId = Id<Endpoint>;
 pub type EndpointByteCount = u64;
 pub type DeviceVersion = u32;
+pub type TrafficItemIdOffset = u64;
 
 #[derive(Copy, Clone, Debug)]
 pub enum TrafficItem {
@@ -156,6 +157,7 @@ pub struct EndpointTraffic {
     pub data_index: HybridIndex<EndpointTransactionId, EndpointByteCount>,
     pub total_data: EndpointByteCount,
     pub first_item_id: Option<TrafficItemId>,
+    pub progress_index: HybridIndex<TrafficItemIdOffset, EndpointTransactionId>,
     pub end_index: HybridIndex<EndpointTransferId, TrafficItemId>,
 }
 
@@ -167,6 +169,7 @@ impl EndpointTraffic {
             data_index: HybridIndex::new(1)?,
             total_data: 0,
             first_item_id: None,
+            progress_index: HybridIndex::new(1)?,
             end_index: HybridIndex::new(1)?,
         })
     }
