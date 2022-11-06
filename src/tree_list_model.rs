@@ -25,67 +25,161 @@ pub enum ModelError {
     RangeError(#[from] TryFromIntError),
     #[error("Locking capture failed")]
     LockError,
-    #[error("Parent not set (attempting to expand the root node?)")]
-    ParentNotSet,
     #[error("Node references a dropped parent")]
     ParentDropped,
 }
 
-pub struct TreeNode<Item> {
+pub type ItemNodeRc<Item> = Rc<RefCell<ItemNode<Item>>>;
+type AnyNodeRc<Item> = Rc<RefCell<dyn Node<Item>>>;
+
+trait Node<Item> {
+    /// Item at this node, or None if the root.
+    fn item(&self) -> Option<Item>;
+
+    /// Parent of this node, or None if the root.
+    fn parent(&self) -> Result<Option<AnyNodeRc<Item>>, ModelError>;
+
+    /// Position of this node in a list, relative to its parent node.
+    fn relative_position(&self) -> Result<u32, ModelError>;
+
+    /// Access the expanded children of this node.
+    fn children(&self) -> &Children<Item>;
+
+    /// Mutably access the expanded children of this node.
+    fn children_mut(&mut self) -> &mut Children<Item>;
+}
+
+struct Children<Item> {
+    /// Number of direct children below this node.
+    direct_count: u32,
+
+    /// Total number nodes below this node, recursively.
+    total_count: u32,
+
+    /// Expanded children of this item.
+    expanded: BTreeMap<u32, ItemNodeRc<Item>>,
+}
+
+impl<Item> Children<Item> {
+    fn new(child_count: u32) -> Self {
+        Children {
+            direct_count: child_count,
+            total_count: child_count,
+            expanded: BTreeMap::new()
+        }
+    }
+}
+
+struct RootNode<Item> {
+    /// Top level children.
+    children: Children<Item>,
+}
+
+pub struct ItemNode<Item> {
     /// The item at this tree node.
-    item: Option<Item>,
+    item: Item,
 
     /// Parent of this node in the tree.
-    parent: Option<Weak<RefCell<TreeNode<Item>>>>,
+    parent: Weak<RefCell<dyn Node<Item>>>,
 
     /// Index of this node below the parent Item.
     item_index: u32,
 
-    /// Number of direct children below this node.
-    direct_child_count: u32,
-
-    /// Total number nodes below this node, recursively.
-    total_child_count: u32,
-
-    /// List of expanded child nodes directly below this node.
-    children: BTreeMap<u32, Rc<RefCell<TreeNode<Item>>>>,
+    /// Children of this item.
+    children: Children<Item>,
 }
 
-impl<Item> TreeNode<Item> where Item: Copy {
+impl<Item> Children<Item> {
+    /// Whether this child is expanded.
+    fn expanded(&self, index: u32) -> bool {
+        self.expanded.contains_key(&index)
+    }
+
+    /// Iterate over the expanded children.
+    fn iter_expanded(&self) -> impl Iterator<Item=(&u32, &ItemNodeRc<Item>)> + '_ {
+        self.expanded.iter()
+    }
+
+    /// Set whether this child of the owning node is expanded.
+    fn set_expanded(&mut self, child_rc: &ItemNodeRc<Item>, expanded: bool) {
+        let child = child_rc.borrow();
+        if expanded {
+            self.expanded.insert(child.item_index, child_rc.clone());
+        } else {
+            self.expanded.remove(&child.item_index);
+        }
+    }
+}
+
+impl<Item> Node<Item> for RootNode<Item> {
+    fn item(&self) -> Option<Item> {
+        None
+    }
+
+    fn parent(&self) -> Result<Option<AnyNodeRc<Item>>, ModelError> {
+        Ok(None)
+    }
+
+    fn relative_position(&self) -> Result<u32, ModelError> {
+        Ok(0)
+    }
+
+    fn children(&self) -> &Children<Item> {
+        &self.children
+    }
+
+    fn children_mut(&mut self) -> &mut Children<Item> {
+        &mut self.children
+    }
+}
+
+impl<Item> Node<Item> for ItemNode<Item> where Item: Copy {
+    fn item(&self) -> Option<Item> {
+        Some(self.item)
+    }
+
+    fn parent(&self) -> Result<Option<AnyNodeRc<Item>>, ModelError> {
+        Ok(Some(self.parent.upgrade().ok_or(ModelError::ParentDropped)?))
+    }
+
+    fn relative_position(&self) -> Result<u32, ModelError> {
+        let parent = self.parent.upgrade()
+            .ok_or(ModelError::ParentDropped)?;
+        // Sum up the child counts of any expanded nodes before this one,
+        // and add to `item_index`.
+        let position = parent
+            .borrow()
+            .children()
+            .iter_expanded()
+            .take_while(|(&key, _)| key < self.item_index)
+            .map(|(_, node)| node.borrow().children.total_count)
+            .sum::<u32>() + self.item_index;
+        Ok(position)
+    }
+
+    fn children(&self) -> &Children<Item> {
+        &self.children
+    }
+
+    fn children_mut(&mut self) -> &mut Children<Item> {
+        &mut self.children
+    }
+}
+
+impl<Item> ItemNode<Item> where Item: Copy {
     pub fn expanded(&self) -> bool {
-        match self.parent.as_ref() {
-            Some(parent_weak) => match parent_weak.upgrade() {
-                Some(parent_ref) => {
-                    let parent = parent_ref.borrow();
-                    parent.children.contains_key(&self.item_index)
-                },
-                // Parent is dropped, so node cannot be expanded.
-                None => false
-            },
-            // This is the root, which is never expanded.
+        match self.parent.upgrade() {
+            Some(parent_ref) => parent_ref
+                .borrow()
+                .children()
+                .expanded(self.item_index),
+            // Parent is dropped, so node cannot be expanded.
             None => false
         }
     }
 
     pub fn expandable(&self) -> bool {
-        self.total_child_count != 0
-    }
-
-    /// Position of this node in a list, relative to its parent node.
-    pub fn relative_position(&self) -> Result<u32, ModelError> {
-        match self.parent.as_ref() {
-            Some(parent_weak) => {
-                let parent_ref = parent_weak.upgrade().ok_or(ModelError::ParentDropped)?;
-                let parent = parent_ref.borrow();
-                // Sum up the `child_count`s of any expanded nodes before this one, and add to `item_index`.
-                Ok(parent.children.iter()
-                    .take_while(|(&key, _)| key < self.item_index)
-                    .map(|(_, node)| node.borrow().total_child_count)
-                    .sum::<u32>() + self.item_index)
-            },
-            None => Ok(0),
-        }
-
+        self.children.total_count != 0
     }
 
     #[allow(clippy::type_complexity)]
@@ -96,16 +190,13 @@ impl<Item> TreeNode<Item> where Item: Copy {
                     -> Result<String, CaptureError>>)
         -> String
     {
-        match self.item {
-            None => "Error: node has no item".to_string(),
-            Some(item) => match capture.lock() {
-                Err(_) => "Error: failed to lock capture".to_string(),
-                Ok(mut guard) => {
-                    let cap = guard.deref_mut();
-                    match func(cap, &item) {
-                        Err(e) => format!("Error: {:?}", e),
-                        Ok(string) => string
-                    }
+        match capture.lock() {
+            Err(_) => "Error: failed to lock capture".to_string(),
+            Ok(mut guard) => {
+                let cap = guard.deref_mut();
+                match func(cap, &self.item) {
+                    Err(e) => format!("Error: {:?}", e),
+                    Ok(string) => string
                 }
             }
         }
@@ -115,11 +206,11 @@ impl<Item> TreeNode<Item> where Item: Copy {
 pub struct TreeListModel<Item, Model, RowData> {
     _marker: PhantomData<(Model, RowData)>,
     capture: Arc<Mutex<Capture>>,
-    root: Rc<RefCell<TreeNode<Item>>>,
+    root: Rc<RefCell<RootNode<Item>>>,
 }
 
 impl<Item, Model, RowData> TreeListModel<Item, Model, RowData>
-where Item: Copy,
+where Item: 'static + Copy,
       Model: GenericModel<Item> + ListModelExt,
       RowData: GenericRowData<Item> + IsA<Object> + Cast,
       Capture: ItemSource<Item>
@@ -131,20 +222,15 @@ where Item: Copy,
         Ok(TreeListModel {
             _marker: PhantomData,
             capture: capture.clone(),
-            root: Rc::new(RefCell::new(TreeNode {
-                item: None,
-                parent: None,
-                item_index: 0,
-                direct_child_count: child_count,
-                total_child_count: child_count,
-                children: Default::default(),
+            root: Rc::new(RefCell::new(RootNode {
+                children: Children::new(child_count),
             })),
         })
     }
 
     pub fn set_expanded(&self,
                         model: &Model,
-                        node_ref: &Rc<RefCell<TreeNode<Item>>>,
+                        node_ref: &ItemNodeRc<Item>,
                         expanded: bool)
         -> Result<(), ModelError>
     {
@@ -153,38 +239,34 @@ where Item: Copy,
             return Ok(());
         }
 
-        let node_parent_ref = node.parent
-            .as_ref().ok_or(ModelError::ParentNotSet)?
-            .upgrade().ok_or(ModelError::ParentDropped)?;
-        let mut node_parent = node_parent_ref.borrow_mut();
+        node.parent
+            .upgrade()
+            .ok_or(ModelError::ParentDropped)?
+            .borrow_mut()
+            .children_mut()
+            .set_expanded(node_ref, expanded);
 
-        // Add this node to the parent's list of expanded child nodes.
-        if expanded {
-            node_parent.children.insert(node.item_index, node_ref.clone());
-        } else {
-            node_parent.children.remove(&node.item_index);
-        }
-
-        drop(node_parent);
-
-        // Traverse back up the tree, modifying `total_child_count` for expanded/collapsed entries.
+        // Traverse back up the tree, modifying `children.total_count` for
+        // expanded/collapsed entries.
         let mut position = node.relative_position()?;
-        let mut current_node = node_ref.clone();
-        while let Some(parent_weak) = current_node.clone().borrow().parent.as_ref() {
-            let parent = parent_weak.upgrade().ok_or(ModelError::ParentDropped)?;
+        let mut current_node: AnyNodeRc<Item> = node_ref.clone();
+        while let Some(parent_ref) = current_node.clone().borrow().parent()? {
+            let mut parent = parent_ref.borrow_mut();
+            let children = parent.children_mut();
             if expanded {
-                parent.borrow_mut().total_child_count += node.total_child_count;
+                children.total_count += node.children.total_count;
             } else {
-                parent.borrow_mut().total_child_count -= node.total_child_count;
+                children.total_count -= node.children.total_count;
             }
-            current_node = parent;
+            drop(parent);
+            current_node = parent_ref;
             position += current_node.borrow().relative_position()? + 1;
         }
 
         if expanded {
-            model.items_changed(position, 0, node.total_child_count);
+            model.items_changed(position, 0, node.children.total_count);
         } else {
-            model.items_changed(position, node.total_child_count, 0);
+            model.items_changed(position, node.children.total_count, 0);
         }
 
         Ok(())
@@ -196,22 +278,27 @@ where Item: Copy,
         let mut node_borrow = self.root.borrow_mut();
 
         let new_child_count = cap.item_count(&None)? as u32;
-        if node_borrow.direct_child_count == new_child_count {
+        if node_borrow.children.direct_count == new_child_count {
             return Ok(None);
         }
 
-        let position = node_borrow.total_child_count;
-        let added = new_child_count - node_borrow.direct_child_count;
-        node_borrow.direct_child_count = new_child_count;
-        node_borrow.total_child_count += added;
+        let position = node_borrow.children.total_count;
+        let added = new_child_count - node_borrow.children.direct_count;
+        node_borrow.children.direct_count = new_child_count;
+        node_borrow.children.total_count += added;
         Ok(Some((position, 0, added)))
     }
 
-    fn fetch(&self, position: u32) -> Result<Rc<RefCell<TreeNode<Item>>>, ModelError> {
-        let mut parent_ref = self.root.clone();
+    fn fetch(&self, position: u32) -> Result<ItemNodeRc<Item>, ModelError> {
+        let mut parent_ref: Rc<RefCell<dyn Node<Item>>> = self.root.clone();
         let mut relative_position = position;
         'outer: loop {
-            for (_, node_rc) in parent_ref.clone().borrow().children.iter() {
+            for (_, node_rc) in parent_ref
+                .clone()
+                .borrow()
+                .children()
+                .iter_expanded()
+            {
                 let node = node_rc.borrow();
                 // If the position is before this node, break out of the loop to look it up.
                 if relative_position < node.item_index {
@@ -220,14 +307,14 @@ where Item: Copy,
                 } else if relative_position == node.item_index {
                     return Ok(node_rc.clone());
                 // If the position is within this node's children, traverse down the tree and repeat.
-                } else if relative_position <= node.item_index + node.total_child_count {
+                } else if relative_position <= node.item_index + node.children.total_count {
                     parent_ref = node_rc.clone();
                     relative_position -= node.item_index + 1;
                     continue 'outer;
                 // Otherwise, if the position is after this node,
                 // adjust the relative position for the node's children above.
                 } else {
-                    relative_position -= node.total_child_count;
+                    relative_position -= node.children.total_count;
                 }
             }
             break;
@@ -236,15 +323,13 @@ where Item: Copy,
         // If we've broken out to this point, the node must be directly below `parent` - look it up.
         let mut cap = self.capture.lock().or(Err(ModelError::LockError))?;
         let parent = parent_ref.borrow();
-        let item = cap.item(&parent.item, relative_position as u64)?;
+        let item = cap.item(&parent.item(), relative_position as u64)?;
         let child_count = cap.child_count(&item)?;
-        let node = TreeNode {
-            item: Some(item),
-            parent: Some(Rc::downgrade(&parent_ref)),
+        let node = ItemNode {
+            item,
+            parent: Rc::downgrade(&parent_ref),
             item_index: relative_position,
-            direct_child_count: child_count.try_into()?,
-            total_child_count: child_count.try_into()?,
-            children: Default::default(),
+            children: Children::new(child_count.try_into()?),
         };
 
         Ok(Rc::new(RefCell::new(node)))
@@ -254,12 +339,13 @@ where Item: Copy,
     // called by a GObject wrapper class to implement that interface.
 
     pub fn n_items(&self) -> u32 {
-        self.root.borrow().total_child_count
+        self.root.borrow().children.total_count
     }
 
     pub fn item(&self, position: u32) -> Option<Object> {
-        // First check that the position is valid (must be within the root node's `child_count`).
-        if position >= self.root.borrow().total_child_count {
+        // First check that the position is valid (must be within the root
+        // node's total child count).
+        if position >= self.root.borrow().children.total_count {
             return None
         }
         let node_or_err_msg = self.fetch(position).map_err(|e| format!("{:?}", e));
