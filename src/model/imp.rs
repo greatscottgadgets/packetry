@@ -10,12 +10,12 @@ use crate::tree_list_model::TreeListModel;
 
 #[derive(Default)]
 pub struct TrafficModel {
-    pub(super) tree: RefCell<Option<TreeListModel<TrafficItem, TrafficRowData>>>,
+    pub(super) tree: RefCell<Option<TreeListModel<TrafficItem>>>,
 }
 
 #[derive(Default)]
 pub struct DeviceModel {
-    pub(super) tree: RefCell<Option<TreeListModel<DeviceItem, DeviceRowData>>>,
+    pub(super) tree: RefCell<Option<TreeListModel<DeviceItem>>>,
 }
 
 /// Basic declaration of our type for the GObject type system

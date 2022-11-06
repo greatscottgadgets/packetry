@@ -1,18 +1,13 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
-use std::marker::PhantomData;
 use std::num::TryFromIntError;
 use std::rc::{Rc, Weak};
 use std::sync::{Arc, Mutex};
 use std::ops::DerefMut;
 
-use gtk::prelude::{IsA, Cast};
-use gtk::glib::Object;
-
 use thiserror::Error;
 
 use crate::capture::{Capture, CaptureError, ItemSource};
-use crate::row_data::GenericRowData;
 
 #[derive(Error, Debug)]
 pub enum ModelError {
@@ -186,15 +181,13 @@ pub struct ModelUpdate {
     pub rows_changed: u32,
 }
 
-pub struct TreeListModel<Item, RowData> {
-    _marker: PhantomData<RowData>,
+pub struct TreeListModel<Item> {
     capture: Arc<Mutex<Capture>>,
     root: Rc<RefCell<RootNode<Item>>>,
 }
 
-impl<Item, RowData> TreeListModel<Item, RowData>
+impl<Item> TreeListModel<Item>
 where Item: 'static + Copy,
-      RowData: GenericRowData<Item> + IsA<Object> + Cast,
       Capture: ItemSource<Item>
 {
     pub fn new(capture: Arc<Mutex<Capture>>) -> Result<Self, ModelError> {
@@ -202,7 +195,6 @@ where Item: 'static + Copy,
         let item_count = cap.item_count(&None)?;
         let child_count = u32::try_from(item_count)?;
         Ok(TreeListModel {
-            _marker: PhantomData,
             capture: capture.clone(),
             root: Rc::new(RefCell::new(RootNode {
                 children: Children::new(child_count),
