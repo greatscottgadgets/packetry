@@ -182,6 +182,12 @@ impl<Item> ItemNode<Item> where Item: Copy {
     }
 }
 
+pub struct ModelUpdate {
+    pub rows_added: u32,
+    pub rows_removed: u32,
+    pub rows_changed: u32,
+}
+
 pub struct TreeListModel<Item, Model, RowData> {
     _marker: PhantomData<(Model, RowData)>,
     capture: Arc<Mutex<Capture>>,
@@ -208,19 +214,16 @@ where Item: 'static + Copy,
     }
 
     pub fn set_expanded(&self,
-                        model: &Model,
+                        _model: &Model,
                         node_ref: &ItemNodeRc<Item>,
-                        position: u32,
+                        _position: u32,
                         expanded: bool)
-        -> Result<(), ModelError>
+        -> Result<ModelUpdate, ModelError>
     {
         let node = node_ref.borrow();
         if node.expanded() == expanded {
             return Err(ModelError::AlreadyDone);
         }
-
-        // New rows will be added or removed after the current one.
-        let position = position + 1;
 
         node.parent
             .upgrade()
@@ -244,13 +247,11 @@ where Item: 'static + Copy,
             current_node = parent_ref;
         }
 
-        if expanded {
-            model.items_changed(position, 0, node.children.total_count);
-        } else {
-            model.items_changed(position, node.children.total_count, 0);
-        }
-
-        Ok(())
+        Ok(ModelUpdate {
+            rows_added: if expanded { node.children.total_count } else { 0 },
+            rows_removed: if expanded { 0 } else { node.children.total_count },
+            rows_changed: 0,
+        })
     }
 
     pub fn update(&mut self) -> Result<Option<(u32, u32, u32)>, ModelError> {

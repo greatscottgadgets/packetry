@@ -46,7 +46,11 @@ impl GenericModel<TrafficItem> for TrafficModel {
     {
         let tree_opt  = self.imp().tree.borrow();
         let tree = tree_opt.as_ref().unwrap();
-        tree.set_expanded(self, node, position, expanded)
+        let update = tree.set_expanded(self, node, position, expanded)?;
+        let rows_removed = update.rows_removed + update.rows_changed;
+        let rows_added = update.rows_added + update.rows_changed;
+        self.items_changed(position + 1, rows_removed, rows_added);
+        Ok(())
     }
 
     fn update(&self) -> Result<(), ModelError> {
@@ -77,7 +81,11 @@ impl GenericModel<DeviceItem> for DeviceModel {
     {
         let tree_opt  = self.imp().tree.borrow();
         let tree = tree_opt.as_ref().unwrap();
-        tree.set_expanded(self, node, position, expanded)
+        let update = tree.set_expanded(self, node, position, expanded)?;
+        let rows_removed = update.rows_removed + update.rows_changed;
+        let rows_added = update.rows_added + update.rows_changed;
+        self.items_changed(position + 1, rows_removed, rows_added);
+        Ok(())
     }
 
     fn update(&self) -> Result<(), ModelError> {
