@@ -246,7 +246,7 @@ where Item: 'static + Copy,
         })
     }
 
-    pub fn update(&mut self) -> Result<Option<(u32, u32, u32)>, ModelError> {
+    pub fn update(&mut self) -> Result<Option<(u32, ModelUpdate)>, ModelError> {
         let mut cap = self.capture.lock().or(Err(ModelError::LockError))?;
 
         let mut node_borrow = self.root.borrow_mut();
@@ -257,10 +257,14 @@ where Item: 'static + Copy,
         }
 
         let position = node_borrow.children.total_count;
-        let added = new_child_count - node_borrow.children.direct_count;
+        let update = ModelUpdate {
+            rows_added: new_child_count - node_borrow.children.direct_count,
+            rows_removed: 0,
+            rows_changed: 0,
+        };
         node_borrow.children.direct_count = new_child_count;
-        node_borrow.children.total_count += added;
-        Ok(Some((position, 0, added)))
+        node_borrow.children.total_count += update.rows_added;
+        Ok(Some((position, update)))
     }
 
     pub fn fetch(&self, position: u32) -> Result<ItemNodeRc<Item>, ModelError> {

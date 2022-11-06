@@ -56,9 +56,10 @@ impl GenericModel<TrafficItem> for TrafficModel {
     fn update(&self) -> Result<(), ModelError> {
         let mut tree_opt  = self.imp().tree.borrow_mut();
         let tree = tree_opt.as_mut().unwrap();
-        if let Some((position, _, added)) = tree.update()? {
-            drop(tree_opt);
-            self.items_changed(position, 0, added);
+        if let Some((position, update)) = tree.update()? {
+            let rows_removed = update.rows_removed + update.rows_changed;
+            let rows_added = update.rows_added + update.rows_changed;
+            self.items_changed(position, rows_removed, rows_added);
         }
         Ok(())
     }
@@ -91,9 +92,10 @@ impl GenericModel<DeviceItem> for DeviceModel {
     fn update(&self) -> Result<(), ModelError> {
         let mut tree_opt  = self.imp().tree.borrow_mut();
         let tree = tree_opt.as_mut().unwrap();
-        if let Some((position, _, added)) = tree.update()? {
-            drop(tree_opt);
-            self.items_changed(position, 0, added);
+        if let Some((position, update)) = tree.update()? {
+            let rows_removed = update.rows_removed + update.rows_changed;
+            let rows_added = update.rows_added + update.rows_changed;
+            self.items_changed(position, rows_removed, rows_added);
         }
         Ok(())
     }
