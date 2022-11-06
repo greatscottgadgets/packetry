@@ -146,6 +146,7 @@ pub struct EndpointWriter {
     pub transfer_index: CompactWriter<EndpointTransferId, EndpointTransactionId>,
     pub data_transactions: CompactWriter<EndpointDataEvent, EndpointTransactionId>,
     pub data_byte_counts: CompactWriter<EndpointDataEvent, EndpointByteCount>,
+    pub progress_index: CompactWriter<TrafficItemIdOffset, EndpointTransactionId>,
     pub end_index: CompactWriter<EndpointTransferId, TrafficItemId>,
 }
 
@@ -157,6 +158,7 @@ pub struct EndpointReader {
     pub transfer_index: CompactReader<EndpointTransferId, EndpointTransactionId>,
     pub data_transactions: CompactReader<EndpointDataEvent, EndpointTransactionId>,
     pub data_byte_counts: CompactReader<EndpointDataEvent, EndpointByteCount>,
+    pub progress_index: CompactReader<TrafficItemIdOffset, EndpointTransactionId>,
     pub end_index: CompactReader<EndpointTransferId, TrafficItemId>,
 }
 
@@ -169,6 +171,7 @@ pub fn create_endpoint()
     let (transfers_writer, transfers_reader) = compact_index()?;
     let (data_transaction_writer, data_transaction_reader) = compact_index()?;
     let (data_byte_count_writer, data_byte_count_reader) = compact_index()?;
+    let (progress_writer, progress_reader) = compact_index()?;
     let (end_writer, end_reader) = compact_index()?;
 
     // Create the shared state.
@@ -184,6 +187,7 @@ pub fn create_endpoint()
         transfer_index: transfers_writer,
         data_transactions: data_transaction_writer,
         data_byte_counts: data_byte_count_writer,
+        progress_index: progress_writer,
         end_index: end_writer,
     };
 
@@ -194,6 +198,7 @@ pub fn create_endpoint()
         transfer_index: transfers_reader,
         data_transactions: data_transaction_reader,
         data_byte_counts: data_byte_count_reader,
+        progress_index: progress_reader,
         end_index: end_reader,
     };
 
@@ -214,6 +219,7 @@ pub type EndpointId = Id<Endpoint>;
 pub type EndpointDataEvent = u64;
 pub type EndpointByteCount = u64;
 pub type DeviceVersion = u32;
+pub type TrafficItemIdOffset = u64;
 
 #[derive(Copy, Clone, Debug)]
 pub enum TrafficItem {
