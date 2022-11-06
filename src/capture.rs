@@ -201,6 +201,7 @@ pub struct EndpointWriter {
     pub group_index: CompactWriter<EndpointGroupId, EndpointTransactionId>,
     pub data_transactions: CompactWriter<EndpointDataEvent, EndpointTransactionId>,
     pub data_byte_counts: CompactWriter<EndpointDataEvent, EndpointByteCount>,
+    pub progress_index: CompactWriter<TrafficItemIdOffset, EndpointTransactionId>,
     pub end_index: CompactWriter<EndpointGroupId, TrafficItemId>,
 }
 
@@ -212,6 +213,7 @@ pub struct EndpointReader {
     pub group_index: CompactReader<EndpointGroupId, EndpointTransactionId>,
     pub data_transactions: CompactReader<EndpointDataEvent, EndpointTransactionId>,
     pub data_byte_counts: CompactReader<EndpointDataEvent, EndpointByteCount>,
+    pub progress_index: CompactReader<TrafficItemIdOffset, EndpointTransactionId>,
     pub end_index: CompactReader<EndpointGroupId, TrafficItemId>,
 }
 
@@ -224,6 +226,7 @@ pub fn create_endpoint(db: &mut CounterSet)
     let (groups_writer, groups_reader) = compact_index(db)?;
     let (data_transaction_writer, data_transaction_reader) = compact_index(db)?;
     let (data_byte_count_writer, data_byte_count_reader) = compact_index(db)?;
+    let (progress_writer, progress_reader) = compact_index(db)?;
     let (end_writer, end_reader) = compact_index(db)?;
 
     // Create the shared state.
@@ -239,6 +242,7 @@ pub fn create_endpoint(db: &mut CounterSet)
         group_index: groups_writer,
         data_transactions: data_transaction_writer,
         data_byte_counts: data_byte_count_writer,
+        progress_index: progress_writer,
         end_index: end_writer,
     };
 
@@ -249,6 +253,7 @@ pub fn create_endpoint(db: &mut CounterSet)
         group_index: groups_reader,
         data_transactions: data_transaction_reader,
         data_byte_counts: data_byte_count_reader,
+        progress_index: progress_reader,
         end_index: end_reader,
     };
 
@@ -269,6 +274,7 @@ pub type EndpointId = Id<Endpoint>;
 pub type EndpointDataEvent = u64;
 pub type EndpointByteCount = u64;
 pub type DeviceVersion = u32;
+pub type TrafficItemIdOffset = u64;
 
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
 #[repr(C)]
@@ -1364,6 +1370,7 @@ pub struct EndpointSnapshot<'r, 's> {
     group_index: CompactSnapshot<'r, 's, EndpointGroupId, EndpointTransactionId>,
     data_transactions: CompactSnapshot<'r, 's, EndpointDataEvent, EndpointTransactionId>,
     data_byte_counts: CompactSnapshot<'r, 's, EndpointDataEvent, EndpointByteCount>,
+    progress_index: CompactSnapshot<'r, 's, TrafficItemIdOffset, EndpointTransactionId>,
     end_index: CompactSnapshot<'r, 's, EndpointGroupId, TrafficItemId>,
 }
 
@@ -1378,6 +1385,7 @@ impl EndpointReader {
             group_index: self.group_index.at(snapshot),
             data_transactions: self.data_transactions.at(snapshot),
             data_byte_counts: self.data_byte_counts.at(snapshot),
+            progress_index: self.progress_index.at(snapshot),
             end_index: self.end_index.at(snapshot),
         }
     }
@@ -1390,6 +1398,7 @@ pub trait EndpointReaderOps {
     fn group_index(&mut self) -> &mut impl CompactReaderOps<EndpointGroupId, EndpointTransactionId>;
     fn data_transactions(&mut self) -> &mut impl CompactReaderOps<EndpointDataEvent, EndpointTransactionId>;
     fn data_byte_counts(&mut self) -> &mut impl CompactReaderOps<EndpointDataEvent, EndpointByteCount>;
+    fn progress_index(&mut self) -> &mut impl CompactReaderOps<TrafficItemIdOffset, EndpointTransactionId>;
     fn end_index(&mut self) -> &mut impl CompactReaderOps<EndpointGroupId, TrafficItemId>;
 
     fn transfer_data_range(&mut self, range: &Range<EndpointTransactionId>)
@@ -1438,6 +1447,10 @@ impl EndpointReaderOps for EndpointReader {
         &mut self.data_byte_counts
     }
 
+    fn progress_index(&mut self) -> &mut impl CompactReaderOps<TrafficItemIdOffset, EndpointTransactionId> {
+        &mut self.progress_index
+    }
+
     fn end_index(&mut self) -> &mut impl CompactReaderOps<EndpointGroupId, TrafficItemId> {
         &mut self.end_index
     }
@@ -1462,6 +1475,10 @@ impl<'r, 's> EndpointReaderOps for EndpointSnapshot<'r, 's> {
 
     fn data_byte_counts(&mut self) -> &mut impl CompactReaderOps<EndpointDataEvent, EndpointByteCount> {
         &mut self.data_byte_counts
+    }
+
+    fn progress_index(&mut self) -> &mut impl CompactReaderOps<TrafficItemIdOffset, EndpointTransactionId> {
+        &mut self.progress_index
     }
 
     fn end_index(&mut self) -> &mut impl CompactReaderOps<EndpointGroupId, TrafficItemId> {
@@ -1669,6 +1686,7 @@ impl Dump for EndpointReader {
         self.group_index.dump(&dest.join("group_index"))?;
         self.data_transactions.dump(&dest.join("data_transactions"))?;
         self.data_byte_counts.dump(&dest.join("data_byte_counts"))?;
+        self.progress_index.dump(&dest.join("progress_index"))?;
         self.end_index.dump(&dest.join("end_index"))?;
         Ok(())
     }
@@ -1685,6 +1703,7 @@ impl Dump for EndpointReader {
             group_index: restore(db, &src.join("group_index"))?,
             data_transactions: restore(db, &src.join("data_transactions"))?,
             data_byte_counts: restore(db, &src.join("data_byte_counts"))?,
+            progress_index: restore(db, &src.join("progress_index"))?,
             end_index: restore(db, &src.join("end_index"))?,
         })
     }

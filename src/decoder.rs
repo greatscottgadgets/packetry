@@ -1048,6 +1048,17 @@ impl Decoder {
                 let end_id = writer.end_index.push(item_id)?;
                 assert!(end_id == ep_group_id);
             }
+            if writer.shared.first_item_id.load().is_some() {
+                // Record the total transactions on this endpoint.
+                let mut transaction_count =
+                    writer.transaction_ids.len();
+                if start && endpoint_id == item_endpoint_id {
+                    // We just added a transaction, that shouldn't be included.
+                    transaction_count -= 1;
+                }
+                writer.progress_index.push(
+                    EndpointTransactionId::from(transaction_count))?;
+            }
         }
 
         Ok(item_id)
