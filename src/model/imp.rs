@@ -8,6 +8,8 @@ use crate::capture::{TrafficItem, DeviceItem};
 use crate::row_data::{GenericRowData, TrafficRowData, DeviceRowData};
 use crate::tree_list_model::TreeListModel;
 
+use super::{clamp, MAX_ROWS};
+
 #[derive(Default)]
 pub struct TrafficModel {
     pub(super) tree: RefCell<Option<TreeListModel<TrafficItem>>>,
@@ -42,7 +44,7 @@ impl ListModelImpl for TrafficModel {
 
     fn n_items(&self, _list_model: &Self::Type) -> u32 {
         match self.tree.borrow().as_ref() {
-            Some(tree) => tree.row_count(),
+            Some(tree) => clamp(tree.row_count(), MAX_ROWS),
             None => 0
         }
     }
@@ -52,10 +54,10 @@ impl ListModelImpl for TrafficModel {
     {
         match self.tree.borrow().as_ref() {
             Some(tree) => {
-                if position >= tree.row_count() {
+                if position >= clamp(tree.row_count(), MAX_ROWS) {
                     None
                 } else {
-                    let result = tree.fetch(position)
+                    let result = tree.fetch(position as u64)
                         .map_err(|e| format!("{:?}", e));
                     Some(TrafficRowData::new(result).upcast::<glib::Object>())
                 }
@@ -72,7 +74,7 @@ impl ListModelImpl for DeviceModel {
 
     fn n_items(&self, _list_model: &Self::Type) -> u32 {
         match self.tree.borrow().as_ref() {
-            Some(tree) => tree.row_count(),
+            Some(tree) => clamp(tree.row_count(), MAX_ROWS),
             None => 0
         }
     }
@@ -82,10 +84,10 @@ impl ListModelImpl for DeviceModel {
     {
         match self.tree.borrow().as_ref() {
             Some(tree) => {
-                if position >= tree.row_count() {
+                if position >= clamp(tree.row_count(), MAX_ROWS) {
                     None
                 } else {
-                    let result = tree.fetch(position)
+                    let result = tree.fetch(position as u64)
                         .map_err(|e| format!("{:?}", e));
                     Some(DeviceRowData::new(result).upcast::<glib::Object>())
                 }
