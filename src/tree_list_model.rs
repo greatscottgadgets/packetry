@@ -214,7 +214,6 @@ where Item: 'static + Copy,
     }
 
     pub fn set_expanded(&self,
-                        _model: &Model,
                         node_ref: &ItemNodeRc<Item>,
                         _position: u32,
                         expanded: bool)
