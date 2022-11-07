@@ -253,12 +253,6 @@ impl Transaction {
             (..)            => false
         }
     }
-
-    fn complete(&self) -> bool {
-        use PID::*;
-        // TODO: iso transactions end on a DATAx
-        matches!(self.end_pid, ACK | NAK | NYET | STALL | ERR)
-    }
 }
 
 pub fn fmt_count(count: u64) -> String {
@@ -674,7 +668,6 @@ pub trait ItemSource<Item> {
     fn child_count(&mut self, parent: &Item) -> Result<u64, CaptureError>;
     fn item_end(&mut self, item_id: Self::ItemId)
         -> Result<Option<Self::ItemId>, CaptureError>;
-    fn complete(&mut self, item: &Item) -> Result<bool, CaptureError>;
     fn summary(&mut self, item: &Item) -> Result<String, CaptureError>;
     fn connectors(&mut self, item: &Item) -> Result<String, CaptureError>;
 }
@@ -763,26 +756,6 @@ impl ItemSource<TrafficItem> for Capture {
         }
         let end_item_id = ep_traf.end_index.get(ep_transfer_id)?;
         Ok(Some(end_item_id))
-    }
-
-    fn complete(&mut self, item: &TrafficItem)
-        -> Result<bool, CaptureError>
-    {
-        use TrafficItem::*;
-        Ok(match item {
-            Packet(..) => {
-                true
-            },
-            // TODO: switch to using `item_end` after interleaving merge.
-            Transaction(_, transaction_id) => {
-                let transaction = self.transaction(*transaction_id)?;
-                transaction.complete()
-            },
-            // TODO: switch to using `item_end` after interleaving merge.
-            Transfer(..) => {
-                false
-            }
-        })
     }
 
     fn summary(&mut self, item: &TrafficItem)
@@ -1101,12 +1074,6 @@ impl ItemSource<DeviceItem> for Capture {
         -> Result<Option<DeviceId>, CaptureError>
     {
         Ok(None)
-    }
-
-    fn complete(&mut self, _item: &DeviceItem)
-        -> Result<bool, CaptureError>
-    {
-        Ok(false)
     }
 
     fn summary(&mut self, item: &DeviceItem)
