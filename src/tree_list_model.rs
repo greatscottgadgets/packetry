@@ -291,18 +291,19 @@ where Item: 'static + Copy,
     pub fn update(&mut self) -> Result<Option<(u32, u32, u32)>, ModelError> {
         let mut cap = self.capture.lock().or(Err(ModelError::LockError))?;
 
-        let mut node_borrow = self.root.borrow_mut();
+        let mut root = self.root.borrow_mut();
+        let new_item_count = cap.item_count(&None)? as u32;
+        let old_item_count = root.children.direct_count;
 
-        let new_child_count = cap.item_count(&None)? as u32;
-        if node_borrow.children.direct_count == new_child_count {
+        if new_item_count == old_item_count {
             return Ok(None);
         }
 
-        let position = node_borrow.children.total_count;
-        let added = new_child_count - node_borrow.children.direct_count;
-        node_borrow.children.direct_count = new_child_count;
-        node_borrow.children.total_count += added;
-        Ok(Some((position, 0, added)))
+        let position = root.children.total_count;
+        let items_added = new_item_count - old_item_count;
+        root.children.direct_count = new_item_count;
+        root.children.total_count += items_added;
+        Ok(Some((position, 0, items_added)))
     }
 
     fn fetch(&self, position: u32) -> Result<ItemNodeRc<Item>, ModelError> {
