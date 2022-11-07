@@ -497,7 +497,7 @@ pub fn fmt_vec<T>(vec: &FileVec<T>) -> String
 }
 
 pub fn fmt_index<I, T>(idx: &HybridIndex<I, T>) -> String
-    where I: Number, T: Number + Copy
+    where I: Number, T: Number + Copy + Ord
 {
     format!("{} values in {} entries, {}",
             fmt_count(idx.len()),

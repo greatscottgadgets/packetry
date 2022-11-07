@@ -8,7 +8,7 @@ use std::marker::PhantomData;
 use bufreaderwriter::BufReaderWriter;
 use tempfile::tempfile;
 use thiserror::Error;
-use bisection::bisect_right;
+use bisection::{bisect_left, bisect_right};
 
 use crate::id::Id;
 
@@ -57,7 +57,7 @@ pub struct HybridIndex<I, T> {
     at_end: bool,
 }
 
-impl<I: Number, T: Number + Copy> HybridIndex<I, T> {
+impl<I: Number, T: Number + Copy + Ord> HybridIndex<I, T> {
     pub fn new(min_width: u8) -> Result<Self, HybridIndexError> {
         let file = tempfile()?;
         Ok(Self{
@@ -189,6 +189,13 @@ impl<I: Number, T: Number + Copy> HybridIndex<I, T> {
             let end = vec[1];
             start..end
         })
+    }
+
+    pub fn bisect(&mut self, range: &Range<I>, value: &T)
+        -> Result<u64, HybridIndexError>
+    {
+        let values = self.get_range(range)?;
+        Ok(bisect_left(&values, value).try_into().unwrap())
     }
 
     pub fn len(&self) -> u64 {
