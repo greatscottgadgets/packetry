@@ -28,6 +28,7 @@ use crate::database::{
     data_stream_with_block_size,
     Snapshot,
 };
+use crate::item::TrafficItem;
 use crate::usb::{self, prelude::*};
 use crate::util::{
     dump::{Dump, restore},
@@ -929,6 +930,15 @@ impl CaptureWriter {
     }
 }
 
+pub struct Transfer {
+    pub ep_first_item_id: TrafficItemId,
+    pub start_item_id: TrafficItemId,
+    pub group_id: GroupId,
+    pub endpoint_id: EndpointId,
+    pub first_ep_transaction_id: EndpointTransactionId,
+    pub transaction_range: Range<EndpointTransactionId>,
+}
+
 /// Handle for access to a capture at a snapshot.
 pub struct CaptureSnapshot<'r, 's> {
     shared: Arc<CaptureShared>,
@@ -1021,6 +1031,45 @@ pub trait CaptureReaderOps {
     #[allow(dead_code)]
     fn end_index(&mut self) -> &mut impl CompactReaderOps<GroupId, TrafficItemId>;
     fn complete(&self) -> bool;
+
+    fn transfer(&mut self, item_index: u64, item: &TrafficItem)
+        -> Result<Transfer, Error>
+    {
+        if let TrafficItem::TransactionGroup(group_id) = item {
+            let start_item_id = TrafficItemId::from(item_index);
+            let entry = self.group_index().get(*group_id)?;
+            let endpoint_id = entry.endpoint_id();
+            let ep_traf = self.endpoint_traffic(endpoint_id)?;
+            let ep_first_item_id = *ep_traf.shared().first_item_id
+                .load()
+                .as_ref()
+                .context(format!("Endpoint ID {endpoint_id} has no first item"))?
+                .as_ref();
+            let ep_transactions = ep_traf.transaction_ids().len();
+            let transaction_range = ep_traf
+                .group_index()
+                .target_range(entry.group_id(), ep_transactions)?;
+            Ok(Transfer {
+                ep_first_item_id,
+                start_item_id,
+                group_id: *group_id,
+                endpoint_id,
+                first_ep_transaction_id: transaction_range.start,
+                transaction_range,
+            })
+        } else {
+            bail!("Item {item:?} is not a group")
+        }
+    }
+
+    fn transfers(&mut self,
+                expanded: &mut dyn Iterator<Item=(u64, TrafficItem)>)
+        -> Result<Vec<Transfer>, Error>
+    {
+        expanded
+            .map(|(index, item)| self.transfer(index, &item))
+            .collect()
+    }
 
     fn group_range(&mut self, entry: &GroupIndexEntry)
         -> Result<Range<EndpointTransactionId>, Error>
