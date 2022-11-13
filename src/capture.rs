@@ -1205,6 +1205,7 @@ mod tests {
     use std::fs::File;
     use std::io::{BufReader, BufWriter, BufRead, Write};
     use crate::decoder::Decoder;
+    use pcap_file::pcap::PcapReader;
 
     fn write_item(cap: &mut Capture, item: &TrafficItem, depth: u8,
                   writer: &mut dyn Write)
@@ -1236,10 +1237,12 @@ mod tests {
                 ref_path.push("reference.txt");
                 out_path.push("output.txt");
                 {
-                    let mut pcap = pcap::Capture::from_file(cap_path).unwrap();
+                    let pcap_file = File::open(cap_path).unwrap();
+                    let pcap_reader = PcapReader::new(pcap_file).unwrap();
                     let mut cap = Capture::new().unwrap();
                     let mut decoder = Decoder::new(&mut cap).unwrap();
-                    while let Ok(packet) = pcap.next() {
+                    for result in pcap_reader {
+                        let packet = result.unwrap().data;
                         decoder.handle_raw_packet(&mut cap, &packet).unwrap();
                     }
                     let out_file = File::create(out_path.clone()).unwrap();

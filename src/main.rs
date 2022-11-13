@@ -9,6 +9,7 @@ mod expander;
 mod tree_list_model;
 
 use std::cell::RefCell;
+use std::fs::File;
 use std::sync::{Arc, Mutex};
 
 use gtk::gio::ListModel;
@@ -20,6 +21,8 @@ use gtk::{
     SingleSelection,
     Orientation,
 };
+
+use pcap_file::{PcapError, pcap::PcapReader};
 
 use model::GenericModel;
 use row_data::GenericRowData;
@@ -122,7 +125,9 @@ pub enum PacketryError {
     #[error(transparent)]
     CaptureError(#[from] CaptureError),
     #[error(transparent)]
-    PcapError(#[from] pcap::Error),
+    IoError(#[from] std::io::Error),
+    #[error(transparent)]
+    PcapError(#[from] PcapError),
 }
 
 fn run() -> Result<(), PacketryError> {
@@ -181,9 +186,11 @@ fn run() -> Result<(), PacketryError> {
     let mut source_id: Option<gtk::glib::source::SourceId> = None;
 
     if args.len() > 1 {
-        let mut pcap = pcap::Capture::from_file(&args[1])?;
+        let pcap_file = File::open(&args[1])?;
+        let pcap_reader = PcapReader::new(pcap_file)?;
         let mut cap = capture.lock().ok().unwrap();
-        while let Ok(packet) = pcap.next() {
+        for result in pcap_reader {
+            let packet = result?.data;
             decoder.handle_raw_packet(&mut cap, &packet).unwrap();
         }
     } else {

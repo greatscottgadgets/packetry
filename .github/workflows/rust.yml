@@ -28,7 +28,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install libgtk-4-dev libpcap-dev build-essential
+          sudo apt install libgtk-4-dev build-essential
 
       - name: Run clippy
         uses: actions-rs/clippy-check@v1
@@ -54,11 +54,11 @@ jobs:
       - name: Install dependencies (Ubuntu)
         run: |
           sudo apt update
-          sudo apt install libgtk-4-dev libpcap-dev build-essential
+          sudo apt install libgtk-4-dev build-essential
         if: startsWith(matrix.os, 'ubuntu-')
 
       - name: Install dependencies (macOS)
-        run: brew install gtk4 libpcap
+        run: brew install gtk4
         if: matrix.os == 'macos-latest'
 
       - name: Build
