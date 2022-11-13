@@ -57,21 +57,22 @@ impl TransactionState {
     {
         let next = PID::from_packet(packet)?;
         use PID::*;
+        use DecodeStatus::*;
         Ok(match (self.first, self.last, next) {
 
             // SETUP, IN or OUT always start a new transaction.
-            (_, _, SETUP | IN | OUT) => DecodeStatus::New,
+            (_, _, SETUP | IN | OUT) => New,
 
             // SOF when there is no existing transaction starts a new
             // "transaction" representing an idle period on the bus.
-            (_, None, SOF) => DecodeStatus::New,
+            (_, None, SOF) => New,
             // Additional SOFs extend this "transaction", more may follow.
-            (_, Some(SOF), SOF) => DecodeStatus::Continue,
+            (_, Some(SOF), SOF) => Continue,
 
             // A malformed packet is grouped with previous malformed packets.
-            (_, Some(Malformed), Malformed) => DecodeStatus::Continue,
+            (_, Some(Malformed), Malformed) => Continue,
             // If preceded by any other packet, it starts a new transaction.
-            (_, _, Malformed) => DecodeStatus::New,
+            (_, _, Malformed) => New,
 
             // SETUP must be followed by DATA0.
             (_, Some(SETUP), DATA0) => {
@@ -81,33 +82,33 @@ impl TransactionState {
                         self.setup = Some(
                             SetupFields::from_data_packet(packet));
                         // Wait for ACK.
-                        DecodeStatus::Continue
+                        Continue
                     },
-                    _ => DecodeStatus::Invalid
+                    _ => Invalid
                 }
             }
             // ACK then completes the transaction.
-            (Some(SETUP), Some(DATA0), ACK) => DecodeStatus::Done,
+            (Some(SETUP), Some(DATA0), ACK) => Done,
 
             // IN may be followed by NAK or STALL, completing transaction.
-            (_, Some(IN), NAK | STALL) => DecodeStatus::Done,
+            (_, Some(IN), NAK | STALL) => Done,
             // IN or OUT may be followed by DATA0 or DATA1, wait for status.
             (_, Some(IN | OUT), DATA0 | DATA1) => {
                 if packet.len() >= 3 {
                     let range = 1 .. (packet.len() - 2);
                     self.payload = packet[range].to_vec();
-                    DecodeStatus::Continue
+                    Continue
                 } else {
-                    DecodeStatus::Invalid
+                    Invalid
                 }
             },
             // An ACK or NYET then completes the transaction.
-            (Some(IN | OUT), Some(DATA0 | DATA1), ACK | NYET) => DecodeStatus::Done,
+            (Some(IN | OUT), Some(DATA0 | DATA1), ACK | NYET) => Done,
             // OUT may also be completed by NAK or STALL.
-            (Some(OUT), Some(DATA0 | DATA1), NAK | STALL) => DecodeStatus::Done,
+            (Some(OUT), Some(DATA0 | DATA1), NAK | STALL) => Done,
 
             // Any other case is not a valid part of a transaction.
-            _ => DecodeStatus::Invalid,
+            _ => Invalid,
         })
     }
 
@@ -217,22 +218,23 @@ impl Decoder {
         -> Result<(), CaptureError>
     {
         let pid = PID::from_packet(packet)?;
+        use DecodeStatus::*;
         match self.transaction_state.status(packet)? {
-            DecodeStatus::Single => {
+            Single => {
                 self.transaction_start(capture, packet_id, packet)?;
                 self.transaction_end(capture)?;
             },
-            DecodeStatus::New => {
+            New => {
                 self.transaction_start(capture, packet_id, packet)?;
             },
-            DecodeStatus::Continue | DecodeStatus::Retry => {
+            Continue | Retry => {
                 self.transaction_append(pid);
             },
-            DecodeStatus::Done => {
+            Done => {
                 self.transaction_append(pid);
                 self.transaction_end(capture)?;
             },
-            DecodeStatus::Invalid => {
+            Invalid => {
                 self.transaction_start(capture, packet_id, packet)?;
                 self.transaction_end(capture)?;
             },
@@ -471,9 +473,10 @@ impl Decoder {
             None      => false
         };
         use PID::*;
-        use EndpointType::*;
+        use EndpointType::{Normal, Framing};
         use usb::EndpointType::*;
         use Direction::*;
+        use DecodeStatus::*;
         Ok(match (ep_type, ep_data.last, next) {
 
             // A SETUP transaction starts a new control transfer.
@@ -482,12 +485,12 @@ impl Decoder {
                 let setup = self.transaction_state.setup.take();
                 let ep_data = self.current_endpoint_data_mut()?;
                 ep_data.setup = setup;
-                DecodeStatus::New
+                New
             },
 
             (Normal(Control), _, _) => match &ep_data.setup {
                 // No control transaction is valid unless setup was done.
-                None => DecodeStatus::Invalid,
+                None => Invalid,
                 // If setup was done then valid transactions depend on the
                 // contents of the setup data packet.
                 Some(fields) => {
@@ -508,10 +511,10 @@ impl Decoder {
                                 let ep_data = self.current_endpoint_data_mut()?;
                                 ep_data.payload.extend(payload);
                                 // Await status stage.
-                                DecodeStatus::Continue
+                                Continue
                             } else {
                                 // Retry data stage.
-                                DecodeStatus::Retry
+                                Retry
                             }
                         },
 
@@ -527,14 +530,14 @@ impl Decoder {
                                 let fields_copy = *fields;
                                 self.decode_request(capture, fields_copy)?;
                                 // Status stage complete.
-                                DecodeStatus::Done
+                                Done
                             } else {
                                 // Retry status stage.
-                                DecodeStatus::Retry
+                                Retry
                             }
                         },
                         // Any other sequence is invalid.
-                        (..) => DecodeStatus::Invalid
+                        (..) => Invalid
                     }
                 }
             },
@@ -553,10 +556,10 @@ impl Decoder {
                 ep_data.last_success = success;
                 if success && short {
                     // New transfer, ended immediately by a short packet.
-                    DecodeStatus::Single
+                    Single
                 } else {
                     // Either a new transfer or a new polling group.
-                    DecodeStatus::New
+                    New
                 }
             },
 
@@ -574,60 +577,61 @@ impl Decoder {
                     ep_data.last_success = success;
                     if success && short {
                         // New transfer, ended immediately by a short packet.
-                        DecodeStatus::Single
+                        Single
                     } else {
                         // Either a new transfer or a new polling group.
-                        DecodeStatus::New
+                        New
                     }
                 } else if success {
                     // Continuing an ongoing transfer.
                     if short {
                         // A short packet ends the transfer.
-                        DecodeStatus::Done
+                        Done
                     } else {
                         // A full-length packet continues the transfer.
-                        DecodeStatus::Continue
+                        Continue
                     }
                 } else {
                     // Continuing a polling group.
-                    DecodeStatus::Retry
+                    Retry
                 }
             },
 
             // A SOF group starts a special transfer, unless
             // one is already in progress.
-            (Framing, None, SOF) => DecodeStatus::New,
+            (Framing, None, SOF) => New,
 
             // Further SOF groups continue this transfer.
-            (Framing, Some(SOF), SOF) => DecodeStatus::Continue,
+            (Framing, Some(SOF), SOF) => Continue,
 
             // Any other case is not a valid part of a transfer.
-            _ => DecodeStatus::Invalid
+            _ => Invalid
         })
     }
 
     fn transfer_update(&mut self, capture: &mut Capture, transaction_id: TransactionId)
         -> Result<(), CaptureError>
     {
+        use DecodeStatus::*;
         match self.transfer_status(capture)? {
-            DecodeStatus::Single => {
+            Single => {
                 self.transfer_start(capture, transaction_id, true)?;
                 self.transfer_end(capture)?;
             },
-            DecodeStatus::New => {
+            New => {
                 self.transfer_start(capture, transaction_id, true)?;
             },
-            DecodeStatus::Continue => {
+            Continue => {
                 self.transfer_append(capture, transaction_id, true)?;
             },
-            DecodeStatus::Retry => {
+            Retry => {
                 self.transfer_append(capture, transaction_id, false)?;
             },
-            DecodeStatus::Done => {
+            Done => {
                 self.transfer_append(capture, transaction_id, true)?;
                 self.transfer_end(capture)?;
             },
-            DecodeStatus::Invalid => {
+            Invalid => {
                 self.transfer_start(capture, transaction_id, false)?;
                 self.transfer_end(capture)?;
             }
