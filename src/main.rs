@@ -13,7 +13,7 @@ use std::fs::File;
 use std::sync::{Arc, Mutex};
 
 use gtk::gio::ListModel;
-use gtk::glib::{self, Object};
+use gtk::glib::Object;
 use gtk::{
     prelude::*,
     Application,
@@ -278,9 +278,7 @@ fn display_error(result: Result<(), PacketryError>) {
                     );
                     dialog.set_transient_for(Some(window));
                     dialog.set_modal(true);
-                    dialog.connect_response(
-                        glib::clone!(@weak window =>
-                                     move |_, _| window.destroy()));
+                    dialog.connect_response(move |dialog, _| dialog.destroy());
                     dialog.show();
                 }
             }
