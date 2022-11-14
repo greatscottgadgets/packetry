@@ -173,8 +173,20 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
         let pcap_reader = PcapReader::new(pcap_file)?;
         let mut cap = capture.lock().or(Err(PacketryError::Lock))?;
         for result in pcap_reader {
-            let packet = result?.data;
-            decoder.handle_raw_packet(&mut cap, &packet)?;
+            match result {
+                Ok(packet) => {
+                    let decode_result =
+                        decoder.handle_raw_packet(&mut cap, &packet.data);
+                    if let Err(e) = decode_result {
+                        display_error(Err(PacketryError::Capture(e)));
+                        break;
+                    }
+                },
+                Err(e) => {
+                    display_error(Err(PacketryError::Pcap(e)));
+                    break;
+                }
+            }
         }
         cap.print_storage_summary();
     } else {
