@@ -174,7 +174,8 @@ pub struct DeviceData {
     pub device_descriptor: Option<DeviceDescriptor>,
     pub configurations: VecMap<ConfigNum, Configuration>,
     pub config_number: Option<ConfigNum>,
-    pub endpoint_details: VecMap<EndpointAddr, (usb::EndpointType, usize)>,
+    pub endpoint_details:
+        VecMap<EndpointAddr, (usb::EndpointType, Option<usize>)>,
     pub strings: VecMap<StringId, UTF16ByteVec>,
     pub version: DeviceVersion,
 }
@@ -222,7 +223,7 @@ impl DeviceData {
                 })
             ),
             _ => match self.endpoint_details.get(addr) {
-                Some((ep_type, ep_max)) => (Normal(*ep_type), Some(*ep_max)),
+                Some((ep_type, ep_max)) => (Normal(*ep_type), *ep_max),
                 None => (Unidentified, None)
             }
         }
@@ -236,10 +237,21 @@ impl DeviceData {
                         let ep_addr = ep_desc.endpoint_address;
                         let ep_type = ep_desc.attributes.endpoint_type();
                         let ep_max = ep_desc.max_packet_size as usize;
-                        self.endpoint_details.set(ep_addr, (ep_type, ep_max));
+                        self.endpoint_details.set(ep_addr,
+                            (ep_type, Some(ep_max))
+                        );
                     }
                 }
             }
+        }
+    }
+
+    pub fn set_endpoint_type(&mut self,
+                             addr: EndpointAddr,
+                             ep_type: usb::EndpointType)
+    {
+        if self.endpoint_details.get(addr).is_none() {
+            self.endpoint_details.set(addr, (ep_type, None));
         }
     }
 }
@@ -271,6 +283,7 @@ impl Interface {
 pub struct Transaction {
     start_pid: PID,
     end_pid: PID,
+    split: Option<(SplitFields, PID)>,
     packet_id_range: Range<PacketId>,
     data_packet_id: Option<PacketId>,
     payload_byte_range: Option<Range<Id<u8>>>,
@@ -287,9 +300,15 @@ impl Transaction {
 
     fn successful(&self) -> bool {
         use PID::*;
-        match (self.packet_count(), self.end_pid) {
-            (3, ACK | NYET) => true,
-            (..)            => false
+        match (self.start_pid, self.end_pid) {
+
+            // SPLIT is successful if it ends with DATA0/DATA1/ACK/NYET.
+            (SPLIT, DATA0 | DATA1 | ACK | NYET) => true,
+
+            // SETUP/IN/OUT is successful if it ends with ACK/NYET.
+            (SETUP | IN | OUT, ACK | NYET) => true,
+
+            (..) => false
         }
     }
 }
@@ -604,10 +623,28 @@ impl Capture {
         let start_pid = self.packet_pid(start_packet_id)?;
         let end_pid = self.packet_pid(packet_id_range.end - 1)?;
         use PID::*;
-        let data_packet_id = match start_pid {
+        use StartComplete::*;
+        let (split, data_packet_id) = match start_pid {
             SETUP | IN | OUT if packet_count >= 2 =>
-                Some(start_packet_id + 1),
-            _ => None
+                (None, Some(start_packet_id + 1)),
+            SPLIT => {
+                let token_packet_id = start_packet_id + 1;
+                let split_packet = self.packet(start_packet_id)?;
+                let token_pid = self.packet_pid(token_packet_id)?;
+                let split_fields = SplitFields::from_packet(&split_packet);
+                let data_packet_id = match (split_fields.sc(), token_pid) {
+                    (Start, SETUP | OUT) | (Complete, IN) => {
+                        if packet_count >= 3 {
+                            Some(start_packet_id + 2)
+                        } else {
+                            None
+                        }
+                    },
+                    (..) => None
+                };
+                (Some((split_fields, token_pid)), data_packet_id)
+            },
+            _ => (None, None)
         };
         let payload_byte_range = if let Some(packet_id) = data_packet_id {
             let packet_byte_range = self.packet_index.target_range(
@@ -625,6 +662,7 @@ impl Capture {
         Ok(Transaction {
             start_pid,
             end_pid,
+            split,
             data_packet_id,
             packet_id_range,
             payload_byte_range,
@@ -681,12 +719,17 @@ impl Capture {
         let direction = fields.type_fields.direction();
         let mut data: Vec<u8> = Vec::new();
         while let Some(transaction) = transactions.next(self) {
+            use PID::*;
+            use Direction::*;
             match (direction,
                    transaction.start_pid,
+                   transaction.split,
                    transaction.payload_byte_range)
             {
-                (Direction::In,  PID::IN,  Some(range)) |
-                (Direction::Out, PID::OUT, Some(range)) => {
+                (In,  IN,    None,           Some(range)) |
+                (Out, OUT,   None,           Some(range)) |
+                (In,  SPLIT, Some((_, IN)),  Some(range)) |
+                (Out, SPLIT, Some((_, OUT)), Some(range)) => {
                     data.extend_from_slice(
                         &self.packet_data.get_range(range)?);
                 },
@@ -846,6 +889,7 @@ impl ItemSource<TrafficItem> for Capture {
         -> Result<String, CaptureError>
     {
         use TrafficItem::*;
+        use usb::StartComplete::*;
         Ok(match item {
             Packet(.., packet_id) => {
                 let packet = self.packet(*packet_id)?;
@@ -872,6 +916,16 @@ impl ItemSource<TrafficItem> for Capture {
                             data.crc,
                             packet.len() - 3,
                             Bytes::first(100, &packet[1 .. packet.len() - 2])),
+                        PacketFields::Split(split) => format!(
+                            " {} {} speed {} transaction on hub {} port {}",
+                            match split.sc() {
+                                Start => "starting",
+                                Complete => "completing",
+                            },
+                            format!("{:?}", split.speed()).to_lowercase(),
+                            format!("{:?}", split.endpoint_type()).to_lowercase(),
+                            split.hub_address(),
+                            split.port()),
                         PacketFields::None => match pid {
                             PID::Malformed => format!(": {packet:02X?}"),
                             _ => "".to_string()
@@ -880,19 +934,41 @@ impl ItemSource<TrafficItem> for Capture {
             },
             Transaction(_, transaction_id) => {
                 let transaction = self.transaction(*transaction_id)?;
-                match (transaction.start_pid, transaction.payload_size()) {
-                    (PID::SOF, _) => format!(
+                let end_pid = transaction.end_pid;
+                use PID::*;
+                use StartComplete::*;
+                match (transaction.start_pid,
+                       &transaction.split,
+                       transaction.payload_size())
+                {
+                    (SOF, ..) => format!(
                         "{} SOF packets", transaction.packet_count()),
-                    (PID::Malformed, _) => format!(
+                    (Malformed, ..) => format!(
                         "{} malformed packets", transaction.packet_count()),
-                    (pid, None) => format!(
-                        "{pid} transaction, {}", transaction.end_pid),
-                    (pid, Some(size)) if size == 0 => format!(
-                        "{pid} transaction with no data, {}",
-                        transaction.end_pid),
-                    (pid, Some(size)) => format!(
-                        "{pid} transaction with {size} data bytes, {}: {}",
-                        transaction.end_pid,
+                    (SPLIT, Some((split_fields, token_pid)), payload_size) => {
+                        format!("{} {token_pid} transaction{}",
+                            match split_fields.sc() {
+                                Start => "Starting",
+                                Complete => "Completing",
+                            },
+                            match payload_size {
+                                None => format!(", {}", end_pid),
+                                Some(size) if size == 0 => format!(
+                                    " with no data, {}", end_pid),
+                                Some(size) => format!(
+                                    " with {} data bytes, {}: {}",
+                                    size, end_pid, Bytes::first(
+                                        100,
+                                        &self.transaction_bytes(&transaction)?))
+                            }
+                        )
+                    },
+                    (pid, _, None) => format!(
+                        "{pid} transaction, {end_pid}"),
+                    (pid, _, Some(size)) if size == 0 => format!(
+                        "{pid} transaction with no data, {end_pid}"),
+                    (pid, _, Some(size)) => format!(
+                        "{pid} transaction with {size} data bytes, {end_pid}: {}",
                         Bytes::first(100, &self.transaction_bytes(&transaction)?))
                 }
             },
@@ -932,6 +1008,11 @@ impl ItemSource<TrafficItem> for Capture {
                         let transaction = self.transaction(transaction_id)?;
                         let ep_type_string = format!("{endpoint_type}");
                         let ep_type_lower = ep_type_string.to_lowercase();
+                        let count = if transaction.split.is_some() {
+                            (count + 1) / 2
+                        } else {
+                            count
+                        };
                         match (transaction.successful(), starting) {
                             (true, true) => {
                                 let byte_range =
