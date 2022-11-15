@@ -272,6 +272,7 @@ pub struct Transaction {
     start_pid: PID,
     end_pid: PID,
     packet_id_range: Range<PacketId>,
+    data_packet_id: Option<PacketId>,
     payload_byte_range: Option<Range<Id<u8>>>,
 }
 
@@ -538,7 +539,9 @@ impl Capture {
     fn transaction_bytes(&mut self, transaction: &Transaction)
         -> Result<Vec<u8>, CaptureError>
     {
-        let data_packet_id = transaction.packet_id_range.start + 1;
+        let data_packet_id = transaction.data_packet_id
+            .ok_or_else(||IndexError(String::from(
+                "Transaction has no data packet")))?;
         let packet_byte_range = self.packet_index.target_range(
             data_packet_id, self.packet_data.len())?;
         let data_byte_range =
@@ -597,27 +600,32 @@ impl Capture {
         let packet_id_range = self.transaction_index.target_range(
             id, self.packet_index.len())?;
         let packet_count = packet_id_range.len();
-        let start_pid = self.packet_pid(packet_id_range.start)?;
+        let start_packet_id = packet_id_range.start;
+        let start_pid = self.packet_pid(start_packet_id)?;
         let end_pid = self.packet_pid(packet_id_range.end - 1)?;
         use PID::*;
-        let payload_byte_range = match start_pid {
-            IN | OUT if packet_count >= 2 => {
-                let data_packet_id = packet_id_range.start + 1;
-                let packet_byte_range = self.packet_index.target_range(
-                    data_packet_id, self.packet_data.len())?;
-                let pid = self.packet_data.get(packet_byte_range.start)?;
-                match PID::from(pid) {
-                    DATA0 | DATA1 => Some({
-                        packet_byte_range.start + 1 .. packet_byte_range.end - 2
-                    }),
-                    _ => None
-                }
-            },
+        let data_packet_id = match start_pid {
+            SETUP | IN | OUT if packet_count >= 2 =>
+                Some(start_packet_id + 1),
             _ => None
+        };
+        let payload_byte_range = if let Some(packet_id) = data_packet_id {
+            let packet_byte_range = self.packet_index.target_range(
+                packet_id, self.packet_data.len())?;
+            let pid = self.packet_data.get(packet_byte_range.start)?;
+            match PID::from(pid) {
+                DATA0 | DATA1 => Some({
+                    packet_byte_range.start + 1 .. packet_byte_range.end - 2
+                }),
+                _ => None
+            }
+        } else {
+            None
         };
         Ok(Transaction {
             start_pid,
             end_pid,
+            data_packet_id,
             packet_id_range,
             payload_byte_range,
         })
@@ -639,19 +647,35 @@ impl Capture {
                         range: Range<EndpointTransactionId>)
         -> Result<ControlTransfer, CaptureError>
     {
+        use PID::*;
         let transaction_ids = self.endpoint_traffic(endpoint_id)?
                                   .transaction_ids
                                   .get_range(&range)?;
         let mut transactions = self.completed_transactions(transaction_ids);
         let fields = match transactions.next(self) {
-            Some(transaction) if transaction.start_pid == PID::SETUP => {
-                let data_packet_id = transaction.packet_id_range.start + 1;
+            Some(transaction) => {
+                let data_packet_id = transaction.data_packet_id
+                    .ok_or_else(||IndexError(String::from(
+                        "Transaction has no data packet")))?;
                 let data_packet = self.packet(data_packet_id)?;
-                SetupFields::from_data_packet(&data_packet)
+                let data_pid = PID::from(
+                    *data_packet.first().ok_or_else(||
+                        IndexError(String::from(
+                            "Found empty packet instead of setup data")))?);
+                if data_pid != DATA0 {
+                    return Err(IndexError(format!(
+                        "Found {data_pid} packet instead of setup data")));
+                } else if data_packet.len() != 11 {
+                    return Err(IndexError(format!(
+                        "Found DATA0 with packet length {} instead of setup data",
+                        data_packet.len())));
+                } else {
+                    SetupFields::from_data_packet(&data_packet)
+                }
             },
             _ => {
                 return Err(IndexError(String::from(
-                    "Control transfer did not start with SETUP packet")))
+                    "Control transfer has no completed transactions")))
             }
         };
         let direction = fields.type_fields.direction();

@@ -2,7 +2,7 @@
  1 malformed packets
   Malformed packet: [FF]
 Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
- SETUP transaction, ACK
+ SETUP transaction with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 40, 00]
   SETUP packet on 0.0, CRC 02
   DATA0 packet with CRC 94DD and 8 data bytes: [80, 06, 00, 01, 00, 00, 40, 00]
   ACK packet
@@ -38,7 +38,7 @@ Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Setting address to 4 for device 0
- SETUP transaction, ACK
+ SETUP transaction with 8 data bytes, ACK: [00, 05, 04, 00, 00, 00, 00, 00]
   SETUP packet on 0.0, CRC 02
   DATA0 packet with CRC 70EB and 8 data bytes: [00, 05, 04, 00, 00, 00, 00, 00]
   ACK packet
@@ -50,7 +50,7 @@ Setting address to 4 for device 0
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting device descriptor #0 for device 4, reading 18 bytes
- SETUP transaction, ACK
+ SETUP transaction with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 12, 00]
   SETUP packet on 4.0, CRC 05
   DATA0 packet with CRC F4E0 and 8 data bytes: [80, 06, 00, 01, 00, 00, 12, 00]
   ACK packet
@@ -86,7 +86,7 @@ Getting device descriptor #0 for device 4, reading 18 bytes
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting configuration descriptor #0 for device 4, reading 9 bytes
- SETUP transaction, ACK
+ SETUP transaction with 8 data bytes, ACK: [80, 06, 00, 02, 00, 00, 09, 00]
   SETUP packet on 4.0, CRC 05
   DATA0 packet with CRC 04AE and 8 data bytes: [80, 06, 00, 02, 00, 00, 09, 00]
   ACK packet
@@ -112,7 +112,7 @@ Getting configuration descriptor #0 for device 4, reading 9 bytes
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting configuration descriptor #0 for device 4, reading 34 bytes
- SETUP transaction, ACK
+ SETUP transaction with 8 data bytes, ACK: [80, 06, 00, 02, 00, 00, 22, 00]
   SETUP packet on 4.0, CRC 05
   DATA0 packet with CRC F4B0 and 8 data bytes: [80, 06, 00, 02, 00, 00, 22, 00]
   ACK packet
@@ -168,7 +168,7 @@ Getting configuration descriptor #0 for device 4, reading 34 bytes
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting string descriptor #0 for device 4, reading 4 of 255 requested bytes
- SETUP transaction, ACK
+ SETUP transaction with 8 data bytes, ACK: [80, 06, 00, 03, 00, 00, FF, 00]
   SETUP packet on 4.0, CRC 05
   DATA0 packet with CRC 64D4 and 8 data bytes: [80, 06, 00, 03, 00, 00, FF, 00]
   ACK packet
@@ -187,7 +187,7 @@ Getting string descriptor #0 for device 4, reading 4 of 255 requested bytes
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting string descriptor #2, language 0x0409 for device 4, reading 36 of 255 requested bytes: 'USB Optical Mouse'
- SETUP transaction, ACK
+ SETUP transaction with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, FF, 00]
   SETUP packet on 4.0, CRC 05
   DATA0 packet with CRC DB97 and 8 data bytes: [80, 06, 02, 03, 09, 04, FF, 00]
   ACK packet
@@ -237,7 +237,7 @@ Getting string descriptor #2, language 0x0409 for device 4, reading 36 of 255 re
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Setting configuration 1 for device 4
- SETUP transaction, ACK
+ SETUP transaction with 8 data bytes, ACK: [00, 09, 01, 00, 00, 00, 00, 00]
   SETUP packet on 4.0, CRC 05
   DATA0 packet with CRC 2527 and 8 data bytes: [00, 09, 01, 00, 00, 00, 00, 00]
   ACK packet
@@ -360,7 +360,7 @@ Setting configuration 1 for device 4
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Class request #10, index 0, value 0 for interface 4.0
- SETUP transaction, ACK
+ SETUP transaction with 8 data bytes, ACK: [21, 0A, 00, 00, 00, 00, 00, 00]
   SETUP packet on 4.0, CRC 05
   DATA0 packet with CRC 20D6 and 8 data bytes: [21, 0A, 00, 00, 00, 00, 00, 00]
   ACK packet
@@ -372,7 +372,7 @@ Class request #10, index 0, value 0 for interface 4.0
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting unknown descriptor #0 for interface 4.0, reading 75 bytes
- SETUP transaction, ACK
+ SETUP transaction with 8 data bytes, ACK: [81, 06, 00, 22, 00, 00, 4B, 00]
   SETUP packet on 4.0, CRC 05
   DATA0 packet with CRC AFDE and 8 data bytes: [81, 06, 00, 22, 00, 00, 4B, 00]
   ACK packet

@@ -1028,7 +1028,7 @@ Polling 71 times for unidentified transfer on endpoint 7.1 IN
   IN packet on 7.1, CRC 1B
   NAK packet
 Vendor request #1, index 0, value 0 for device 7
- SETUP transaction, ACK
+ SETUP transaction with 8 data bytes, ACK: [40, 01, 00, 00, 00, 00, 00, 00]
   SETUP packet on 7.0, CRC 0D
   DATA0 packet with CRC 04AB and 8 data bytes: [40, 01, 00, 00, 00, 00, 00, 00]
   ACK packet
@@ -1037,7 +1037,7 @@ Vendor request #1, index 0, value 0 for device 7
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Vendor request #1, index 0, value 1 for device 7
- SETUP transaction, ACK
+ SETUP transaction with 8 data bytes, ACK: [40, 01, 01, 00, 00, 00, 00, 00]
   SETUP packet on 7.0, CRC 0D
   DATA0 packet with CRC D5AA and 8 data bytes: [40, 01, 01, 00, 00, 00, 00, 00]
   ACK packet

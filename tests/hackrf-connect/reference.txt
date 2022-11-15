@@ -812,7 +812,7 @@
   SOF packet with frame number 383, CRC 00
   SOF packet with frame number 383, CRC 00
 Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
- SETUP transaction, ACK
+ SETUP transaction with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 40, 00]
   SETUP packet on 0.0, CRC 02
   DATA0 packet with CRC 94DD and 8 data bytes: [80, 06, 00, 01, 00, 00, 40, 00]
   ACK packet
@@ -825,7 +825,7 @@ Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Setting address to 29 for device 0
- SETUP transaction, ACK
+ SETUP transaction with 8 data bytes, ACK: [00, 05, 1D, 00, 00, 00, 00, 00]
   SETUP packet on 0.0, CRC 02
   DATA0 packet with CRC 79E9 and 8 data bytes: [00, 05, 1D, 00, 00, 00, 00, 00]
   ACK packet
@@ -837,7 +837,7 @@ Setting address to 29 for device 0
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting device descriptor #0 for device 29, reading 18 bytes
- SETUP transaction, ACK
+ SETUP transaction with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 12, 00]
   SETUP packet on 29.0, CRC 08
   DATA0 packet with CRC F4E0 and 8 data bytes: [80, 06, 00, 01, 00, 00, 12, 00]
   ACK packet
@@ -850,7 +850,7 @@ Getting device descriptor #0 for device 29, reading 18 bytes
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting configuration descriptor #0 for device 29, reading 9 bytes
- SETUP transaction, ACK
+ SETUP transaction with 8 data bytes, ACK: [80, 06, 00, 02, 00, 00, 09, 00]
   SETUP packet on 29.0, CRC 08
   DATA0 packet with CRC 04AE and 8 data bytes: [80, 06, 00, 02, 00, 00, 09, 00]
   ACK packet
@@ -866,7 +866,7 @@ Getting configuration descriptor #0 for device 29, reading 9 bytes
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting configuration descriptor #0 for device 29, reading 32 bytes
- SETUP transaction, ACK
+ SETUP transaction with 8 data bytes, ACK: [80, 06, 00, 02, 00, 00, 20, 00]
   SETUP packet on 29.0, CRC 08
   DATA0 packet with CRC 94B1 and 8 data bytes: [80, 06, 00, 02, 00, 00, 20, 00]
   ACK packet
@@ -879,7 +879,7 @@ Getting configuration descriptor #0 for device 29, reading 32 bytes
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting string descriptor #0 for device 29, reading 4 of 255 requested bytes
- SETUP transaction, ACK
+ SETUP transaction with 8 data bytes, ACK: [80, 06, 00, 03, 00, 00, FF, 00]
   SETUP packet on 29.0, CRC 08
   DATA0 packet with CRC 64D4 and 8 data bytes: [80, 06, 00, 03, 00, 00, FF, 00]
   ACK packet
@@ -892,7 +892,7 @@ Getting string descriptor #0 for device 29, reading 4 of 255 requested bytes
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting string descriptor #2, language 0x0409 for device 29, reading 22 of 255 requested bytes: 'HackRF One'
- SETUP transaction, ACK
+ SETUP transaction with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, FF, 00]
   SETUP packet on 29.0, CRC 08
   DATA0 packet with CRC DB97 and 8 data bytes: [80, 06, 02, 03, 09, 04, FF, 00]
   ACK packet
@@ -905,7 +905,7 @@ Getting string descriptor #2, language 0x0409 for device 29, reading 22 of 255 r
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting string descriptor #1, language 0x0409 for device 29, reading 40 of 255 requested bytes: 'Great Scott Gadgets'
- SETUP transaction, ACK
+ SETUP transaction with 8 data bytes, ACK: [80, 06, 01, 03, 09, 04, FF, 00]
   SETUP packet on 29.0, CRC 08
   DATA0 packet with CRC E897 and 8 data bytes: [80, 06, 01, 03, 09, 04, FF, 00]
   ACK packet
@@ -921,7 +921,7 @@ Getting string descriptor #1, language 0x0409 for device 29, reading 40 of 255 r
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting string descriptor #4, language 0x0409 for device 29, reading 66 of 255 requested bytes: '0000000000000000325866e6215c4023'
- SETUP transaction, ACK
+ SETUP transaction with 8 data bytes, ACK: [80, 06, 04, 03, 09, 04, FF, 00]
   SETUP packet on 29.0, CRC 08
   DATA0 packet with CRC BD97 and 8 data bytes: [80, 06, 04, 03, 09, 04, FF, 00]
   ACK packet
@@ -938,7 +938,7 @@ Getting string descriptor #4, language 0x0409 for device 29, reading 66 of 255 r
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Setting configuration 1 for device 29
- SETUP transaction, ACK
+ SETUP transaction with 8 data bytes, ACK: [00, 09, 01, 00, 00, 00, 00, 00]
   SETUP packet on 29.0, CRC 08
   DATA0 packet with CRC 2527 and 8 data bytes: [00, 09, 01, 00, 00, 00, 00, 00]
   ACK packet
@@ -950,7 +950,7 @@ Setting configuration 1 for device 29
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting string descriptor #3, language 0x0409 for device 29, reading 24 of 255 requested bytes: 'Transceiver'
- SETUP transaction, ACK
+ SETUP transaction with 8 data bytes, ACK: [80, 06, 03, 03, 09, 04, FF, 00]
   SETUP packet on 29.0, CRC 08
   DATA0 packet with CRC 0A96 and 8 data bytes: [80, 06, 03, 03, 09, 04, FF, 00]
   ACK packet
