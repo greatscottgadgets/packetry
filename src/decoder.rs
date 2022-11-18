@@ -845,13 +845,19 @@ impl Decoder {
                        done: bool)
         -> Result<(), CaptureError>
     {
-        let endpoint_id = self.current_endpoint_id()?;
-        let ep_traf = capture.endpoint_traffic(endpoint_id)?;
-        ep_traf.transaction_ids.push(transaction_id)?;
-        let ep_data = self.current_endpoint_data_mut()?;
-        ep_data.transaction_count += 1;
-        if done {
-            ep_data.last = Some(transaction_type);
+        let ep_data = self.current_endpoint_data()?;
+        if ep_data.active.is_none() {
+            self.transfer_start(capture, transaction_id,
+                                transaction_type, done)?;
+        } else {
+            let endpoint_id = self.current_endpoint_id()?;
+            let ep_traf = capture.endpoint_traffic(endpoint_id)?;
+            ep_traf.transaction_ids.push(transaction_id)?;
+            let ep_data = self.current_endpoint_data_mut()?;
+            ep_data.transaction_count += 1;
+            if done {
+                ep_data.last = Some(transaction_type);
+            }
         }
         Ok(())
     }
