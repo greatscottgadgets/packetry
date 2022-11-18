@@ -748,7 +748,7 @@ impl ControlTransfer {
                 Recipient::Device => format!(
                     "device {}", self.address),
                 Recipient::Interface => format!(
-                    "interface {}.{}", self.address, self.fields.index),
+                    "interface {}.{}", self.address, self.fields.index as u8),
                 Recipient::Endpoint => {
                     let ep_addr = EndpointAddr(self.fields.index as u8);
                     format!("endpoint {}.{} {}",
