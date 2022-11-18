@@ -161,6 +161,25 @@ pub struct DeviceData {
 }
 
 impl DeviceData {
+    fn description(&self) -> String {
+        match self.device_descriptor {
+            None => "Unknown".to_string(),
+            Some(descriptor) => {
+                let str_id = descriptor.product_str_id;
+                if let Some(utf16) = self.strings.get(str_id) {
+                    let chars = utf16.chars();
+                    if let Ok(string) = String::from_utf16(&chars) {
+                        return format!("{}", string.escape_default());
+                    }
+                }
+                format!(
+                    "{:04X}:{:04X}",
+                    descriptor.vendor_id,
+                    descriptor.product_id)
+            }
+        }
+    }
+
     pub fn configuration(&self, number: &ConfigNum)
         -> Result<&Configuration, CaptureError>
     {
@@ -1111,16 +1130,7 @@ impl ItemSource<DeviceItem> for Capture {
             Device(dev) => {
                 let device = self.devices.get(*dev)?;
                 let data = self.device_data(dev)?;
-                format!("Device {}: {}", device.address,
-                    match data.device_descriptor {
-                        Some(descriptor) => format!(
-                            "{:04X}:{:04X}",
-                            descriptor.vendor_id,
-                            descriptor.product_id
-                        ),
-                        None => "Unknown".to_string(),
-                    }
-                )
+                format!("Device {}: {}", device.address, data.description())
             },
             DeviceDescriptor(dev) => {
                 match self.device_data(dev)?.device_descriptor {
