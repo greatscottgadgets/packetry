@@ -742,7 +742,12 @@ impl ControlTransfer {
                 _ => format!(
                     "{:?} request #{}, index {}, value {}",
                     request_type, request,
-                    self.fields.index, self.fields.value)
+                    match self.fields.type_fields.recipient() {
+                        Recipient::Interface | Recipient::Endpoint =>
+                            self.fields.index >> 8,
+                        _ => self.fields.index
+                    },
+                    self.fields.value)
             },
             match self.fields.type_fields.recipient() {
                 Recipient::Device => format!(

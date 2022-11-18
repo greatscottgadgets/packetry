@@ -4261,7 +4261,7 @@ Getting string descriptor #3, language 0x0409 for device 2, reading 14 of 255 re
   OUT packet on 2.0, CRC 15
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Class request #10, index 2, value 0 for interface 2.2
+Class request #10, index 0, value 0 for interface 2.2
  SETUP transaction with 8 data bytes, ACK: [21, 0A, 00, 00, 02, 00, 00, 00]
   SETUP packet on 2.0, CRC 15
   DATA0 packet with CRC 98D7 and 8 data bytes: [21, 0A, 00, 00, 02, 00, 00, 00]
@@ -4310,7 +4310,7 @@ Getting unknown descriptor #0 for interface 2.2, reading 144 bytes
   OUT packet on 2.0, CRC 15
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Class request #9, index 2, value 513 for interface 2.2, writing 2 bytes
+Class request #9, index 0, value 513 for interface 2.2, writing 2 bytes
  SETUP transaction with 8 data bytes, ACK: [21, 09, 01, 02, 02, 00, 02, 00]
   SETUP packet on 2.0, CRC 15
   DATA0 packet with CRC E99D and 8 data bytes: [21, 09, 01, 02, 02, 00, 02, 00]
