@@ -34,12 +34,12 @@ use pcap_file::{PcapError, pcap::PcapReader};
 
 use backend::luna::{LunaDevice, LunaStop};
 use model::{GenericModel, TrafficModel, DeviceModel};
-use row_data::GenericRowData;
+use row_data::{GenericRowData, TrafficRowData, DeviceRowData};
 use expander::ExpanderWrapper;
 use tree_list_model::ModelError;
 
 mod capture;
-use capture::{Capture, CaptureError, ItemSource};
+use capture::{Capture, CaptureError, ItemSource, TrafficItem, DeviceItem};
 
 mod decoder;
 use decoder::Decoder;
@@ -50,14 +50,19 @@ mod hybrid_index;
 mod usb;
 mod vec_map;
 
+struct UserInterface {
+    stop_handle: Option<LunaStop>,
+    traffic_model: TrafficModel,
+    device_model: DeviceModel,
+}
+
 thread_local!(
-    static MODELS: RefCell<Vec<Object>>  = RefCell::new(Vec::new());
-    static LUNA: RefCell<Option<LunaStop>> = RefCell::new(None);
     static WINDOW: RefCell<Option<ApplicationWindow>> = RefCell::new(None);
+    static UI: RefCell<Option<UserInterface>> = RefCell::new(None);
 );
 
 fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
-        -> ListView
+    -> (Model, ListView)
     where
         Item: Copy,
         Model: GenericModel<Item> + IsA<ListModel> + IsA<Object>,
@@ -66,8 +71,7 @@ fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
 {
     let model = Model::new(capture.clone())
                       .expect("Failed to create model");
-
-    MODELS.with(|models| models.borrow_mut().push(model.clone().upcast()));
+    let bind_model = model.clone();
     let cap_arc = capture.clone();
     let selection_model = SingleSelection::new(Some(&model));
     let factory = SignalListItemFactory::new();
@@ -100,7 +104,7 @@ fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
                 expander_wrapper.set_connectors(connectors);
                 expander.set_visible(node.expandable());
                 expander.set_expanded(node.expanded());
-                let model = model.clone();
+                let model = bind_model.clone();
                 let node_ref = node_ref.clone();
                 let handler = expander.connect_expanded_notify(move |expander| {
                     display_error(
@@ -132,7 +136,10 @@ fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
     };
     factory.connect_bind(move |_, item| display_error(bind(item)));
     factory.connect_unbind(move |_, item| display_error(unbind(item)));
-    ListView::new(Some(&selection_model), Some(&factory))
+
+    let view = ListView::new(Some(&selection_model), Some(&factory));
+
+    (model, view)
 }
 
 #[derive(Error, Debug)]
@@ -170,36 +177,45 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
     let capture = Arc::new(Mutex::new(cap));
     let app_capture = capture.clone();
 
-    let listview = create_view::<capture::TrafficItem,
-                                 model::TrafficModel,
-                                 row_data::TrafficRowData>(&app_capture);
+    let (traffic_model, traffic_view) =
+        create_view::<TrafficItem, TrafficModel, TrafficRowData>(&app_capture);
 
-    let scrolled_window = gtk::ScrolledWindow::builder()
+    let traffic_window = gtk::ScrolledWindow::builder()
         .hscrollbar_policy(gtk::PolicyType::Automatic)
         .min_content_height(480)
         .min_content_width(640)
         .build();
 
-    scrolled_window.set_child(Some(&listview));
+    traffic_window.set_child(Some(&traffic_view));
 
-    let device_tree = create_view::<capture::DeviceItem,
-                                    model::DeviceModel,
-                                    row_data::DeviceRowData>(&app_capture);
+    let (device_model, device_view) =
+        create_view::<DeviceItem, DeviceModel, DeviceRowData>(&app_capture);
+
     let device_window = gtk::ScrolledWindow::builder()
         .hscrollbar_policy(gtk::PolicyType::Automatic)
         .min_content_height(480)
         .min_content_width(240)
-        .child(&device_tree)
+        .child(&device_view)
         .build();
 
     let paned = gtk::Paned::builder()
         .orientation(Orientation::Horizontal)
         .wide_handle(true)
-        .start_child(&scrolled_window)
+        .start_child(&traffic_window)
         .end_child(&device_window)
         .build();
 
     window.set_child(Some(&paned));
+
+    UI.with(|cell|
+        cell.borrow_mut().replace(
+            UserInterface {
+                stop_handle: None,
+                traffic_model,
+                device_model,
+            }
+        )
+    );
 
     use PacketryError::Lock;
     if args.len() > 1 {
@@ -219,7 +235,7 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
         std::thread::spawn(move || display_error(read_pcap()));
     } else {
         let (mut stream_handle, stop_handle) = LunaDevice::open()?.start()?;
-        LUNA.with(|cell| cell.borrow_mut().replace(stop_handle));
+        with_ui(|ui| { ui.stop_handle.replace(stop_handle); Ok(())})?;
         let mut read_luna = move || {
             while let Some(packet) = stream_handle.next() {
                 let mut cap = capture.lock().or(Err(Lock))?;
@@ -233,7 +249,7 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
     gtk::glib::timeout_add_local(
         std::time::Duration::from_millis(10),
         move || {
-            let result = update_models();
+            let result = update_view();
             if result.is_ok() {
                 Continue(true)
             } else {
@@ -246,28 +262,29 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
     Ok(())
 }
 
-fn update_models() -> Result<(), PacketryError> {
-    MODELS.with(|models| {
-        for model in models.borrow().iter() {
-            if let Ok(traffic_model) = model
-                .clone()
-                .downcast::<TrafficModel>()
-            {
-                traffic_model.update()?;
-            } else if let Ok(device_model) = model
-                .clone()
-                .downcast::<DeviceModel>()
-            {
-                device_model.update()?;
-            };
+fn with_ui<F>(f: F) -> Result<(), PacketryError>
+    where F: FnOnce(&mut UserInterface) -> Result<(), PacketryError>
+{
+    UI.with(|cell| {
+        if let Some(ui) = cell.borrow_mut().as_mut() {
+            f(ui)
+        } else {
+            Err(PacketryError::Bug("UI not set up"))
         }
+    })
+}
+
+fn update_view() -> Result<(), PacketryError> {
+    with_ui(|ui| {
+        ui.traffic_model.update()?;
+        ui.device_model.update()?;
         Ok(())
     })
 }
 
 fn stop_luna() -> Result<(), PacketryError> {
-    LUNA.with(|cell| {
-        if let Some(stop_handle) = cell.borrow_mut().take() {
+    with_ui(|ui| {
+        if let Some(stop_handle) = ui.stop_handle.take() {
             stop_handle.stop()?;
         }
         Ok(())
