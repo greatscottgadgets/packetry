@@ -32,6 +32,7 @@ use gtk::{
 
 use pcap_file::{PcapError, pcap::PcapReader};
 
+use backend::luna::{LunaDevice, LunaStop};
 use model::{GenericModel, TrafficModel, DeviceModel};
 use row_data::GenericRowData;
 use expander::ExpanderWrapper;
@@ -51,7 +52,7 @@ mod vec_map;
 
 thread_local!(
     static MODELS: RefCell<Vec<Object>>  = RefCell::new(Vec::new());
-    static LUNA: RefCell<Option<backend::luna::LunaCapture>> = RefCell::new(None);
+    static LUNA: RefCell<Option<LunaStop>> = RefCell::new(None);
     static WINDOW: RefCell<Option<ApplicationWindow>> = RefCell::new(None);
 );
 
@@ -169,87 +170,6 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
     let capture = Arc::new(Mutex::new(cap));
     let app_capture = capture.clone();
 
-    if args.len() > 1 {
-        let file = File::open(&args[1])?;
-        let reader = BufReader::new(file);
-        let pcap_reader = PcapReader::new(reader)?;
-        let mut cap = capture.lock().or(Err(PacketryError::Lock))?;
-        for result in pcap_reader {
-            match result {
-                Ok(packet) => {
-                    let decode_result =
-                        decoder.handle_raw_packet(&mut cap, &packet.data);
-                    if let Err(e) = decode_result {
-                        display_error(Err(PacketryError::Capture(e)));
-                        break;
-                    }
-                },
-                Err(e) => {
-                    display_error(Err(PacketryError::Pcap(e)));
-                    break;
-                }
-            }
-        }
-        cap.print_storage_summary();
-    } else {
-        LUNA.with::<_, Result<(), PacketryError>>(|cell| {
-            cell.borrow_mut().replace(
-                backend::luna::LunaDevice::open()?.start()?
-            );
-            Ok(())
-        })?;
-        let update_capture = capture.clone();
-
-        let mut update_routine = move || -> Result<(), PacketryError> {
-            use PacketryError::*;
-
-            let mut cap = update_capture.lock().or(Err(Lock))?;
-
-            LUNA.with::<_, Result<(), PacketryError>>(|cell| {
-                let mut borrow = cell.borrow_mut();
-                let luna = borrow.as_mut().or_bug("LUNA not set")?;
-                while let Some(packet) = luna.next() {
-                    decoder.handle_raw_packet(&mut cap, &packet?)?;
-                }
-                Ok(())
-            })?;
-
-            drop(cap);
-
-            MODELS.with::<_, Result<(), PacketryError>>(|models| {
-                for model in models.borrow().iter() {
-                    if let Ok(tree_model) = model
-                        .clone()
-                        .downcast::<TrafficModel>()
-                    {
-                        tree_model.update()?;
-                    }
-                    else if let Ok(tree_model) = model
-                        .clone()
-                        .downcast::<DeviceModel>()
-                    {
-                        tree_model.update()?;
-                    }
-                }
-                Ok(())
-            })?;
-            Ok(())
-        };
-
-        gtk::glib::timeout_add_local(
-            std::time::Duration::from_millis(1),
-            move || {
-                let result = update_routine();
-                if result.is_ok() {
-                    Continue(true)
-                } else {
-                    display_error(result);
-                    Continue(false)
-                }
-            }
-        );
-    }
-
     let listview = create_view::<capture::TrafficItem,
                                  model::TrafficModel,
                                  row_data::TrafficRowData>(&app_capture);
@@ -281,7 +201,77 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
 
     window.set_child(Some(&paned));
 
+    use PacketryError::Lock;
+    if args.len() > 1 {
+        let mut read_pcap = move || {
+            let file = File::open(&args[1])?;
+            let reader = BufReader::new(file);
+            let pcap_reader = PcapReader::new(reader)?;
+            for result in pcap_reader {
+                let packet = result?;
+                let mut cap = capture.lock().or(Err(Lock))?;
+                decoder.handle_raw_packet(&mut cap, &packet.data)?;
+            }
+            let cap = capture.lock().or(Err(Lock))?;
+            cap.print_storage_summary();
+            Ok(())
+        };
+        std::thread::spawn(move || display_error(read_pcap()));
+    } else {
+        let (mut stream_handle, stop_handle) = LunaDevice::open()?.start()?;
+        LUNA.with(|cell| cell.borrow_mut().replace(stop_handle));
+        let mut read_luna = move || {
+            while let Some(packet) = stream_handle.next() {
+                let mut cap = capture.lock().or(Err(Lock))?;
+                decoder.handle_raw_packet(&mut cap, &packet?)?;
+            }
+            Ok(())
+        };
+        std::thread::spawn(move || display_error(read_luna()));
+    };
+
+    gtk::glib::timeout_add_local(
+        std::time::Duration::from_millis(10),
+        move || {
+            let result = update_models();
+            if result.is_ok() {
+                Continue(true)
+            } else {
+                display_error(result);
+                Continue(false)
+            }
+        }
+    );
+
     Ok(())
+}
+
+fn update_models() -> Result<(), PacketryError> {
+    MODELS.with(|models| {
+        for model in models.borrow().iter() {
+            if let Ok(traffic_model) = model
+                .clone()
+                .downcast::<TrafficModel>()
+            {
+                traffic_model.update()?;
+            } else if let Ok(device_model) = model
+                .clone()
+                .downcast::<DeviceModel>()
+            {
+                device_model.update()?;
+            };
+        }
+        Ok(())
+    })
+}
+
+fn stop_luna() -> Result<(), PacketryError> {
+    LUNA.with(|cell| {
+        if let Some(stop_handle) = cell.borrow_mut().take() {
+            stop_handle.stop()?;
+        }
+        Ok(())
+    })
 }
 
 fn display_error(result: Result<(), PacketryError>) {
@@ -334,13 +324,5 @@ fn main() {
     );
     application.connect_activate(|app| display_error(activate(app)));
     application.run_with_args::<&str>(&[]);
-    display_error(
-        LUNA.with(|cell|
-            if let Some(luna) = cell.take() {
-                luna.stop().map_err(PacketryError::Luna)
-            } else {
-                Ok(())
-            }
-        )
-    );
+    display_error(stop_luna());
 }
