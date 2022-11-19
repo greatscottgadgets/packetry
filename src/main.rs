@@ -10,6 +10,7 @@ mod tree_list_model;
 
 use std::cell::RefCell;
 use std::fs::File;
+use std::io::BufReader;
 use std::sync::{Arc, Mutex};
 
 use gtk::gio::ListModel;
@@ -169,8 +170,9 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
     let app_capture = capture.clone();
 
     if args.len() > 1 {
-        let pcap_file = File::open(&args[1])?;
-        let pcap_reader = PcapReader::new(pcap_file)?;
+        let file = File::open(&args[1])?;
+        let reader = BufReader::new(file);
+        let pcap_reader = PcapReader::new(reader)?;
         let mut cap = capture.lock().or(Err(PacketryError::Lock))?;
         for result in pcap_reader {
             match result {
