@@ -183,6 +183,9 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
         .title("Packetry")
         .build();
 
+    let header_bar = gtk::HeaderBar::new();
+
+    window.set_titlebar(Some(&header_bar));
     window.show();
     WINDOW.with(|win_opt| win_opt.replace(Some(window.clone())));
 
