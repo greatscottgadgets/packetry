@@ -11,7 +11,8 @@ mod tree_list_model;
 use std::cell::RefCell;
 use std::fs::File;
 use std::io::BufReader;
-use std::sync::{Arc, Mutex};
+use std::mem::size_of;
+use std::sync::{Arc, Mutex, atomic::{AtomicU64, Ordering}};
 
 use gtk::gio::ListModel;
 use gtk::glib::Object;
@@ -25,12 +26,13 @@ use gtk::{
     ButtonsType,
     ListItem,
     ListView,
+    ProgressBar,
     SignalListItemFactory,
     SingleSelection,
     Orientation,
 };
 
-use pcap_file::{PcapError, pcap::PcapReader};
+use pcap_file::{PcapError, pcap::{PcapReader, PcapHeader, PacketHeader}};
 
 use backend::luna::{LunaDevice, LunaStop};
 use model::{GenericModel, TrafficModel, DeviceModel};
@@ -39,7 +41,14 @@ use expander::ExpanderWrapper;
 use tree_list_model::ModelError;
 
 mod capture;
-use capture::{Capture, CaptureError, ItemSource, TrafficItem, DeviceItem};
+use capture::{
+    Capture,
+    CaptureError,
+    ItemSource,
+    TrafficItem,
+    DeviceItem,
+    fmt_size,
+};
 
 mod decoder;
 use decoder::Decoder;
@@ -50,10 +59,14 @@ mod hybrid_index;
 mod usb;
 mod vec_map;
 
+static PCAP_SIZE: AtomicU64 = AtomicU64::new(0);
+static PCAP_READ: AtomicU64 = AtomicU64::new(0);
+
 struct UserInterface {
     stop_handle: Option<LunaStop>,
     traffic_model: TrafficModel,
     device_model: DeviceModel,
+    progress_bar: ProgressBar,
 }
 
 thread_local!(
@@ -203,9 +216,26 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
         .wide_handle(true)
         .start_child(&traffic_window)
         .end_child(&device_window)
+        .vexpand(true)
         .build();
 
-    window.set_child(Some(&paned));
+    let separator = gtk::Separator::new(Orientation::Horizontal);
+
+    let progress_bar = gtk::ProgressBar::builder()
+        .show_text(true)
+        .text("")
+        .hexpand(true)
+        .build();
+
+    let vbox = gtk::Box::builder()
+        .orientation(Orientation::Vertical)
+        .build();
+
+    vbox.append(&paned);
+    vbox.append(&separator);
+    vbox.append(&progress_bar);
+
+    window.set_child(Some(&vbox));
 
     UI.with(|cell|
         cell.borrow_mut().replace(
@@ -213,6 +243,7 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
                 stop_handle: None,
                 traffic_model,
                 device_model,
+                progress_bar,
             }
         )
     );
@@ -221,12 +252,18 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
     if args.len() > 1 {
         let mut read_pcap = move || {
             let file = File::open(&args[1])?;
+            let file_size = file.metadata()?.len();
+            PCAP_SIZE.store(file_size, Ordering::Relaxed);
             let reader = BufReader::new(file);
             let pcap_reader = PcapReader::new(reader)?;
+            let mut bytes_read = size_of::<PcapHeader>() as u64;
             for result in pcap_reader {
                 let packet = result?;
                 let mut cap = capture.lock().or(Err(Lock))?;
                 decoder.handle_raw_packet(&mut cap, &packet.data)?;
+                let size = size_of::<PacketHeader>() + packet.data.len();
+                bytes_read += size as u64;
+                PCAP_READ.store(bytes_read, Ordering::Relaxed);
             }
             let cap = capture.lock().or(Err(Lock))?;
             cap.print_storage_summary();
@@ -278,6 +315,17 @@ fn update_view() -> Result<(), PacketryError> {
     with_ui(|ui| {
         ui.traffic_model.update()?;
         ui.device_model.update()?;
+        let bytes_total = PCAP_SIZE.load(Ordering::Relaxed);
+        if bytes_total > 0 {
+            let bytes_read = PCAP_READ.load(Ordering::Relaxed);
+            let text = format!(
+                "Loaded {} / {}",
+                fmt_size(bytes_read),
+                fmt_size(bytes_total));
+            ui.progress_bar.set_text(Some(&text));
+            ui.progress_bar.set_fraction(
+                (bytes_read as f64) / (bytes_total as f64));
+        }
         Ok(())
     })
 }
