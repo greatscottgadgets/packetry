@@ -66,7 +66,9 @@ struct UserInterface {
     stop_handle: Option<LunaStop>,
     traffic_model: TrafficModel,
     device_model: DeviceModel,
+    show_progress: bool,
     progress_bar: ProgressBar,
+    vbox: gtk::Box,
 }
 
 thread_local!(
@@ -233,7 +235,6 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
 
     vbox.append(&paned);
     vbox.append(&separator);
-    vbox.append(&progress_bar);
 
     window.set_child(Some(&vbox));
 
@@ -243,13 +244,20 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
                 stop_handle: None,
                 traffic_model,
                 device_model,
+                show_progress: false,
                 progress_bar,
+                vbox,
             }
         )
     );
 
     use PacketryError::Lock;
     if args.len() > 1 {
+        with_ui(|ui| {
+            ui.vbox.append(&ui.progress_bar);
+            ui.show_progress = true;
+            Ok(())
+        })?;
         let mut read_pcap = move || {
             let file = File::open(&args[1])?;
             let file_size = file.metadata()?.len();
@@ -315,16 +323,21 @@ fn update_view() -> Result<(), PacketryError> {
     with_ui(|ui| {
         ui.traffic_model.update()?;
         ui.device_model.update()?;
-        let bytes_total = PCAP_SIZE.load(Ordering::Relaxed);
-        if bytes_total > 0 {
+        if ui.show_progress {
+            let bytes_total = PCAP_SIZE.load(Ordering::Relaxed);
             let bytes_read = PCAP_READ.load(Ordering::Relaxed);
-            let text = format!(
-                "Loaded {} / {}",
-                fmt_size(bytes_read),
-                fmt_size(bytes_total));
-            ui.progress_bar.set_text(Some(&text));
-            ui.progress_bar.set_fraction(
-                (bytes_read as f64) / (bytes_total as f64));
+            if bytes_read >= bytes_total {
+                ui.vbox.remove(&ui.progress_bar);
+                ui.show_progress = false;
+            } else {
+                let text = format!(
+                    "Loaded {} / {}",
+                    fmt_size(bytes_read),
+                    fmt_size(bytes_total));
+                let fraction = (bytes_read as f64) / (bytes_total as f64);
+                ui.progress_bar.set_text(Some(&text));
+                ui.progress_bar.set_fraction(fraction);
+            }
         }
         Ok(())
     })
