@@ -287,23 +287,26 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
 fn display_error(result: Result<(), PacketryError>) {
     if let Err(e) = result {
         let message = format!("{e}");
-        WINDOW.with(|win_opt| {
-            match win_opt.borrow().as_ref() {
-                None => println!("{message}"),
-                Some(window) => {
-                    let dialog = MessageDialog::new(
-                        Some(window),
-                        DialogFlags::MODAL,
-                        MessageType::Error,
-                        ButtonsType::Close,
-                        &message
-                    );
-                    dialog.set_transient_for(Some(window));
-                    dialog.set_modal(true);
-                    dialog.connect_response(move |dialog, _| dialog.destroy());
-                    dialog.show();
+        gtk::glib::idle_add_once(move || {
+            WINDOW.with(|win_opt| {
+                match win_opt.borrow().as_ref() {
+                    None => println!("{message}"),
+                    Some(window) => {
+                        let dialog = MessageDialog::new(
+                            Some(window),
+                            DialogFlags::MODAL,
+                            MessageType::Error,
+                            ButtonsType::Close,
+                            &message
+                        );
+                        dialog.set_transient_for(Some(window));
+                        dialog.set_modal(true);
+                        dialog.connect_response(
+                            move |dialog, _| dialog.destroy());
+                        dialog.show();
+                    }
                 }
-            }
+            });
         });
     }
 }
