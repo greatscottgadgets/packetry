@@ -423,7 +423,7 @@ pub struct Capture {
 
 impl Capture {
     pub fn new() -> Result<Self, CaptureError> {
-        Ok(Capture {
+        let mut capture = Capture {
             packet_data: FileVec::new()?,
             packet_index: HybridIndex::new(2)?,
             transaction_index: HybridIndex::new(1)?,
@@ -436,7 +436,12 @@ impl Capture {
             endpoint_states: FileVec::new()?,
             endpoint_state_index: HybridIndex::new(1)?,
             end_index: HybridIndex::new(1)?,
-        })
+        };
+        let default_addr = DeviceAddr(0);
+        let default_device = Device { address: default_addr };
+        let default_id = capture.devices.push(&default_device)?;
+        capture.device_data.set(default_id, DeviceData::default());
+        Ok(capture)
     }
 
     pub fn print_storage_summary(&self) {

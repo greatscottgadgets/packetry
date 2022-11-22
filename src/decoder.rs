@@ -186,10 +186,13 @@ impl Decoder {
             last_item_endpoint: None,
             transaction_state: TransactionState::default(),
         };
+        let default_addr = DeviceAddr(0);
+        let default_id = DeviceId::from(0);
+        decoder.device_index.set(default_addr, default_id);
         let invalid_id = decoder.add_endpoint(
-            capture, DeviceAddr(0), EndpointNum(INVALID_EP_NUM), Direction::Out)?;
+            capture, default_addr, EndpointNum(INVALID_EP_NUM), Direction::Out)?;
         let framing_id = decoder.add_endpoint(
-            capture, DeviceAddr(0), EndpointNum(FRAMING_EP_NUM), Direction::Out)?;
+            capture, default_addr, EndpointNum(FRAMING_EP_NUM), Direction::Out)?;
         assert!(invalid_id == Decoder::INVALID_EP_ID);
         assert!(framing_id == Decoder::FRAMING_EP_ID);
         Ok(decoder)
