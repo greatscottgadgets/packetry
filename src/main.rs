@@ -28,6 +28,7 @@ use gtk::{
     ListItem,
     ListView,
     ProgressBar,
+    ScrolledWindow,
     SignalListItemFactory,
     SingleSelection,
     Orientation,
@@ -66,8 +67,10 @@ static PCAP_READ: AtomicU64 = AtomicU64::new(0);
 struct UserInterface {
     capture: Arc<Mutex<Capture>>,
     stop_handle: Option<LunaStop>,
-    traffic_model: TrafficModel,
-    device_model: DeviceModel,
+    traffic_window: ScrolledWindow,
+    device_window: ScrolledWindow,
+    traffic_model: Option<TrafficModel>,
+    device_model: Option<DeviceModel>,
     show_progress: bool,
     progress_bar: ProgressBar,
     vbox: gtk::Box,
@@ -211,25 +214,16 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
     let args: Vec<_> = std::env::args().collect();
     let capture = Arc::new(Mutex::new(Capture::new()?));
 
-    let (traffic_model, traffic_view) =
-        create_view::<TrafficItem, TrafficModel, TrafficRowData>(&capture);
-
     let traffic_window = gtk::ScrolledWindow::builder()
         .hscrollbar_policy(gtk::PolicyType::Automatic)
         .min_content_height(480)
         .min_content_width(640)
         .build();
 
-    traffic_window.set_child(Some(&traffic_view));
-
-    let (device_model, device_view) =
-        create_view::<DeviceItem, DeviceModel, DeviceRowData>(&capture);
-
     let device_window = gtk::ScrolledWindow::builder()
         .hscrollbar_policy(gtk::PolicyType::Automatic)
         .min_content_height(480)
         .min_content_width(240)
-        .child(&device_view)
         .build();
 
     let paned = gtk::Paned::builder()
@@ -265,8 +259,10 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
             UserInterface {
                 capture,
                 stop_handle: None,
-                traffic_model,
-                device_model,
+                traffic_window,
+                device_window,
+                traffic_model: None,
+                device_model: None,
                 show_progress: false,
                 progress_bar,
                 vbox,
@@ -275,6 +271,8 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
             }
         )
     );
+
+    reset_capture()?;
 
     if args.len() > 1 {
         let filename = args[1].clone();
@@ -309,10 +307,30 @@ fn with_ui<F>(f: F) -> Result<(), PacketryError>
     })
 }
 
+fn reset_capture() -> Result<(), PacketryError> {
+    let capture = Arc::new(Mutex::new(Capture::new()?));
+    with_ui(|ui| {
+        let (traffic_model, traffic_view) =
+            create_view::<TrafficItem, TrafficModel, TrafficRowData>(&capture);
+        let (device_model, device_view) =
+            create_view::<DeviceItem, DeviceModel, DeviceRowData>(&capture);
+        ui.capture = capture;
+        ui.traffic_model = Some(traffic_model);
+        ui.device_model = Some(device_model);
+        ui.traffic_window.set_child(Some(&traffic_view));
+        ui.device_window.set_child(Some(&device_view));
+        Ok(())
+    })
+}
+
 fn update_view() -> Result<(), PacketryError> {
     with_ui(|ui| {
-        ui.traffic_model.update()?;
-        ui.device_model.update()?;
+        if let Some(model) = &ui.traffic_model {
+            model.update()?;
+        }
+        if let Some(model) = &ui.device_model {
+            model.update()?;
+        }
         if ui.show_progress {
             let bytes_total = PCAP_SIZE.load(Ordering::Relaxed);
             let bytes_read = PCAP_READ.load(Ordering::Relaxed);
@@ -334,6 +352,7 @@ fn update_view() -> Result<(), PacketryError> {
 }
 
 fn start_pcap(filename: String) -> Result<(), PacketryError> {
+    reset_capture()?;
     with_ui(|ui| {
         ui.capture_button.set_sensitive(false);
         ui.vbox.append(&ui.progress_bar);
@@ -366,6 +385,7 @@ fn start_pcap(filename: String) -> Result<(), PacketryError> {
 }
 
 fn start_luna() -> Result<(), PacketryError> { 
+    reset_capture()?;
     with_ui(|ui| {
         let (mut stream_handle, stop_handle) = LunaDevice::open()?.start()?;
         ui.stop_handle.replace(stop_handle);
@@ -384,10 +404,13 @@ fn start_luna() -> Result<(), PacketryError> {
         std::thread::spawn(move || {
             display_error(read_luna());
             gtk::glib::idle_add_once(|| {
-                display_error(with_ui(|ui| {
-                    ui.stop_button.set_sensitive(false);
-                    Ok(())
-                }));
+                display_error(
+                    with_ui(|ui| {
+                        ui.stop_button.set_sensitive(false);
+                        ui.capture_button.set_sensitive(true);
+                        Ok(())
+                    })
+                );
             });
         });
         Ok(())
