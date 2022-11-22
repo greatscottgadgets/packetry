@@ -186,6 +186,21 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
 
     let header_bar = gtk::HeaderBar::new();
 
+    let open_button = gtk::Button::from_icon_name("document-open");
+    let save_button = gtk::Button::from_icon_name("document-save");
+    let capture_button = gtk::Button::from_icon_name("media-record");
+    let stop_button = gtk::Button::from_icon_name("media-playback-stop");
+
+    open_button.set_sensitive(false);
+    save_button.set_sensitive(false);
+    capture_button.set_sensitive(false);
+    stop_button.set_sensitive(false);
+
+    header_bar.pack_start(&open_button);
+    header_bar.pack_start(&save_button);
+    header_bar.pack_start(&capture_button);
+    header_bar.pack_start(&stop_button);
+
     window.set_titlebar(Some(&header_bar));
     window.show();
     WINDOW.with(|win_opt| win_opt.replace(Some(window.clone())));
