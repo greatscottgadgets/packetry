@@ -152,6 +152,18 @@ pub struct EndpointTraffic {
     pub end_index: HybridIndex<EndpointTransferId, TrafficItemId>,
 }
 
+impl EndpointTraffic {
+    pub fn new() -> Result<Self, CaptureError> {
+        Ok(EndpointTraffic {
+            transaction_ids: HybridIndex::new(1)?,
+            transfer_index: HybridIndex::new(1)?,
+            data_index: HybridIndex::new(1)?,
+            total_data: 0,
+            end_index: HybridIndex::new(1)?,
+        })
+    }
+}
+
 #[derive(Default)]
 pub struct DeviceData {
     pub device_descriptor: Option<DeviceDescriptor>,

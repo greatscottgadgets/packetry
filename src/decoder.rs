@@ -2,7 +2,7 @@ use std::mem::size_of;
 
 use crate::usb::{self, prelude::*};
 use crate::capture::{prelude::*, INVALID_EP_NUM, FRAMING_EP_NUM};
-use crate::hybrid_index::{HybridIndex, Number};
+use crate::hybrid_index::Number;
 use crate::vec_map::{VecMap, Key};
 
 use CaptureError::IndexError;
@@ -337,13 +337,7 @@ impl Decoder {
             setup: None,
             payload: Vec::new(),
         });
-        capture.endpoint_traffic.set(endpoint_id, EndpointTraffic {
-            transaction_ids: HybridIndex::new(1)?,
-            transfer_index: HybridIndex::new(1)?,
-            data_index: HybridIndex::new(1)?,
-            total_data: 0,
-            end_index: HybridIndex::new(1)?,
-        });
+        capture.endpoint_traffic.set(endpoint_id, EndpointTraffic::new()?);
         let ep_state = EndpointState::Idle as u8;
         self.last_endpoint_state.push(ep_state);
         Ok(endpoint_id)
