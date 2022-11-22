@@ -40,6 +40,22 @@ struct EndpointData {
     payload: Vec<u8>,
 }
 
+impl EndpointData {
+    fn new(device_id: DeviceId, address: EndpointAddr) -> EndpointData {
+        EndpointData {
+            address,
+            device_id,
+            active: None,
+            ended: None,
+            transaction_count: 0,
+            last: None,
+            last_success: false,
+            setup: None,
+            payload: Vec::new(),
+        }
+    }
+}
+
 #[derive(Default)]
 struct TransactionState {
     first: Option<PID>,
@@ -326,17 +342,9 @@ impl Decoder {
         endpoint.set_direction(direction);
         let endpoint_id = capture.endpoints.push(&endpoint)?;
         let address = EndpointAddr::from_parts(number, direction);
-        self.endpoint_data.set(endpoint_id, EndpointData {
-            address,
-            device_id,
-            active: None,
-            ended: None,
-            transaction_count: 0,
-            last: None,
-            last_success: false,
-            setup: None,
-            payload: Vec::new(),
-        });
+        self.endpoint_data.set(
+            endpoint_id,
+            EndpointData::new(device_id, address));
         capture.endpoint_traffic.set(endpoint_id, EndpointTraffic::new()?);
         let ep_state = EndpointState::Idle as u8;
         self.last_endpoint_state.push(ep_state);
