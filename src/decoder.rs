@@ -176,8 +176,8 @@ pub struct Decoder {
     transaction_state: TransactionState,
 }
 
-impl Decoder {
-    pub fn new(capture: &mut Capture) -> Result<Self, CaptureError> {
+impl Default for Decoder {
+    fn default() -> Decoder {
         let mut decoder = Decoder {
             device_index: VecMap::new(),
             endpoint_index: VecMap::new(),
@@ -206,9 +206,11 @@ impl Decoder {
             let ep_state = EndpointState::Idle as u8;
             decoder.last_endpoint_state.push(ep_state);
         }
-        Ok(decoder)
+        decoder
     }
+}
 
+impl Decoder {
     const INVALID_EP_ID: EndpointId = EndpointId::constant(0);
     const FRAMING_EP_ID: EndpointId = EndpointId::constant(1);
 

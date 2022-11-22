@@ -190,9 +190,7 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
     WINDOW.with(|win_opt| win_opt.replace(Some(window.clone())));
 
     let args: Vec<_> = std::env::args().collect();
-    let mut cap = Capture::new()?;
-    let mut decoder = Decoder::new(&mut cap)?;
-    let capture = Arc::new(Mutex::new(cap));
+    let capture = Arc::new(Mutex::new(Capture::new()?));
     let app_capture = capture.clone();
 
     let (traffic_model, traffic_view) =
@@ -261,13 +259,14 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
             ui.show_progress = true;
             Ok(())
         })?;
-        let mut read_pcap = move || {
+        let read_pcap = move || {
             let file = File::open(&args[1])?;
             let file_size = file.metadata()?.len();
             PCAP_SIZE.store(file_size, Ordering::Relaxed);
             let reader = BufReader::new(file);
             let pcap_reader = PcapReader::new(reader)?;
             let mut bytes_read = size_of::<PcapHeader>() as u64;
+            let mut decoder = Decoder::default();
             for result in pcap_reader {
                 let packet = result?;
                 let mut cap = capture.lock().or(Err(Lock))?;
@@ -285,6 +284,7 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
         let (mut stream_handle, stop_handle) = LunaDevice::open()?.start()?;
         with_ui(|ui| { ui.stop_handle.replace(stop_handle); Ok(())})?;
         let mut read_luna = move || {
+            let mut decoder = Decoder::default();
             while let Some(packet) = stream_handle.next() {
                 let mut cap = capture.lock().or(Err(Lock))?;
                 decoder.handle_raw_packet(&mut cap, &packet?)?;
