@@ -63,6 +63,7 @@ static PCAP_SIZE: AtomicU64 = AtomicU64::new(0);
 static PCAP_READ: AtomicU64 = AtomicU64::new(0);
 
 struct UserInterface {
+    capture: Arc<Mutex<Capture>>,
     stop_handle: Option<LunaStop>,
     traffic_model: TrafficModel,
     device_model: DeviceModel,
@@ -241,6 +242,7 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
     UI.with(|cell|
         cell.borrow_mut().replace(
             UserInterface {
+                capture,
                 stop_handle: None,
                 traffic_model,
                 device_model,
@@ -253,9 +255,9 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
 
     if args.len() > 1 {
         let filename = args[1].clone();
-        start_pcap(capture, filename)?;
+        start_pcap(filename)?;
     } else {
-        start_luna(capture)?;
+        start_luna()?;
     };
 
     gtk::glib::timeout_add_local(
@@ -310,53 +312,54 @@ fn update_view() -> Result<(), PacketryError> {
     })
 }
 
-fn start_pcap(capture: Arc<Mutex<Capture>>, filename: String)
-    -> Result<(), PacketryError>
-{
-    use PacketryError::Lock;
+fn start_pcap(filename: String) -> Result<(), PacketryError> {
     with_ui(|ui| {
         ui.vbox.append(&ui.progress_bar);
         ui.show_progress = true;
+        let capture = ui.capture.clone();
+        let read_pcap = move || {
+            let file = File::open(filename)?;
+            let file_size = file.metadata()?.len();
+            PCAP_SIZE.store(file_size, Ordering::Relaxed);
+            let reader = BufReader::new(file);
+            let pcap = PcapReader::new(reader)?;
+            let mut bytes_read = size_of::<PcapHeader>() as u64;
+            let mut decoder = Decoder::default();
+            use PacketryError::Lock;
+            for result in pcap {
+                let packet = result?;
+                let mut cap = capture.lock().or(Err(Lock))?;
+                decoder.handle_raw_packet(&mut cap, &packet.data)?;
+                let size = size_of::<PacketHeader>() + packet.data.len();
+                bytes_read += size as u64;
+                PCAP_READ.store(bytes_read, Ordering::Relaxed);
+            }
+            let cap = capture.lock().or(Err(Lock))?;
+            cap.print_storage_summary();
+            Ok(())
+        };
+        std::thread::spawn(move || display_error(read_pcap()));
         Ok(())
-    })?;
-    let read_pcap = move || {
-        let file = File::open(filename)?;
-        let file_size = file.metadata()?.len();
-        PCAP_SIZE.store(file_size, Ordering::Relaxed);
-        let reader = BufReader::new(file);
-        let pcap = PcapReader::new(reader)?;
-        let mut bytes_read = size_of::<PcapHeader>() as u64;
-        let mut decoder = Decoder::default();
-        for result in pcap {
-            let packet = result?;
-            let mut cap = capture.lock().or(Err(Lock))?;
-            decoder.handle_raw_packet(&mut cap, &packet.data)?;
-            let size = size_of::<PacketHeader>() + packet.data.len();
-            bytes_read += size as u64;
-            PCAP_READ.store(bytes_read, Ordering::Relaxed);
-        }
-        let cap = capture.lock().or(Err(Lock))?;
-        cap.print_storage_summary();
-        Ok(())
-    };
-    std::thread::spawn(move || display_error(read_pcap()));
-    Ok(())
+    })
 }
 
-fn start_luna(capture: Arc<Mutex<Capture>>) -> Result<(), PacketryError> {
-    use PacketryError::Lock;
-    let (mut stream_handle, stop_handle) = LunaDevice::open()?.start()?;
-    with_ui(|ui| { ui.stop_handle.replace(stop_handle); Ok(())})?;
-    let mut read_luna = move || {
-        let mut decoder = Decoder::default();
-        while let Some(packet) = stream_handle.next() {
-            let mut cap = capture.lock().or(Err(Lock))?;
-            decoder.handle_raw_packet(&mut cap, &packet?)?;
-        }
+fn start_luna() -> Result<(), PacketryError> { 
+    with_ui(|ui| {
+        let (mut stream_handle, stop_handle) = LunaDevice::open()?.start()?;
+        ui.stop_handle.replace(stop_handle);
+        let capture = ui.capture.clone();
+        let mut read_luna = move || {
+            use PacketryError::Lock;
+            let mut decoder = Decoder::default();
+            while let Some(packet) = stream_handle.next() {
+                let mut cap = capture.lock().or(Err(Lock))?;
+                decoder.handle_raw_packet(&mut cap, &packet?)?;
+            }
+            Ok(())
+        };
+        std::thread::spawn(move || display_error(read_luna()));
         Ok(())
-    };
-    std::thread::spawn(move || display_error(read_luna()));
-    Ok(())
+    })
 }
 
 fn stop_luna() -> Result<(), PacketryError> {
