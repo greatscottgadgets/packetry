@@ -13,7 +13,7 @@ use std::fs::File;
 use std::io::BufReader;
 use std::mem::size_of;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, atomic::{AtomicU64, Ordering}};
+use std::sync::{Arc, Mutex, atomic::{AtomicBool, AtomicU64, Ordering}};
 
 use gtk::gio::ListModel;
 use gtk::glib::Object;
@@ -64,6 +64,7 @@ mod vec_map;
 
 static PCAP_SIZE: AtomicU64 = AtomicU64::new(0);
 static PCAP_READ: AtomicU64 = AtomicU64::new(0);
+static PCAP_STOP: AtomicBool = AtomicBool::new(false);
 
 struct UserInterface {
     capture: Arc<Mutex<Capture>>,
@@ -254,7 +255,6 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
     window.set_child(Some(&vbox));
 
     capture_button.connect_clicked(|_| display_error(start_luna()));
-    stop_button.connect_clicked(|_| display_error(stop_luna()));
     open_button.connect_clicked(|_| display_error(open_file()));
 
     UI.with(|cell|
@@ -339,18 +339,13 @@ fn update_view() -> Result<(), PacketryError> {
         if ui.show_progress {
             let bytes_total = PCAP_SIZE.load(Ordering::Relaxed);
             let bytes_read = PCAP_READ.load(Ordering::Relaxed);
-            if bytes_read >= bytes_total {
-                ui.vbox.remove(&ui.progress_bar);
-                ui.show_progress = false;
-            } else {
-                let text = format!(
-                    "Loaded {} / {}",
-                    fmt_size(bytes_read),
-                    fmt_size(bytes_total));
-                let fraction = (bytes_read as f64) / (bytes_total as f64);
-                ui.progress_bar.set_text(Some(&text));
-                ui.progress_bar.set_fraction(fraction);
-            }
+            let text = format!(
+                "Loaded {} / {}",
+                fmt_size(bytes_read),
+                fmt_size(bytes_total));
+            let fraction = (bytes_read as f64) / (bytes_total as f64);
+            ui.progress_bar.set_text(Some(&text));
+            ui.progress_bar.set_fraction(fraction);
         }
         Ok(())
     })
@@ -386,6 +381,9 @@ fn start_pcap(path: PathBuf) -> Result<(), PacketryError> {
     with_ui(|ui| {
         ui.open_button.set_sensitive(false);
         ui.capture_button.set_sensitive(false);
+        ui.stop_button.set_sensitive(true);
+        let signal_id = ui.stop_button.connect_clicked(|_|
+            display_error(stop_pcap()));
         ui.vbox.append(&ui.progress_bar);
         ui.show_progress = true;
         let capture = ui.capture.clone();
@@ -405,6 +403,9 @@ fn start_pcap(path: PathBuf) -> Result<(), PacketryError> {
                 let size = size_of::<PacketHeader>() + packet.data.len();
                 bytes_read += size as u64;
                 PCAP_READ.store(bytes_read, Ordering::Relaxed);
+                if PCAP_STOP.load(Ordering::Relaxed) {
+                    break;
+                }
             }
             let cap = capture.lock().or(Err(Lock))?;
             cap.print_storage_summary();
@@ -413,8 +414,13 @@ fn start_pcap(path: PathBuf) -> Result<(), PacketryError> {
         std::thread::spawn(move || {
             display_error(read_pcap());
             gtk::glib::idle_add_once(|| {
+                PCAP_STOP.store(false, Ordering::Relaxed);
                 display_error(
                     with_ui(|ui| {
+                        ui.show_progress = false;
+                        ui.vbox.remove(&ui.progress_bar);
+                        ui.stop_button.disconnect(signal_id);
+                        ui.stop_button.set_sensitive(false);
                         ui.open_button.set_sensitive(true);
                         ui.capture_button.set_sensitive(true);
                         Ok(())
@@ -422,6 +428,14 @@ fn start_pcap(path: PathBuf) -> Result<(), PacketryError> {
                 );
             });
         });
+        Ok(())
+    })
+}
+
+fn stop_pcap() -> Result<(), PacketryError> {
+    PCAP_STOP.store(true, Ordering::Relaxed);
+    with_ui(|ui| {
+        ui.stop_button.set_sensitive(false);
         Ok(())
     })
 }
@@ -434,6 +448,8 @@ fn start_luna() -> Result<(), PacketryError> {
         ui.open_button.set_sensitive(false);
         ui.capture_button.set_sensitive(false);
         ui.stop_button.set_sensitive(true);
+        let signal_id = ui.stop_button.connect_clicked(|_|
+            display_error(stop_luna()));
         let capture = ui.capture.clone();
         let mut read_luna = move || {
             use PacketryError::Lock;
@@ -449,6 +465,7 @@ fn start_luna() -> Result<(), PacketryError> {
             gtk::glib::idle_add_once(|| {
                 display_error(
                     with_ui(|ui| {
+                        ui.stop_button.disconnect(signal_id);
                         ui.stop_button.set_sensitive(false);
                         ui.open_button.set_sensitive(true);
                         ui.capture_button.set_sensitive(true);
