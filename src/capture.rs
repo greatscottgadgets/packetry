@@ -441,6 +441,15 @@ impl Capture {
         let default_device = Device { address: default_addr };
         let default_id = capture.devices.push(&default_device)?;
         capture.device_data.set(default_id, DeviceData::default());
+        for number in [INVALID_EP_NUM, FRAMING_EP_NUM] {
+            let mut endpoint = Endpoint::default();
+            endpoint.set_device_id(default_id);
+            endpoint.set_device_address(default_addr);
+            endpoint.set_number(EndpointNum(number));
+            endpoint.set_direction(Direction::Out);
+            let endpoint_id = capture.endpoints.push(&endpoint)?;
+            capture.endpoint_traffic.set(endpoint_id, EndpointTraffic::new()?);
+        }
         Ok(capture)
     }
 

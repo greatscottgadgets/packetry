@@ -189,12 +189,23 @@ impl Decoder {
         let default_addr = DeviceAddr(0);
         let default_id = DeviceId::from(0);
         decoder.device_index.set(default_addr, default_id);
-        let invalid_id = decoder.add_endpoint(
-            capture, default_addr, EndpointNum(INVALID_EP_NUM), Direction::Out)?;
-        let framing_id = decoder.add_endpoint(
-            capture, default_addr, EndpointNum(FRAMING_EP_NUM), Direction::Out)?;
-        assert!(invalid_id == Decoder::INVALID_EP_ID);
-        assert!(framing_id == Decoder::FRAMING_EP_ID);
+        for (ep_id, ep_num) in [
+            (Decoder::INVALID_EP_ID, INVALID_EP_NUM),
+            (Decoder::FRAMING_EP_ID, FRAMING_EP_NUM)]
+        {
+            decoder.endpoint_data.set(
+                ep_id,
+                EndpointData::new(
+                    default_id,
+                    EndpointAddr::from_parts(
+                        EndpointNum(ep_num),
+                        Direction::Out
+                    )
+                )
+            );
+            let ep_state = EndpointState::Idle as u8;
+            decoder.last_endpoint_state.push(ep_state);
+        }
         Ok(decoder)
     }
 
