@@ -12,6 +12,7 @@ use std::cell::RefCell;
 use std::fs::File;
 use std::io::BufReader;
 use std::mem::size_of;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex, atomic::{AtomicU64, Ordering}};
 
 use gtk::gio::ListModel;
@@ -74,6 +75,7 @@ struct UserInterface {
     show_progress: bool,
     progress_bar: ProgressBar,
     vbox: gtk::Box,
+    open_button: Button,
     capture_button: Button,
     stop_button: Button,
 }
@@ -197,7 +199,7 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
     let capture_button = gtk::Button::from_icon_name("media-record");
     let stop_button = gtk::Button::from_icon_name("media-playback-stop");
 
-    open_button.set_sensitive(false);
+    open_button.set_sensitive(true);
     save_button.set_sensitive(false);
     capture_button.set_sensitive(true);
     stop_button.set_sensitive(false);
@@ -253,6 +255,7 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
 
     capture_button.connect_clicked(|_| display_error(start_luna()));
     stop_button.connect_clicked(|_| display_error(stop_luna()));
+    open_button.connect_clicked(|_| display_error(open_file()));
 
     UI.with(|cell|
         cell.borrow_mut().replace(
@@ -266,6 +269,7 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
                 show_progress: false,
                 progress_bar,
                 vbox,
+                open_button,
                 capture_button,
                 stop_button,
             }
@@ -276,7 +280,8 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
 
     if args.len() > 1 {
         let filename = args[1].clone();
-        start_pcap(filename)?;
+        let path = PathBuf::from(filename);
+        start_pcap(path)?;
     }
 
     gtk::glib::timeout_add_local(
@@ -351,15 +356,41 @@ fn update_view() -> Result<(), PacketryError> {
     })
 }
 
-fn start_pcap(filename: String) -> Result<(), PacketryError> {
+fn open_file() -> Result<(), PacketryError> {
+    let chooser = WINDOW.with(|cell| {
+        let borrow = cell.borrow();
+        let window = borrow.as_ref();
+        gtk::FileChooserDialog::new(
+            Some("Open pcap file"),
+            window,
+            gtk::FileChooserAction::Open,
+            &[("Open", gtk::ResponseType::Accept)]
+        )
+    });
+    chooser.connect_response(move |dialog, response| {
+        if response == gtk::ResponseType::Accept {
+            if let Some(file) = dialog.file() {
+                if let Some(path) = file.path() {
+                    display_error(start_pcap(path));
+                }
+            }
+            dialog.destroy();
+        }
+    });
+    chooser.show();
+    Ok(())
+}
+
+fn start_pcap(path: PathBuf) -> Result<(), PacketryError> {
     reset_capture()?;
     with_ui(|ui| {
+        ui.open_button.set_sensitive(false);
         ui.capture_button.set_sensitive(false);
         ui.vbox.append(&ui.progress_bar);
         ui.show_progress = true;
         let capture = ui.capture.clone();
         let read_pcap = move || {
-            let file = File::open(filename)?;
+            let file = File::open(path)?;
             let file_size = file.metadata()?.len();
             PCAP_SIZE.store(file_size, Ordering::Relaxed);
             let reader = BufReader::new(file);
@@ -379,7 +410,18 @@ fn start_pcap(filename: String) -> Result<(), PacketryError> {
             cap.print_storage_summary();
             Ok(())
         };
-        std::thread::spawn(move || display_error(read_pcap()));
+        std::thread::spawn(move || {
+            display_error(read_pcap());
+            gtk::glib::idle_add_once(|| {
+                display_error(
+                    with_ui(|ui| {
+                        ui.open_button.set_sensitive(true);
+                        ui.capture_button.set_sensitive(true);
+                        Ok(())
+                    })
+                );
+            });
+        });
         Ok(())
     })
 }
@@ -389,6 +431,7 @@ fn start_luna() -> Result<(), PacketryError> {
     with_ui(|ui| {
         let (mut stream_handle, stop_handle) = LunaDevice::open()?.start()?;
         ui.stop_handle.replace(stop_handle);
+        ui.open_button.set_sensitive(false);
         ui.capture_button.set_sensitive(false);
         ui.stop_button.set_sensitive(true);
         let capture = ui.capture.clone();
@@ -407,6 +450,7 @@ fn start_luna() -> Result<(), PacketryError> {
                 display_error(
                     with_ui(|ui| {
                         ui.stop_button.set_sensitive(false);
+                        ui.open_button.set_sensitive(true);
                         ui.capture_button.set_sensitive(true);
                         Ok(())
                     })
