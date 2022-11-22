@@ -124,8 +124,11 @@ pub enum EndpointState {
     Ending = 3,
 }
 
-pub const INVALID_EP_NUM: u8 = 0x10;
-pub const FRAMING_EP_NUM: u8 = 0x11;
+pub const CONTROL_EP_NUM: EndpointNum = EndpointNum(0);
+pub const INVALID_EP_NUM: EndpointNum = EndpointNum(0x10);
+pub const FRAMING_EP_NUM: EndpointNum = EndpointNum(0x11);
+pub const INVALID_EP_ID: EndpointId = EndpointId::constant(0);
+pub const FRAMING_EP_ID: EndpointId = EndpointId::constant(1);
 
 #[derive(Copy, Clone, Debug)]
 pub enum EndpointType {
@@ -206,10 +209,10 @@ impl DeviceData {
         -> (EndpointType, Option<usize>)
     {
         use EndpointType::*;
-        match addr.0 {
+        match addr.number() {
             INVALID_EP_NUM => (Invalid, None),
             FRAMING_EP_NUM => (Framing, None),
-            0 => (
+            CONTROL_EP_NUM => (
                 Normal(usb::EndpointType::Control),
                 self.device_descriptor.map(|desc| {
                     desc.max_packet_size_0 as usize
@@ -445,7 +448,7 @@ impl Capture {
             let mut endpoint = Endpoint::default();
             endpoint.set_device_id(default_id);
             endpoint.set_device_address(default_addr);
-            endpoint.set_number(EndpointNum(number));
+            endpoint.set_number(number);
             endpoint.set_direction(Direction::Out);
             let endpoint_id = capture.endpoints.push(&endpoint)?;
             capture.endpoint_traffic.set(endpoint_id, EndpointTraffic::new()?);
@@ -1318,5 +1321,9 @@ pub mod prelude {
         TransactionId,
         TransferId,
         TransferIndexEntry,
+        INVALID_EP_NUM,
+        FRAMING_EP_NUM,
+        INVALID_EP_ID,
+        FRAMING_EP_ID,
     };
 }

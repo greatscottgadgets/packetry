@@ -1,7 +1,7 @@
 use std::mem::size_of;
 
 use crate::usb::{self, prelude::*};
-use crate::capture::{prelude::*, INVALID_EP_NUM, FRAMING_EP_NUM};
+use crate::capture::prelude::*;
 use crate::hybrid_index::Number;
 use crate::vec_map::{VecMap, Key};
 
@@ -190,17 +190,14 @@ impl Default for Decoder {
         let default_id = DeviceId::from(0);
         decoder.device_index.set(default_addr, default_id);
         for (ep_id, ep_num) in [
-            (Decoder::INVALID_EP_ID, INVALID_EP_NUM),
-            (Decoder::FRAMING_EP_ID, FRAMING_EP_NUM)]
+            (INVALID_EP_ID, INVALID_EP_NUM),
+            (FRAMING_EP_ID, FRAMING_EP_NUM)]
         {
             decoder.endpoint_data.set(
                 ep_id,
                 EndpointData::new(
                     default_id,
-                    EndpointAddr::from_parts(
-                        EndpointNum(ep_num),
-                        Direction::Out
-                    )
+                    EndpointAddr::from_parts(ep_num, Direction::Out)
                 )
             );
             let ep_state = EndpointState::Idle as u8;
@@ -211,9 +208,6 @@ impl Default for Decoder {
 }
 
 impl Decoder {
-    const INVALID_EP_ID: EndpointId = EndpointId::constant(0);
-    const FRAMING_EP_ID: EndpointId = EndpointId::constant(1);
-
     pub fn handle_raw_packet(&mut self, capture: &mut Capture, packet: &[u8])
         -> Result<(), CaptureError>
     {
@@ -293,10 +287,10 @@ impl Decoder {
         state.last = state.first;
         self.transaction_state.endpoint_id = Some(
             match PacketFields::from_packet(packet) {
-                PacketFields::SOF(_) => Decoder::FRAMING_EP_ID,
+                PacketFields::SOF(_) => FRAMING_EP_ID,
                 PacketFields::Token(token) =>
                     self.token_endpoint(capture, pid, &token)?,
-                _ => Decoder::INVALID_EP_ID,
+                _ => INVALID_EP_ID,
             }
         );
         Ok(())
