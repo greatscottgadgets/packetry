@@ -304,13 +304,7 @@ impl Decoder {
         let device = Device { address };
         let device_id = capture.devices.push(&device)?;
         self.device_index.set(address, device_id);
-        capture.device_data.set(device_id, DeviceData {
-            device_descriptor: None,
-            configurations: VecMap::new(),
-            config_number: None,
-            endpoint_details: VecMap::new(),
-            strings: VecMap::new(),
-        });
+        capture.device_data.set(device_id, DeviceData::default());
         Ok(device_id)
     }
 

@@ -152,6 +152,7 @@ pub struct EndpointTraffic {
     pub end_index: HybridIndex<EndpointTransferId, TrafficItemId>,
 }
 
+#[derive(Default)]
 pub struct DeviceData {
     pub device_descriptor: Option<DeviceDescriptor>,
     pub configurations: VecMap<ConfigNum, Configuration>,
