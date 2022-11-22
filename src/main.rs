@@ -191,10 +191,9 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
 
     let args: Vec<_> = std::env::args().collect();
     let capture = Arc::new(Mutex::new(Capture::new()?));
-    let app_capture = capture.clone();
 
     let (traffic_model, traffic_view) =
-        create_view::<TrafficItem, TrafficModel, TrafficRowData>(&app_capture);
+        create_view::<TrafficItem, TrafficModel, TrafficRowData>(&capture);
 
     let traffic_window = gtk::ScrolledWindow::builder()
         .hscrollbar_policy(gtk::PolicyType::Automatic)
@@ -205,7 +204,7 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
     traffic_window.set_child(Some(&traffic_view));
 
     let (device_model, device_view) =
-        create_view::<DeviceItem, DeviceModel, DeviceRowData>(&app_capture);
+        create_view::<DeviceItem, DeviceModel, DeviceRowData>(&capture);
 
     let device_window = gtk::ScrolledWindow::builder()
         .hscrollbar_policy(gtk::PolicyType::Automatic)
