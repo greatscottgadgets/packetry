@@ -15,6 +15,9 @@ use std::mem::size_of;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, atomic::{AtomicBool, AtomicU64, Ordering}};
 
+#[cfg(feature="step-decoder")]
+use std::{io::Read, net::TcpListener};
+
 use gtk::gio::ListModel;
 use gtk::glib::Object;
 use gtk::{
@@ -396,7 +399,14 @@ fn start_pcap(path: PathBuf) -> Result<(), PacketryError> {
             let mut bytes_read = size_of::<PcapHeader>() as u64;
             let mut decoder = Decoder::default();
             use PacketryError::Lock;
+            #[cfg(feature="step-decoder")]
+            let (mut client, _addr) =
+                TcpListener::bind("127.0.0.1:46563")?.accept()?;
             for result in pcap {
+                #[cfg(feature="step-decoder")] {
+                    let mut buf = [0; 1];
+                    client.read(&mut buf).unwrap();
+                };
                 let packet = result?;
                 let mut cap = capture.lock().or(Err(Lock))?;
                 decoder.handle_raw_packet(&mut cap, &packet.data)?;
