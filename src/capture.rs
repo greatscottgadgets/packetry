@@ -709,22 +709,24 @@ impl Capture {
     }
 }
 
+pub enum CompletionStatus {
+    Complete,
+    Ongoing
+}
+
 pub trait ItemSource<Item> {
-    type ItemId;
-    fn item(&mut self, parent: &Option<Item>, index: u64) -> Result<Item, CaptureError>;
-    fn child_item(&mut self, parent: &Item, index: u64) -> Result<Item, CaptureError>;
-    fn item_count(&mut self, parent: &Option<Item>) -> Result<u64, CaptureError>;
-    fn child_count(&mut self, parent: &Item) -> Result<u64, CaptureError>;
-    fn item_end(&mut self, item_id: Self::ItemId)
-        -> Result<Option<Self::ItemId>, CaptureError>;
+    fn item(&mut self, parent: Option<&Item>, index: u64)
+        -> Result<Item, CaptureError>;
+    fn child_item(&mut self, parent: &Item, index: u64)
+        -> Result<Item, CaptureError>;
+    fn item_children(&mut self, parent: Option<&Item>)
+        -> Result<(CompletionStatus, u64), CaptureError>;
     fn summary(&mut self, item: &Item) -> Result<String, CaptureError>;
     fn connectors(&mut self, item: &Item) -> Result<String, CaptureError>;
 }
 
 impl ItemSource<TrafficItem> for Capture {
-    type ItemId = TrafficItemId;
-
-    fn item(&mut self, parent: &Option<TrafficItem>, index: u64)
+    fn item(&mut self, parent: Option<&TrafficItem>, index: u64)
         -> Result<TrafficItem, CaptureError>
     {
         match parent {
@@ -759,52 +761,39 @@ impl ItemSource<TrafficItem> for Capture {
         })
     }
 
-    fn item_count(&mut self, parent: &Option<TrafficItem>)
-        -> Result<u64, CaptureError>
-    {
-        match parent {
-            None => Ok(self.item_index.len()),
-            Some(item) => self.child_count(item)
-        }
-    }
-
-    fn child_count(&mut self, parent: &TrafficItem)
-        -> Result<u64, CaptureError>
+    fn item_children(&mut self, parent: Option<&TrafficItem>)
+        -> Result<(CompletionStatus, u64), CaptureError>
     {
         use TrafficItem::*;
+        use CompletionStatus::*;
         Ok(match parent {
-            Transfer(transfer_id) => {
+            None => {
+                (Ongoing, self.item_index.len())
+            },
+            Some(Transfer(transfer_id)) => {
                 let entry = self.transfer_index.get(*transfer_id)?;
-                if entry.is_start() {
-                    self.transfer_range(&entry)?.len()
+                if !entry.is_start() {
+                    return Ok((Complete, 0));
+                }
+                let transaction_count = self.transfer_range(&entry)?.len();
+                let ep_traf = self.endpoint_traffic(entry.endpoint_id())?;
+                if entry.transfer_id().value >= ep_traf.end_index.len() {
+                    (Ongoing, transaction_count)
                 } else {
-                    0
+                    (Complete, transaction_count)
                 }
             },
-            Transaction(_, transaction_id) => {
-                self.transaction_index.target_range(
-                    *transaction_id, self.packet_index.len())?.len()
+            Some(Transaction(_, transaction_id)) => {
+                let packet_count = self.transaction_index.target_range(
+                    *transaction_id, self.packet_index.len())?.len();
+                if transaction_id.value < self.transaction_index.len() - 1 {
+                    (Complete, packet_count)
+                } else {
+                    (Ongoing, packet_count)
+                }
             },
-            Packet(..) => 0,
+            Some(Packet(..)) => (Complete, 0),
         })
-    }
-
-    fn item_end(&mut self, item_id: TrafficItemId)
-        -> Result<Option<TrafficItemId>, CaptureError>
-    {
-        let transfer_id = self.item_index.get(item_id)?;
-        let entry = self.transfer_index.get(transfer_id)?;
-        let ep_transfer_id = entry.transfer_id();
-        if !entry.is_start() {
-            return Err(IndexError(
-                String::from("Transfer entry for item_end is an end")))
-        }
-        let ep_traf = self.endpoint_traffic(entry.endpoint_id())?;
-        if ep_transfer_id.value >= ep_traf.end_index.len() {
-            return Ok(None)
-        }
-        let end_item_id = ep_traf.end_index.get(ep_transfer_id)?;
-        Ok(Some(end_item_id))
     }
 
     fn summary(&mut self, item: &TrafficItem)
@@ -1022,9 +1011,7 @@ impl ItemSource<TrafficItem> for Capture {
 }
 
 impl ItemSource<DeviceItem> for Capture {
-    type ItemId = DeviceId;
-
-    fn item(&mut self, parent: &Option<DeviceItem>, index: u64)
+    fn item(&mut self, parent: Option<&DeviceItem>, index: u64)
         -> Result<DeviceItem, CaptureError>
     {
         match parent {
@@ -1070,53 +1057,45 @@ impl ItemSource<DeviceItem> for Capture {
         })
     }
 
-    fn item_count(&mut self, parent: &Option<DeviceItem>)
-        -> Result<u64, CaptureError>
-    {
-        Ok(match parent {
-            None => (self.device_data.len() - 1) as u64,
-            Some(item) => self.child_count(item)?,
-        })
-    }
-
-    fn child_count(&mut self, parent: &DeviceItem)
-        -> Result<u64, CaptureError>
+    fn item_children(&mut self, parent: Option<&DeviceItem>)
+        -> Result<(CompletionStatus, u64), CaptureError>
     {
         use DeviceItem::*;
-        Ok((match parent {
-            Device(dev) =>
-                self.device_data(dev)?.configurations.len(),
-            DeviceDescriptor(dev) =>
+        use CompletionStatus::*;
+        let (completion, children) = match parent {
+            None =>
+                (Ongoing, self.device_data.len() - 1),
+            Some(Device(dev)) =>
+                (Ongoing, self.device_data(dev)?.configurations.len()),
+            Some(DeviceDescriptor(dev)) =>
                 match self.device_data(dev)?.device_descriptor {
-                    Some(_) => usb::DeviceDescriptor::NUM_FIELDS,
-                    None => 0,
+                    Some(_) => (Complete, usb::DeviceDescriptor::NUM_FIELDS),
+                    None => (Ongoing, 0),
                 },
-            Configuration(dev, conf) =>
+            Some(Configuration(dev, conf)) =>
                 match self.try_configuration(dev, conf) {
-                    Some(conf) => 1 + conf.interfaces.len(),
-                    None => 0
+                    Some(conf) => (Ongoing, 1 + conf.interfaces.len()),
+                    None => (Ongoing, 0)
                 },
-            ConfigurationDescriptor(dev, conf) =>
+            Some(ConfigurationDescriptor(dev, conf)) =>
                 match self.try_configuration(dev, conf) {
-                    Some(_) => usb::ConfigDescriptor::NUM_FIELDS,
-                    None => 0
+                    Some(_) => (Complete, usb::ConfigDescriptor::NUM_FIELDS),
+                    None => (Ongoing, 0)
                 },
-            Interface(dev, conf, iface) =>
+            Some(Interface(dev, conf, iface)) =>
                 match self.try_configuration(dev, conf) {
                     Some(conf) =>
-                        1 + conf.interface(iface)?.endpoint_descriptors.len(),
-                    None => 0
+                        (Complete,
+                         1 + conf.interface(iface)?.endpoint_descriptors.len()),
+                    None => (Ongoing, 0)
                 },
-            InterfaceDescriptor(..) => usb::InterfaceDescriptor::NUM_FIELDS,
-            EndpointDescriptor(..) => usb::EndpointDescriptor::NUM_FIELDS,
-            _ => 0
-        }) as u64)
-    }
-
-    fn item_end(&mut self, _item_id: DeviceId)
-        -> Result<Option<DeviceId>, CaptureError>
-    {
-        Ok(None)
+            Some(InterfaceDescriptor(..)) =>
+                (Complete, usb::InterfaceDescriptor::NUM_FIELDS),
+            Some(EndpointDescriptor(..)) =>
+                (Complete, usb::EndpointDescriptor::NUM_FIELDS),
+            _ => (Complete, 0)
+        };
+        Ok((completion, children as u64))
     }
 
     fn summary(&mut self, item: &DeviceItem)
@@ -1217,7 +1196,7 @@ mod tests {
         }
         writer.write(summary.as_bytes()).unwrap();
         writer.write(b"\n").unwrap();
-        let num_children = cap.child_count(item).unwrap();
+        let (_completion, num_children) = cap.item_children(Some(item)).unwrap();
         for child_id in 0..num_children {
             let child = cap.child_item(item, child_id).unwrap();
             write_item(cap, &child, depth + 1, writer);
@@ -1250,7 +1229,7 @@ mod tests {
                     let mut out_writer = BufWriter::new(out_file);
                     let num_items = cap.item_index.len();
                     for item_id in 0 .. num_items {
-                        let item = cap.item(&None, item_id).unwrap();
+                        let item = cap.item(None, item_id).unwrap();
                         write_item(&mut cap, &item, 0, &mut out_writer);
                     }
                 }

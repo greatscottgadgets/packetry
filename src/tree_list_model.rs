@@ -34,7 +34,7 @@ type AnyNodeRc<Item> = Rc<RefCell<dyn Node<Item>>>;
 
 trait Node<Item> {
     /// Item at this node, or None if the root.
-    fn item(&self) -> Option<Item>;
+    fn item(&self) -> Option<&Item>;
 
     /// Parent of this node, or None if the root.
     fn parent(&self) -> Result<Option<AnyNodeRc<Item>>, ModelError>;
@@ -112,7 +112,7 @@ impl<Item> Children<Item> {
 }
 
 impl<Item> Node<Item> for RootNode<Item> {
-    fn item(&self) -> Option<Item> {
+    fn item(&self) -> Option<&Item> {
         None
     }
 
@@ -134,8 +134,8 @@ impl<Item> Node<Item> for RootNode<Item> {
 }
 
 impl<Item> Node<Item> for ItemNode<Item> where Item: Copy {
-    fn item(&self) -> Option<Item> {
-        Some(self.item)
+    fn item(&self) -> Option<&Item> {
+        Some(&self.item)
     }
 
     fn parent(&self) -> Result<Option<AnyNodeRc<Item>>, ModelError> {
@@ -217,7 +217,7 @@ where Item: 'static + Copy,
 {
     pub fn new(capture: Arc<Mutex<Capture>>) -> Result<Self, ModelError> {
         let mut cap = capture.lock().or(Err(ModelError::LockError))?;
-        let item_count = cap.item_count(&None)?;
+        let (_completion, item_count) = cap.item_children(None)?;
         let child_count = u32::try_from(item_count)?;
         Ok(TreeListModel {
             _marker: PhantomData,
@@ -292,7 +292,8 @@ where Item: 'static + Copy,
         let mut cap = self.capture.lock().or(Err(ModelError::LockError))?;
 
         let mut root = self.root.borrow_mut();
-        let new_item_count = cap.item_count(&None)? as u32;
+        let (_completion, new_item_count) = cap.item_children(None)?;
+        let new_item_count = new_item_count as u32;
         let old_item_count = root.children.direct_count;
 
         if new_item_count == old_item_count {
@@ -340,8 +341,8 @@ where Item: 'static + Copy,
         // If we've broken out to this point, the node must be directly below `parent` - look it up.
         let mut cap = self.capture.lock().or(Err(ModelError::LockError))?;
         let parent = parent_ref.borrow();
-        let item = cap.item(&parent.item(), relative_position as u64)?;
-        let child_count = cap.child_count(&item)?;
+        let item = cap.item(parent.item(), relative_position as u64)?;
+        let (_completion, child_count) = cap.item_children(Some(&item))?;
         let node = ItemNode {
             item,
             parent: Rc::downgrade(&parent_ref),
