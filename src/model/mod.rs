@@ -21,24 +21,13 @@ glib::wrapper! {
     pub struct DeviceModel(ObjectSubclass<imp::DeviceModel>) @implements gio::ListModel;
 }
 
-impl TrafficModel {
-    pub fn update(&self) -> Result<(), ModelError> {
-        let mut tree_opt  = self.imp().tree.borrow_mut();
-        let tree = tree_opt.as_mut().unwrap();
-        if let Some((position, _, added)) = tree.update()? {
-            drop(tree_opt);
-            self.items_changed(position, 0, added);
-        }
-        Ok(())
-    }
-}
-
 pub trait GenericModel<Item> where Self: Sized {
     fn new(capture: Arc<Mutex<Capture>>) -> Result<Self, ModelError>;
     fn set_expanded(&self,
                     node: &Rc<RefCell<TreeNode<Item>>>,
                     expanded: bool)
         -> Result<(), ModelError>;
+    fn update(&self) -> Result<(), ModelError>;
 }
 
 impl GenericModel<TrafficItem> for TrafficModel {
@@ -59,6 +48,16 @@ impl GenericModel<TrafficItem> for TrafficModel {
         let tree = tree_opt.as_ref().unwrap();
         tree.set_expanded(self, node, expanded)
     }
+
+    fn update(&self) -> Result<(), ModelError> {
+        let mut tree_opt  = self.imp().tree.borrow_mut();
+        let tree = tree_opt.as_mut().unwrap();
+        if let Some((position, _, added)) = tree.update()? {
+            drop(tree_opt);
+            self.items_changed(position, 0, added);
+        }
+        Ok(())
+    }
 }
 
 impl GenericModel<DeviceItem> for DeviceModel {
@@ -78,5 +77,15 @@ impl GenericModel<DeviceItem> for DeviceModel {
         let tree_opt  = self.imp().tree.borrow();
         let tree = tree_opt.as_ref().unwrap();
         tree.set_expanded(self, node, expanded)
+    }
+
+    fn update(&self) -> Result<(), ModelError> {
+        let mut tree_opt  = self.imp().tree.borrow_mut();
+        let tree = tree_opt.as_mut().unwrap();
+        if let Some((position, _, added)) = tree.update()? {
+            drop(tree_opt);
+            self.items_changed(position, 0, added);
+        }
+        Ok(())
     }
 }

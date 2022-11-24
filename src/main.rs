@@ -32,7 +32,7 @@ use gtk::{
 
 use pcap_file::{PcapError, pcap::PcapReader};
 
-use model::{GenericModel, TrafficModel};
+use model::{GenericModel, TrafficModel, DeviceModel};
 use row_data::GenericRowData;
 use expander::ExpanderWrapper;
 use tree_list_model::ModelError;
@@ -218,10 +218,18 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
 
             MODELS.with::<_, Result<(), PacketryError>>(|models| {
                 for model in models.borrow().iter() {
-                    let model = model.clone();
-                    if let Ok(tree_model) = model.downcast::<TrafficModel>() {
+                    if let Ok(tree_model) = model
+                        .clone()
+                        .downcast::<TrafficModel>()
+                    {
                         tree_model.update()?;
-                    };
+                    }
+                    else if let Ok(tree_model) = model
+                        .clone()
+                        .downcast::<DeviceModel>()
+                    {
+                        tree_model.update()?;
+                    }
                 }
                 Ok(())
             })?;
