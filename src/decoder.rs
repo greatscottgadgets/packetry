@@ -58,9 +58,9 @@ impl EndpointData {
 
 #[derive(Default)]
 struct TransactionState {
+    id: Option<TransactionId>,
     first: Option<PID>,
     last: Option<PID>,
-    start: Option<PacketId>,
     count: u64,
     endpoint_id: Option<EndpointId>,
     setup: Option<SetupFields>,
@@ -277,11 +277,11 @@ impl Decoder {
     fn transaction_start(&mut self, capture: &mut Capture, packet_id: PacketId, packet: &[u8])
         -> Result<(), CaptureError>
     {
-        self.add_transaction(capture)?;
+        self.transaction_end(capture)?;
         self.transaction_state = TransactionState::default();
         let pid = PID::from_packet(packet)?;
         let state = &mut self.transaction_state;
-        state.start = Some(packet_id);
+        state.id = Some(capture.transaction_index.push(packet_id)?);
         state.count = 1;
         state.first = Some(pid);
         state.last = state.first;
@@ -305,22 +305,9 @@ impl Decoder {
     fn transaction_end(&mut self, capture: &mut Capture)
         -> Result<(), CaptureError>
     {
-        self.add_transaction(capture)?;
-        self.transaction_state = TransactionState::default();
-        Ok(())
-    }
-
-    fn add_transaction(&mut self, capture: &mut Capture)
-        -> Result<(), CaptureError>
-    {
-        if self.transaction_state.count == 0 { return Ok(()) }
-        let start_packet_id =
-            self.transaction_state.start.ok_or_else(||
-                IndexError(String::from(
-                    "Transaction state has no start PID")))?;
-        let transaction_id =
-            capture.transaction_index.push(start_packet_id)?;
-        self.transfer_update(capture, transaction_id)?;
+        if let Some(transaction_id) = self.transaction_state.id.take() {
+            self.transfer_update(capture, transaction_id)?;
+        }
         Ok(())
     }
 

@@ -1,4 +1,4 @@
-11 SOF groups
+12 SOF groups
  8 SOF packets
   SOF packet with frame number 186, CRC 00
   SOF packet with frame number 186, CRC 00
@@ -29,6 +29,38 @@
   SOF packet with frame number 188, CRC 10
  1 SOF packets
   SOF packet with frame number 189, CRC 0F
+ 31 SOF packets
+  SOF packet with frame number 189, CRC 0F
+  SOF packet with frame number 189, CRC 0F
+  SOF packet with frame number 189, CRC 0F
+  SOF packet with frame number 189, CRC 0F
+  SOF packet with frame number 189, CRC 0F
+  SOF packet with frame number 189, CRC 0F
+  SOF packet with frame number 189, CRC 0F
+  SOF packet with frame number 190, CRC 07
+  SOF packet with frame number 190, CRC 07
+  SOF packet with frame number 190, CRC 07
+  SOF packet with frame number 190, CRC 07
+  SOF packet with frame number 190, CRC 07
+  SOF packet with frame number 190, CRC 07
+  SOF packet with frame number 190, CRC 07
+  SOF packet with frame number 190, CRC 07
+  SOF packet with frame number 191, CRC 18
+  SOF packet with frame number 191, CRC 18
+  SOF packet with frame number 191, CRC 18
+  SOF packet with frame number 191, CRC 18
+  SOF packet with frame number 191, CRC 18
+  SOF packet with frame number 191, CRC 18
+  SOF packet with frame number 191, CRC 18
+  SOF packet with frame number 191, CRC 18
+  SOF packet with frame number 192, CRC 1F
+  SOF packet with frame number 192, CRC 1F
+  SOF packet with frame number 192, CRC 1F
+  SOF packet with frame number 192, CRC 1F
+  SOF packet with frame number 192, CRC 1F
+  SOF packet with frame number 192, CRC 1F
+  SOF packet with frame number 192, CRC 1F
+  SOF packet with frame number 192, CRC 1F
 Getting device descriptor #0 for device 11, reading 18 bytes
  SETUP transaction, ACK
   SETUP packet on 11.0, CRC 04
@@ -221,38 +253,7 @@ Getting string descriptor #4, language 0x0409 for device 11, reading 8 of 255 re
  PING transaction, ACK
   PING packet on 11.0, CRC 04
   ACK packet
- OUT transaction with no data, SOF
+ OUT transaction with no data, ACK
   OUT packet on 11.0, CRC 04
   DATA1 packet with CRC 0000 and no data
   ACK packet
-  SOF packet with frame number 189, CRC 0F
-  SOF packet with frame number 189, CRC 0F
-  SOF packet with frame number 189, CRC 0F
-  SOF packet with frame number 189, CRC 0F
-  SOF packet with frame number 189, CRC 0F
-  SOF packet with frame number 189, CRC 0F
-  SOF packet with frame number 189, CRC 0F
-  SOF packet with frame number 190, CRC 07
-  SOF packet with frame number 190, CRC 07
-  SOF packet with frame number 190, CRC 07
-  SOF packet with frame number 190, CRC 07
-  SOF packet with frame number 190, CRC 07
-  SOF packet with frame number 190, CRC 07
-  SOF packet with frame number 190, CRC 07
-  SOF packet with frame number 190, CRC 07
-  SOF packet with frame number 191, CRC 18
-  SOF packet with frame number 191, CRC 18
-  SOF packet with frame number 191, CRC 18
-  SOF packet with frame number 191, CRC 18
-  SOF packet with frame number 191, CRC 18
-  SOF packet with frame number 191, CRC 18
-  SOF packet with frame number 191, CRC 18
-  SOF packet with frame number 191, CRC 18
-  SOF packet with frame number 192, CRC 1F
-  SOF packet with frame number 192, CRC 1F
-  SOF packet with frame number 192, CRC 1F
-  SOF packet with frame number 192, CRC 1F
-  SOF packet with frame number 192, CRC 1F
-  SOF packet with frame number 192, CRC 1F
-  SOF packet with frame number 192, CRC 1F
-  SOF packet with frame number 192, CRC 1F

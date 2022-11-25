@@ -1,4 +1,4 @@
-277 SOF groups
+278 SOF groups
  6 SOF packets
   SOF packet with frame number 597, CRC 07
   SOF packet with frame number 598, CRC 0F
@@ -3770,6 +3770,15 @@
   SOF packet with frame number 342, CRC 00
   SOF packet with frame number 343, CRC 1F
   SOF packet with frame number 344, CRC 1E
+ 8 SOF packets
+  SOF packet with frame number 345, CRC 01
+  SOF packet with frame number 346, CRC 09
+  SOF packet with frame number 347, CRC 16
+  SOF packet with frame number 348, CRC 19
+  SOF packet with frame number 349, CRC 06
+  SOF packet with frame number 350, CRC 0E
+  SOF packet with frame number 351, CRC 11
+  SOF packet with frame number 352, CRC 1D
 Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
  SETUP transaction, ACK
   SETUP packet on 0.0, CRC 02
@@ -5108,14 +5117,6 @@ Polling 263 times for interrupt transfer on endpoint 2.3 IN
  IN transaction, NAK
   IN packet on 2.3, CRC 06
   NAK packet
- IN transaction, SOF
+ IN transaction, NAK
   IN packet on 2.3, CRC 06
   NAK packet
-  SOF packet with frame number 345, CRC 01
-  SOF packet with frame number 346, CRC 09
-  SOF packet with frame number 347, CRC 16
-  SOF packet with frame number 348, CRC 19
-  SOF packet with frame number 349, CRC 06
-  SOF packet with frame number 350, CRC 0E
-  SOF packet with frame number 351, CRC 11
-  SOF packet with frame number 352, CRC 1D
