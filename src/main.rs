@@ -14,6 +14,7 @@ use std::io::BufReader;
 use std::mem::size_of;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, atomic::{AtomicBool, AtomicU64, Ordering}};
+use std::time::Duration;
 
 #[cfg(feature="step-decoder")]
 use std::{io::Read, net::TcpListener};
@@ -68,6 +69,8 @@ mod vec_map;
 static PCAP_SIZE: AtomicU64 = AtomicU64::new(0);
 static PCAP_READ: AtomicU64 = AtomicU64::new(0);
 static PCAP_STOP: AtomicBool = AtomicBool::new(false);
+
+static UPDATE_INTERVAL: Duration = Duration::from_millis(10);
 
 struct UserInterface {
     capture: Arc<Mutex<Capture>>,
@@ -287,18 +290,9 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
         start_pcap(path)?;
     }
 
-    gtk::glib::timeout_add_local(
-        std::time::Duration::from_millis(10),
-        move || {
-            let result = update_view();
-            if result.is_ok() {
-                Continue(true)
-            } else {
-                display_error(result);
-                Continue(false)
-            }
-        }
-    );
+    gtk::glib::timeout_add_once(
+        UPDATE_INTERVAL,
+        || display_error(update_view()));
 
     Ok(())
 }
@@ -350,6 +344,10 @@ fn update_view() -> Result<(), PacketryError> {
             ui.progress_bar.set_text(Some(&text));
             ui.progress_bar.set_fraction(fraction);
         }
+        gtk::glib::timeout_add_once(
+            UPDATE_INTERVAL,
+            || display_error(update_view())
+        );
         Ok(())
     })
 }
