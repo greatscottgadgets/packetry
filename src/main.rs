@@ -79,6 +79,7 @@ struct UserInterface {
     device_window: ScrolledWindow,
     traffic_model: Option<TrafficModel>,
     device_model: Option<DeviceModel>,
+    endpoint_count: u16,
     show_progress: bool,
     progress_bar: ProgressBar,
     vbox: gtk::Box,
@@ -272,6 +273,7 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
                 device_window,
                 traffic_model: None,
                 device_model: None,
+                endpoint_count: 2,
                 show_progress: false,
                 progress_bar,
                 vbox,
@@ -319,6 +321,7 @@ fn reset_capture() -> Result<(), PacketryError> {
         ui.capture = capture;
         ui.traffic_model = Some(traffic_model);
         ui.device_model = Some(device_model);
+        ui.endpoint_count = 2;
         ui.traffic_window.set_child(Some(&traffic_view));
         ui.device_window.set_child(Some(&device_view));
         Ok(())
@@ -327,8 +330,23 @@ fn reset_capture() -> Result<(), PacketryError> {
 
 fn update_view() -> Result<(), PacketryError> {
     with_ui(|ui| {
+        use PacketryError::Lock;
         if let Some(model) = &ui.traffic_model {
+            let old_count = model.n_items();
             model.update()?;
+            let new_count = model.n_items();
+            // If any endpoints were added, we need to redraw the rows above
+            // to add the additional columns of the connecting lines.
+            if new_count > old_count {
+                let new_ep_count = ui.capture
+                    .lock()
+                    .or(Err(Lock))?
+                    .endpoints.len() as u16;
+                if new_ep_count > ui.endpoint_count {
+                    model.items_changed(0, old_count, old_count);
+                    ui.endpoint_count = new_ep_count;
+                }
+            }
         }
         if let Some(model) = &ui.device_model {
             model.update()?;
