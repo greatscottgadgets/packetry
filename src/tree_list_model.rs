@@ -228,6 +228,7 @@ where Item: 'static + Copy,
         })
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     pub fn set_expanded(&self,
                         model: &Model,
                         node_ref: &ItemNodeRc<Item>,
@@ -235,28 +236,43 @@ where Item: 'static + Copy,
         -> Result<(), ModelError>
     {
         let node = node_ref.borrow();
+        let mut position = node.relative_position()?;
         if node.expanded() == expanded {
             return Ok(());
         }
 
-        node.parent
+        let parent_rc = node.parent
             .upgrade()
-            .ok_or(ModelError::ParentDropped)?
+            .ok_or(ModelError::ParentDropped)?;
+
+        let rows_affected = node.children.direct_count;
+        let expanded_children = node.children.expanded.clone();
+
+        drop(node);
+
+        // If collapsing, first recursively collapse the children of this node.
+        if !expanded {
+            for (_index, child_ref) in expanded_children {
+                self.set_expanded(model, &child_ref, false)?;
+            }
+        }
+
+        // Add or remove this node from the parent's expanded children.
+        parent_rc
             .borrow_mut()
             .children_mut()
             .set_expanded(node_ref, expanded);
 
         // Traverse back up the tree, modifying `children.total_count` for
         // expanded/collapsed entries.
-        let mut position = node.relative_position()?;
         let mut current_node: AnyNodeRc<Item> = node_ref.clone();
         while let Some(parent_ref) = current_node.clone().borrow().parent()? {
             let mut parent = parent_ref.borrow_mut();
             let children = parent.children_mut();
             if expanded {
-                children.total_count += node.children.total_count;
+                children.total_count += rows_affected;
             } else {
-                children.total_count -= node.children.total_count;
+                children.total_count -= rows_affected
             }
             drop(parent);
             current_node = parent_ref;
@@ -264,9 +280,9 @@ where Item: 'static + Copy,
         }
 
         if expanded {
-            model.items_changed(position, 0, node.children.total_count);
+            model.items_changed(position, 0, rows_affected);
         } else {
-            model.items_changed(position, node.children.total_count, 0);
+            model.items_changed(position, rows_affected, 0);
         }
 
         Ok(())
