@@ -12,7 +12,7 @@ use gtk::gio::prelude::ListModelExt;
 
 use thiserror::Error;
 
-use crate::capture::{Capture, CaptureError, ItemSource};
+use crate::capture::{Capture, CaptureError, ItemSource, CompletionStatus};
 use crate::model::GenericModel;
 use crate::row_data::GenericRowData;
 
@@ -29,6 +29,7 @@ pub enum ModelError {
 }
 
 pub type ItemNodeRc<Item> = Rc<RefCell<ItemNode<Item>>>;
+pub type ItemNodeWeak<Item> = Weak<RefCell<ItemNode<Item>>>;
 type AnyNodeRc<Item> = Rc<RefCell<dyn Node<Item>>>;
 
 trait Node<Item> {
@@ -54,6 +55,9 @@ struct Children<Item> {
 
     /// Expanded children of this item.
     expanded: BTreeMap<u32, ItemNodeRc<Item>>,
+
+    /// Incomplete children of this item.
+    incomplete: BTreeMap<u32, ItemNodeWeak<Item>>,
 }
 
 impl<Item> Children<Item> {
@@ -61,7 +65,8 @@ impl<Item> Children<Item> {
         Children {
             direct_count: child_count,
             total_count: child_count,
-            expanded: BTreeMap::new()
+            expanded: BTreeMap::new(),
+            incomplete: BTreeMap::new(),
         }
     }
 }
@@ -104,6 +109,16 @@ impl<Item> Children<Item> {
         } else {
             self.expanded.remove(&child.item_index);
         }
+    }
+
+    /// Add an incomplete child.
+    fn add_incomplete(&mut self, index: u32, child_rc: &ItemNodeRc<Item>) {
+        self.incomplete.insert(index, Rc::downgrade(child_rc));
+    }
+
+    /// Fetch an incomplete child.
+    fn fetch_incomplete(&self, index: u32) -> Option<ItemNodeRc<Item>> {
+        self.incomplete.get(&index).and_then(Weak::upgrade)
     }
 }
 
@@ -240,7 +255,7 @@ where Item: 'static + Copy,
                         expanded: bool)
         -> Result<(), ModelError>
     {
-        let node = node_ref.borrow();
+        let mut node = node_ref.borrow_mut();
 
         if node.expanded() == expanded {
             return Ok(());
@@ -252,6 +267,9 @@ where Item: 'static + Copy,
 
         let rows_affected = node.children.direct_count;
         let expanded_children = node.children.expanded.clone();
+
+        // There cannot be any visible incomplete children at this point.
+        node.children.incomplete.clear();
 
         drop(node);
 
@@ -342,18 +360,34 @@ where Item: 'static + Copy,
         }
 
         // If we've broken out to this point, the node must be directly below `parent` - look it up.
+
+        // First, check if we already have an incomplete node for this item.
+        if let Some(node_rc) = parent_ref
+            .borrow()
+            .children()
+            .fetch_incomplete(relative_position)
+        {
+            return Ok(node_rc)
+        }
+
+        // Otherwise, fetch it from the database.
         let mut cap = self.capture.lock().or(Err(ModelError::LockError))?;
-        let parent = parent_ref.borrow();
+        let mut parent = parent_ref.borrow_mut();
         let item = cap.item(parent.item(), relative_position as u64)?;
-        let (_completion, child_count) = cap.item_children(Some(&item))?;
+        let (completion, child_count) = cap.item_children(Some(&item))?;
         let node = ItemNode {
             item,
             parent: Rc::downgrade(&parent_ref),
             item_index: relative_position,
             children: Children::new(child_count.try_into()?),
         };
-
-        Ok(Rc::new(RefCell::new(node)))
+        let node_rc = Rc::new(RefCell::new(node));
+        if matches!(completion, CompletionStatus::Ongoing) {
+            parent
+                .children_mut()
+                .add_incomplete(relative_position, &node_rc);
+        }
+        Ok(node_rc)
     }
 
     // The following methods correspond to the ListModel interface, and can be
