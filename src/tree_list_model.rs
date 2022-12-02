@@ -288,7 +288,7 @@ where Item: 'static + Copy,
         Ok(())
     }
 
-    pub fn update(&mut self) -> Result<Option<(u32, u32, u32)>, ModelError> {
+    pub fn update(&self) -> Result<Option<(u32, u32, u32)>, ModelError> {
         let mut cap = self.capture.lock().or(Err(ModelError::LockError))?;
 
         let mut root = self.root.borrow_mut();
