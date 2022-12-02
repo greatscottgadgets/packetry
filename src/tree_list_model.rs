@@ -143,6 +143,33 @@ impl<Item> Node<Item> for ItemNode<Item> where Item: Copy {
     }
 }
 
+trait NodeRcOps<Item> {
+    fn update_total(&self, expanded: bool, rows_affected: u32)
+        -> Result<(), ModelError>;
+}
+
+impl<T, Item> NodeRcOps<Item> for Rc<RefCell<T>>
+where T: Node<Item> + 'static, Item: Copy + 'static
+{
+    fn update_total(&self, expanded: bool, rows_affected: u32)
+        -> Result<(), ModelError>
+    {
+        let mut node_rc: AnyNodeRc<Item> = self.clone();
+        while let Some(parent_rc) = node_rc.clone().borrow().parent()? {
+            let mut parent = parent_rc.borrow_mut();
+            let children = parent.children_mut();
+            if expanded {
+                children.total_count += rows_affected;
+            } else {
+                children.total_count -= rows_affected
+            }
+            drop(parent);
+            node_rc = parent_rc;
+        }
+        Ok(())
+    }
+}
+
 impl<Item> ItemNode<Item> where Item: Copy {
     pub fn expanded(&self) -> bool {
         match self.parent.upgrade() {
@@ -247,18 +274,7 @@ where Item: 'static + Copy,
 
         // Traverse back up the tree, modifying `children.total_count` for
         // expanded/collapsed entries.
-        let mut current_node: AnyNodeRc<Item> = node_ref.clone();
-        while let Some(parent_ref) = current_node.clone().borrow().parent()? {
-            let mut parent = parent_ref.borrow_mut();
-            let children = parent.children_mut();
-            if expanded {
-                children.total_count += rows_affected;
-            } else {
-                children.total_count -= rows_affected
-            }
-            drop(parent);
-            current_node = parent_ref;
-        }
+        node_ref.update_total(expanded, rows_affected)?;
 
         if expanded {
             model.items_changed(children_position, 0, rows_affected);
