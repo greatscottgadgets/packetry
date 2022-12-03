@@ -334,9 +334,10 @@ fn reset_capture() -> Result<(), PacketryError> {
 fn update_view() -> Result<(), PacketryError> {
     with_ui(|ui| {
         use PacketryError::Lock;
+        let mut more_updates = false;
         if let Some(model) = &ui.traffic_model {
             let old_count = model.n_items();
-            model.update()?;
+            more_updates |= model.update()?;
             let new_count = model.n_items();
             // If any endpoints were added, we need to redraw the rows above
             // to add the additional columns of the connecting lines.
@@ -352,7 +353,7 @@ fn update_view() -> Result<(), PacketryError> {
             }
         }
         if let Some(model) = &ui.device_model {
-            model.update()?;
+            more_updates |= model.update()?;
         }
         if ui.show_progress {
             let bytes_total = PCAP_SIZE.load(Ordering::Relaxed);
@@ -365,10 +366,12 @@ fn update_view() -> Result<(), PacketryError> {
             ui.progress_bar.set_text(Some(&text));
             ui.progress_bar.set_fraction(fraction);
         }
-        gtk::glib::timeout_add_once(
-            UPDATE_INTERVAL,
-            || display_error(update_view())
-        );
+        if more_updates {
+            gtk::glib::timeout_add_once(
+                UPDATE_INTERVAL,
+                || display_error(update_view())
+            );
+        }
         Ok(())
     })
 }
@@ -436,7 +439,8 @@ fn start_pcap(path: PathBuf) -> Result<(), PacketryError> {
                     break;
                 }
             }
-            let cap = capture.lock().or(Err(Lock))?;
+            let mut cap = capture.lock().or(Err(Lock))?;
+            cap.finish();
             cap.print_storage_summary();
             Ok(())
         };
@@ -487,6 +491,8 @@ fn start_luna() -> Result<(), PacketryError> {
                 let mut cap = capture.lock().or(Err(Lock))?;
                 decoder.handle_raw_packet(&mut cap, &packet?)?;
             }
+            let mut cap = capture.lock().or(Err(Lock))?;
+            cap.finish();
             Ok(())
         };
         std::thread::spawn(move || {

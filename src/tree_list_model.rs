@@ -80,6 +80,9 @@ impl<Item> Children<Item> {
 struct RootNode<Item> {
     /// Top level children.
     children: Children<Item>,
+
+    /// Whether the capture is complete.
+    complete: bool,
 }
 
 pub struct ItemNode<Item> {
@@ -158,7 +161,9 @@ impl<Item> Node<Item> for RootNode<Item> {
         true
     }
 
-    fn set_completed(&mut self) {}
+    fn set_completed(&mut self) {
+        self.complete = true;
+    }
 }
 
 impl<Item> Node<Item> for ItemNode<Item> where Item: Copy {
@@ -272,13 +277,14 @@ where Item: 'static + Copy,
 {
     pub fn new(capture: Arc<Mutex<Capture>>) -> Result<Self, ModelError> {
         let mut cap = capture.lock().or(Err(ModelError::LockError))?;
-        let (_completion, item_count) = cap.item_children(None)?;
+        let (completion, item_count) = cap.item_children(None)?;
         let child_count = u32::try_from(item_count)?;
         Ok(TreeListModel {
             _marker: PhantomData,
             capture: capture.clone(),
             root: Rc::new(RefCell::new(RootNode {
                 children: Children::new(child_count),
+                complete: matches!(completion, CompletionStatus::Complete),
             })),
         })
     }
@@ -339,9 +345,9 @@ where Item: 'static + Copy,
         Ok(())
     }
 
-    pub fn update(&self, model: &Model) -> Result<(), ModelError> {
+    pub fn update(&self, model: &Model) -> Result<bool, ModelError> {
         self.update_node(&self.root, 0, model)?;
-        Ok(())
+        Ok(!self.root.borrow().complete)
     }
 
     fn update_node<T>(&self,

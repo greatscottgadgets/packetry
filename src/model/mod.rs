@@ -25,7 +25,7 @@ pub trait GenericModel<Item> where Self: Sized {
                     position: u32,
                     expanded: bool)
         -> Result<(), ModelError>;
-    fn update(&self) -> Result<(), ModelError>;
+    fn update(&self) -> Result<bool, ModelError>;
 }
 
 impl GenericModel<TrafficItem> for TrafficModel {
@@ -48,7 +48,7 @@ impl GenericModel<TrafficItem> for TrafficModel {
         tree.set_expanded(self, node, position, expanded)
     }
 
-    fn update(&self) -> Result<(), ModelError> {
+    fn update(&self) -> Result<bool, ModelError> {
         let tree_opt = self.imp().tree.borrow();
         let tree = tree_opt.as_ref().unwrap();
         tree.update(self)
@@ -75,7 +75,7 @@ impl GenericModel<DeviceItem> for DeviceModel {
         tree.set_expanded(self, node, position, expanded)
     }
 
-    fn update(&self) -> Result<(), ModelError> {
+    fn update(&self) -> Result<bool, ModelError> {
         let tree_opt = self.imp().tree.borrow();
         let tree = tree_opt.as_ref().unwrap();
         tree.update(self)

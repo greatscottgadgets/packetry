@@ -416,6 +416,7 @@ pub struct Capture {
     pub endpoint_states: FileVec<u8>,
     pub endpoint_state_index: HybridIndex<TransferId, Id<u8>>,
     pub end_index: HybridIndex<TransferId, TrafficItemId>,
+    pub completion: CompletionStatus,
 }
 
 impl Capture {
@@ -433,6 +434,7 @@ impl Capture {
             endpoint_states: FileVec::new()?,
             endpoint_state_index: HybridIndex::new(1)?,
             end_index: HybridIndex::new(1)?,
+            completion: CompletionStatus::Ongoing,
         };
         let default_addr = DeviceAddr(0);
         let default_device = Device { address: default_addr };
@@ -707,8 +709,13 @@ impl Capture {
             None => false
         })
     }
+
+    pub fn finish(&mut self) {
+        self.completion = CompletionStatus::Complete;
+    }
 }
 
+#[derive(Copy, Clone)]
 pub enum CompletionStatus {
     Complete,
     Ongoing
@@ -768,7 +775,7 @@ impl ItemSource<TrafficItem> for Capture {
         use CompletionStatus::*;
         Ok(match parent {
             None => {
-                (Ongoing, self.item_index.len())
+                (self.completion, self.item_index.len())
             },
             Some(Transfer(transfer_id)) => {
                 let entry = self.transfer_index.get(*transfer_id)?;
@@ -1064,7 +1071,7 @@ impl ItemSource<DeviceItem> for Capture {
         use CompletionStatus::*;
         let (completion, children) = match parent {
             None =>
-                (Ongoing, self.device_data.len() - 1),
+                (self.completion, self.device_data.len() - 1),
             Some(Device(dev)) =>
                 (Ongoing, self.device_data(dev)?.configurations.len()),
             Some(DeviceDescriptor(dev)) =>
