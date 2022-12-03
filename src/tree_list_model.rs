@@ -44,6 +44,12 @@ trait Node<Item> {
 
     /// Mutably access the children of this node.
     fn children_mut(&mut self) -> &mut Children<Item>;
+
+    /// Whether the children of this node are displayed.
+    fn expanded(&self) -> bool;
+
+    /// Mark this node as completed.
+    fn set_completed(&mut self);
 }
 
 struct Children<Item> {
@@ -120,6 +126,15 @@ impl<Item> Children<Item> {
     fn fetch_incomplete(&self, index: u32) -> Option<ItemNodeRc<Item>> {
         self.incomplete.get(&index).and_then(Weak::upgrade)
     }
+
+    /// Get the number of rows between two children.
+    fn rows_between(&self, start: u32, end: u32) -> u32 {
+        (end - start) +
+            self.expanded
+                .range(start..end)
+                .map(|(_, node_rc)| node_rc.borrow().children.total_count)
+                .sum::<u32>()
+    }
 }
 
 impl<Item> Node<Item> for RootNode<Item> {
@@ -138,6 +153,12 @@ impl<Item> Node<Item> for RootNode<Item> {
     fn children_mut(&mut self) -> &mut Children<Item> {
         &mut self.children
     }
+
+    fn expanded(&self) -> bool {
+        true
+    }
+
+    fn set_completed(&mut self) {}
 }
 
 impl<Item> Node<Item> for ItemNode<Item> where Item: Copy {
@@ -155,6 +176,27 @@ impl<Item> Node<Item> for ItemNode<Item> where Item: Copy {
 
     fn children_mut(&mut self) -> &mut Children<Item> {
         &mut self.children
+    }
+
+    fn expanded(&self) -> bool {
+        match self.parent.upgrade() {
+            Some(parent_ref) => parent_ref
+                .borrow()
+                .children()
+                .expanded(self.item_index),
+            // Parent is dropped, so node cannot be expanded.
+            None => false
+        }
+    }
+
+    fn set_completed(&mut self) {
+        if let Some(parent_rc) = self.parent.upgrade() {
+            parent_rc
+                .borrow_mut()
+                .children_mut()
+                .incomplete
+                .remove(&self.item_index);
+        }
     }
 }
 
@@ -186,15 +228,9 @@ where T: Node<Item> + 'static, Item: Copy + 'static
 }
 
 impl<Item> ItemNode<Item> where Item: Copy {
+
     pub fn expanded(&self) -> bool {
-        match self.parent.upgrade() {
-            Some(parent_ref) => parent_ref
-                .borrow()
-                .children()
-                .expanded(self.item_index),
-            // Parent is dropped, so node cannot be expanded.
-            None => false
-        }
+        Node::<Item>::expanded(self)
     }
 
     pub fn expandable(&self) -> bool {
@@ -304,28 +340,111 @@ where Item: 'static + Copy,
     }
 
     pub fn update(&self, model: &Model) -> Result<(), ModelError> {
-        let mut cap = self.capture.lock().or(Err(ModelError::LockError))?;
+        self.update_node(&self.root, 0, model)?;
+        Ok(())
+    }
 
-        let mut root = self.root.borrow_mut();
-        let (_completion, new_item_count) = cap.item_children(None)?;
-        let new_item_count = new_item_count as u32;
-        let old_item_count = root.children.direct_count;
+    fn update_node<T>(&self,
+                   node_rc: &Rc<RefCell<T>>,
+                   mut position: u32,
+                   model: &Model)
+        -> Result<u32, ModelError>
+        where T: Node<Item> + 'static
+    {
+        use CompletionStatus::*;
 
-        drop(cap);
+        // Extract details about the current node.
+        let mut node = node_rc.borrow_mut();
+        let item = node.item();
+        let has_item = item.is_some();
+        let expanded = node.expanded();
+        let children = node.children();
+        let old_direct_count = children.direct_count;
+        let incomplete_children = children.incomplete
+            .range(0..)
+            .map(|(i, weak)| (*i, weak.clone()))
+            .collect::<Vec<(u32, ItemNodeWeak<Item>)>>();
 
-        if new_item_count == old_item_count {
-            return Ok(());
+        // Check if this node had children added and/or was completed.
+        let (completion, new_direct_count) = self.capture
+            .lock()
+            .or(Err(ModelError::LockError))?
+            .item_children(item)?;
+        let new_direct_count = new_direct_count as u32;
+        let completed = matches!(completion, Complete);
+        let children_added = new_direct_count - old_direct_count;
+
+        // Deal with this node's own row, if it has one.
+        if has_item {
+            if children_added > 0 {
+                // This node gained children, so its description may change.
+                model.items_changed(position, 1, 1);
+            }
+            // Advance past this node's own row.
+            position += 1;
         }
 
-        let position = root.children.total_count;
-        let items_added = new_item_count - old_item_count;
-        root.children.direct_count = new_item_count;
-        root.children.total_count += items_added;
+        // If completed, remove from incomplete node list.
+        if completed {
+            node.set_completed();
+        }
 
-        drop(root);
+        // Release our borrow on the node, as it may be needed by other calls.
+        drop(node);
 
-        model.items_changed(position, 0, items_added);
-        Ok(())
+        if expanded {
+            // Deal with incomplete children of this node.
+            let mut last_index = 0;
+            for (index, child_weak) in incomplete_children {
+                if let Some(child_rc) = child_weak.upgrade() {
+                    // Advance position up to this child.
+                    position += node_rc
+                        .borrow()
+                        .children()
+                        .rows_between(last_index, index);
+                    // Recursively update this child.
+                    position = self.update_node(&child_rc, position, model)?;
+                    last_index = index + 1;
+                } else {
+                    // Child no longer referenced, remove it.
+                    node_rc
+                        .borrow_mut()
+                        .children_mut()
+                        .incomplete
+                        .remove(&index);
+                }
+            }
+
+            // Advance to the end of this node's existing children.
+            position += node_rc
+                .borrow_mut()
+                .children_mut()
+                .rows_between(last_index, old_direct_count);
+        }
+
+        // Now deal with any new children of this node.
+        if children_added > 0 {
+            // Update this node's child counts.
+            let mut node = node_rc.borrow_mut();
+            let mut children = node.children_mut();
+            children.direct_count += children_added;
+            children.total_count += children_added;
+            drop(node);
+
+            if expanded {
+                // Update total counts for parent nodes.
+                node_rc.update_total(true, children_added)?;
+
+                // Add rows for the new children.
+                model.items_changed(position, 0, children_added);
+
+                // Update the position to continue from.
+                position += children_added;
+            }
+        }
+
+        // Return the position after all of this node's rows.
+        Ok(position)
     }
 
     fn fetch(&self, position: u32) -> Result<ItemNodeRc<Item>, ModelError> {
