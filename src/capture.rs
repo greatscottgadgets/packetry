@@ -174,6 +174,7 @@ pub struct DeviceData {
     pub config_number: Option<ConfigNum>,
     pub endpoint_details: VecMap<EndpointAddr, (usb::EndpointType, usize)>,
     pub strings: VecMap<StringId, UTF16ByteVec>,
+    pub version: DeviceVersion,
 }
 
 impl DeviceData {

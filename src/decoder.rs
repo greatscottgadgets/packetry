@@ -413,6 +413,7 @@ impl Decoder {
                     let descriptor = DeviceDescriptor::from_bytes(payload);
                     let dev_data = self.current_device_data_mut(capture)?;
                     dev_data.device_descriptor = Some(descriptor);
+                    dev_data.version += 1;
                 }
             },
             (Recipient::Device, DescriptorType::Configuration) => {
@@ -426,6 +427,7 @@ impl Decoder {
                             config.descriptor.config_value);
                         configurations.set(config_num, config);
                         dev_data.update_endpoint_details();
+                        dev_data.version += 1;
                     }
                 }
             },
@@ -437,6 +439,7 @@ impl Decoder {
                     let string_id =
                         StringId::from((fields.value & 0xFF) as u8);
                     strings.set(string_id, string);
+                    dev_data.version += 1;
                 }
             },
             _ => {}
@@ -450,6 +453,7 @@ impl Decoder {
         let dev_data = self.current_device_data_mut(capture)?;
         dev_data.config_number = Some(ConfigNum(fields.value.try_into()?));
         dev_data.update_endpoint_details();
+        dev_data.version += 1;
         Ok(())
     }
 
