@@ -39,6 +39,7 @@ pub type TrafficItemId = Id<TransferId>;
 pub type DeviceId = Id<Device>;
 pub type EndpointId = Id<Endpoint>;
 pub type EndpointByteCount = u64;
+pub type DeviceVersion = u32;
 
 #[derive(Copy, Clone)]
 pub enum TrafficItem {
@@ -49,7 +50,7 @@ pub enum TrafficItem {
 
 #[derive(Copy, Clone)]
 pub enum DeviceItem {
-    Device(DeviceId),
+    Device(DeviceId, DeviceVersion),
     DeviceDescriptor(DeviceId),
     DeviceDescriptorField(DeviceId, DeviceField),
     Configuration(DeviceId, ConfigNum),
@@ -725,6 +726,8 @@ pub enum CompletionStatus {
 pub trait ItemSource<Item> {
     fn item(&mut self, parent: Option<&Item>, index: u64)
         -> Result<Item, CaptureError>;
+    fn item_update(&mut self, item: &Item)
+        -> Result<Option<Item>, CaptureError>;
     fn child_item(&mut self, parent: &Item, index: u64)
         -> Result<Item, CaptureError>;
     fn item_children(&mut self, parent: Option<&Item>)
@@ -745,6 +748,12 @@ impl ItemSource<TrafficItem> for Capture {
             },
             Some(item) => self.child_item(item, index)
         }
+    }
+
+    fn item_update(&mut self, _item: &TrafficItem)
+        -> Result<Option<TrafficItem>, CaptureError>
+    {
+        Ok(None)
     }
 
     fn child_item(&mut self, parent: &TrafficItem, index: u64)
@@ -1023,9 +1032,29 @@ impl ItemSource<DeviceItem> for Capture {
         -> Result<DeviceItem, CaptureError>
     {
         match parent {
-            None => Ok(DeviceItem::Device(DeviceId::from(index + 1))),
+            None => {
+                let device_id = DeviceId::from(index + 1);
+                let data = self.device_data(&device_id)?;
+                Ok(DeviceItem::Device(device_id, data.version))
+            },
             Some(item) => self.child_item(item, index)
         }
+    }
+
+    fn item_update(&mut self, item: &DeviceItem)
+        -> Result<Option<DeviceItem>, CaptureError>
+    {
+        Ok(match item {
+            DeviceItem::Device(device_id, version) => {
+                let data = self.device_data(device_id)?;
+                if data.version != *version {
+                    Some(DeviceItem::Device(*device_id, data.version))
+                } else {
+                    None
+                }
+            },
+            _ => None
+        })
     }
 
     fn child_item(&mut self, parent: &DeviceItem, index: u64)
@@ -1033,7 +1062,7 @@ impl ItemSource<DeviceItem> for Capture {
     {
         use DeviceItem::*;
         Ok(match parent {
-            Device(dev) => match index {
+            Device(dev, _version) => match index {
                 0 => DeviceDescriptor(*dev),
                 conf => Configuration(*dev,
                     ConfigNum(conf.try_into()?)),
@@ -1073,7 +1102,7 @@ impl ItemSource<DeviceItem> for Capture {
         let (completion, children) = match parent {
             None =>
                 (self.completion, self.device_data.len() - 1),
-            Some(Device(dev)) =>
+            Some(Device(dev, _version)) =>
                 (Ongoing, self.device_data(dev)?.configurations.len()),
             Some(DeviceDescriptor(dev)) =>
                 match self.device_data(dev)?.device_descriptor {
@@ -1111,7 +1140,7 @@ impl ItemSource<DeviceItem> for Capture {
     {
         use DeviceItem::*;
         Ok(match item {
-            Device(dev) => {
+            Device(dev, _version) => {
                 let device = self.devices.get(*dev)?;
                 let data = self.device_data(dev)?;
                 format!("Device {}: {}", device.address, data.description())
