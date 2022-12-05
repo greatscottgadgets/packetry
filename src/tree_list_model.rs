@@ -53,7 +53,7 @@ trait Node<Item> {
     fn set_completed(&mut self);
 
     /// Access this node as an item node, if it is one.
-    fn item_node(&self) -> Option<&ItemNode<Item>>;
+    fn item_node(&mut self) -> Option<&mut ItemNode<Item>>;
 }
 
 struct Children<Item> {
@@ -172,7 +172,7 @@ impl<Item> Node<Item> for RootNode<Item> {
         self.complete = true;
     }
 
-    fn item_node(&self) -> Option<&ItemNode<Item>> {
+    fn item_node(&mut self) -> Option<&mut ItemNode<Item>> {
         None
     }
 }
@@ -215,7 +215,7 @@ impl<Item> Node<Item> for ItemNode<Item> where Item: Copy {
         }
     }
 
-    fn item_node(&self) -> Option<&ItemNode<Item>> {
+    fn item_node(&mut self) -> Option<&mut ItemNode<Item>> {
         Some(self)
     }
 }
@@ -403,21 +403,36 @@ where Item: 'static + Copy,
 
         // Deal with this node's own row, if it has one.
         if let Some(item_node) = node.item_node() {
-            if children_added > 0 {
-                // This node gained children, so its description may change.
-                let summary = self.capture
-                    .lock()
-                    .or(Err(ModelError::LockError))?
-                    .summary(&item_node.item)?;
+            let mut cap = self.capture
+                .lock()
+                .or(Err(ModelError::LockError))?;
+
+            // Check whether this item itself should be updated.
+            let item_updated = if children_added > 0 {
+                // Update due to added children.
+                true
+            } else if let Some(new_item) = cap.item_update(&item_node.item)? {
+                // Update due to new version of item.
+                item_node.item = new_item;
+                true
+            } else {
+                // No update.
+                false
+            };
+
+            if item_updated {
+                // The node's description may change.
+                let summary = cap.summary(&item_node.item)?;
                 for widget in item_node.widgets.borrow().iter() {
                     widget.set_text(summary.clone());
                     // If there were no previous children, the row was not
                     // previously expandable.
-                    if old_direct_count == 0 {
+                    if children_added > 0 && old_direct_count == 0 {
                         widget.expander().set_visible(true);
                     }
                 }
             }
+
             // Advance past this node's own row.
             position += 1;
         }
