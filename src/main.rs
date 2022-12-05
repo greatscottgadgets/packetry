@@ -147,6 +147,7 @@ fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
                             .map_err(PacketryError::Model))
                 });
                 expander_wrapper.set_handler(handler);
+                node.attach_widget(&expander_wrapper);
             },
             Err(msg) => {
                 expander_wrapper.set_connectors("".to_string());
@@ -157,11 +158,22 @@ fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
         Ok(())
     };
     let unbind = move |list_item: &ListItem| {
+        let row = list_item
+            .item()
+            .or_bug("ListItem has no item")?
+            .downcast::<RowData>()
+            .or_bug("Item is not RowData")?;
+
         let expander_wrapper = list_item
             .child()
             .or_bug("ListItem has no child widget")?
             .downcast::<ExpanderWrapper>()
             .or_bug("Child widget is not an ExpanderWrapper")?;
+
+        if let Ok(node_ref) = row.node() {
+            node_ref.borrow().remove_widget(&expander_wrapper);
+        }
+
         let expander = expander_wrapper.expander();
         let handler = expander_wrapper
             .take_handler()

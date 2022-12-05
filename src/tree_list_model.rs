@@ -1,12 +1,12 @@
 use std::cell::RefCell;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::marker::PhantomData;
 use std::num::TryFromIntError;
 use std::rc::{Rc, Weak};
 use std::sync::{Arc, Mutex};
 use std::ops::DerefMut;
 
-use gtk::prelude::{IsA, Cast};
+use gtk::prelude::{IsA, Cast, WidgetExt};
 use gtk::glib::Object;
 use gtk::gio::prelude::ListModelExt;
 
@@ -15,6 +15,7 @@ use thiserror::Error;
 use crate::capture::{Capture, CaptureError, ItemSource, CompletionStatus};
 use crate::model::GenericModel;
 use crate::row_data::GenericRowData;
+use crate::expander::ExpanderWrapper;
 
 #[derive(Error, Debug)]
 pub enum ModelError {
@@ -50,6 +51,9 @@ trait Node<Item> {
 
     /// Mark this node as completed.
     fn set_completed(&mut self);
+
+    /// Access this node as an item node, if it is one.
+    fn item_node(&self) -> Option<&ItemNode<Item>>;
 }
 
 struct Children<Item> {
@@ -97,6 +101,9 @@ pub struct ItemNode<Item> {
 
     /// Children of this item.
     children: Children<Item>,
+
+    /// Widgets to update when this item changes.
+    widgets: RefCell<HashSet<ExpanderWrapper>>,
 }
 
 impl<Item> Children<Item> {
@@ -164,6 +171,10 @@ impl<Item> Node<Item> for RootNode<Item> {
     fn set_completed(&mut self) {
         self.complete = true;
     }
+
+    fn item_node(&self) -> Option<&ItemNode<Item>> {
+        None
+    }
 }
 
 impl<Item> Node<Item> for ItemNode<Item> where Item: Copy {
@@ -202,6 +213,10 @@ impl<Item> Node<Item> for ItemNode<Item> where Item: Copy {
                 .incomplete
                 .remove(&self.item_index);
         }
+    }
+
+    fn item_node(&self) -> Option<&ItemNode<Item>> {
+        Some(self)
     }
 }
 
@@ -260,6 +275,14 @@ impl<Item> ItemNode<Item> where Item: Copy {
                 }
             }
         }
+    }
+
+    pub fn attach_widget(&self, widget: &ExpanderWrapper) {
+        self.widgets.borrow_mut().insert(widget.clone());
+    }
+
+    pub fn remove_widget(&self, widget: &ExpanderWrapper) {
+        self.widgets.borrow_mut().remove(widget);
     }
 }
 
@@ -361,8 +384,6 @@ where Item: 'static + Copy,
 
         // Extract details about the current node.
         let mut node = node_rc.borrow_mut();
-        let item = node.item();
-        let has_item = item.is_some();
         let expanded = node.expanded();
         let children = node.children();
         let old_direct_count = children.direct_count;
@@ -375,16 +396,27 @@ where Item: 'static + Copy,
         let (completion, new_direct_count) = self.capture
             .lock()
             .or(Err(ModelError::LockError))?
-            .item_children(item)?;
+            .item_children(node.item())?;
         let new_direct_count = new_direct_count as u32;
         let completed = matches!(completion, Complete);
         let children_added = new_direct_count - old_direct_count;
 
         // Deal with this node's own row, if it has one.
-        if has_item {
+        if let Some(item_node) = node.item_node() {
             if children_added > 0 {
                 // This node gained children, so its description may change.
-                model.items_changed(position, 1, 1);
+                let summary = self.capture
+                    .lock()
+                    .or(Err(ModelError::LockError))?
+                    .summary(&item_node.item)?;
+                for widget in item_node.widgets.borrow().iter() {
+                    widget.set_text(summary.clone());
+                    // If there were no previous children, the row was not
+                    // previously expandable.
+                    if old_direct_count == 0 {
+                        widget.expander().set_visible(true);
+                    }
+                }
             }
             // Advance past this node's own row.
             position += 1;
@@ -505,6 +537,7 @@ where Item: 'static + Copy,
             parent: Rc::downgrade(&parent_ref),
             item_index: relative_position,
             children: Children::new(child_count.try_into()?),
+            widgets: RefCell::new(HashSet::new()),
         };
         let node_rc = Rc::new(RefCell::new(node));
         if matches!(completion, CompletionStatus::Ongoing) {
