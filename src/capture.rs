@@ -52,17 +52,18 @@ pub enum TrafficItem {
 pub enum DeviceItem {
     Device(DeviceId, DeviceVersion),
     DeviceDescriptor(DeviceId),
-    DeviceDescriptorField(DeviceId, DeviceField),
+    DeviceDescriptorField(DeviceId, DeviceField, DeviceVersion),
     Configuration(DeviceId, ConfigNum),
     ConfigurationDescriptor(DeviceId, ConfigNum),
-    ConfigurationDescriptorField(DeviceId, ConfigNum, ConfigField),
+    ConfigurationDescriptorField(DeviceId, ConfigNum,
+                                 ConfigField, DeviceVersion),
     Interface(DeviceId, ConfigNum, InterfaceNum),
     InterfaceDescriptor(DeviceId, ConfigNum, InterfaceNum),
     InterfaceDescriptorField(DeviceId, ConfigNum,
-                             InterfaceNum, InterfaceField),
+                             InterfaceNum, InterfaceField, DeviceVersion),
     EndpointDescriptor(DeviceId, ConfigNum, InterfaceNum, InterfaceEpNum),
     EndpointDescriptorField(DeviceId, ConfigNum, InterfaceNum,
-                            InterfaceEpNum, EndpointField),
+                            InterfaceEpNum, EndpointField, DeviceVersion),
 }
 
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
@@ -682,6 +683,10 @@ impl Capture {
             IndexError(format!("Capture has no device with ID {id}")))
     }
 
+    fn device_version(&self, id: &DeviceId) -> Result<u32, CaptureError> {
+        Ok(self.device_data(id)?.version)
+    }
+
     pub fn device_data_mut(&mut self, id: &DeviceId)
         -> Result<&mut DeviceData, CaptureError>
     {
@@ -1044,11 +1049,28 @@ impl ItemSource<DeviceItem> for Capture {
     fn item_update(&mut self, item: &DeviceItem)
         -> Result<Option<DeviceItem>, CaptureError>
     {
+        use DeviceItem::*;
         Ok(match item {
-            DeviceItem::Device(device_id, version) => {
-                let data = self.device_data(device_id)?;
-                if data.version != *version {
-                    Some(DeviceItem::Device(*device_id, data.version))
+            Device(dev, version) |
+            DeviceDescriptorField(dev, .., version) |
+            ConfigurationDescriptorField(dev, .., version) |
+            InterfaceDescriptorField(dev, .., version) |
+            EndpointDescriptorField(dev, .., version) => {
+                let new = self.device_version(dev)?;
+                if *version != new {
+                    Some(match *item {
+                        Device(dev, _) =>
+                            Device(dev, new),
+                        DeviceDescriptorField(dev, field, _) =>
+                            DeviceDescriptorField(dev, field, new),
+                        ConfigurationDescriptorField(dev, conf, field, _) =>
+                            ConfigurationDescriptorField(dev, conf, field, new),
+                        InterfaceDescriptorField(dev, conf, iface, field, _) =>
+                            InterfaceDescriptorField(dev, conf, iface, field, new),
+                        EndpointDescriptorField(dev, conf, iface, ep, field, _) =>
+                            EndpointDescriptorField(dev, conf, iface, ep, field, new),
+                        _ => unreachable!()
+                    })
                 } else {
                     None
                 }
@@ -1069,7 +1091,8 @@ impl ItemSource<DeviceItem> for Capture {
             },
             DeviceDescriptor(dev) =>
                 DeviceDescriptorField(*dev,
-                    DeviceField(index.try_into()?)),
+                    DeviceField(index.try_into()?),
+                    self.device_version(dev)?),
             Configuration(dev, conf) => match index {
                 0 => ConfigurationDescriptor(*dev, *conf),
                 n => Interface(*dev, *conf,
@@ -1077,7 +1100,8 @@ impl ItemSource<DeviceItem> for Capture {
             },
             ConfigurationDescriptor(dev, conf) =>
                 ConfigurationDescriptorField(*dev, *conf,
-                    ConfigField(index.try_into()?)),
+                    ConfigField(index.try_into()?),
+                    self.device_version(dev)?),
             Interface(dev, conf, iface) => match index {
                 0 => InterfaceDescriptor(*dev, *conf, *iface),
                 n => EndpointDescriptor(*dev, *conf, *iface,
@@ -1085,10 +1109,12 @@ impl ItemSource<DeviceItem> for Capture {
             },
             InterfaceDescriptor(dev, conf, iface) =>
                 InterfaceDescriptorField(*dev, *conf, *iface,
-                    InterfaceField(index.try_into()?)),
+                    InterfaceField(index.try_into()?),
+                    self.device_version(dev)?),
             EndpointDescriptor(dev, conf, iface, ep) =>
                 EndpointDescriptorField(*dev, *conf, *iface, *ep,
-                    EndpointField(index.try_into()?)),
+                    EndpointField(index.try_into()?),
+                    self.device_version(dev)?),
             _ => return Err(IndexError(String::from(
                 "This device item type cannot have children")))
         })
@@ -1109,7 +1135,7 @@ impl ItemSource<DeviceItem> for Capture {
                 }),
             Some(DeviceDescriptor(dev)) =>
                 match self.device_data(dev)?.device_descriptor {
-                    Some(_) => (Complete, usb::DeviceDescriptor::NUM_FIELDS),
+                    Some(_) => (Ongoing, usb::DeviceDescriptor::NUM_FIELDS),
                     None => (Ongoing, 0),
                 },
             Some(Configuration(dev, conf)) =>
@@ -1119,21 +1145,21 @@ impl ItemSource<DeviceItem> for Capture {
                 },
             Some(ConfigurationDescriptor(dev, conf)) =>
                 match self.try_configuration(dev, conf) {
-                    Some(_) => (Complete, usb::ConfigDescriptor::NUM_FIELDS),
+                    Some(_) => (Ongoing, usb::ConfigDescriptor::NUM_FIELDS),
                     None => (Ongoing, 0)
                 },
             Some(Interface(dev, conf, iface)) =>
                 match self.try_configuration(dev, conf) {
                     Some(conf) =>
-                        (Complete,
+                        (Ongoing,
                          1 + conf.interface(iface)?.endpoint_descriptors.len()),
                     None => (Ongoing, 0)
                 },
             Some(InterfaceDescriptor(..)) =>
-                (Complete, usb::InterfaceDescriptor::NUM_FIELDS),
+                (Ongoing, usb::InterfaceDescriptor::NUM_FIELDS),
             Some(EndpointDescriptor(..)) =>
                 (Complete, usb::EndpointDescriptor::NUM_FIELDS),
-            _ => (Complete, 0)
+            _ => (Ongoing, 0)
         };
         Ok((completion, children as u64))
     }
@@ -1154,7 +1180,7 @@ impl ItemSource<DeviceItem> for Capture {
                     None => "No device descriptor"
                 }.to_string()
             },
-            DeviceDescriptorField(dev, field) => {
+            DeviceDescriptorField(dev, field, _ver) => {
                 let data = self.device_data(dev)?;
                 match data.device_descriptor {
                     Some(desc) => desc.field_text(*field, &data.strings),
@@ -1165,7 +1191,7 @@ impl ItemSource<DeviceItem> for Capture {
                 "Configuration {conf}"),
             ConfigurationDescriptor(..) =>
                 "Configuration descriptor".to_string(),
-            ConfigurationDescriptorField(dev, conf, field) => {
+            ConfigurationDescriptorField(dev, conf, field, _ver) => {
                 let data = self.device_data(dev)?;
                 data.configuration(conf)?
                     .descriptor
@@ -1175,7 +1201,7 @@ impl ItemSource<DeviceItem> for Capture {
                 "Interface {iface}"),
             InterfaceDescriptor(..) =>
                 "Interface descriptor".to_string(),
-            InterfaceDescriptorField(dev, conf, iface, field) => {
+            InterfaceDescriptorField(dev, conf, iface, field, _ver) => {
                 let data = self.device_data(dev)?;
                 data.configuration(conf)?
                     .interface(iface)?
@@ -1190,7 +1216,7 @@ impl ItemSource<DeviceItem> for Capture {
                                .endpoint_address;
                 format!("Endpoint {} {}", addr.number(), addr.direction())
             },
-            EndpointDescriptorField(dev, conf, iface, ep, field) => {
+            EndpointDescriptorField(dev, conf, iface, ep, field, _ver) => {
                 self.device_data(dev)?
                     .configuration(conf)?
                     .interface(iface)?
