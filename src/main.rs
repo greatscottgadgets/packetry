@@ -175,10 +175,10 @@ fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
         }
 
         let expander = expander_wrapper.expander();
-        let handler = expander_wrapper
-            .take_handler()
-            .or_bug("ExpanderWrapper handler was not set")?;
-        expander.disconnect(handler);
+        if let Some(handler) = expander_wrapper.take_handler() {
+            expander.disconnect(handler);
+        }
+
         Ok(())
     };
     factory.connect_bind(move |_, item| display_error(bind(item)));
