@@ -1103,7 +1103,10 @@ impl ItemSource<DeviceItem> for Capture {
             None =>
                 (self.completion, self.device_data.len() - 1),
             Some(Device(dev, _version)) =>
-                (Ongoing, self.device_data(dev)?.configurations.len()),
+                (Ongoing, {
+                    let configs = self.device_data(dev)?.configurations.len();
+                    if configs == 0 { 1 } else { configs }
+                }),
             Some(DeviceDescriptor(dev)) =>
                 match self.device_data(dev)?.device_descriptor {
                     Some(_) => (Complete, usb::DeviceDescriptor::NUM_FIELDS),
