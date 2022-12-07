@@ -1396,6 +1396,7 @@ mod tests {
                         let packet = result.unwrap().data;
                         decoder.handle_raw_packet(&mut cap, &packet).unwrap();
                     }
+                    decoder.finish(&mut cap).unwrap();
                     let out_file = File::create(out_path.clone()).unwrap();
                     let mut out_writer = BufWriter::new(out_file);
                     let num_items = cap.item_index.len();

@@ -293,6 +293,14 @@ impl Decoder {
         Ok(())
     }
 
+    pub fn finish(&mut self, capture: &mut Capture)
+        -> Result<(), CaptureError>
+    {
+        self.transaction_end(capture, false, false)?;
+        capture.finish();
+        Ok(())
+    }
+
     pub fn token_endpoint(&mut self, capture: &mut Capture, pid: PID, token: &TokenFields)
         -> Result<EndpointId, CaptureError>
     {
