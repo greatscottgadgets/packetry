@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use crate::usb::{self, prelude::*};
 use crate::capture::prelude::*;
 use crate::hybrid_index::Number;
@@ -490,91 +488,12 @@ impl Decoder {
                 "Decoder has no data for current endpoint ID {endpoint_id}")))
     }
 
-    fn current_device_data<'a>(&self, capture: &'a mut Capture)
-        -> Result<&'a DeviceData, CaptureError>
-    {
-        let ep_data = self.current_endpoint_data()?;
-        capture.device_data(&ep_data.device_id)
-    }
-
     fn current_device_data_mut<'a>(&mut self, capture: &'a mut Capture)
         -> Result<&'a mut DeviceData, CaptureError>
     {
         let ep_data = self.current_endpoint_data()?;
         let device_id = ep_data.device_id;
         capture.device_data_mut(&device_id)
-    }
-
-    fn decode_request(&mut self, capture: &mut Capture, fields: SetupFields)
-        -> Result<(), CaptureError>
-    {
-        let req_type = fields.type_fields.request_type();
-        let request = StandardRequest::from(fields.request);
-        match (req_type, request) {
-            (RequestType::Standard, StandardRequest::GetDescriptor)
-                => self.decode_descriptor_read(capture, &fields)?,
-            (RequestType::Standard, StandardRequest::SetConfiguration)
-                => self.decode_configuration_set(capture, &fields)?,
-            _ => ()
-        }
-        Ok(())
-    }
-
-    fn decode_descriptor_read(&mut self, capture: &mut Capture, fields: &SetupFields)
-        -> Result<(), CaptureError>
-    {
-        let recipient = fields.type_fields.recipient();
-        let desc_type = DescriptorType::from((fields.value >> 8) as u8);
-        let payload = &self.current_endpoint_data()?.payload;
-        let length = payload.len();
-        match (recipient, desc_type) {
-            (Recipient::Device, DescriptorType::Device) => {
-                if length == size_of::<DeviceDescriptor>() {
-                    let descriptor = DeviceDescriptor::from_bytes(payload);
-                    let dev_data = self.current_device_data_mut(capture)?;
-                    dev_data.device_descriptor = Some(descriptor);
-                    dev_data.version += 1;
-                }
-            },
-            (Recipient::Device, DescriptorType::Configuration) => {
-                let size = size_of::<ConfigDescriptor>();
-                if length >= size {
-                    let configuration = Configuration::from_bytes(payload);
-                    let dev_data = self.current_device_data_mut(capture)?;
-                    if let Some(config) = configuration {
-                        let configurations = &mut dev_data.configurations;
-                        let config_num = ConfigNum::from(
-                            config.descriptor.config_value);
-                        configurations.set(config_num, config);
-                        dev_data.update_endpoint_details();
-                        dev_data.version += 1;
-                    }
-                }
-            },
-            (Recipient::Device, DescriptorType::String) => {
-                if length >= 2 {
-                    let string = UTF16ByteVec(payload[2..length].to_vec());
-                    let dev_data = self.current_device_data_mut(capture)?;
-                    let strings = &mut dev_data.strings;
-                    let string_id =
-                        StringId::from((fields.value & 0xFF) as u8);
-                    strings.set(string_id, string);
-                    dev_data.version += 1;
-                }
-            },
-            _ => {}
-        };
-        Ok(())
-    }
-
-    fn decode_configuration_set(&mut self, capture: &mut Capture, fields: &SetupFields)
-        -> Result<(), CaptureError>
-    {
-        let dev_data = self.current_device_data_mut(capture)?;
-        dev_data.config_number = Some(ConfigNum(fields.value.try_into()?));
-        dev_data.update_endpoint_details();
-        dev_data.version += 1;
-        Ok(())
     }
 
     fn transfer_status(&mut self,
@@ -586,7 +505,7 @@ impl Decoder {
     {
         let endpoint_id = self.current_endpoint_id()?;
         let ep_addr = self.current_endpoint_data()?.address;
-        let dev_data = self.current_device_data(capture)?;
+        let dev_data = self.current_device_data_mut(capture)?;
         let (ep_type, ep_max) = dev_data.endpoint_details(ep_addr);
         let split_sc = self.transaction_state.split_sc;
         let pending_payload =
@@ -662,8 +581,8 @@ impl Decoder {
                         (In,  true,  IN,    OUT) |
                         (Out, true,  OUT,   IN ) => {
                             if success && complete {
-                                let fields_copy = *fields;
-                                self.decode_request(capture, fields_copy)?;
+                                dev_data.decode_request(
+                                    fields, &ep_data.payload)?;
                                 // Status stage complete.
                                 Done
                             } else {

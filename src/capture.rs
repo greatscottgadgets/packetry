@@ -1,5 +1,6 @@
 use std::ops::Range;
 use std::num::TryFromIntError;
+use std::mem::size_of;
 
 use crate::id::{Id, HasLength};
 use crate::file_vec::{FileVec, FileVecError};
@@ -253,6 +254,74 @@ impl DeviceData {
         if self.endpoint_details.get(addr).is_none() {
             self.endpoint_details.set(addr, (ep_type, None));
         }
+    }
+
+    pub fn decode_request(&mut self, fields: &SetupFields, payload: &[u8])
+        -> Result<(), CaptureError>
+    {
+        let req_type = fields.type_fields.request_type();
+        let request = StandardRequest::from(fields.request);
+        match (req_type, request) {
+            (RequestType::Standard, StandardRequest::GetDescriptor)
+                => self.decode_descriptor_read(fields, payload)?,
+            (RequestType::Standard, StandardRequest::SetConfiguration)
+                => self.decode_configuration_set(fields)?,
+            _ => ()
+        }
+        Ok(())
+    }
+
+    pub fn decode_descriptor_read(&mut self,
+                                  fields: &SetupFields,
+                                  payload: &[u8])
+        -> Result<(), CaptureError>
+    {
+        let recipient = fields.type_fields.recipient();
+        let desc_type = DescriptorType::from((fields.value >> 8) as u8);
+        let length = payload.len();
+        match (recipient, desc_type) {
+            (Recipient::Device, DescriptorType::Device) => {
+                if length == size_of::<DeviceDescriptor>() {
+                    let descriptor = DeviceDescriptor::from_bytes(payload);
+                    self.device_descriptor = Some(descriptor);
+                    self.version += 1;
+                }
+            },
+            (Recipient::Device, DescriptorType::Configuration) => {
+                let size = size_of::<ConfigDescriptor>();
+                if length >= size {
+                    let configuration = Configuration::from_bytes(payload);
+                    if let Some(config) = configuration {
+                        let configurations = &mut self.configurations;
+                        let config_num = ConfigNum::from(
+                            config.descriptor.config_value);
+                        configurations.set(config_num, config);
+                        self.update_endpoint_details();
+                        self.version += 1;
+                    }
+                }
+            },
+            (Recipient::Device, DescriptorType::String) => {
+                if length >= 2 {
+                    let string = UTF16ByteVec(payload[2..length].to_vec());
+                    let string_id =
+                        StringId::from((fields.value & 0xFF) as u8);
+                    self.strings.set(string_id, string);
+                    self.version += 1;
+                }
+            },
+            _ => {}
+        };
+        Ok(())
+    }
+
+    fn decode_configuration_set(&mut self, fields: &SetupFields)
+        -> Result<(), CaptureError>
+    {
+        self.config_number = Some(ConfigNum(fields.value.try_into()?));
+        self.update_endpoint_details();
+        self.version += 1;
+        Ok(())
     }
 }
 
