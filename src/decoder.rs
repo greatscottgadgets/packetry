@@ -403,14 +403,13 @@ impl Decoder {
         let pid = PID::from_packet(packet)?;
         self.transaction_state.count += 1;
         if self.transaction_state.last == Some(PID::SPLIT) {
+            let endpoint_id = self.packet_endpoint(capture, packet)?;
+            self.transaction_state.endpoint_id = Some(endpoint_id);
             self.transaction_state.split_pid = Some(pid);
-            self.transaction_state.endpoint_id =
-                Some(self.packet_endpoint(capture, packet)?);
-            let ep_data = self.current_endpoint_data()?;
-            let ep_addr = ep_data.address;
+            let ep_data = self.endpoint_data(endpoint_id)?;
             if let Some(ep_type) = self.transaction_state.split_ep_type {
-                let dev_data = self.current_device_data_mut(capture)?;
-                dev_data.set_endpoint_type(ep_addr, ep_type);
+                let dev_data = capture.device_data_mut(&ep_data.device_id)?;
+                dev_data.set_endpoint_type(ep_data.address, ep_type);
             }
         }
         self.transaction_state.last = Some(pid);
@@ -466,50 +465,35 @@ impl Decoder {
         Ok(endpoint_id)
     }
 
-    fn current_endpoint_id(&self) -> Result<EndpointId, CaptureError> {
-        self.transaction_state.endpoint_id.ok_or_else(||
-            IndexError(String::from(
-                "Transaction state has no endpoint ID set")))
-    }
-
-    fn current_endpoint_data(&self) -> Result<&EndpointData, CaptureError> {
-        let endpoint_id = self.current_endpoint_id()?;
+    fn endpoint_data(&self, endpoint_id: EndpointId)
+        -> Result<&EndpointData, CaptureError> {
         self.endpoint_data.get(endpoint_id).ok_or_else(||
             IndexError(format!(
                 "Decoder has no data for current endpoint ID {endpoint_id}")))
     }
 
-    fn current_endpoint_data_mut(&mut self)
+    fn endpoint_data_mut(&mut self, endpoint_id: EndpointId)
         -> Result<&mut EndpointData, CaptureError>
     {
-        let endpoint_id = self.current_endpoint_id()?;
         self.endpoint_data.get_mut(endpoint_id).ok_or_else(||
             IndexError(format!(
                 "Decoder has no data for current endpoint ID {endpoint_id}")))
     }
 
-    fn current_device_data_mut<'a>(&mut self, capture: &'a mut Capture)
-        -> Result<&'a mut DeviceData, CaptureError>
-    {
-        let ep_data = self.current_endpoint_data()?;
-        let device_id = ep_data.device_id;
-        capture.device_data_mut(&device_id)
-    }
-
     fn transfer_status(&mut self,
                        capture: &mut Capture,
+                       endpoint_id: EndpointId,
                        next: PID,
                        success: bool,
                        complete: bool)
         -> Result<TransferStatus, CaptureError>
     {
-        let endpoint_id = self.current_endpoint_id()?;
-        let ep_addr = self.current_endpoint_data()?.address;
-        let dev_data = self.current_device_data_mut(capture)?;
-        let (ep_type, ep_max) = dev_data.endpoint_details(ep_addr);
+        let ep_data = self.endpoint_data(endpoint_id)?;
+        let dev_data = capture.device_data_mut(&ep_data.device_id)?;
+        let (ep_type, ep_max) = dev_data.endpoint_details(ep_data.address);
         let split_sc = self.transaction_state.split_sc;
         let pending_payload =
-            self.current_endpoint_data_mut()?.pending_payload.take();
+            self.endpoint_data_mut(endpoint_id)?.pending_payload.take();
         let payload =
             self.transaction_state.payload.take().or(pending_payload);
         let length = payload.as_ref().map_or(0, |vec| vec.len()) as u64;
@@ -517,7 +501,7 @@ impl Decoder {
             (Some(payload), Some(max)) => payload.len() < max,
             (..) => false,
         };
-        let ep_data = self.current_endpoint_data()?;
+        let ep_data = self.endpoint_data(endpoint_id)?;
         use PID::*;
         use EndpointType::{Normal, Framing};
         use usb::EndpointType::*;
@@ -532,7 +516,7 @@ impl Decoder {
                 match split_sc {
                     None | Some(Start) => {
                         let setup = self.transaction_state.setup;
-                        let ep_data = self.current_endpoint_data_mut()?;
+                        let ep_data = self.endpoint_data_mut(endpoint_id)?;
                         ep_data.setup = setup;
                         New
                     },
@@ -558,7 +542,7 @@ impl Decoder {
                         (In,  true, IN,    IN ) |
                         (Out, true, OUT,   OUT) => {
                             if success {
-                                let ep_data = self.current_endpoint_data_mut()?;
+                                let ep_data = self.endpoint_data_mut(endpoint_id)?;
                                 if (split_sc, next) == (Some(Complete), OUT) {
                                     ep_data.pending_payload = payload;
                                 } else if let Some(data) = payload {
@@ -610,7 +594,7 @@ impl Decoder {
             (_, None, _, IN | OUT) => {
                 let ep_traf = capture.endpoint_traffic(endpoint_id)?;
                 ep_traf.data_index.push(ep_traf.total_data)?;
-                let ep_data = self.current_endpoint_data_mut()?;
+                let ep_data = self.endpoint_data_mut(endpoint_id)?;
                 if success {
                     if split_sc == Some(Complete) && next == OUT {
                         ep_data.pending_payload = payload;
@@ -638,7 +622,7 @@ impl Decoder {
             (_, Some(OUT), _, OUT) => {
                 let ep_traf = capture.endpoint_traffic(endpoint_id)?;
                 ep_traf.data_index.push(ep_traf.total_data)?;
-                let ep_data = self.current_endpoint_data_mut()?;
+                let ep_data = self.endpoint_data_mut(endpoint_id)?;
                 if success {
                     if split_sc == Some(Complete) && next == OUT {
                         ep_data.pending_payload = payload;
@@ -707,27 +691,38 @@ impl Decoder {
                 IndexError(String::from(
                     "Transaction state has no split PID set")))?;
         }
-        match self.transfer_status(capture, next, success, complete)? {
+        let endpoint_id = self.transaction_state.endpoint_id.ok_or_else(||
+            IndexError(String::from(
+                "Transaction state has endpoint ID set")))?;
+        match self.transfer_status(capture, endpoint_id, next,
+                                   success, complete)?
+        {
             Single => {
-                self.transfer_start(capture, transaction_id, next, true)?;
-                self.transfer_end(capture)?;
+                self.transfer_start(capture, endpoint_id,
+                                    transaction_id, next, true)?;
+                self.transfer_end(capture, endpoint_id)?;
             },
             New => {
-                self.transfer_start(capture, transaction_id, next, true)?;
+                self.transfer_start(capture, endpoint_id,
+                                    transaction_id, next, true)?;
             },
             Continue => {
-                self.transfer_append(capture, transaction_id, next, true)?;
+                self.transfer_append(capture, endpoint_id,
+                                     transaction_id, next, true)?;
             },
             Retry => {
-                self.transfer_append(capture, transaction_id, next, false)?;
+                self.transfer_append(capture, endpoint_id,
+                                     transaction_id, next, false)?;
             },
             Done => {
-                self.transfer_append(capture, transaction_id, next, true)?;
-                self.transfer_end(capture)?;
+                self.transfer_append(capture, endpoint_id,
+                                     transaction_id, next, true)?;
+                self.transfer_end(capture, endpoint_id)?;
             },
             Invalid => {
-                self.transfer_start(capture, transaction_id, next, false)?;
-                self.transfer_end(capture)?;
+                self.transfer_start(capture, endpoint_id,
+                                    transaction_id, next, false)?;
+                self.transfer_end(capture, endpoint_id)?;
             }
         }
         Ok(())
@@ -735,22 +730,22 @@ impl Decoder {
 
     fn transfer_start(&mut self,
                       capture: &mut Capture,
+                      endpoint_id: EndpointId,
                       transaction_id: TransactionId,
                       transaction_type: PID,
                       done: bool)
         -> Result<(), CaptureError>
     {
-        let endpoint_id = self.current_endpoint_id()?;
-        let ep_data = self.current_endpoint_data()?;
+        let ep_data = self.endpoint_data(endpoint_id)?;
         if ep_data.transaction_count > 0 {
             self.add_transfer_entry(capture, endpoint_id, false)?;
-            let ep_data = self.current_endpoint_data_mut()?;
+            let ep_data = self.endpoint_data_mut(endpoint_id)?;
             ep_data.ended = ep_data.active.take();
         }
         let ep_traf = capture.endpoint_traffic(endpoint_id)?;
         let ep_transaction_id = ep_traf.transaction_ids.push(transaction_id)?;
         let ep_transfer_id = ep_traf.transfer_index.push(ep_transaction_id)?;
-        let ep_data = self.current_endpoint_data_mut()?;
+        let ep_data = self.endpoint_data_mut(endpoint_id)?;
         ep_data.active = Some(ep_transfer_id);
         ep_data.transaction_count = 1;
         ep_data.first = Some(transaction_type);
@@ -767,20 +762,20 @@ impl Decoder {
 
     fn transfer_append(&mut self,
                        capture: &mut Capture,
+                       endpoint_id: EndpointId,
                        transaction_id: TransactionId,
                        transaction_type: PID,
                        done: bool)
         -> Result<(), CaptureError>
     {
-        let ep_data = self.current_endpoint_data()?;
+        let ep_data = self.endpoint_data(endpoint_id)?;
         if ep_data.active.is_none() {
-            self.transfer_start(capture, transaction_id,
+            self.transfer_start(capture, endpoint_id, transaction_id,
                                 transaction_type, done)?;
         } else {
-            let endpoint_id = self.current_endpoint_id()?;
             let ep_traf = capture.endpoint_traffic(endpoint_id)?;
             ep_traf.transaction_ids.push(transaction_id)?;
-            let ep_data = self.current_endpoint_data_mut()?;
+            let ep_data = self.endpoint_data_mut(endpoint_id)?;
             ep_data.transaction_count += 1;
             if done {
                 ep_data.last = Some(transaction_type);
@@ -789,21 +784,22 @@ impl Decoder {
         Ok(())
     }
 
-    fn transfer_end(&mut self, capture: &mut Capture)
+    fn transfer_end(&mut self,
+                    capture: &mut Capture,
+                    endpoint_id: EndpointId)
         -> Result<(), CaptureError>
     {
-        let endpoint_id = self.current_endpoint_id()?;
-        let ep_data = self.current_endpoint_data()?;
+        let ep_data = self.endpoint_data(endpoint_id)?;
         if ep_data.transaction_count > 0 {
             let transfer_end_id =
                 self.add_transfer_entry(capture, endpoint_id, false)?;
             if self.last_item_endpoint != Some(endpoint_id) {
                 self.add_item(capture, endpoint_id, transfer_end_id)?;
             }
-            let ep_data = self.current_endpoint_data_mut()?;
+            let ep_data = self.endpoint_data_mut(endpoint_id)?;
             ep_data.ended = ep_data.active.take();
         }
-        let ep_data = self.current_endpoint_data_mut()?;
+        let ep_data = self.endpoint_data_mut(endpoint_id)?;
         ep_data.transaction_count = 0;
         ep_data.last = None;
         ep_data.payload.clear();
@@ -816,7 +812,7 @@ impl Decoder {
                           start: bool)
         -> Result<TransferId, CaptureError>
     {
-        let ep_data = self.current_endpoint_data()?;
+        let ep_data = self.endpoint_data(endpoint_id)?;
         let ep_transfer_id = ep_data.active.ok_or_else(||
             IndexError(format!(
                 "No active transfer on endpoint {endpoint_id}")))?;
