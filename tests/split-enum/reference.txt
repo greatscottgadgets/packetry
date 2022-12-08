@@ -1736,7 +1736,7 @@ Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 0.0, CRC 02
   ACK packet
- Completing IN transaction with 8 data bytes, DATA1: [12, 01, 00, 02, 00, 00, 00, 08]
+ Completing IN transaction with 8 data bytes: [12, 01, 00, 02, 00, 00, 00, 08]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 0.0, CRC 02
   DATA1 packet with CRC E757 and 8 data bytes: [12, 01, 00, 02, 00, 00, 00, 08]
@@ -1744,7 +1744,7 @@ Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 0.0, CRC 02
   ACK packet
- Completing IN transaction with 8 data bytes, DATA0: [45, 0C, 03, 74, 01, 00, 01, 02]
+ Completing IN transaction with 8 data bytes: [45, 0C, 03, 74, 01, 00, 01, 02]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 0.0, CRC 02
   DATA0 packet with CRC 6E86 and 8 data bytes: [45, 0C, 03, 74, 01, 00, 01, 02]
@@ -1752,7 +1752,7 @@ Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 0.0, CRC 02
   ACK packet
- Completing IN transaction with 2 data bytes, DATA1: [00, 01]
+ Completing IN transaction with 2 data bytes: [00, 01]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 0.0, CRC 02
   DATA1 packet with CRC 8F3F and 2 data bytes: [00, 01]
@@ -1972,7 +1972,7 @@ Setting address to 14 for device 0
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 0.0, CRC 02
   ACK packet
- Completing IN transaction with no data, DATA1
+ Completing IN transaction with no data
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 0.0, CRC 02
   DATA1 packet with CRC 0000 and no data
@@ -1990,7 +1990,7 @@ Getting device descriptor #0 for device 14, reading 18 bytes
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   ACK packet
- Completing IN transaction with 8 data bytes, DATA1: [12, 01, 00, 02, 00, 00, 00, 08]
+ Completing IN transaction with 8 data bytes: [12, 01, 00, 02, 00, 00, 00, 08]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   DATA1 packet with CRC E757 and 8 data bytes: [12, 01, 00, 02, 00, 00, 00, 08]
@@ -1998,7 +1998,7 @@ Getting device descriptor #0 for device 14, reading 18 bytes
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   ACK packet
- Completing IN transaction with 8 data bytes, DATA0: [45, 0C, 03, 74, 01, 00, 01, 02]
+ Completing IN transaction with 8 data bytes: [45, 0C, 03, 74, 01, 00, 01, 02]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   DATA0 packet with CRC 6E86 and 8 data bytes: [45, 0C, 03, 74, 01, 00, 01, 02]
@@ -2006,7 +2006,7 @@ Getting device descriptor #0 for device 14, reading 18 bytes
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   ACK packet
- Completing IN transaction with 2 data bytes, DATA1: [00, 01]
+ Completing IN transaction with 2 data bytes: [00, 01]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   DATA1 packet with CRC 8F3F and 2 data bytes: [00, 01]
@@ -2033,7 +2033,7 @@ Getting configuration descriptor #0 for device 14, reading 59 of 255 requested b
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   ACK packet
- Completing IN transaction with 8 data bytes, DATA1: [09, 02, 3B, 00, 02, 01, 00, A0]
+ Completing IN transaction with 8 data bytes: [09, 02, 3B, 00, 02, 01, 00, A0]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   DATA1 packet with CRC D508 and 8 data bytes: [09, 02, 3B, 00, 02, 01, 00, A0]
@@ -2041,7 +2041,7 @@ Getting configuration descriptor #0 for device 14, reading 59 of 255 requested b
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   ACK packet
- Completing IN transaction with 8 data bytes, DATA0: [32, 09, 04, 00, 00, 01, 03, 01]
+ Completing IN transaction with 8 data bytes: [32, 09, 04, 00, 00, 01, 03, 01]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   DATA0 packet with CRC 4D35 and 8 data bytes: [32, 09, 04, 00, 00, 01, 03, 01]
@@ -2049,7 +2049,7 @@ Getting configuration descriptor #0 for device 14, reading 59 of 255 requested b
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   ACK packet
- Completing IN transaction with 8 data bytes, DATA1: [01, 00, 09, 21, 00, 01, 00, 01]
+ Completing IN transaction with 8 data bytes: [01, 00, 09, 21, 00, 01, 00, 01]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   DATA1 packet with CRC A652 and 8 data bytes: [01, 00, 09, 21, 00, 01, 00, 01]
@@ -2057,7 +2057,7 @@ Getting configuration descriptor #0 for device 14, reading 59 of 255 requested b
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   ACK packet
- Completing IN transaction with 8 data bytes, DATA0: [22, 4D, 00, 07, 05, 81, 03, 08]
+ Completing IN transaction with 8 data bytes: [22, 4D, 00, 07, 05, 81, 03, 08]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   DATA0 packet with CRC 2345 and 8 data bytes: [22, 4D, 00, 07, 05, 81, 03, 08]
@@ -2065,7 +2065,7 @@ Getting configuration descriptor #0 for device 14, reading 59 of 255 requested b
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   ACK packet
- Completing IN transaction with 8 data bytes, DATA1: [00, 0A, 09, 04, 01, 00, 01, 03]
+ Completing IN transaction with 8 data bytes: [00, 0A, 09, 04, 01, 00, 01, 03]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   DATA1 packet with CRC C0A4 and 8 data bytes: [00, 0A, 09, 04, 01, 00, 01, 03]
@@ -2073,7 +2073,7 @@ Getting configuration descriptor #0 for device 14, reading 59 of 255 requested b
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   ACK packet
- Completing IN transaction with 8 data bytes, DATA0: [01, 02, 00, 09, 21, 00, 01, 00]
+ Completing IN transaction with 8 data bytes: [01, 02, 00, 09, 21, 00, 01, 00]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   DATA0 packet with CRC 558A and 8 data bytes: [01, 02, 00, 09, 21, 00, 01, 00]
@@ -2081,7 +2081,7 @@ Getting configuration descriptor #0 for device 14, reading 59 of 255 requested b
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   ACK packet
- Completing IN transaction with 8 data bytes, DATA1: [01, 22, 5B, 00, 07, 05, 82, 03]
+ Completing IN transaction with 8 data bytes: [01, 22, 5B, 00, 07, 05, 82, 03]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   DATA1 packet with CRC C540 and 8 data bytes: [01, 22, 5B, 00, 07, 05, 82, 03]
@@ -2089,7 +2089,7 @@ Getting configuration descriptor #0 for device 14, reading 59 of 255 requested b
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   ACK packet
- Completing IN transaction with 3 data bytes, DATA0: [05, 00, 0A]
+ Completing IN transaction with 3 data bytes: [05, 00, 0A]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   DATA0 packet with CRC 391E and 3 data bytes: [05, 00, 0A]
@@ -2116,7 +2116,7 @@ Getting string descriptor #0 for device 14, reading 4 of 255 requested bytes
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   ACK packet
- Completing IN transaction with 4 data bytes, DATA1: [04, 03, 09, 04]
+ Completing IN transaction with 4 data bytes: [04, 03, 09, 04]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   DATA1 packet with CRC 7809 and 4 data bytes: [04, 03, 09, 04]
@@ -2143,7 +2143,7 @@ Getting string descriptor #2, language 0x0409 for device 14, reading 22 of 255 r
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   ACK packet
- Completing IN transaction with 8 data bytes, DATA1: [16, 03, 55, 00, 53, 00, 42, 00]
+ Completing IN transaction with 8 data bytes: [16, 03, 55, 00, 53, 00, 42, 00]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   DATA1 packet with CRC 3320 and 8 data bytes: [16, 03, 55, 00, 53, 00, 42, 00]
@@ -2151,7 +2151,7 @@ Getting string descriptor #2, language 0x0409 for device 14, reading 22 of 255 r
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   ACK packet
- Completing IN transaction with 8 data bytes, DATA0: [20, 00, 44, 00, 65, 00, 76, 00]
+ Completing IN transaction with 8 data bytes: [20, 00, 44, 00, 65, 00, 76, 00]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   DATA0 packet with CRC 048A and 8 data bytes: [20, 00, 44, 00, 65, 00, 76, 00]
@@ -2159,7 +2159,7 @@ Getting string descriptor #2, language 0x0409 for device 14, reading 22 of 255 r
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   ACK packet
- Completing IN transaction with 6 data bytes, DATA1: [69, 00, 63, 00, 65, 00]
+ Completing IN transaction with 6 data bytes: [69, 00, 63, 00, 65, 00]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   DATA1 packet with CRC C9C3 and 6 data bytes: [69, 00, 63, 00, 65, 00]
