@@ -77,6 +77,7 @@ struct TransactionState {
     id: TransactionId,
     last: PID,
     endpoint_id: Option<EndpointId>,
+    ep_transaction_id: Option<EndpointTransactionId>,
     setup: Option<SetupFields>,
     payload: Option<Vec<u8>>,
 }
@@ -578,9 +579,11 @@ impl Decoder {
             New => {
                 self.transaction_end(capture, false, false)?;
                 self.transaction_start(capture, packet_id, packet)?;
+                self.transfer_early_append(capture)?;
             },
             Continue => {
                 self.transaction_append(capture, packet)?;
+                self.transfer_early_append(capture)?;
             },
             Done | Fail => {
                 self.transaction_append(capture, packet)?;
@@ -613,6 +616,7 @@ impl Decoder {
                 id: transaction_id,
                 last: pid,
                 endpoint_id,
+                ep_transaction_id: None,
                 setup: None,
                 payload: None,
             }
@@ -716,6 +720,48 @@ impl Decoder {
                 "Decoder has no data for current endpoint ID {endpoint_id}")))
     }
 
+    fn transfer_early_append(&mut self, capture: &mut Capture)
+        -> Result<(), CaptureError>
+    {
+        use PID::*;
+        use TransactionStyle::*;
+        // Decide whether to index this transaction now.
+        // If this transaction might change the transfer sequence
+        // and we can't tell yet, we can't index it yet.
+        let to_index = if let
+            Some(TransactionState {
+                 style: Simple(_pid) | Split(.., Some(_pid)),
+                 id: transaction_id,
+                 endpoint_id: Some(endpoint_id),
+                 ep_transaction_id: None,
+                 ..
+            }) = &self.transaction_state
+        {
+            let ep_data = self.endpoint_data(*endpoint_id)?;
+            match ep_data.active {
+                // IN and OUT transfers may start and end depending on
+                // transaction success and whether a packet is short.
+                Some(TransferState { first: IN | OUT, .. }) => None,
+                // In all other transfer states, it should be safe to index
+                // the current transaction immediately.
+                _ => Some((*endpoint_id, *transaction_id))
+            }
+        } else {
+            // We can't index this transaction yet as we don't know
+            // what endpoint it needs to be attached to.
+            None
+        };
+        if let (Some(state), Some((endpoint_id, transaction_id))) =
+            (&mut self.transaction_state, to_index)
+        {
+            let ep_traf = capture.endpoint_traffic(endpoint_id)?;
+            let ep_transaction_id =
+                ep_traf.transaction_ids.push(transaction_id)?;
+            state.ep_transaction_id = Some(ep_transaction_id);
+        };
+        Ok(())
+    }
+
     fn transfer_update(&mut self,
                        capture: &mut Capture,
                        transaction: &mut TransactionState,
@@ -755,7 +801,7 @@ impl Decoder {
 
     fn transfer_start(&mut self,
                       capture: &mut Capture,
-                      transaction: &TransactionState,
+                      transaction: &mut TransactionState,
                       done: bool)
         -> Result<(), CaptureError>
     {
@@ -766,7 +812,12 @@ impl Decoder {
             self.add_transfer_entry(capture, endpoint_id, transfer.id, false)?;
         }
         let ep_traf = capture.endpoint_traffic(endpoint_id)?;
-        let ep_transaction_id = ep_traf.transaction_ids.push(transaction.id)?;
+        let ep_transaction_id =
+            if let Some(ep_transaction_id) = transaction.ep_transaction_id {
+                ep_transaction_id
+            } else {
+                ep_traf.transaction_ids.push(transaction.id)?
+            };
         let ep_transfer_id = ep_traf.transfer_index.push(ep_transaction_id)?;
         let ep_data = self.endpoint_data_mut(endpoint_id)?;
         let transaction_type = transaction.start_pid()?;
@@ -786,7 +837,7 @@ impl Decoder {
 
     fn transfer_append(&mut self,
                        capture: &mut Capture,
-                       transaction: &TransactionState,
+                       transaction: &mut TransactionState,
                        done: bool)
         -> Result<(), CaptureError>
     {
@@ -794,7 +845,11 @@ impl Decoder {
         let ep_data = self.endpoint_data_mut(endpoint_id)?;
         if let Some(transfer) = &mut ep_data.active {
             let ep_traf = capture.endpoint_traffic(endpoint_id)?;
-            ep_traf.transaction_ids.push(transaction.id)?;
+            if transaction.ep_transaction_id.is_none() {
+                let ep_transaction_id =
+                    ep_traf.transaction_ids.push(transaction.id)?;
+                transaction.ep_transaction_id = Some(ep_transaction_id);
+            }
             if done {
                 transfer.last = Some(transaction.start_pid()?);
             }
