@@ -1063,9 +1063,12 @@ impl ItemSource<TrafficItem> for Capture {
                     (Framing, false) =>
                         "End of SOF groups".to_string(),
                     (Normal(Control), true) => {
-                        let transfer = self.control_transfer(
-                            endpoint.device_address(), endpoint_id, range)?;
-                        transfer.summary()
+                        let addr = endpoint.device_address();
+                        match self.control_transfer(addr, endpoint_id, range) {
+                            Ok(transfer) => transfer.summary(),
+                            Err(_) => format!(
+                                "Incomplete control transfer on device {addr}")
+                        }
                     },
                     (endpoint_type, starting) => {
                         let ep_transfer_id = entry.transfer_id();
