@@ -389,6 +389,64 @@ impl Transaction {
             _ => None
         }
     }
+
+    fn description(&self, capture: &mut Capture)
+        -> Result<String, CaptureError>
+    {
+        use PID::*;
+        use StartComplete::*;
+        Ok(match (self.start_pid, &self.split,
+                  self.payload_size(), self.outcome())
+        {
+            (SOF, ..) => format!(
+                "{} SOF packets", self.packet_count()),
+            (Malformed, ..) => format!(
+                "{} malformed packets", self.packet_count()),
+            (SPLIT, Some((split_fields, token_pid)), size, outcome) => {
+                format!("{} {token_pid} transaction{}",
+                    match split_fields.sc() {
+                        Start => "Starting",
+                        Complete => "Completing",
+                    },
+                    match (size, outcome) {
+                        (None, None) => String::from(""),
+                        (None, Some(outcome)) =>
+                            format!(", {outcome}"),
+                        (Some(size), None) if size == 0 =>
+                            String::from(" with no data"),
+                        (Some(size), Some(outcome)) if size == 0 =>
+                            format!(" with no data, {outcome}"),
+                        (Some(size), None) => format!(
+                            " with {size} data bytes: {}",
+                            Bytes::first(100,
+                                &capture.transaction_bytes(&self)?)
+                        ),
+                        (Some(size), Some(outcome)) => format!(
+                            " with {size} data bytes, {outcome}: {}",
+                            Bytes::first(100,
+                                &capture.transaction_bytes(&self)?)
+                        ),
+                    }
+                )
+            },
+            (pid, _, None, None) => format!(
+                "{pid} transaction"),
+            (pid, _, None, Some(outcome)) => format!(
+                "{pid} transaction, {outcome}"),
+            (pid, _, Some(size), None) if size == 0 => format!(
+                "{pid} transaction with no data"),
+            (pid, _, Some(size), Some(outcome)) if size == 0 => format!(
+                "{pid} transaction with no data, {outcome}"),
+            (pid, _, Some(size), None) => format!(
+                "{pid} transaction with {size} data bytes: {}",
+                Bytes::first(100,
+                    &capture.transaction_bytes(self)?)),
+            (pid, _, Some(size), Some(outcome)) => format!(
+                "{pid} transaction with {size} data bytes, {outcome}: {}",
+                Bytes::first(100,
+                    &capture.transaction_bytes(self)?)),
+        })
+    }
 }
 
 pub fn fmt_count(count: u64) -> String {
@@ -1016,61 +1074,7 @@ impl ItemSource<TrafficItem> for Capture {
             },
             Transaction(_, transaction_id) => {
                 let transaction = self.transaction(*transaction_id)?;
-                use PID::*;
-                use StartComplete::*;
-                match (transaction.start_pid,
-                       &transaction.split,
-                       transaction.payload_size(),
-                       transaction.outcome())
-                {
-                    (SOF, ..) => format!(
-                        "{} SOF packets", transaction.packet_count()),
-                    (Malformed, ..) => format!(
-                        "{} malformed packets", transaction.packet_count()),
-                    (SPLIT, Some((split_fields, token_pid)), size, outcome) => {
-                        format!("{} {token_pid} transaction{}",
-                            match split_fields.sc() {
-                                Start => "Starting",
-                                Complete => "Completing",
-                            },
-                            match (size, outcome) {
-                                (None, None) => String::from(""),
-                                (None, Some(outcome)) =>
-                                    format!(", {}", outcome),
-                                (Some(size), None) if size == 0 =>
-                                    String::from(" with no data"),
-                                (Some(size), Some(outcome)) if size == 0 =>
-                                    format!(" with no data, {outcome}"),
-                                (Some(size), None) => format!(
-                                    " with {size} data bytes: {}",
-                                    Bytes::first(100,
-                                        &self.transaction_bytes(&transaction)?)
-                                ),
-                                (Some(size), Some(outcome)) => format!(
-                                    " with {size} data bytes, {outcome}: {}",
-                                    Bytes::first(100,
-                                        &self.transaction_bytes(&transaction)?)
-                                ),
-                            }
-                        )
-                    },
-                    (pid, _, None, None) => format!(
-                        "{pid} transaction"),
-                    (pid, _, None, Some(outcome)) => format!(
-                        "{pid} transaction, {outcome}"),
-                    (pid, _, Some(size), None) if size == 0 => format!(
-                        "{pid} transaction with no data"),
-                    (pid, _, Some(size), Some(outcome)) if size == 0 => format!(
-                        "{pid} transaction with no data, {outcome}"),
-                    (pid, _, Some(size), None) => format!(
-                        "{pid} transaction with {size} data bytes: {}",
-                        Bytes::first(100,
-                            &self.transaction_bytes(&transaction)?)),
-                    (pid, _, Some(size), Some(outcome)) => format!(
-                        "{pid} transaction with {size} data bytes, {outcome}: {}",
-                        Bytes::first(100,
-                            &self.transaction_bytes(&transaction)?)),
-                }
+                transaction.description(self)?
             },
             Transfer(transfer_id) => {
                 use EndpointType::*;
