@@ -395,57 +395,46 @@ impl Transaction {
     {
         use PID::*;
         use StartComplete::*;
-        Ok(match (self.start_pid, &self.split,
-                  self.payload_size(), self.outcome())
-        {
-            (SOF, ..) => format!(
+        Ok(match (self.start_pid, &self.split) {
+            (SOF, _) => format!(
                 "{} SOF packets", self.packet_count()),
-            (Malformed, ..) => format!(
+            (Malformed, _) => format!(
                 "{} malformed packets", self.packet_count()),
-            (SPLIT, Some((split_fields, token_pid)), size, outcome) => {
-                format!("{} {token_pid} transaction{}",
-                    match split_fields.sc() {
-                        Start => "Starting",
-                        Complete => "Completing",
-                    },
-                    match (size, outcome) {
-                        (None, None) => String::from(""),
-                        (None, Some(outcome)) =>
-                            format!(", {outcome}"),
-                        (Some(size), None) if size == 0 =>
-                            String::from(" with no data"),
-                        (Some(size), Some(outcome)) if size == 0 =>
-                            format!(" with no data, {outcome}"),
-                        (Some(size), None) => format!(
-                            " with {size} data bytes: {}",
-                            Bytes::first(100,
-                                &capture.transaction_bytes(&self)?)
-                        ),
-                        (Some(size), Some(outcome)) => format!(
-                            " with {size} data bytes, {outcome}: {}",
-                            Bytes::first(100,
-                                &capture.transaction_bytes(&self)?)
-                        ),
-                    }
-                )
-            },
-            (pid, _, None, None) => format!(
-                "{pid} transaction"),
-            (pid, _, None, Some(outcome)) => format!(
-                "{pid} transaction, {outcome}"),
-            (pid, _, Some(size), None) if size == 0 => format!(
-                "{pid} transaction with no data"),
-            (pid, _, Some(size), Some(outcome)) if size == 0 => format!(
-                "{pid} transaction with no data, {outcome}"),
-            (pid, _, Some(size), None) => format!(
-                "{pid} transaction with {size} data bytes: {}",
-                Bytes::first(100,
-                    &capture.transaction_bytes(self)?)),
-            (pid, _, Some(size), Some(outcome)) => format!(
-                "{pid} transaction with {size} data bytes, {outcome}: {}",
-                Bytes::first(100,
-                    &capture.transaction_bytes(self)?)),
+            (SPLIT, Some((split_fields, token_pid))) => format!(
+                "{} {}",
+                match split_fields.sc() {
+                    Start => "Starting",
+                    Complete => "Completing",
+                },
+                self.inner_description(capture, *token_pid)?
+            ),
+            (pid, _) => self.inner_description(capture, pid)?
         })
+    }
+
+    fn inner_description(&self, capture: &mut Capture, pid: PID)
+        -> Result<String, CaptureError>
+    {
+        Ok(format!(
+            "{} transaction{}",
+            pid,
+            match (self.payload_size(), self.outcome()) {
+                (None, None) =>
+                    String::from(""),
+                (None, Some(outcome)) =>
+                    format!(", {outcome}"),
+                (Some(size), None) if size == 0 =>
+                    String::from(" with no data"),
+                (Some(size), Some(outcome)) if size == 0 =>
+                    format!(" with no data, {outcome}"),
+                (Some(size), None) => format!(
+                    " with {size} data bytes: {}",
+                    Bytes::first(100, &capture.transaction_bytes(self)?)),
+                (Some(size), Some(outcome)) => format!(
+                    " with {size} data bytes, {outcome}: {}",
+                    Bytes::first(100, &capture.transaction_bytes(self)?)),
+            }
+        ))
     }
 }
 
