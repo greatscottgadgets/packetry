@@ -649,11 +649,15 @@ impl Capture {
         let mut transactions = self.completed_transactions(transaction_ids);
         let mut result = Vec::new();
         while let Some(transaction) = transactions.next(self) {
-            let data = self.transaction_bytes(&transaction)?;
-            result.extend_from_slice(&data);
-            if result.len() >= max_length {
-                result.truncate(max_length);
-                break
+            match self.transaction_bytes(&transaction) {
+                Ok(data) => {
+                    result.extend_from_slice(&data);
+                    if result.len() >= max_length {
+                        result.truncate(max_length);
+                        break
+                    }
+                },
+                Err(_) => break
             }
         }
         Ok(result)
