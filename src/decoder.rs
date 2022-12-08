@@ -218,6 +218,195 @@ impl TransactionState {
     }
 }
 
+impl EndpointData {
+    fn transfer_status(&mut self,
+                       capture: &mut Capture,
+                       endpoint_id: EndpointId,
+                       transaction: &mut TransactionState,
+                       next: PID,
+                       success: bool,
+                       complete: bool)
+        -> Result<TransferStatus, CaptureError>
+    {
+        let dev_data = capture.device_data_mut(&self.device_id)?;
+        let (ep_type, ep_max) = dev_data.endpoint_details(self.address);
+        let split_sc = transaction.split_sc;
+        let pending_payload = self.pending_payload.take();
+        let payload = transaction.payload.take().or(pending_payload);
+        let length = payload.as_ref().map_or(0, |vec| vec.len()) as u64;
+        let short = match (&payload, ep_max) {
+            (Some(payload), Some(max)) => payload.len() < max,
+            (..) => false,
+        };
+        use PID::*;
+        use EndpointType::{Normal, Framing};
+        use usb::EndpointType::*;
+        use Direction::*;
+        use TransferStatus::*;
+        use StartComplete::*;
+        Ok(match (ep_type, self.first, self.last, next) {
+
+            // A SETUP transaction starts a new control transfer.
+            // Store the setup fields to interpret the request.
+            (Normal(Control), .., SETUP) => {
+                match split_sc {
+                    None | Some(Start) => {
+                        self.setup = transaction.setup;
+                        New
+                    },
+                    Some(Complete) => Continue,
+                }
+            },
+
+            (Normal(Control), _, Some(last), _) => match &self.setup {
+                // No control transaction is valid unless setup was done.
+                None => Invalid,
+                // If setup was done then valid transactions depend on the
+                // contents of the setup data packet.
+                Some(fields) => {
+                    let with_data = fields.length != 0;
+                    let direction = fields.type_fields.direction();
+                    match (direction, with_data, last, next) {
+
+                        // If there is data to transfer, setup stage is
+                        // followed by IN/OUT at data stage in the direction
+                        // of the request. IN/OUT may then be repeated.
+                        (In,  true, SETUP, IN ) |
+                        (Out, true, SETUP, OUT) |
+                        (In,  true, IN,    IN ) |
+                        (Out, true, OUT,   OUT) => {
+                            if success {
+                                if (split_sc, next) == (Some(Complete), OUT) {
+                                    self.pending_payload = payload;
+                                } else if let Some(data) = payload {
+                                    self.payload.extend(data);
+                                }
+                                // Await status stage.
+                                Continue
+                            } else {
+                                // Retry data stage.
+                                Retry
+                            }
+                        },
+
+                        // If there is no data to transfer, setup stage is
+                        // followed by IN/OUT at status stage in the opposite
+                        // direction to the request. If there is data, then
+                        // the status stage follows the data stage.
+                        (In,  false, SETUP, OUT) |
+                        (Out, false, SETUP, IN ) |
+                        (In,  true,  IN,    OUT) |
+                        (Out, true,  OUT,   IN ) => {
+                            if success && complete {
+                                dev_data.decode_request(
+                                    fields, &self.payload)?;
+                                // Status stage complete.
+                                Done
+                            } else {
+                                // Retry status stage, or await completion.
+                                Retry
+                            }
+                        },
+
+                        // PING is valid at any time that OUT would be.
+                        (Out, true,  SETUP, PING) |
+                        (Out, true,  OUT,   PING) |
+                        (In,  false, SETUP, PING) |
+                        (In,  true,  IN,    PING) => Retry,
+
+                        // Any other sequence is invalid.
+                        (..) => Invalid
+                    }
+                }
+            },
+
+            // An IN or OUT transaction on a non-control endpoint,
+            // with no transfer in progress, starts a new transfer.
+            // This can be either an actual transfer, or a polling
+            // group used to collect NAKed transactions.
+            (_, None, _, IN | OUT) => {
+                let ep_traf = capture.endpoint_traffic(endpoint_id)?;
+                ep_traf.data_index.push(ep_traf.total_data)?;
+                if success {
+                    if split_sc == Some(Complete) && next == OUT {
+                        self.pending_payload = payload;
+                    } else {
+                        ep_traf.total_data += length;
+                    }
+                }
+                if complete {
+                    self.last_success = success;
+                    if success && short {
+                        // New transfer, ended immediately by a short packet.
+                        Single
+                    } else {
+                        // Either a new transfer or a new polling group.
+                        New
+                    }
+                } else {
+                    // Wait for split completion.
+                    New
+                }
+            },
+
+            // IN or OUT may then be repeated.
+            (_, Some(IN),  _, IN ) |
+            (_, Some(OUT), _, OUT) => {
+                let ep_traf = capture.endpoint_traffic(endpoint_id)?;
+                ep_traf.data_index.push(ep_traf.total_data)?;
+                if success {
+                    if split_sc == Some(Complete) && next == OUT {
+                        self.pending_payload = payload;
+                    } else if complete {
+                        ep_traf.total_data += length;
+                    }
+                }
+                if complete {
+                    let success_changed = success != self.last_success;
+                    self.last_success = success;
+                    if success_changed {
+                        if success && short {
+                            // New transfer, ended immediately by a short packet.
+                            Single
+                        } else {
+                            // Either a new transfer or a new polling group.
+                            New
+                        }
+                    } else if success {
+                        // Continuing an ongoing transfer.
+                        if short {
+                            // A short packet ends the transfer.
+                            Done
+                        } else {
+                            // A full-length packet continues the transfer.
+                            Continue
+                        }
+                    } else {
+                        // Continuing a polling group.
+                        Retry
+                    }
+                } else {
+                    // Wait for split completion.
+                    Retry
+                }
+            },
+
+            // OUT may also be followed by PING.
+            (_, Some(OUT), _, PING) => Retry,
+
+            // A SOF group starts a special transfer, unless
+            // one is already in progress.
+            (Framing, None, _, SOF) => New,
+
+            // Further SOF groups continue this transfer.
+            (Framing, Some(SOF), _, SOF) => Continue,
+
+            // Any other case is not a valid part of a transfer.
+            _ => Invalid
+        })
+    }
+}
+
 #[derive(Copy, Clone)]
 struct EndpointKey {
     dev_addr: DeviceAddr,
@@ -480,201 +669,6 @@ impl Decoder {
                 "Decoder has no data for current endpoint ID {endpoint_id}")))
     }
 
-    fn transfer_status(&mut self,
-                       capture: &mut Capture,
-                       endpoint_id: EndpointId,
-                       next: PID,
-                       success: bool,
-                       complete: bool)
-        -> Result<TransferStatus, CaptureError>
-    {
-        let ep_data = self.endpoint_data(endpoint_id)?;
-        let dev_data = capture.device_data_mut(&ep_data.device_id)?;
-        let (ep_type, ep_max) = dev_data.endpoint_details(ep_data.address);
-        let split_sc = self.transaction_state.split_sc;
-        let pending_payload =
-            self.endpoint_data_mut(endpoint_id)?.pending_payload.take();
-        let payload =
-            self.transaction_state.payload.take().or(pending_payload);
-        let length = payload.as_ref().map_or(0, |vec| vec.len()) as u64;
-        let short = match (&payload, ep_max) {
-            (Some(payload), Some(max)) => payload.len() < max,
-            (..) => false,
-        };
-        let ep_data = self.endpoint_data(endpoint_id)?;
-        use PID::*;
-        use EndpointType::{Normal, Framing};
-        use usb::EndpointType::*;
-        use Direction::*;
-        use TransferStatus::*;
-        use StartComplete::*;
-        Ok(match (ep_type, ep_data.first, ep_data.last, next) {
-
-            // A SETUP transaction starts a new control transfer.
-            // Store the setup fields to interpret the request.
-            (Normal(Control), .., SETUP) => {
-                match split_sc {
-                    None | Some(Start) => {
-                        let setup = self.transaction_state.setup;
-                        let ep_data = self.endpoint_data_mut(endpoint_id)?;
-                        ep_data.setup = setup;
-                        New
-                    },
-                    Some(Complete) => Continue,
-                }
-            },
-
-            (Normal(Control), _, Some(last), _) => match &ep_data.setup {
-                // No control transaction is valid unless setup was done.
-                None => Invalid,
-                // If setup was done then valid transactions depend on the
-                // contents of the setup data packet.
-                Some(fields) => {
-                    let with_data = fields.length != 0;
-                    let direction = fields.type_fields.direction();
-                    match (direction, with_data, last, next) {
-
-                        // If there is data to transfer, setup stage is
-                        // followed by IN/OUT at data stage in the direction
-                        // of the request. IN/OUT may then be repeated.
-                        (In,  true, SETUP, IN ) |
-                        (Out, true, SETUP, OUT) |
-                        (In,  true, IN,    IN ) |
-                        (Out, true, OUT,   OUT) => {
-                            if success {
-                                let ep_data = self.endpoint_data_mut(endpoint_id)?;
-                                if (split_sc, next) == (Some(Complete), OUT) {
-                                    ep_data.pending_payload = payload;
-                                } else if let Some(data) = payload {
-                                    ep_data.payload.extend(data);
-                                }
-                                // Await status stage.
-                                Continue
-                            } else {
-                                // Retry data stage.
-                                Retry
-                            }
-                        },
-
-                        // If there is no data to transfer, setup stage is
-                        // followed by IN/OUT at status stage in the opposite
-                        // direction to the request. If there is data, then
-                        // the status stage follows the data stage.
-                        (In,  false, SETUP, OUT) |
-                        (Out, false, SETUP, IN ) |
-                        (In,  true,  IN,    OUT) |
-                        (Out, true,  OUT,   IN ) => {
-                            if success && complete {
-                                dev_data.decode_request(
-                                    fields, &ep_data.payload)?;
-                                // Status stage complete.
-                                Done
-                            } else {
-                                // Retry status stage, or await completion.
-                                Retry
-                            }
-                        },
-
-                        // PING is valid at any time that OUT would be.
-                        (Out, true,  SETUP, PING) |
-                        (Out, true,  OUT,   PING) |
-                        (In,  false, SETUP, PING) |
-                        (In,  true,  IN,    PING) => Retry,
-
-                        // Any other sequence is invalid.
-                        (..) => Invalid
-                    }
-                }
-            },
-
-            // An IN or OUT transaction on a non-control endpoint,
-            // with no transfer in progress, starts a new transfer.
-            // This can be either an actual transfer, or a polling
-            // group used to collect NAKed transactions.
-            (_, None, _, IN | OUT) => {
-                let ep_traf = capture.endpoint_traffic(endpoint_id)?;
-                ep_traf.data_index.push(ep_traf.total_data)?;
-                let ep_data = self.endpoint_data_mut(endpoint_id)?;
-                if success {
-                    if split_sc == Some(Complete) && next == OUT {
-                        ep_data.pending_payload = payload;
-                    } else {
-                        ep_traf.total_data += length;
-                    }
-                }
-                if complete {
-                    ep_data.last_success = success;
-                    if success && short {
-                        // New transfer, ended immediately by a short packet.
-                        Single
-                    } else {
-                        // Either a new transfer or a new polling group.
-                        New
-                    }
-                } else {
-                    // Wait for split completion.
-                    New
-                }
-            },
-
-            // IN or OUT may then be repeated.
-            (_, Some(IN),  _, IN ) |
-            (_, Some(OUT), _, OUT) => {
-                let ep_traf = capture.endpoint_traffic(endpoint_id)?;
-                ep_traf.data_index.push(ep_traf.total_data)?;
-                let ep_data = self.endpoint_data_mut(endpoint_id)?;
-                if success {
-                    if split_sc == Some(Complete) && next == OUT {
-                        ep_data.pending_payload = payload;
-                    } else if complete {
-                        ep_traf.total_data += length;
-                    }
-                }
-                if complete {
-                    let success_changed = success != ep_data.last_success;
-                    ep_data.last_success = success;
-                    if success_changed {
-                        if success && short {
-                            // New transfer, ended immediately by a short packet.
-                            Single
-                        } else {
-                            // Either a new transfer or a new polling group.
-                            New
-                        }
-                    } else if success {
-                        // Continuing an ongoing transfer.
-                        if short {
-                            // A short packet ends the transfer.
-                            Done
-                        } else {
-                            // A full-length packet continues the transfer.
-                            Continue
-                        }
-                    } else {
-                        // Continuing a polling group.
-                        Retry
-                    }
-                } else {
-                    // Wait for split completion.
-                    Retry
-                }
-            },
-
-            // OUT may also be followed by PING.
-            (_, Some(OUT), _, PING) => Retry,
-
-            // A SOF group starts a special transfer, unless
-            // one is already in progress.
-            (Framing, None, _, SOF) => New,
-
-            // Further SOF groups continue this transfer.
-            (Framing, Some(SOF), _, SOF) => Continue,
-
-            // Any other case is not a valid part of a transfer.
-            _ => Invalid
-        })
-    }
-
     fn transfer_update(&mut self,
                        capture: &mut Capture,
                        transaction_id: TransactionId,
@@ -694,8 +688,12 @@ impl Decoder {
         let endpoint_id = self.transaction_state.endpoint_id.ok_or_else(||
             IndexError(String::from(
                 "Transaction state has endpoint ID set")))?;
-        match self.transfer_status(capture, endpoint_id, next,
-                                   success, complete)?
+        let ep_data = self.endpoint_data.get_mut(endpoint_id).ok_or_else(||
+            IndexError(format!(
+                "Decoder has no data for endpoint ID {}", endpoint_id)))?;
+        match ep_data.transfer_status(capture, endpoint_id,
+                                      &mut self.transaction_state,
+                                      next, success, complete)?
         {
             Single => {
                 self.transfer_start(capture, endpoint_id,
