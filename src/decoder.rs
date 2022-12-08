@@ -806,19 +806,8 @@ impl Decoder {
         -> Result<(), CaptureError>
     {
         let endpoint_id = transaction.endpoint_id()?;
-        let ep_data = self.endpoint_data_mut(endpoint_id)?;
-        if let Some(transfer) = ep_data.active.take() {
-            ep_data.ended = Some(transfer.id);
-            self.add_transfer_entry(capture, endpoint_id, transfer.id, false)?;
-        }
-        let ep_traf = capture.endpoint_traffic(endpoint_id)?;
-        let ep_transaction_id =
-            if let Some(ep_transaction_id) = transaction.ep_transaction_id {
-                ep_transaction_id
-            } else {
-                ep_traf.transaction_ids.push(transaction.id)?
-            };
-        let ep_transfer_id = ep_traf.transfer_index.push(ep_transaction_id)?;
+        let ep_transfer_id =
+            self.add_transfer(capture, endpoint_id, transaction)?;
         let ep_data = self.endpoint_data_mut(endpoint_id)?;
         let transaction_type = transaction.start_pid()?;
         ep_data.active = Some(
@@ -829,9 +818,6 @@ impl Decoder {
             }
         );
         ep_data.payload.clear();
-        let transfer_start_id = self.add_transfer_entry(capture, endpoint_id,
-                                                        ep_transfer_id, true)?;
-        self.add_item(capture, endpoint_id, transfer_start_id)?;
         Ok(())
     }
 
@@ -878,6 +864,34 @@ impl Decoder {
             }
         }
         Ok(())
+    }
+
+    fn add_transfer(&mut self,
+                    capture: &mut Capture,
+                    endpoint_id: EndpointId,
+                    transaction: &mut TransactionState)
+        -> Result<EndpointTransferId, CaptureError>
+    {
+        let ep_data = self.endpoint_data_mut(endpoint_id)?;
+        if let Some(transfer) = ep_data.active.take() {
+            ep_data.ended = Some(transfer.id);
+            self.add_transfer_entry(capture, endpoint_id, transfer.id, false)?;
+        }
+        let ep_traf = capture.endpoint_traffic(endpoint_id)?;
+        let ep_transaction_id =
+            if let Some(ep_transaction_id) = transaction.ep_transaction_id {
+                ep_transaction_id
+            } else {
+                let ep_transaction_id =
+                    ep_traf.transaction_ids.push(transaction.id)?;
+                transaction.ep_transaction_id = Some(ep_transaction_id);
+                ep_transaction_id
+            };
+        let ep_transfer_id = ep_traf.transfer_index.push(ep_transaction_id)?;
+        let transfer_start_id = self.add_transfer_entry(capture, endpoint_id,
+                                                        ep_transfer_id, true)?;
+        self.add_item(capture, endpoint_id, transfer_start_id)?;
+        Ok(ep_transfer_id)
     }
 
     fn add_transfer_entry(&mut self,
