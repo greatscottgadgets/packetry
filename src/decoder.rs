@@ -67,149 +67,167 @@ impl EndpointData {
     }
 }
 
-#[derive(Default)]
+enum TransactionStyle {
+    Simple(PID),
+    Split(StartComplete, usb::EndpointType, Option<PID>),
+}
+
 struct TransactionState {
-    id: Option<TransactionId>,
-    first: Option<PID>,
-    last: Option<PID>,
-    split_sc: Option<StartComplete>,
-    split_ep_type: Option<usb::EndpointType>,
-    split_pid: Option<PID>,
-    count: u64,
+    style: TransactionStyle,
+    id: TransactionId,
+    last: PID,
     endpoint_id: Option<EndpointId>,
     setup: Option<SetupFields>,
     payload: Option<Vec<u8>>,
 }
 
-impl TransactionState {
-    pub fn status(&mut self, packet: &[u8])
-        -> Result<TransactionStatus, CaptureError>
-    {
-        let next = PID::from_packet(packet)?;
-        use PID::*;
-        use TransactionStatus::*;
-        Ok(match (self.first, self.last, next) {
-
-            // SPLIT starts a new transaction.
-            (_, _, SPLIT) => New,
-
-            // Valid SPLIT transactions depend on SC flag and EP type.
-            (Some(SPLIT), Some(last), _) => {
-                let sc = self.split_sc
-                    .ok_or_else(|| IndexError(String::from(
-                        "SPLIT start/complete flag not set")))?;
-                let ep_type = self.split_ep_type
-                    .ok_or_else(|| IndexError(String::from(
-                        "SPLIT endpoint type not set")))?;
-                use StartComplete::*;
-                use usb::EndpointType::*;
-                match (ep_type, sc, last, next) {
-
-                    // Valid split transactions for control/bulk endpoints:
-
-                    // SSPLIT->SETUP/OUT->DATA0/1->ACK/NAK.
-                    (Bulk,    Start, SPLIT, OUT      ) => Continue,
-                    (Control, Start, SPLIT, SETUP|OUT) => Continue,
-                    (Control, Start, SETUP, DATA0    )
-                        if packet.len() == 11 => Continue,
-                    (Bulk|Control, Start, OUT, DATA0|DATA1) => Continue,
-                    (Bulk|Control, Start, DATA0|DATA1, ACK) => Done,
-                    (Bulk|Control, Start, DATA0|DATA1, NAK) => Fail,
-                    // CSPLIT->SETUP/OUT->ACK/NAK/NYET/STALL.
-                    (Bulk,    Complete, SPLIT,     OUT      ) => Continue,
-                    (Bulk,    Complete, SETUP,     ACK|NYET ) => Done,
-                    (Bulk,    Complete, OUT,       NAK|STALL) => Fail,
-                    (Control, Complete, SPLIT,     SETUP|OUT) => Continue,
-                    (Control, Complete, SETUP|OUT, ACK|NYET ) => Done,
-                    (Control, Complete, SETUP|OUT, NAK|STALL) => Fail,
-                    // SSPLIT->IN->ACK/NAK.
-                    (Control|Bulk, Start, SPLIT, IN ) => Continue,
-                    (Control|Bulk, Start, IN,    ACK) => Done,
-                    (Control|Bulk, Start, IN,    NAK) => Fail,
-                    // CSPLIT->IN->DATA0/DATA1/NAK/NYET/STALL.
-                    (Control|Bulk, Complete, SPLIT, IN) => Continue,
-                    (Control|Bulk, Complete, IN,    DATA0|DATA1|NYET) => Done,
-                    (Control|Bulk, Complete, IN,    NAK|STALL       ) => Fail,
-
-                    // Valid split transactions for interrupt endpoints:
-
-                    // SSPLIT->OUT->DATA0/1
-                    (Interrupt, Start, SPLIT, OUT        ) => Continue,
-                    (Interrupt, Start, OUT,   DATA0|DATA1) => Done,
-                    // CSPLIT->OUT->ACK/NAK/NYET/STALL/ERR.
-                    (Interrupt, Complete, SPLIT, OUT          ) => Continue,
-                    (Interrupt, Complete, OUT,   ACK|NYET     ) => Done,
-                    (Interrupt, Complete, OUT,   NAK|STALL|ERR) => Fail,
-                    // SSPLIT->IN.
-                    (Interrupt, Start, SPLIT, IN) => Done,
-                    // CSPLIT->IN->DATA0/DATA1/MDATA/NAK/NYET/STALL/ERR.
-                    (Interrupt, Complete, SPLIT, IN) => Continue,
-                    (Interrupt, Complete, IN, DATA0|DATA1|MDATA|NYET) => Done,
-                    (Interrupt, Complete, IN, NAK|STALL|ERR) => Fail,
-
-                    // Valid split transactions for isochronous endpoints:
-
-                    // SSPLIT->OUT->DATA0
-                    (Isochronous, Start, SPLIT, OUT) => Continue,
-                    (Isochronous, Start, OUT, DATA0) => Done,
-                    // SSPLIT->IN.
-                    (Isochronous, Start, SPLIT, IN) => Done,
-                    // CSPLIT->IN->DATA0/MDATA/NYET/ERR.
-                    (Isochronous, Complete, SPLIT, IN) => Continue,
-                    (Isochronous, Complete, IN, DATA0|MDATA|NYET|ERR) => Done,
-
-                    // Any other combination is invalid.
-                    (..) => Invalid,
-                }
-            },
-
-            // Unless handled above after SPLIT, SETUP/IN/OUT/PING always
-            // start a new transaction.
-            (_, _, SETUP | IN | OUT | PING) => New,
-
-            // SOF when there is no existing transaction starts a new
-            // "transaction" representing an idle period on the bus.
-            (_, None, SOF) => New,
-            // Additional SOFs extend this "transaction", more may follow.
-            (_, Some(SOF), SOF) => Continue,
-
-            // A malformed packet is grouped with previous malformed packets.
-            (_, Some(Malformed), Malformed) => Continue,
-            // If preceded by any other packet, it starts a new transaction.
-            (_, _, Malformed) => New,
-
-            // SETUP must be followed by DATA0 with setup data.
-            (_, Some(SETUP), DATA0) if packet.len() == 11 => Continue,
-
-            // ACK then completes the transaction.
-            (Some(SETUP), Some(DATA0), ACK) => Done,
-
-            // IN may be followed by NAK or STALL, completing transaction.
-            (_, Some(IN), NAK | STALL) => Fail,
-            // IN or OUT may be followed by DATA0 or DATA1, wait for status.
-            (_, Some(IN | OUT), DATA0 | DATA1) if packet.len() >= 3 => Continue,
-            // An ACK or NYET then completes the transaction.
-            (Some(IN | OUT), Some(DATA0 | DATA1), ACK | NYET) => Done,
-            // OUT may also be completed by NAK or STALL.
-            (Some(OUT), Some(DATA0 | DATA1), NAK | STALL) => Fail,
-
-            // PING may be followed by ACK, NAK or STALL.
-            (Some(PING), Some(PING), ACK) => Done,
-            (Some(PING), Some(PING), NAK | STALL) => Fail,
-
-            // Any other case is not a valid part of a transaction.
+fn transaction_status(state: &Option<TransactionState>, packet: &[u8])
+    -> Result<TransactionStatus, CaptureError>
+{
+    let next = PID::from_packet(packet)?;
+    use PID::*;
+    use TransactionStatus::*;
+    use TransactionStyle::*;
+    use StartComplete::*;
+    use usb::EndpointType::*;
+    Ok(match state {
+        None => match next {
+            // Tokens may start a new transaction.
+            SOF | SETUP | IN | OUT | PING | SPLIT => New,
+            // Malformed packets start a group.
+            Malformed => New,
+            // Others are not valid as the start of a transaction.
             _ => Invalid,
-        })
+        },
+        Some(TransactionState {
+            style: Simple(first),
+            last, ..}) =>
+        {
+            match (first, last, next) {
+                // These tokens always start a new transaction.
+                (.., SETUP | IN | OUT | PING | SPLIT) => New,
+
+                // SOFs and malformed packets attach to existing groups.
+                (_, SOF, SOF) => Continue,
+                (_, Malformed, Malformed) => Continue,
+
+                // If not after an existing group they start a new group.
+                (.., SOF | Malformed) => New,
+
+                // SETUP must be followed by DATA0 with setup data.
+                (_, SETUP, DATA0) if packet.len() == 11 => Continue,
+
+                // ACK then completes the transaction.
+                (SETUP, DATA0, ACK) => Done,
+
+                // IN may be followed by NAK or STALL, failing transaction.
+                (_, IN, NAK | STALL) => Fail,
+                // IN or OUT may be followed by DATA0 or DATA1.
+                (_, IN | OUT, DATA0 | DATA1) if packet.len() >= 3 => Continue,
+                // An ACK or NYET then completes the transaction.
+                (IN | OUT, DATA0 | DATA1, ACK | NYET) => Done,
+                // OUT may also be completed by NAK or STALL.
+                (OUT, DATA0 | DATA1, NAK | STALL) => Fail,
+
+                // PING may be followed by ACK, NAK or STALL.
+                (_, PING, ACK) => Done,
+                (_, PING, NAK | STALL) => Fail,
+
+                // Any other case is not a valid part of a transaction.
+                _ => Invalid,
+            }
+        },
+        Some(TransactionState {
+            style: Split(sc, ep_type, ..),
+            last, .. }) =>
+        {
+            match (ep_type, sc, last, next) {
+                // Valid split transactions for control/bulk endpoints:
+
+                // SSPLIT->SETUP/OUT->DATA0/1->ACK/NAK.
+                (Bulk,    Start, SPLIT, OUT      ) => Continue,
+                (Control, Start, SPLIT, SETUP|OUT) => Continue,
+                (Control, Start, SETUP, DATA0    )
+                    if packet.len() == 11 => Continue,
+                (Bulk|Control, Start, OUT, DATA0|DATA1) => Continue,
+                (Bulk|Control, Start, DATA0|DATA1, ACK) => Done,
+                (Bulk|Control, Start, DATA0|DATA1, NAK) => Fail,
+                // CSPLIT->SETUP/OUT->ACK/NAK/NYET/STALL.
+                (Bulk,    Complete, SPLIT,     OUT      ) => Continue,
+                (Bulk,    Complete, SETUP,     ACK|NYET ) => Done,
+                (Bulk,    Complete, OUT,       NAK|STALL) => Fail,
+                (Control, Complete, SPLIT,     SETUP|OUT) => Continue,
+                (Control, Complete, SETUP|OUT, ACK|NYET ) => Done,
+                (Control, Complete, SETUP|OUT, NAK|STALL) => Fail,
+                // SSPLIT->IN->ACK/NAK.
+                (Control|Bulk, Start, SPLIT, IN ) => Continue,
+                (Control|Bulk, Start, IN,    ACK) => Done,
+                (Control|Bulk, Start, IN,    NAK) => Fail,
+                // CSPLIT->IN->DATA0/DATA1/NAK/NYET/STALL.
+                (Control|Bulk, Complete, SPLIT, IN) => Continue,
+                (Control|Bulk, Complete, IN,    DATA0|DATA1|NYET) => Done,
+                (Control|Bulk, Complete, IN,    NAK|STALL       ) => Fail,
+
+                // Valid split transactions for interrupt endpoints:
+
+                // SSPLIT->OUT->DATA0/1
+                (Interrupt, Start, SPLIT, OUT        ) => Continue,
+                (Interrupt, Start, OUT,   DATA0|DATA1) => Done,
+                // CSPLIT->OUT->ACK/NAK/NYET/STALL/ERR.
+                (Interrupt, Complete, SPLIT, OUT          ) => Continue,
+                (Interrupt, Complete, OUT,   ACK|NYET     ) => Done,
+                (Interrupt, Complete, OUT,   NAK|STALL|ERR) => Fail,
+                // SSPLIT->IN.
+                (Interrupt, Start, SPLIT, IN) => Done,
+                // CSPLIT->IN->DATA0/DATA1/MDATA/NAK/NYET/STALL/ERR.
+                (Interrupt, Complete, SPLIT, IN) => Continue,
+                (Interrupt, Complete, IN, DATA0|DATA1|MDATA|NYET) => Done,
+                (Interrupt, Complete, IN, NAK|STALL|ERR) => Fail,
+
+                // Valid split transactions for isochronous endpoints:
+
+                // SSPLIT->OUT->DATA0
+                (Isochronous, Start, SPLIT, OUT) => Continue,
+                (Isochronous, Start, OUT, DATA0) => Done,
+                // SSPLIT->IN.
+                (Isochronous, Start, SPLIT, IN) => Done,
+                // CSPLIT->IN->DATA0/MDATA/NYET/ERR.
+                (Isochronous, Complete, SPLIT, IN) => Continue,
+                (Isochronous, Complete, IN, DATA0|MDATA|NYET|ERR) => Done,
+
+                // Any other combination is invalid.
+                (..) => Invalid,
+            }
+        },
+    })
+}
+
+impl TransactionState {
+    fn start_pid(&self) -> Result<PID, CaptureError> {
+        use TransactionStyle::*;
+        match self.style {
+            Simple(pid) | Split(.., Some(pid)) => Ok(pid),
+            _ => Err(IndexError(String::from(
+                "Transaction state has no token PID")))
+        }
+    }
+
+    fn endpoint_id(&self) -> Result<EndpointId, CaptureError> {
+        self.endpoint_id.ok_or_else(|| IndexError(String::from(
+            "Transaction state has no endpoint ID")))
     }
 
     fn extract_payload(&mut self, packet: &[u8]) {
         use PID::*;
-        match (self.first, self.split_pid, PID::from(packet[0])) {
-            (Some(SPLIT), Some(SETUP), DATA0) |
-            (Some(SETUP), None, DATA0) => {
+        use TransactionStyle::*;
+        use usb::EndpointType::*;
+        use StartComplete::*;
+        match (&self.style, PID::from(packet[0])) {
+            (Simple(SETUP), DATA0) |
+            (Split(Start, Control, Some(SETUP)), DATA0) => {
                 self.setup = Some(SetupFields::from_data_packet(packet));
             },
-            (_, _, DATA0 | DATA1) => {
+            (_, DATA0 | DATA1) => {
                 let range = 1 .. (packet.len() - 2);
                 self.payload = Some(packet[range].to_vec());
             }
@@ -221,16 +239,19 @@ impl TransactionState {
 impl EndpointData {
     fn transfer_status(&mut self,
                        capture: &mut Capture,
-                       endpoint_id: EndpointId,
                        transaction: &mut TransactionState,
-                       next: PID,
                        success: bool,
                        complete: bool)
         -> Result<TransferStatus, CaptureError>
     {
+        use TransactionStyle::*;
         let dev_data = capture.device_data_mut(&self.device_id)?;
         let (ep_type, ep_max) = dev_data.endpoint_details(self.address);
-        let split_sc = transaction.split_sc;
+        let split_sc = match transaction.style {
+            Simple(..) => None,
+            Split(sc, ..) => Some(sc),
+        };
+        let next = transaction.start_pid()?;
         let pending_payload = self.pending_payload.take();
         let payload = transaction.payload.take().or(pending_payload);
         let length = payload.as_ref().map_or(0, |vec| vec.len()) as u64;
@@ -328,6 +349,7 @@ impl EndpointData {
             // This can be either an actual transfer, or a polling
             // group used to collect NAKed transactions.
             (_, None, IN | OUT) => {
+                let endpoint_id = transaction.endpoint_id()?;
                 let ep_traf = capture.endpoint_traffic(endpoint_id)?;
                 ep_traf.data_index.push(ep_traf.total_data)?;
                 if success {
@@ -355,6 +377,7 @@ impl EndpointData {
             // IN or OUT may then be repeated.
             (_, Some(TransferState { first: IN,  ..}), IN) |
             (_, Some(TransferState { first: OUT, ..}), OUT) => {
+                let endpoint_id = transaction.endpoint_id()?;
                 let ep_traf = capture.endpoint_traffic(endpoint_id)?;
                 ep_traf.data_index.push(ep_traf.total_data)?;
                 if success {
@@ -439,7 +462,7 @@ pub struct Decoder {
     endpoint_data: VecMap<EndpointId, EndpointData>,
     last_endpoint_state: Vec<u8>,
     last_item_endpoint: Option<EndpointId>,
-    transaction_state: TransactionState,
+    transaction_state: Option<TransactionState>,
 }
 
 impl Default for Decoder {
@@ -450,7 +473,7 @@ impl Default for Decoder {
             endpoint_data: VecMap::new(),
             last_endpoint_state: Vec::new(),
             last_item_endpoint: None,
-            transaction_state: TransactionState::default(),
+            transaction_state: None,
         };
         let default_addr = DeviceAddr(0);
         let default_id = DeviceId::from(0);
@@ -536,19 +559,24 @@ impl Decoder {
         -> Result<(), CaptureError>
     {
         use TransactionStatus::*;
+        use TransactionStyle::*;
         use StartComplete::*;
-        let status = self.transaction_state.status(packet)?;
+        let status = transaction_status(&self.transaction_state, packet)?;
         let success = status != Fail;
-        let complete = match self.transaction_state.split_sc {
-            None => true,
-            Some(Start) => false,
-            Some(Complete) => true,
+        let complete = match &self.transaction_state {
+            None => false,
+            Some(TransactionState { style: Simple(..), .. }) => true,
+            Some(TransactionState { style: Split(Start, ..), .. }) => false,
+            Some(TransactionState { style: Split(Complete, ..), .. }) => true,
         };
         if status != Invalid {
-            self.transaction_state.extract_payload(packet);
+            if let Some(state) = &mut self.transaction_state {
+                state.extract_payload(packet);
+            }
         }
         match status {
             New => {
+                self.transaction_end(capture, false, false)?;
                 self.transaction_start(capture, packet_id, packet)?;
             },
             Continue => {
@@ -569,43 +597,57 @@ impl Decoder {
     fn transaction_start(&mut self, capture: &mut Capture, packet_id: PacketId, packet: &[u8])
         -> Result<(), CaptureError>
     {
-        self.transaction_end(capture, false, false)?;
-        self.transaction_state = TransactionState::default();
+        use PID::*;
+        use TransactionStyle::*;
         let pid = PID::from_packet(packet)?;
-        let state = &mut self.transaction_state;
-        state.id = Some(capture.transaction_index.push(packet_id)?);
-        state.count = 1;
-        state.first = Some(pid);
-        state.last = state.first;
-        if pid == PID::SPLIT {
+        let transaction_id = capture.transaction_index.push(packet_id)?;
+        let (style, endpoint_id) = if pid == SPLIT {
             let split = SplitFields::from_packet(packet);
-            self.transaction_state.split_sc = Some(split.sc());
-            self.transaction_state.split_ep_type =
-                Some(split.endpoint_type());
+            (Split(split.sc(), split.endpoint_type(), None), None)
         } else {
-            self.transaction_state.endpoint_id =
-                Some(self.packet_endpoint(capture, packet)?);
-        }
+            (Simple(pid), Some(self.packet_endpoint(capture, packet)?))
+        };
+        self.transaction_state = Some(
+            TransactionState {
+                style,
+                id: transaction_id,
+                last: pid,
+                endpoint_id,
+                setup: None,
+                payload: None,
+            }
+        );
         Ok(())
     }
 
     fn transaction_append(&mut self, capture: &mut Capture, packet: &[u8])
         -> Result<(), CaptureError>
     {
+        use TransactionStyle::*;
         let pid = PID::from_packet(packet)?;
-        self.transaction_state.count += 1;
-        if self.transaction_state.last == Some(PID::SPLIT) {
-            let endpoint_id = self.packet_endpoint(capture, packet)?;
-            self.transaction_state.endpoint_id = Some(endpoint_id);
-            self.transaction_state.split_pid = Some(pid);
-            let ep_data = self.endpoint_data(endpoint_id)?;
-            if let Some(ep_type) = self.transaction_state.split_ep_type {
+        let update = match &self.transaction_state {
+            Some(TransactionState { style: Split(sc, ep_type, None), ..}) => {
+                let (sc, ep_type) = (*sc, *ep_type);
+                let endpoint_id = self.packet_endpoint(capture, packet)?;
+                let ep_data = self.endpoint_data(endpoint_id)?;
+                let ep_addr = ep_data.address;
                 let dev_data = capture.device_data_mut(&ep_data.device_id)?;
-                dev_data.set_endpoint_type(ep_data.address, ep_type);
+                dev_data.set_endpoint_type(ep_addr, ep_type);
+                Some((sc, ep_type, endpoint_id))
+            },
+            _ => None,
+        };
+        if let Some(state) = &mut self.transaction_state {
+            state.last = pid;
+            if let Some((sc, ep_type, endpoint_id)) = update {
+                state.style = Split(sc, ep_type, Some(pid));
+                state.endpoint_id = Some(endpoint_id);
             }
+            Ok(())
+        } else {
+            Err(IndexError(String::from(
+                "No current transaction to append to")))
         }
-        self.transaction_state.last = Some(pid);
-        Ok(())
     }
 
     fn transaction_end(&mut self,
@@ -614,8 +656,10 @@ impl Decoder {
                        complete: bool)
         -> Result<(), CaptureError>
     {
-        if let Some(transaction_id) = self.transaction_state.id.take() {
-            self.transfer_update(capture, transaction_id, success, complete)?;
+        if let Some(mut state) = self.transaction_state.take() {
+            if state.endpoint_id.is_some() {
+                self.transfer_update(capture, &mut state, success, complete)?;
+            }
         }
         Ok(())
     }
@@ -674,56 +718,36 @@ impl Decoder {
 
     fn transfer_update(&mut self,
                        capture: &mut Capture,
-                       transaction_id: TransactionId,
+                       transaction: &mut TransactionState,
                        success: bool,
                        complete: bool)
         -> Result<(), CaptureError>
     {
         use TransferStatus::*;
-        let mut next = self.transaction_state.first.ok_or_else(||
-            IndexError(String::from(
-                "Transaction state has no first PID set")))?;
-        if next == PID::SPLIT {
-            next = self.transaction_state.split_pid.ok_or_else(||
-                IndexError(String::from(
-                    "Transaction state has no split PID set")))?;
-        }
-        let endpoint_id = self.transaction_state.endpoint_id.ok_or_else(||
-            IndexError(String::from(
-                "Transaction state has endpoint ID set")))?;
-        let ep_data = self.endpoint_data.get_mut(endpoint_id).ok_or_else(||
-            IndexError(format!(
-                "Decoder has no data for endpoint ID {endpoint_id}")))?;
-        match ep_data.transfer_status(capture, endpoint_id,
-                                      &mut self.transaction_state,
-                                      next, success, complete)?
+        let endpoint_id = transaction.endpoint_id()?;
+        let ep_data = self.endpoint_data_mut(endpoint_id)?;
+        match ep_data.transfer_status(capture, transaction, success, complete)?
         {
             Single => {
-                self.transfer_start(capture, endpoint_id,
-                                    transaction_id, next, true)?;
-                self.transfer_end(capture, endpoint_id)?;
+                self.transfer_start(capture, transaction, true)?;
+                self.transfer_end(capture, transaction)?;
             },
             New => {
-                self.transfer_start(capture, endpoint_id,
-                                    transaction_id, next, true)?;
+                self.transfer_start(capture, transaction, true)?;
             },
             Continue => {
-                self.transfer_append(capture, endpoint_id,
-                                     transaction_id, next, true)?;
+                self.transfer_append(capture, transaction, true)?;
             },
             Retry => {
-                self.transfer_append(capture, endpoint_id,
-                                     transaction_id, next, false)?;
+                self.transfer_append(capture, transaction, false)?;
             },
             Done => {
-                self.transfer_append(capture, endpoint_id,
-                                     transaction_id, next, true)?;
-                self.transfer_end(capture, endpoint_id)?;
+                self.transfer_append(capture, transaction, true)?;
+                self.transfer_end(capture, transaction)?;
             },
             Invalid => {
-                self.transfer_start(capture, endpoint_id,
-                                    transaction_id, next, false)?;
-                self.transfer_end(capture, endpoint_id)?;
+                self.transfer_start(capture, transaction, false)?;
+                self.transfer_end(capture, transaction)?;
             }
         }
         Ok(())
@@ -731,21 +755,21 @@ impl Decoder {
 
     fn transfer_start(&mut self,
                       capture: &mut Capture,
-                      endpoint_id: EndpointId,
-                      transaction_id: TransactionId,
-                      transaction_type: PID,
+                      transaction: &TransactionState,
                       done: bool)
         -> Result<(), CaptureError>
     {
+        let endpoint_id = transaction.endpoint_id()?;
         let ep_data = self.endpoint_data_mut(endpoint_id)?;
         if let Some(transfer) = ep_data.active.take() {
             ep_data.ended = Some(transfer.id);
             self.add_transfer_entry(capture, endpoint_id, transfer.id, false)?;
         }
         let ep_traf = capture.endpoint_traffic(endpoint_id)?;
-        let ep_transaction_id = ep_traf.transaction_ids.push(transaction_id)?;
+        let ep_transaction_id = ep_traf.transaction_ids.push(transaction.id)?;
         let ep_transfer_id = ep_traf.transfer_index.push(ep_transaction_id)?;
         let ep_data = self.endpoint_data_mut(endpoint_id)?;
+        let transaction_type = transaction.start_pid()?;
         ep_data.active = Some(
             TransferState {
                 id: ep_transfer_id,
@@ -762,37 +786,38 @@ impl Decoder {
 
     fn transfer_append(&mut self,
                        capture: &mut Capture,
-                       endpoint_id: EndpointId,
-                       transaction_id: TransactionId,
-                       transaction_type: PID,
+                       transaction: &TransactionState,
                        done: bool)
         -> Result<(), CaptureError>
     {
+        let endpoint_id = transaction.endpoint_id()?;
         let ep_data = self.endpoint_data_mut(endpoint_id)?;
         if let Some(transfer) = &mut ep_data.active {
             let ep_traf = capture.endpoint_traffic(endpoint_id)?;
-            ep_traf.transaction_ids.push(transaction_id)?;
+            ep_traf.transaction_ids.push(transaction.id)?;
             if done {
-                transfer.last = Some(transaction_type);
+                transfer.last = Some(transaction.start_pid()?);
             }
         } else {
-            self.transfer_start(capture, endpoint_id, transaction_id,
-                                transaction_type, done)?;
+            self.transfer_start(capture, transaction, done)?;
         }
         Ok(())
     }
 
     fn transfer_end(&mut self,
                     capture: &mut Capture,
-                    endpoint_id: EndpointId)
+                    transaction: &TransactionState)
         -> Result<(), CaptureError>
     {
+        let endpoint_id = transaction.endpoint_id()?;
         let ep_data = self.endpoint_data_mut(endpoint_id)?;
+        ep_data.payload.clear();
         if let Some(transfer) = ep_data.active.take() {
-            ep_data.ended = Some(transfer.id);
+            let ep_transfer_id = transfer.id;
+            ep_data.ended = Some(ep_transfer_id);
             let transfer_end_id =
                 self.add_transfer_entry(capture, endpoint_id,
-                                        transfer.id, false)?;
+                                        ep_transfer_id, false)?;
             if self.last_item_endpoint != Some(endpoint_id) {
                 self.add_item(capture, endpoint_id, transfer_end_id)?;
             }
