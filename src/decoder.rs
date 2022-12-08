@@ -19,6 +19,7 @@ impl PID {
 struct EndpointData {
     device_id: DeviceId,
     address: EndpointAddr,
+    early_start: Option<EndpointTransferId>,
     active: Option<TransferState>,
     ended: Option<EndpointTransferId>,
     last_success: bool,
@@ -57,6 +58,7 @@ impl EndpointData {
         EndpointData {
             address,
             device_id,
+            early_start: None,
             active: None,
             ended: None,
             last_success: false,
@@ -610,17 +612,18 @@ impl Decoder {
         } else {
             (Simple(pid), Some(self.packet_endpoint(capture, packet)?))
         };
-        self.transaction_state = Some(
-            TransactionState {
-                style,
-                id: transaction_id,
-                last: pid,
-                endpoint_id,
-                ep_transaction_id: None,
-                setup: None,
-                payload: None,
-            }
-        );
+        let mut state = TransactionState {
+            style,
+            id: transaction_id,
+            last: pid,
+            endpoint_id,
+            ep_transaction_id: None,
+            setup: None,
+            payload: None,
+        };
+        // Some packets start a new transfer immediately.
+        self.transfer_early_start(capture, &mut state, pid)?;
+        self.transaction_state = Some(state);
         Ok(())
     }
 
@@ -720,6 +723,40 @@ impl Decoder {
                 "Decoder has no data for current endpoint ID {endpoint_id}")))
     }
 
+    fn transfer_early_start(&mut self,
+                            capture: &mut Capture,
+                            transaction: &mut TransactionState,
+                            start: PID)
+        -> Result<(), CaptureError>
+    {
+        use PID::*;
+        let start_early = match (start, transaction.endpoint_id) {
+            // SETUP always starts a new transfer.
+            (SETUP, Some(endpoint_id)) => Some(endpoint_id),
+            // Other PIDs always start a new transfer if there
+            // is no existing one on their endpoint.
+            (IN | OUT | SOF | Malformed, Some(endpoint_id)) => {
+                let ep_data = self.endpoint_data(endpoint_id)?;
+                if ep_data.active.is_none() {
+                    Some(endpoint_id)
+                } else {
+                    None
+                }
+            }
+            // For all other cases, wait for transaction progress.
+            _ => None,
+        };
+
+        if let Some(endpoint_id) = start_early {
+            let ep_transfer_id =
+                self.add_transfer(capture, endpoint_id, transaction)?;
+            let ep_data = self.endpoint_data_mut(endpoint_id)?;
+            ep_data.early_start = Some(ep_transfer_id);
+        }
+
+        Ok(())
+    }
+
     fn transfer_early_append(&mut self, capture: &mut Capture)
         -> Result<(), CaptureError>
     {
@@ -806,8 +843,13 @@ impl Decoder {
         -> Result<(), CaptureError>
     {
         let endpoint_id = transaction.endpoint_id()?;
+        let ep_data = self.endpoint_data_mut(endpoint_id)?;
         let ep_transfer_id =
-            self.add_transfer(capture, endpoint_id, transaction)?;
+            if let Some(ep_transfer_id) = ep_data.early_start.take() {
+                ep_transfer_id
+            } else {
+                self.add_transfer(capture, endpoint_id, transaction)?
+            };
         let ep_data = self.endpoint_data_mut(endpoint_id)?;
         let transaction_type = transaction.start_pid()?;
         ep_data.active = Some(
