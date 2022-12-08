@@ -62,198 +62,198 @@
   SOF packet with frame number 192, CRC 1F
   SOF packet with frame number 192, CRC 1F
 Getting device descriptor #0 for device 11, reading 18 bytes
- SETUP transaction with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 12, 00]
+ SETUP transaction on 11.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 12, 00]
   SETUP packet on 11.0, CRC 04
   DATA0 packet with CRC F4E0 and 8 data bytes: [80, 06, 00, 01, 00, 00, 12, 00]
   ACK packet
- IN transaction, NAK
+ IN transaction on 11.0, NAK
   IN packet on 11.0, CRC 04
   NAK packet
- IN transaction with 18 data bytes, ACK: [12, 01, 00, 02, 00, 00, 00, 40, C9, 1F, 0C, 00, 00, 01, 01, 02, 03, 01]
+ IN transaction on 11.0 with 18 data bytes, ACK: [12, 01, 00, 02, 00, 00, 00, 40, C9, 1F, 0C, 00, 00, 01, 01, 02, 03, 01]
   IN packet on 11.0, CRC 04
   DATA1 packet with CRC 8CA8 and 18 data bytes: [12, 01, 00, 02, 00, 00, 00, 40, C9, 1F, 0C, 00, 00, 01, 01, 02, 03, 01]
   ACK packet
- OUT transaction with no data, NAK
+ OUT transaction on 11.0 with no data, NAK
   OUT packet on 11.0, CRC 04
   DATA1 packet with CRC 0000 and no data
   NAK packet
- PING transaction, ACK
+ PING transaction on 11.0, ACK
   PING packet on 11.0, CRC 04
   ACK packet
- OUT transaction with no data, ACK
+ OUT transaction on 11.0 with no data, ACK
   OUT packet on 11.0, CRC 04
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting configuration descriptor #0 for device 11, reading 9 bytes
- SETUP transaction with 8 data bytes, ACK: [80, 06, 00, 02, 00, 00, 09, 00]
+ SETUP transaction on 11.0 with 8 data bytes, ACK: [80, 06, 00, 02, 00, 00, 09, 00]
   SETUP packet on 11.0, CRC 04
   DATA0 packet with CRC 04AE and 8 data bytes: [80, 06, 00, 02, 00, 00, 09, 00]
   ACK packet
- IN transaction, NAK
+ IN transaction on 11.0, NAK
   IN packet on 11.0, CRC 04
   NAK packet
- IN transaction with 9 data bytes, ACK: [09, 02, 1B, 00, 01, 01, 00, C0, 32]
+ IN transaction on 11.0 with 9 data bytes, ACK: [09, 02, 1B, 00, 01, 01, 00, C0, 32]
   IN packet on 11.0, CRC 04
   DATA1 packet with CRC 6E58 and 9 data bytes: [09, 02, 1B, 00, 01, 01, 00, C0, 32]
   ACK packet
- OUT transaction with no data, NAK
+ OUT transaction on 11.0 with no data, NAK
   OUT packet on 11.0, CRC 04
   DATA1 packet with CRC 0000 and no data
   NAK packet
- PING transaction, ACK
+ PING transaction on 11.0, ACK
   PING packet on 11.0, CRC 04
   ACK packet
- OUT transaction with no data, ACK
+ OUT transaction on 11.0 with no data, ACK
   OUT packet on 11.0, CRC 04
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting configuration descriptor #0 for device 11, reading 27 bytes
- SETUP transaction with 8 data bytes, ACK: [80, 06, 00, 02, 00, 00, 1B, 00]
+ SETUP transaction on 11.0 with 8 data bytes, ACK: [80, 06, 00, 02, 00, 00, 1B, 00]
   SETUP packet on 11.0, CRC 04
   DATA0 packet with CRC A4A2 and 8 data bytes: [80, 06, 00, 02, 00, 00, 1B, 00]
   ACK packet
- IN transaction, NAK
+ IN transaction on 11.0, NAK
   IN packet on 11.0, CRC 04
   NAK packet
- IN transaction with 27 data bytes, ACK: [09, 02, 1B, 00, 01, 01, 00, C0, 32, 09, 04, 00, 00, 00, FE, 01, 01, 04, 09, 21, 09, 00, FF, 00, 08, 00, 01]
+ IN transaction on 11.0 with 27 data bytes, ACK: [09, 02, 1B, 00, 01, 01, 00, C0, 32, 09, 04, 00, 00, 00, FE, 01, 01, 04, 09, 21, 09, 00, FF, 00, 08, 00, 01]
   IN packet on 11.0, CRC 04
   DATA1 packet with CRC 4D4A and 27 data bytes: [09, 02, 1B, 00, 01, 01, 00, C0, 32, 09, 04, 00, 00, 00, FE, 01, 01, 04, 09, 21, 09, 00, FF, 00, 08, 00, 01]
   ACK packet
- OUT transaction with no data, NAK
+ OUT transaction on 11.0 with no data, NAK
   OUT packet on 11.0, CRC 04
   DATA1 packet with CRC 0000 and no data
   NAK packet
- PING transaction, ACK
+ PING transaction on 11.0, ACK
   PING packet on 11.0, CRC 04
   ACK packet
- OUT transaction with no data, ACK
+ OUT transaction on 11.0 with no data, ACK
   OUT packet on 11.0, CRC 04
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting string descriptor #0 for device 11, reading 4 of 255 requested bytes
- SETUP transaction with 8 data bytes, ACK: [80, 06, 00, 03, 00, 00, FF, 00]
+ SETUP transaction on 11.0 with 8 data bytes, ACK: [80, 06, 00, 03, 00, 00, FF, 00]
   SETUP packet on 11.0, CRC 04
   DATA0 packet with CRC 64D4 and 8 data bytes: [80, 06, 00, 03, 00, 00, FF, 00]
   ACK packet
- IN transaction, NAK
+ IN transaction on 11.0, NAK
   IN packet on 11.0, CRC 04
   NAK packet
- IN transaction with 4 data bytes, ACK: [04, 03, 09, 04]
+ IN transaction on 11.0 with 4 data bytes, ACK: [04, 03, 09, 04]
   IN packet on 11.0, CRC 04
   DATA1 packet with CRC 7809 and 4 data bytes: [04, 03, 09, 04]
   ACK packet
- OUT transaction with no data, NAK
+ OUT transaction on 11.0 with no data, NAK
   OUT packet on 11.0, CRC 04
   DATA1 packet with CRC 0000 and no data
   NAK packet
- PING transaction, ACK
+ PING transaction on 11.0, ACK
   PING packet on 11.0, CRC 04
   ACK packet
- OUT transaction with no data, ACK
+ OUT transaction on 11.0 with no data, ACK
   OUT packet on 11.0, CRC 04
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting string descriptor #2, language 0x0409 for device 11, reading 8 of 255 requested bytes: 'LPC'
- SETUP transaction with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, FF, 00]
+ SETUP transaction on 11.0 with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, FF, 00]
   SETUP packet on 11.0, CRC 04
   DATA0 packet with CRC DB97 and 8 data bytes: [80, 06, 02, 03, 09, 04, FF, 00]
   ACK packet
- IN transaction, NAK
+ IN transaction on 11.0, NAK
   IN packet on 11.0, CRC 04
   NAK packet
- IN transaction with 8 data bytes, ACK: [08, 03, 4C, 00, 50, 00, 43, 00]
+ IN transaction on 11.0 with 8 data bytes, ACK: [08, 03, 4C, 00, 50, 00, 43, 00]
   IN packet on 11.0, CRC 04
   DATA1 packet with CRC 6EA3 and 8 data bytes: [08, 03, 4C, 00, 50, 00, 43, 00]
   ACK packet
- OUT transaction with no data, NAK
+ OUT transaction on 11.0 with no data, NAK
   OUT packet on 11.0, CRC 04
   DATA1 packet with CRC 0000 and no data
   NAK packet
- PING transaction, ACK
+ PING transaction on 11.0, ACK
   PING packet on 11.0, CRC 04
   ACK packet
- OUT transaction with no data, ACK
+ OUT transaction on 11.0 with no data, ACK
   OUT packet on 11.0, CRC 04
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting string descriptor #1, language 0x0409 for device 11, reading 8 of 255 requested bytes: 'NXP'
- SETUP transaction with 8 data bytes, ACK: [80, 06, 01, 03, 09, 04, FF, 00]
+ SETUP transaction on 11.0 with 8 data bytes, ACK: [80, 06, 01, 03, 09, 04, FF, 00]
   SETUP packet on 11.0, CRC 04
   DATA0 packet with CRC E897 and 8 data bytes: [80, 06, 01, 03, 09, 04, FF, 00]
   ACK packet
- IN transaction, NAK
+ IN transaction on 11.0, NAK
   IN packet on 11.0, CRC 04
   NAK packet
- IN transaction with 8 data bytes, ACK: [08, 03, 4E, 00, 58, 00, 50, 00]
+ IN transaction on 11.0 with 8 data bytes, ACK: [08, 03, 4E, 00, 58, 00, 50, 00]
   IN packet on 11.0, CRC 04
   DATA1 packet with CRC DCAD and 8 data bytes: [08, 03, 4E, 00, 58, 00, 50, 00]
   ACK packet
- OUT transaction with no data, NAK
+ OUT transaction on 11.0 with no data, NAK
   OUT packet on 11.0, CRC 04
   DATA1 packet with CRC 0000 and no data
   NAK packet
- PING transaction, ACK
+ PING transaction on 11.0, ACK
   PING packet on 11.0, CRC 04
   ACK packet
- OUT transaction with no data, ACK
+ OUT transaction on 11.0 with no data, ACK
   OUT packet on 11.0, CRC 04
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting string descriptor #3, language 0x0409 for device 11, reading 10 of 255 requested bytes: 'ABCD'
- SETUP transaction with 8 data bytes, ACK: [80, 06, 03, 03, 09, 04, FF, 00]
+ SETUP transaction on 11.0 with 8 data bytes, ACK: [80, 06, 03, 03, 09, 04, FF, 00]
   SETUP packet on 11.0, CRC 04
   DATA0 packet with CRC 0A96 and 8 data bytes: [80, 06, 03, 03, 09, 04, FF, 00]
   ACK packet
- IN transaction, NAK
+ IN transaction on 11.0, NAK
   IN packet on 11.0, CRC 04
   NAK packet
- IN transaction with 10 data bytes, ACK: [0A, 03, 41, 00, 42, 00, 43, 00, 44, 00]
+ IN transaction on 11.0 with 10 data bytes, ACK: [0A, 03, 41, 00, 42, 00, 43, 00, 44, 00]
   IN packet on 11.0, CRC 04
   DATA1 packet with CRC 7257 and 10 data bytes: [0A, 03, 41, 00, 42, 00, 43, 00, 44, 00]
   ACK packet
- OUT transaction with no data, NAK
+ OUT transaction on 11.0 with no data, NAK
   OUT packet on 11.0, CRC 04
   DATA1 packet with CRC 0000 and no data
   NAK packet
- PING transaction, ACK
+ PING transaction on 11.0, ACK
   PING packet on 11.0, CRC 04
   ACK packet
- OUT transaction with no data, ACK
+ OUT transaction on 11.0 with no data, ACK
   OUT packet on 11.0, CRC 04
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Setting configuration 1 for device 11
- SETUP transaction with 8 data bytes, ACK: [00, 09, 01, 00, 00, 00, 00, 00]
+ SETUP transaction on 11.0 with 8 data bytes, ACK: [00, 09, 01, 00, 00, 00, 00, 00]
   SETUP packet on 11.0, CRC 04
   DATA0 packet with CRC 2527 and 8 data bytes: [00, 09, 01, 00, 00, 00, 00, 00]
   ACK packet
- IN transaction, NAK
+ IN transaction on 11.0, NAK
   IN packet on 11.0, CRC 04
   NAK packet
- IN transaction with no data, ACK
+ IN transaction on 11.0 with no data, ACK
   IN packet on 11.0, CRC 04
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Getting string descriptor #4, language 0x0409 for device 11, reading 8 of 255 requested bytes: 'DFU'
- SETUP transaction with 8 data bytes, ACK: [80, 06, 04, 03, 09, 04, FF, 00]
+ SETUP transaction on 11.0 with 8 data bytes, ACK: [80, 06, 04, 03, 09, 04, FF, 00]
   SETUP packet on 11.0, CRC 04
   DATA0 packet with CRC BD97 and 8 data bytes: [80, 06, 04, 03, 09, 04, FF, 00]
   ACK packet
- IN transaction, NAK
+ IN transaction on 11.0, NAK
   IN packet on 11.0, CRC 04
   NAK packet
- IN transaction with 8 data bytes, ACK: [08, 03, 44, 00, 46, 00, 55, 00]
+ IN transaction on 11.0 with 8 data bytes, ACK: [08, 03, 44, 00, 46, 00, 55, 00]
   IN packet on 11.0, CRC 04
   DATA1 packet with CRC 0EA8 and 8 data bytes: [08, 03, 44, 00, 46, 00, 55, 00]
   ACK packet
- OUT transaction with no data, NAK
+ OUT transaction on 11.0 with no data, NAK
   OUT packet on 11.0, CRC 04
   DATA1 packet with CRC 0000 and no data
   NAK packet
- PING transaction, ACK
+ PING transaction on 11.0, ACK
   PING packet on 11.0, CRC 04
   ACK packet
- OUT transaction with no data, ACK
+ OUT transaction on 11.0 with no data, ACK
   OUT packet on 11.0, CRC 04
   DATA1 packet with CRC 0000 and no data
   ACK packet

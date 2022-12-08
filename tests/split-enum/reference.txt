@@ -1723,452 +1723,452 @@
   SOF packet with frame number 1987, CRC 0C
   SOF packet with frame number 1987, CRC 0C
 Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
- Starting SETUP transaction with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 40, 00]
+ Starting SETUP transaction on 0.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 40, 00]
   SPLIT packet starting low speed control transaction on hub 12 port 2
   SETUP packet on 0.0, CRC 02
   DATA0 packet with CRC 94DD and 8 data bytes: [80, 06, 00, 01, 00, 00, 40, 00]
   ACK packet
- Completing SETUP transaction, ACK
+ Completing SETUP transaction on 0.0, ACK
   SPLIT packet completing low speed control transaction on hub 12 port 2
   SETUP packet on 0.0, CRC 02
   ACK packet
- Starting IN transaction, ACK
+ Starting IN transaction on 0.0, ACK
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 0.0, CRC 02
   ACK packet
- Completing IN transaction with 8 data bytes: [12, 01, 00, 02, 00, 00, 00, 08]
+ Completing IN transaction on 0.0 with 8 data bytes: [12, 01, 00, 02, 00, 00, 00, 08]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 0.0, CRC 02
   DATA1 packet with CRC E757 and 8 data bytes: [12, 01, 00, 02, 00, 00, 00, 08]
- Starting IN transaction, ACK
+ Starting IN transaction on 0.0, ACK
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 0.0, CRC 02
   ACK packet
- Completing IN transaction with 8 data bytes: [45, 0C, 03, 74, 01, 00, 01, 02]
+ Completing IN transaction on 0.0 with 8 data bytes: [45, 0C, 03, 74, 01, 00, 01, 02]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 0.0, CRC 02
   DATA0 packet with CRC 6E86 and 8 data bytes: [45, 0C, 03, 74, 01, 00, 01, 02]
- Starting IN transaction, ACK
+ Starting IN transaction on 0.0, ACK
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 0.0, CRC 02
   ACK packet
- Completing IN transaction with 2 data bytes: [00, 01]
+ Completing IN transaction on 0.0 with 2 data bytes: [00, 01]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 0.0, CRC 02
   DATA1 packet with CRC 8F3F and 2 data bytes: [00, 01]
- Starting OUT transaction with no data, ACK
+ Starting OUT transaction on 0.0 with no data, ACK
   SPLIT packet starting low speed control transaction on hub 12 port 2
   OUT packet on 0.0, CRC 02
   DATA1 packet with CRC 0000 and no data
   ACK packet
- Completing OUT transaction, ACK
+ Completing OUT transaction on 0.0, ACK
   SPLIT packet completing low speed control transaction on hub 12 port 2
   OUT packet on 0.0, CRC 02
   ACK packet
 Polling 8 times for unidentified transfer on endpoint 12.1 IN
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
 End of control transfer on endpoint 0.0 OUT
 Class request #3, index 2, value 4 for device 12, index 2
- SETUP transaction with 8 data bytes, ACK: [23, 03, 04, 00, 02, 00, 00, 00]
+ SETUP transaction on 12.0 with 8 data bytes, ACK: [23, 03, 04, 00, 02, 00, 00, 00]
   SETUP packet on 12.0, CRC 0B
   DATA0 packet with CRC C5CE and 8 data bytes: [23, 03, 04, 00, 02, 00, 00, 00]
   ACK packet
- IN transaction with no data, ACK
+ IN transaction on 12.0 with no data, ACK
   IN packet on 12.0, CRC 0B
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Unidentified transfer of 1 byte on endpoint 12.1 IN: [04]
- IN transaction with 1 data bytes, ACK: [04]
+ IN transaction on 12.1 with 1 data bytes, ACK: [04]
   IN packet on 12.1, CRC 1D
   DATA1 packet with CRC 7C41 and 1 data bytes: [04]
   ACK packet
 Class request #0, index 2, value 0 for device 12, index 2, reading 4 bytes
- SETUP transaction with 8 data bytes, ACK: [A3, 00, 00, 00, 02, 00, 04, 00]
+ SETUP transaction on 12.0 with 8 data bytes, ACK: [A3, 00, 00, 00, 02, 00, 04, 00]
   SETUP packet on 12.0, CRC 0B
   DATA0 packet with CRC E1F6 and 8 data bytes: [A3, 00, 00, 00, 02, 00, 04, 00]
   ACK packet
- IN transaction with 4 data bytes, ACK: [03, 03, 10, 00]
+ IN transaction on 12.0 with 4 data bytes, ACK: [03, 03, 10, 00]
   IN packet on 12.0, CRC 0B
   DATA1 packet with CRC 5F02 and 4 data bytes: [03, 03, 10, 00]
   ACK packet
- OUT transaction with no data, ACK
+ OUT transaction on 12.0 with no data, ACK
   OUT packet on 12.0, CRC 0B
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Class request #1, index 2, value 20 for device 12, index 2
- SETUP transaction with 8 data bytes, ACK: [23, 01, 14, 00, 02, 00, 00, 00]
+ SETUP transaction on 12.0 with 8 data bytes, ACK: [23, 01, 14, 00, 02, 00, 00, 00]
   SETUP packet on 12.0, CRC 0B
   DATA0 packet with CRC 95EF and 8 data bytes: [23, 01, 14, 00, 02, 00, 00, 00]
   ACK packet
- IN transaction with no data, ACK
+ IN transaction on 12.0 with no data, ACK
   IN packet on 12.0, CRC 0B
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Class request #0, index 2, value 0 for device 12, index 2, reading 4 bytes
- SETUP transaction with 8 data bytes, ACK: [A3, 00, 00, 00, 02, 00, 04, 00]
+ SETUP transaction on 12.0 with 8 data bytes, ACK: [A3, 00, 00, 00, 02, 00, 04, 00]
   SETUP packet on 12.0, CRC 0B
   DATA0 packet with CRC E1F6 and 8 data bytes: [A3, 00, 00, 00, 02, 00, 04, 00]
   ACK packet
- IN transaction with 4 data bytes, ACK: [03, 03, 00, 00]
+ IN transaction on 12.0 with 4 data bytes, ACK: [03, 03, 00, 00]
   IN packet on 12.0, CRC 0B
   DATA1 packet with CRC 9F0F and 4 data bytes: [03, 03, 00, 00]
   ACK packet
- OUT transaction with no data, ACK
+ OUT transaction on 12.0 with no data, ACK
   OUT packet on 12.0, CRC 0B
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Polling 39 times for unidentified transfer on endpoint 12.1 IN
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
- IN transaction, NAK
+ IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
 Setting address to 14 for device 0
- Starting SETUP transaction with 8 data bytes, ACK: [00, 05, 0E, 00, 00, 00, 00, 00]
+ Starting SETUP transaction on 0.0 with 8 data bytes, ACK: [00, 05, 0E, 00, 00, 00, 00, 00]
   SPLIT packet starting low speed control transaction on hub 12 port 2
   SETUP packet on 0.0, CRC 02
   DATA0 packet with CRC DAEB and 8 data bytes: [00, 05, 0E, 00, 00, 00, 00, 00]
   ACK packet
- Completing SETUP transaction, ACK
+ Completing SETUP transaction on 0.0, ACK
   SPLIT packet completing low speed control transaction on hub 12 port 2
   SETUP packet on 0.0, CRC 02
   ACK packet
- Starting IN transaction, ACK
+ Starting IN transaction on 0.0, ACK
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 0.0, CRC 02
   ACK packet
- Completing IN transaction with no data
+ Completing IN transaction on 0.0 with no data
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 0.0, CRC 02
   DATA1 packet with CRC 0000 and no data
 Getting device descriptor #0 for device 14, reading 18 bytes
- Starting SETUP transaction with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 12, 00]
+ Starting SETUP transaction on 14.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 12, 00]
   SPLIT packet starting low speed control transaction on hub 12 port 2
   SETUP packet on 14.0, CRC 1C
   DATA0 packet with CRC F4E0 and 8 data bytes: [80, 06, 00, 01, 00, 00, 12, 00]
   ACK packet
- Completing SETUP transaction, ACK
+ Completing SETUP transaction on 14.0, ACK
   SPLIT packet completing low speed control transaction on hub 12 port 2
   SETUP packet on 14.0, CRC 1C
   ACK packet
- Starting IN transaction, ACK
+ Starting IN transaction on 14.0, ACK
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   ACK packet
- Completing IN transaction with 8 data bytes: [12, 01, 00, 02, 00, 00, 00, 08]
+ Completing IN transaction on 14.0 with 8 data bytes: [12, 01, 00, 02, 00, 00, 00, 08]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   DATA1 packet with CRC E757 and 8 data bytes: [12, 01, 00, 02, 00, 00, 00, 08]
- Starting IN transaction, ACK
+ Starting IN transaction on 14.0, ACK
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   ACK packet
- Completing IN transaction with 8 data bytes: [45, 0C, 03, 74, 01, 00, 01, 02]
+ Completing IN transaction on 14.0 with 8 data bytes: [45, 0C, 03, 74, 01, 00, 01, 02]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   DATA0 packet with CRC 6E86 and 8 data bytes: [45, 0C, 03, 74, 01, 00, 01, 02]
- Starting IN transaction, ACK
+ Starting IN transaction on 14.0, ACK
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   ACK packet
- Completing IN transaction with 2 data bytes: [00, 01]
+ Completing IN transaction on 14.0 with 2 data bytes: [00, 01]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   DATA1 packet with CRC 8F3F and 2 data bytes: [00, 01]
- Starting OUT transaction with no data, ACK
+ Starting OUT transaction on 14.0 with no data, ACK
   SPLIT packet starting low speed control transaction on hub 12 port 2
   OUT packet on 14.0, CRC 1C
   DATA1 packet with CRC 0000 and no data
   ACK packet
- Completing OUT transaction, ACK
+ Completing OUT transaction on 14.0, ACK
   SPLIT packet completing low speed control transaction on hub 12 port 2
   OUT packet on 14.0, CRC 1C
   ACK packet
 Getting configuration descriptor #0 for device 14, reading 59 of 255 requested bytes
- Starting SETUP transaction with 8 data bytes, ACK: [80, 06, 00, 02, 00, 00, FF, 00]
+ Starting SETUP transaction on 14.0 with 8 data bytes, ACK: [80, 06, 00, 02, 00, 00, FF, 00]
   SPLIT packet starting low speed control transaction on hub 12 port 2
   SETUP packet on 14.0, CRC 1C
   DATA0 packet with CRC A4E9 and 8 data bytes: [80, 06, 00, 02, 00, 00, FF, 00]
   ACK packet
- Completing SETUP transaction, ACK
+ Completing SETUP transaction on 14.0, ACK
   SPLIT packet completing low speed control transaction on hub 12 port 2
   SETUP packet on 14.0, CRC 1C
   ACK packet
- Starting IN transaction, ACK
+ Starting IN transaction on 14.0, ACK
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   ACK packet
- Completing IN transaction with 8 data bytes: [09, 02, 3B, 00, 02, 01, 00, A0]
+ Completing IN transaction on 14.0 with 8 data bytes: [09, 02, 3B, 00, 02, 01, 00, A0]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   DATA1 packet with CRC D508 and 8 data bytes: [09, 02, 3B, 00, 02, 01, 00, A0]
- Starting IN transaction, ACK
+ Starting IN transaction on 14.0, ACK
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   ACK packet
- Completing IN transaction with 8 data bytes: [32, 09, 04, 00, 00, 01, 03, 01]
+ Completing IN transaction on 14.0 with 8 data bytes: [32, 09, 04, 00, 00, 01, 03, 01]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   DATA0 packet with CRC 4D35 and 8 data bytes: [32, 09, 04, 00, 00, 01, 03, 01]
- Starting IN transaction, ACK
+ Starting IN transaction on 14.0, ACK
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   ACK packet
- Completing IN transaction with 8 data bytes: [01, 00, 09, 21, 00, 01, 00, 01]
+ Completing IN transaction on 14.0 with 8 data bytes: [01, 00, 09, 21, 00, 01, 00, 01]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   DATA1 packet with CRC A652 and 8 data bytes: [01, 00, 09, 21, 00, 01, 00, 01]
- Starting IN transaction, ACK
+ Starting IN transaction on 14.0, ACK
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   ACK packet
- Completing IN transaction with 8 data bytes: [22, 4D, 00, 07, 05, 81, 03, 08]
+ Completing IN transaction on 14.0 with 8 data bytes: [22, 4D, 00, 07, 05, 81, 03, 08]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   DATA0 packet with CRC 2345 and 8 data bytes: [22, 4D, 00, 07, 05, 81, 03, 08]
- Starting IN transaction, ACK
+ Starting IN transaction on 14.0, ACK
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   ACK packet
- Completing IN transaction with 8 data bytes: [00, 0A, 09, 04, 01, 00, 01, 03]
+ Completing IN transaction on 14.0 with 8 data bytes: [00, 0A, 09, 04, 01, 00, 01, 03]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   DATA1 packet with CRC C0A4 and 8 data bytes: [00, 0A, 09, 04, 01, 00, 01, 03]
- Starting IN transaction, ACK
+ Starting IN transaction on 14.0, ACK
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   ACK packet
- Completing IN transaction with 8 data bytes: [01, 02, 00, 09, 21, 00, 01, 00]
+ Completing IN transaction on 14.0 with 8 data bytes: [01, 02, 00, 09, 21, 00, 01, 00]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   DATA0 packet with CRC 558A and 8 data bytes: [01, 02, 00, 09, 21, 00, 01, 00]
- Starting IN transaction, ACK
+ Starting IN transaction on 14.0, ACK
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   ACK packet
- Completing IN transaction with 8 data bytes: [01, 22, 5B, 00, 07, 05, 82, 03]
+ Completing IN transaction on 14.0 with 8 data bytes: [01, 22, 5B, 00, 07, 05, 82, 03]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   DATA1 packet with CRC C540 and 8 data bytes: [01, 22, 5B, 00, 07, 05, 82, 03]
- Starting IN transaction, ACK
+ Starting IN transaction on 14.0, ACK
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   ACK packet
- Completing IN transaction with 3 data bytes: [05, 00, 0A]
+ Completing IN transaction on 14.0 with 3 data bytes: [05, 00, 0A]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   DATA0 packet with CRC 391E and 3 data bytes: [05, 00, 0A]
- Starting OUT transaction with no data, ACK
+ Starting OUT transaction on 14.0 with no data, ACK
   SPLIT packet starting low speed control transaction on hub 12 port 2
   OUT packet on 14.0, CRC 1C
   DATA1 packet with CRC 0000 and no data
   ACK packet
- Completing OUT transaction, ACK
+ Completing OUT transaction on 14.0, ACK
   SPLIT packet completing low speed control transaction on hub 12 port 2
   OUT packet on 14.0, CRC 1C
   ACK packet
 Getting string descriptor #0 for device 14, reading 4 of 255 requested bytes
- Starting SETUP transaction with 8 data bytes, ACK: [80, 06, 00, 03, 00, 00, FF, 00]
+ Starting SETUP transaction on 14.0 with 8 data bytes, ACK: [80, 06, 00, 03, 00, 00, FF, 00]
   SPLIT packet starting low speed control transaction on hub 12 port 2
   SETUP packet on 14.0, CRC 1C
   DATA0 packet with CRC 64D4 and 8 data bytes: [80, 06, 00, 03, 00, 00, FF, 00]
   ACK packet
- Completing SETUP transaction, ACK
+ Completing SETUP transaction on 14.0, ACK
   SPLIT packet completing low speed control transaction on hub 12 port 2
   SETUP packet on 14.0, CRC 1C
   ACK packet
- Starting IN transaction, ACK
+ Starting IN transaction on 14.0, ACK
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   ACK packet
- Completing IN transaction with 4 data bytes: [04, 03, 09, 04]
+ Completing IN transaction on 14.0 with 4 data bytes: [04, 03, 09, 04]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   DATA1 packet with CRC 7809 and 4 data bytes: [04, 03, 09, 04]
- Starting OUT transaction with no data, ACK
+ Starting OUT transaction on 14.0 with no data, ACK
   SPLIT packet starting low speed control transaction on hub 12 port 2
   OUT packet on 14.0, CRC 1C
   DATA1 packet with CRC 0000 and no data
   ACK packet
- Completing OUT transaction, ACK
+ Completing OUT transaction on 14.0, ACK
   SPLIT packet completing low speed control transaction on hub 12 port 2
   OUT packet on 14.0, CRC 1C
   ACK packet
 Getting string descriptor #2, language 0x0409 for device 14, reading 22 of 255 requested bytes: 'USB Device'
- Starting SETUP transaction with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, FF, 00]
+ Starting SETUP transaction on 14.0 with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, FF, 00]
   SPLIT packet starting low speed control transaction on hub 12 port 2
   SETUP packet on 14.0, CRC 1C
   DATA0 packet with CRC DB97 and 8 data bytes: [80, 06, 02, 03, 09, 04, FF, 00]
   ACK packet
- Completing SETUP transaction, ACK
+ Completing SETUP transaction on 14.0, ACK
   SPLIT packet completing low speed control transaction on hub 12 port 2
   SETUP packet on 14.0, CRC 1C
   ACK packet
- Starting IN transaction, ACK
+ Starting IN transaction on 14.0, ACK
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   ACK packet
- Completing IN transaction with 8 data bytes: [16, 03, 55, 00, 53, 00, 42, 00]
+ Completing IN transaction on 14.0 with 8 data bytes: [16, 03, 55, 00, 53, 00, 42, 00]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   DATA1 packet with CRC 3320 and 8 data bytes: [16, 03, 55, 00, 53, 00, 42, 00]
- Starting IN transaction, ACK
+ Starting IN transaction on 14.0, ACK
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   ACK packet
- Completing IN transaction with 8 data bytes: [20, 00, 44, 00, 65, 00, 76, 00]
+ Completing IN transaction on 14.0 with 8 data bytes: [20, 00, 44, 00, 65, 00, 76, 00]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   DATA0 packet with CRC 048A and 8 data bytes: [20, 00, 44, 00, 65, 00, 76, 00]
- Starting IN transaction, ACK
+ Starting IN transaction on 14.0, ACK
   SPLIT packet starting low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   ACK packet
- Completing IN transaction with 6 data bytes: [69, 00, 63, 00, 65, 00]
+ Completing IN transaction on 14.0 with 6 data bytes: [69, 00, 63, 00, 65, 00]
   SPLIT packet completing low speed control transaction on hub 12 port 2
   IN packet on 14.0, CRC 1C
   DATA1 packet with CRC C9C3 and 6 data bytes: [69, 00, 63, 00, 65, 00]
- Starting OUT transaction with no data, ACK
+ Starting OUT transaction on 14.0 with no data, ACK
   SPLIT packet starting low speed control transaction on hub 12 port 2
   OUT packet on 14.0, CRC 1C
   DATA1 packet with CRC 0000 and no data
   ACK packet
- Completing OUT transaction, ACK
+ Completing OUT transaction on 14.0, ACK
   SPLIT packet completing low speed control transaction on hub 12 port 2
   OUT packet on 14.0, CRC 1C
   ACK packet

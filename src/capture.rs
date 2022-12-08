@@ -390,7 +390,9 @@ impl Transaction {
         }
     }
 
-    fn description(&self, capture: &mut Capture)
+    fn description(&self,
+                   capture: &mut Capture,
+                   endpoint: &Endpoint)
         -> Result<String, CaptureError>
     {
         use PID::*;
@@ -406,18 +408,23 @@ impl Transaction {
                     Start => "Starting",
                     Complete => "Completing",
                 },
-                self.inner_description(capture, *token_pid)?
+                self.inner_description(capture, endpoint, *token_pid)?
             ),
-            (pid, _) => self.inner_description(capture, pid)?
+            (pid, _) => self.inner_description(capture, endpoint, pid)?
         })
     }
 
-    fn inner_description(&self, capture: &mut Capture, pid: PID)
+    fn inner_description(&self,
+                         capture: &mut Capture,
+                         endpoint: &Endpoint,
+                         pid: PID)
         -> Result<String, CaptureError>
     {
         Ok(format!(
-            "{} transaction{}",
+            "{} transaction on {}.{}{}",
             pid,
+            endpoint.device_address(),
+            endpoint.number(),
             match (self.payload_size(), self.outcome()) {
                 (None, None) =>
                     String::from(""),
@@ -1061,9 +1068,12 @@ impl ItemSource<TrafficItem> for Capture {
                         }
                     })
             },
-            Transaction(_, transaction_id) => {
+            Transaction(transfer_id, transaction_id) => {
+                let entry = self.transfer_index.get(*transfer_id)?;
+                let endpoint_id = entry.endpoint_id();
+                let endpoint = self.endpoints.get(endpoint_id)?;
                 let transaction = self.transaction(*transaction_id)?;
-                transaction.description(self)?
+                transaction.description(self, &endpoint)?
             },
             Transfer(transfer_id) => {
                 use EndpointType::*;

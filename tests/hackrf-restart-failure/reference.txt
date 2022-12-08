@@ -1,129 +1,129 @@
 Unidentified transfer of 16 KiB on endpoint 7.1 IN: [FE, FF, 01, FD, 01, FD, 01, FE, 00, FE, 00, FC, 01, 01, FF, FD, 00, FD, 01, FE, 01, 00, FF, 00, 02, FF, 01, FD, FF, 00, 01, FF, 01, FD, FF, FE, 02, FE, 00, FE, 01, FD, 00, 00, 01, FF, 03, FD, 00, FD, 01, FD, 00, FD, 01, FF, FF, FE, 00, FE, 00, FD, 02, FF, 00, FF, 02, FF, 01, FE, 00, FC, FF, FD, 00, FE, FF, 00, 01, FD, 01, 00, 01, FE, 00, FE, 01, FD, 01, FD, FE, FC, 00, FE, 01, FE, 02, FE, FF, 00]...
- IN transaction with 512 data bytes, ACK: [FE, FF, 01, FD, 01, FD, 01, FE, 00, FE, 00, FC, 01, 01, FF, FD, 00, FD, 01, FE, 01, 00, FF, 00, 02, FF, 01, FD, FF, 00, 01, FF, 01, FD, FF, FE, 02, FE, 00, FE, 01, FD, 00, 00, 01, FF, 03, FD, 00, FD, 01, FD, 00, FD, 01, FF, FF, FE, 00, FE, 00, FD, 02, FF, 00, FF, 02, FF, 01, FE, 00, FC, FF, FD, 00, FE, FF, 00, 01, FD, 01, 00, 01, FE, 00, FE, 01, FD, 01, FD, FE, FC, 00, FE, 01, FE, 02, FE, FF, 00]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [FE, FF, 01, FD, 01, FD, 01, FE, 00, FE, 00, FC, 01, 01, FF, FD, 00, FD, 01, FE, 01, 00, FF, 00, 02, FF, 01, FD, FF, 00, 01, FF, 01, FD, FF, FE, 02, FE, 00, FE, 01, FD, 00, 00, 01, FF, 03, FD, 00, FD, 01, FD, 00, FD, 01, FF, FF, FE, 00, FE, 00, FD, 02, FF, 00, FF, 02, FF, 01, FE, 00, FC, FF, FD, 00, FE, FF, 00, 01, FD, 01, 00, 01, FE, 00, FE, 01, FD, 01, FD, FE, FC, 00, FE, 01, FE, 02, FE, FF, 00]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC D1F1 and 512 data bytes: [FE, FF, 01, FD, 01, FD, 01, FE, 00, FE, 00, FC, 01, 01, FF, FD, 00, FD, 01, FE, 01, 00, FF, 00, 02, FF, 01, FD, FF, 00, 01, FF, 01, FD, FF, FE, 02, FE, 00, FE, 01, FD, 00, 00, 01, FF, 03, FD, 00, FD, 01, FD, 00, FD, 01, FF, FF, FE, 00, FE, 00, FD, 02, FF, 00, FF, 02, FF, 01, FE, 00, FC, FF, FD, 00, FE, FF, 00, 01, FD, 01, 00, 01, FE, 00, FE, 01, FD, 01, FD, FE, FC, 00, FE, 01, FE, 02, FE, FF, 00]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, FE, 00, 00, 00, FD, 00, FE, 00, FC, 00, FE, FF, FF, 01, FE, 01, FD, 00, FE, 00, FF, 02, FE, 00, FF, 01, FD, 00, FF, 01, FC, 02, FE, 00, 00, 00, FE, 01, FD, 00, 00, 00, FD, FF, FD, 00, FD, 02, FE, 01, FE, 03, FD, 01, FE, 02, FE, 00, FE, 01, FD, 01, FF, 01, FD, 00, FE, 00, FF, 01, 02, 01, FD, 01, FE, 00, FD, 02, FF, 01, FD, 02, FE, FE, 00, FF, FD, 00, FE, 02, FE, 01, FD, 01, FA, 00, FD, FF, FC]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, FE, 00, 00, 00, FD, 00, FE, 00, FC, 00, FE, FF, FF, 01, FE, 01, FD, 00, FE, 00, FF, 02, FE, 00, FF, 01, FD, 00, FF, 01, FC, 02, FE, 00, 00, 00, FE, 01, FD, 00, 00, 00, FD, FF, FD, 00, FD, 02, FE, 01, FE, 03, FD, 01, FE, 02, FE, 00, FE, 01, FD, 01, FF, 01, FD, 00, FE, 00, FF, 01, 02, 01, FD, 01, FE, 00, FD, 02, FF, 01, FD, 02, FE, FE, 00, FF, FD, 00, FE, 02, FE, 01, FD, 01, FA, 00, FD, FF, FC]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC 8ADD and 512 data bytes: [01, FE, 00, 00, 00, FD, 00, FE, 00, FC, 00, FE, FF, FF, 01, FE, 01, FD, 00, FE, 00, FF, 02, FE, 00, FF, 01, FD, 00, FF, 01, FC, 02, FE, 00, 00, 00, FE, 01, FD, 00, 00, 00, FD, FF, FD, 00, FD, 02, FE, 01, FE, 03, FD, 01, FE, 02, FE, 00, FE, 01, FD, 01, FF, 01, FD, 00, FE, 00, FF, 01, 02, 01, FD, 01, FE, 00, FD, 02, FF, 01, FD, 02, FE, FE, 00, FF, FD, 00, FE, 02, FE, 01, FD, 01, FA, 00, FD, FF, FC]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, FD, FF, FD, 03, FE, 00, FE, 00, FE, 00, FE, 02, FE, FE, FF, 02, FB, 01, FD, 02, FE, 02, FF, 00, FD, 02, FF, 00, FC, 01, FD, 00, FE, 00, FE, 00, FE, 01, FE, 00, FF, 00, FE, 00, FF, 02, FD, 00, FF, 01, FD, 00, FD, 01, FC, 01, FC, FF, FD, 01, FF, 00, FF, 01, FF, 00, FC, 01, FF, 00, FD, 02, FF, 03, FD, 02, FE, FF, FE, 02, FE, 01, FE, FF, FD, 01, FF, 01, FE, 00, FF, 03, FD, 02, 00, FF, FE, 02, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, FD, FF, FD, 03, FE, 00, FE, 00, FE, 00, FE, 02, FE, FE, FF, 02, FB, 01, FD, 02, FE, 02, FF, 00, FD, 02, FF, 00, FC, 01, FD, 00, FE, 00, FE, 00, FE, 01, FE, 00, FF, 00, FE, 00, FF, 02, FD, 00, FF, 01, FD, 00, FD, 01, FC, 01, FC, FF, FD, 01, FF, 00, FF, 01, FF, 00, FC, 01, FF, 00, FD, 02, FF, 03, FD, 02, FE, FF, FE, 02, FE, 01, FE, FF, FD, 01, FF, 01, FE, 00, FF, 03, FD, 02, 00, FF, FE, 02, FE]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC 193C and 512 data bytes: [01, FD, FF, FD, 03, FE, 00, FE, 00, FE, 00, FE, 02, FE, FE, FF, 02, FB, 01, FD, 02, FE, 02, FF, 00, FD, 02, FF, 00, FC, 01, FD, 00, FE, 00, FE, 00, FE, 01, FE, 00, FF, 00, FE, 00, FF, 02, FD, 00, FF, 01, FD, 00, FD, 01, FC, 01, FC, FF, FD, 01, FF, 00, FF, 01, FF, 00, FC, 01, FF, 00, FD, 02, FF, 03, FD, 02, FE, FF, FE, 02, FE, 01, FE, FF, FD, 01, FF, 01, FE, 00, FF, 03, FD, 02, 00, FF, FE, 02, FE]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [02, FF, 00, FF, 00, FE, 02, FE, 02, FE, 00, FE, 03, FE, 01, FD, 01, FF, 00, 00, 02, FE, FE, FD, 00, FF, FF, FD, 00, FD, FF, FE, 00, FE, FF, FD, 02, FD, 01, FE, 01, FD, 00, FE, 02, FD, 02, FE, FF, FD, 00, FE, 02, FD, 02, FF, 00, FF, 03, FF, 00, FF, 02, FD, 02, FD, 01, FD, 01, FE, 01, FB, 00, FD, 00, FD, 01, FE, FF, FD, 01, FF, 00, FE, 01, FD, 00, FD, 01, FE, FE, FC, 01, FF, 00, FE, 03, FE, 01, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [02, FF, 00, FF, 00, FE, 02, FE, 02, FE, 00, FE, 03, FE, 01, FD, 01, FF, 00, 00, 02, FE, FE, FD, 00, FF, FF, FD, 00, FD, FF, FE, 00, FE, FF, FD, 02, FD, 01, FE, 01, FD, 00, FE, 02, FD, 02, FE, FF, FD, 00, FE, 02, FD, 02, FF, 00, FF, 03, FF, 00, FF, 02, FD, 02, FD, 01, FD, 01, FE, 01, FB, 00, FD, 00, FD, 01, FE, FF, FD, 01, FF, 00, FE, 01, FD, 00, FD, 01, FE, FE, FC, 01, FF, 00, FE, 03, FE, 01, FE]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC 32C9 and 512 data bytes: [02, FF, 00, FF, 00, FE, 02, FE, 02, FE, 00, FE, 03, FE, 01, FD, 01, FF, 00, 00, 02, FE, FE, FD, 00, FF, FF, FD, 00, FD, FF, FE, 00, FE, FF, FD, 02, FD, 01, FE, 01, FD, 00, FE, 02, FD, 02, FE, FF, FD, 00, FE, 02, FD, 02, FF, 00, FF, 03, FF, 00, FF, 02, FD, 02, FD, 01, FD, 01, FE, 01, FB, 00, FD, 00, FD, 01, FE, FF, FD, 01, FF, 00, FE, 01, FD, 00, FD, 01, FE, FE, FC, 01, FF, 00, FE, 03, FE, 01, FE]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [02, FD, 02, FD, FF, FD, 03, FF, 00, FE, 00, FD, FF, FD, 01, FF, 01, FF, 02, FD, 02, FD, 01, FF, 01, FF, 01, FB, 01, FF, 01, FC, FF, FE, 00, FE, 01, FD, 01, FD, 00, FE, 01, FF, 03, FE, FE, FE, 00, FF, 00, FE, 01, FD, 00, FE, 01, FF, 00, FE, 03, FB, 01, FE, FF, FF, 01, FE, 01, FD, 01, FE, 01, FD, 02, FE, 00, FE, 00, FF, 01, 00, 00, FE, FE, FF, 02, FF, 01, 00, 02, FF, FF, FE, 01, FE, 01, FE, 01, FD]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [02, FD, 02, FD, FF, FD, 03, FF, 00, FE, 00, FD, FF, FD, 01, FF, 01, FF, 02, FD, 02, FD, 01, FF, 01, FF, 01, FB, 01, FF, 01, FC, FF, FE, 00, FE, 01, FD, 01, FD, 00, FE, 01, FF, 03, FE, FE, FE, 00, FF, 00, FE, 01, FD, 00, FE, 01, FF, 00, FE, 03, FB, 01, FE, FF, FF, 01, FE, 01, FD, 01, FE, 01, FD, 02, FE, 00, FE, 00, FF, 01, 00, 00, FE, FE, FF, 02, FF, 01, 00, 02, FF, FF, FE, 01, FE, 01, FE, 01, FD]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC 476D and 512 data bytes: [02, FD, 02, FD, FF, FD, 03, FF, 00, FE, 00, FD, FF, FD, 01, FF, 01, FF, 02, FD, 02, FD, 01, FF, 01, FF, 01, FB, 01, FF, 01, FC, FF, FE, 00, FE, 01, FD, 01, FD, 00, FE, 01, FF, 03, FE, FE, FE, 00, FF, 00, FE, 01, FD, 00, FE, 01, FF, 00, FE, 03, FB, 01, FE, FF, FF, 01, FE, 01, FD, 01, FE, 01, FD, 02, FE, 00, FE, 00, FF, 01, 00, 00, FE, FE, FF, 02, FF, 01, 00, 02, FF, FF, FE, 01, FE, 01, FE, 01, FD]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [00, 00, 02, FF, 01, FF, FE, 01, 01, 00, 03, FC, 03, FE, 00, 01, 01, 00, 00, FE, 00, FD, 00, FE, 02, FD, 00, FE, 00, FF, 01, FD, 01, FE, FF, FE, 01, FC, 02, FE, FF, FF, 02, FF, 02, FF, 01, FD, FF, 00, 00, FF, 00, FE, 01, FC, 00, FE, FF, FF, 02, FD, FF, FC, FE, FE, FF, FE, 01, FD, 01, FD, 00, FE, 00, FC, 01, FD, FF, FF, 00, FD, 02, FD, 00, FB, 02, FE, 02, FE, 00, 00, 01, FC, FF, FE, 00, 00, 01, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [00, 00, 02, FF, 01, FF, FE, 01, 01, 00, 03, FC, 03, FE, 00, 01, 01, 00, 00, FE, 00, FD, 00, FE, 02, FD, 00, FE, 00, FF, 01, FD, 01, FE, FF, FE, 01, FC, 02, FE, FF, FF, 02, FF, 02, FF, 01, FD, FF, 00, 00, FF, 00, FE, 01, FC, 00, FE, FF, FF, 02, FD, FF, FC, FE, FE, FF, FE, 01, FD, 01, FD, 00, FE, 00, FC, 01, FD, FF, FF, 00, FD, 02, FD, 00, FB, 02, FE, 02, FE, 00, 00, 01, FC, FF, FE, 00, 00, 01, FE]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC 8B9D and 512 data bytes: [00, 00, 02, FF, 01, FF, FE, 01, 01, 00, 03, FC, 03, FE, 00, 01, 01, 00, 00, FE, 00, FD, 00, FE, 02, FD, 00, FE, 00, FF, 01, FD, 01, FE, FF, FE, 01, FC, 02, FE, FF, FF, 02, FF, 02, FF, 01, FD, FF, 00, 00, FF, 00, FE, 01, FC, 00, FE, FF, FF, 02, FD, FF, FC, FE, FE, FF, FE, 01, FD, 01, FD, 00, FE, 00, FC, 01, FD, FF, FF, 00, FD, 02, FD, 00, FB, 02, FE, 02, FE, 00, 00, 01, FC, FF, FE, 00, 00, 01, FE]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [02, FE, 01, FC, 01, FD, 01, FD, 02, FF, 00, FE, 01, FE, 00, FD, 02, FF, 00, FD, 02, FF, 01, FE, 03, FE, 00, FE, 00, FD, 00, FE, 00, FB, 01, FE, 01, FD, 00, FF, 01, FD, 01, 00, 00, FD, 02, FD, FE, FE, 03, FE, 00, FC, 01, FD, 01, FE, 03, FE, 01, FF, 02, FE, 01, FD, FF, FE, 01, FF, 00, FD, 02, FE, 02, FD, 01, FD, 02, FC, 02, FF, 01, FE, 02, FD, FF, FE, 02, FE, 01, FF, 02, 00, FF, FE, 00, FD, FF, FF]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [02, FE, 01, FC, 01, FD, 01, FD, 02, FF, 00, FE, 01, FE, 00, FD, 02, FF, 00, FD, 02, FF, 01, FE, 03, FE, 00, FE, 00, FD, 00, FE, 00, FB, 01, FE, 01, FD, 00, FF, 01, FD, 01, 00, 00, FD, 02, FD, FE, FE, 03, FE, 00, FC, 01, FD, 01, FE, 03, FE, 01, FF, 02, FE, 01, FD, FF, FE, 01, FF, 00, FD, 02, FE, 02, FD, 01, FD, 02, FC, 02, FF, 01, FE, 02, FD, FF, FE, 02, FE, 01, FF, 02, 00, FF, FE, 00, FD, FF, FF]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC FAF9 and 512 data bytes: [02, FE, 01, FC, 01, FD, 01, FD, 02, FF, 00, FE, 01, FE, 00, FD, 02, FF, 00, FD, 02, FF, 01, FE, 03, FE, 00, FE, 00, FD, 00, FE, 00, FB, 01, FE, 01, FD, 00, FF, 01, FD, 01, 00, 00, FD, 02, FD, FE, FE, 03, FE, 00, FC, 01, FD, 01, FE, 03, FE, 01, FF, 02, FE, 01, FD, FF, FE, 01, FF, 00, FD, 02, FE, 02, FD, 01, FD, 02, FC, 02, FF, 01, FE, 02, FD, FF, FE, 02, FE, 01, FF, 02, 00, FF, FE, 00, FD, FF, FF]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [FF, FE, 02, FF, 01, FC, FE, FE, FE, 00, 02, FF, FF, FD, 04, FD, 00, FE, 01, FC, 01, FF, 00, FE, 00, FE, 01, FE, 00, FE, FF, FD, 02, FE, 01, FE, 01, FF, 00, FE, 02, FE, 01, FF, 02, FF, 01, FE, 01, FE, FF, FF, FF, FF, 00, FF, 03, FE, FF, FF, 00, FD, 01, 00, FF, FE, 01, 00, 02, 00, 04, FE, 02, FD, FE, FD, FF, FE, 01, FD, FF, FF, 00, FE, 01, FD, 02, FE, FF, FF, 02, FD, 02, FF, 01, FC, 03, FC, 03, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [FF, FE, 02, FF, 01, FC, FE, FE, FE, 00, 02, FF, FF, FD, 04, FD, 00, FE, 01, FC, 01, FF, 00, FE, 00, FE, 01, FE, 00, FE, FF, FD, 02, FE, 01, FE, 01, FF, 00, FE, 02, FE, 01, FF, 02, FF, 01, FE, 01, FE, FF, FF, FF, FF, 00, FF, 03, FE, FF, FF, 00, FD, 01, 00, FF, FE, 01, 00, 02, 00, 04, FE, 02, FD, FE, FD, FF, FE, 01, FD, FF, FF, 00, FE, 01, FD, 02, FE, FF, FF, 02, FD, 02, FF, 01, FC, 03, FC, 03, FE]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC CEFC and 512 data bytes: [FF, FE, 02, FF, 01, FC, FE, FE, FE, 00, 02, FF, FF, FD, 04, FD, 00, FE, 01, FC, 01, FF, 00, FE, 00, FE, 01, FE, 00, FE, FF, FD, 02, FE, 01, FE, 01, FF, 00, FE, 02, FE, 01, FF, 02, FF, 01, FE, 01, FE, FF, FF, FF, FF, 00, FF, 03, FE, FF, FF, 00, FD, 01, 00, FF, FE, 01, 00, 02, 00, 04, FE, 02, FD, FE, FD, FF, FE, 01, FD, FF, FF, 00, FE, 01, FD, 02, FE, FF, FF, 02, FD, 02, FF, 01, FC, 03, FC, 03, FE]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [03, FE, 00, FD, 02, FE, 00, FF, 00, FC, 01, FF, 02, FE, 02, FD, 00, FF, 02, FE, FF, FD, 00, FE, 02, FD, 01, FF, FE, FD, 02, FE, FF, FF, 01, FE, 02, FE, 00, FC, 01, FD, 03, FB, 01, FF, 02, FE, 00, FD, 00, FE, 03, FE, 01, FE, 01, 00, FF, FE, 01, FE, FF, FC, 01, FE, 00, FF, 02, FE, 00, FC, 01, FC, 02, FD, 02, FC, 00, FD, 00, FE, 00, FF, FF, FD, 02, FF, 01, FE, 00, FD, 01, FE, 01, FE, 01, FE, 03, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [03, FE, 00, FD, 02, FE, 00, FF, 00, FC, 01, FF, 02, FE, 02, FD, 00, FF, 02, FE, FF, FD, 00, FE, 02, FD, 01, FF, FE, FD, 02, FE, FF, FF, 01, FE, 02, FE, 00, FC, 01, FD, 03, FB, 01, FF, 02, FE, 00, FD, 00, FE, 03, FE, 01, FE, 01, 00, FF, FE, 01, FE, FF, FC, 01, FE, 00, FF, 02, FE, 00, FC, 01, FC, 02, FD, 02, FC, 00, FD, 00, FE, 00, FF, FF, FD, 02, FF, 01, FE, 00, FD, 01, FE, 01, FE, 01, FE, 03, FE]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC 4914 and 512 data bytes: [03, FE, 00, FD, 02, FE, 00, FF, 00, FC, 01, FF, 02, FE, 02, FD, 00, FF, 02, FE, FF, FD, 00, FE, 02, FD, 01, FF, FE, FD, 02, FE, FF, FF, 01, FE, 02, FE, 00, FC, 01, FD, 03, FB, 01, FF, 02, FE, 00, FD, 00, FE, 03, FE, 01, FE, 01, 00, FF, FE, 01, FE, FF, FC, 01, FE, 00, FF, 02, FE, 00, FC, 01, FC, 02, FD, 02, FC, 00, FD, 00, FE, 00, FF, FF, FD, 02, FF, 01, FE, 00, FD, 01, FE, 01, FE, 01, FE, 03, FE]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [00, FE, 01, FC, 00, FD, 01, FE, 02, FF, 01, FE, 02, FD, 00, FD, 02, FF, 01, 00, 02, 00, 00, FD, FF, FE, FE, FE, 02, FD, 01, FE, 01, FE, 00, FF, 02, FD, 01, FF, 00, FF, FF, FC, FE, FD, 01, FF, 00, FE, 00, FE, 00, FD, 02, FE, FF, FD, 01, FE, 01, FE, 01, FD, 01, FD, FF, FE, 00, 01, 02, FE, 02, FD, 00, FE, 00, FF, FF, FD, 01, FF, 00, FD, 02, FF, 00, FF, 02, FE, 01, FD, 02, FD, 02, FE, 01, FD, FF, FF]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [00, FE, 01, FC, 00, FD, 01, FE, 02, FF, 01, FE, 02, FD, 00, FD, 02, FF, 01, 00, 02, 00, 00, FD, FF, FE, FE, FE, 02, FD, 01, FE, 01, FE, 00, FF, 02, FD, 01, FF, 00, FF, FF, FC, FE, FD, 01, FF, 00, FE, 00, FE, 00, FD, 02, FE, FF, FD, 01, FE, 01, FE, 01, FD, 01, FD, FF, FE, 00, 01, 02, FE, 02, FD, 00, FE, 00, FF, FF, FD, 01, FF, 00, FD, 02, FF, 00, FF, 02, FE, 01, FD, 02, FD, 02, FE, 01, FD, FF, FF]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC 4C1B and 512 data bytes: [00, FE, 01, FC, 00, FD, 01, FE, 02, FF, 01, FE, 02, FD, 00, FD, 02, FF, 01, 00, 02, 00, 00, FD, FF, FE, FE, FE, 02, FD, 01, FE, 01, FE, 00, FF, 02, FD, 01, FF, 00, FF, FF, FC, FE, FD, 01, FF, 00, FE, 00, FE, 00, FD, 02, FE, FF, FD, 01, FE, 01, FE, 01, FD, 01, FD, FF, FE, 00, 01, 02, FE, 02, FD, 00, FE, 00, FF, FF, FD, 01, FF, 00, FD, 02, FF, 00, FF, 02, FE, 01, FD, 02, FD, 02, FE, 01, FD, FF, FF]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [02, FD, 00, 00, FF, FE, 02, FE, 00, FF, 02, FF, 02, FF, 02, FD, FF, FF, 01, FF, 00, FE, 02, FF, FF, FF, 00, FC, 01, FF, FF, FD, 02, FD, FF, FD, 01, FE, FF, FD, FE, FC, FF, FE, 01, FE, 02, 01, 03, FF, 02, FC, 01, FD, 02, FF, 01, FD, 00, FF, 01, FD, 01, FE, 01, FE, 02, FD, FF, FD, 01, FE, 00, FD, 02, 00, 01, FF, 02, FE, 01, FE, 02, FD, 00, FC, 00, FE, FF, FF, 02, FD, 01, FE, FF, 00, 01, 00, 01, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [02, FD, 00, 00, FF, FE, 02, FE, 00, FF, 02, FF, 02, FF, 02, FD, FF, FF, 01, FF, 00, FE, 02, FF, FF, FF, 00, FC, 01, FF, FF, FD, 02, FD, FF, FD, 01, FE, FF, FD, FE, FC, FF, FE, 01, FE, 02, 01, 03, FF, 02, FC, 01, FD, 02, FF, 01, FD, 00, FF, 01, FD, 01, FE, 01, FE, 02, FD, FF, FD, 01, FE, 00, FD, 02, 00, 01, FF, 02, FE, 01, FE, 02, FD, 00, FC, 00, FE, FF, FF, 02, FD, 01, FE, FF, 00, 01, 00, 01, FE]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC 474F and 512 data bytes: [02, FD, 00, 00, FF, FE, 02, FE, 00, FF, 02, FF, 02, FF, 02, FD, FF, FF, 01, FF, 00, FE, 02, FF, FF, FF, 00, FC, 01, FF, FF, FD, 02, FD, FF, FD, 01, FE, FF, FD, FE, FC, FF, FE, 01, FE, 02, 01, 03, FF, 02, FC, 01, FD, 02, FF, 01, FD, 00, FF, 01, FD, 01, FE, 01, FE, 02, FD, FF, FD, 01, FE, 00, FD, 02, 00, 01, FF, 02, FE, 01, FE, 02, FD, 00, FC, 00, FE, FF, FF, 02, FD, 01, FE, FF, 00, 01, 00, 01, FE]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, FD, 01, FE, 01, FD, FF, FF, 01, FC, 02, FD, 00, FE, 02, 00, 02, FF, 02, FF, FF, FC, 01, FD, FF, FC, 01, FE, 00, FD, 01, FE, 00, FE, 02, FC, 02, FD, 02, FC, 02, FC, 01, FC, 00, FD, 01, FE, 00, 00, 00, FD, 04, FE, 00, FE, 00, FE, 00, FC, 02, FE, 00, FD, 02, FF, 00, FE, 01, FD, 00, FE, 04, FD, 01, FD, 01, FD, 01, FE, FF, FD, FF, 01, 00, FF, 00, FD, 01, FC, 01, FE, 01, FE, 02, FE, 00, FF, 00, 00]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, FD, 01, FE, 01, FD, FF, FF, 01, FC, 02, FD, 00, FE, 02, 00, 02, FF, 02, FF, FF, FC, 01, FD, FF, FC, 01, FE, 00, FD, 01, FE, 00, FE, 02, FC, 02, FD, 02, FC, 02, FC, 01, FC, 00, FD, 01, FE, 00, 00, 00, FD, 04, FE, 00, FE, 00, FE, 00, FC, 02, FE, 00, FD, 02, FF, 00, FE, 01, FD, 00, FE, 04, FD, 01, FD, 01, FD, 01, FE, FF, FD, FF, 01, 00, FF, 00, FD, 01, FC, 01, FE, 01, FE, 02, FE, 00, FF, 00, 00]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC 7FFB and 512 data bytes: [01, FD, 01, FE, 01, FD, FF, FF, 01, FC, 02, FD, 00, FE, 02, 00, 02, FF, 02, FF, FF, FC, 01, FD, FF, FC, 01, FE, 00, FD, 01, FE, 00, FE, 02, FC, 02, FD, 02, FC, 02, FC, 01, FC, 00, FD, 01, FE, 00, 00, 00, FD, 04, FE, 00, FE, 00, FE, 00, FC, 02, FE, 00, FD, 02, FF, 00, FE, 01, FD, 00, FE, 04, FD, 01, FD, 01, FD, 01, FE, FF, FD, FF, 01, 00, FF, 00, FD, 01, FC, 01, FE, 01, FE, 02, FE, 00, FF, 00, 00]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, FD, 00, FD, 00, FD, 01, FE, FF, FF, 00, FE, 01, FE, 01, FE, 01, FE, 01, FF, 03, FE, FE, FE, FF, FF, 03, FD, 02, FC, FF, FF, 02, FE, 01, 00, 01, FB, 02, 00, 03, FF, 02, FD, 00, FE, 01, FE, 00, FC, 02, FE, 00, FE, 01, 00, 01, 00, 02, FE, 00, FF, 02, FC, 00, FE, 01, FF, 03, 01, 02, FB, 01, FD, 00, FE, 01, 00, 01, FE, 03, FE, FF, FE, 00, FE, 02, FD, 01, FD, 01, FD, 03, FD, 02, FF, 01, FD, 01, FD]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, FD, 00, FD, 00, FD, 01, FE, FF, FF, 00, FE, 01, FE, 01, FE, 01, FE, 01, FF, 03, FE, FE, FE, FF, FF, 03, FD, 02, FC, FF, FF, 02, FE, 01, 00, 01, FB, 02, 00, 03, FF, 02, FD, 00, FE, 01, FE, 00, FC, 02, FE, 00, FE, 01, 00, 01, 00, 02, FE, 00, FF, 02, FC, 00, FE, 01, FF, 03, 01, 02, FB, 01, FD, 00, FE, 01, 00, 01, FE, 03, FE, FF, FE, 00, FE, 02, FD, 01, FD, 01, FD, 03, FD, 02, FF, 01, FD, 01, FD]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC F653 and 512 data bytes: [01, FD, 00, FD, 00, FD, 01, FE, FF, FF, 00, FE, 01, FE, 01, FE, 01, FE, 01, FF, 03, FE, FE, FE, FF, FF, 03, FD, 02, FC, FF, FF, 02, FE, 01, 00, 01, FB, 02, 00, 03, FF, 02, FD, 00, FE, 01, FE, 00, FC, 02, FE, 00, FE, 01, 00, 01, 00, 02, FE, 00, FF, 02, FC, 00, FE, 01, FF, 03, 01, 02, FB, 01, FD, 00, FE, 01, 00, 01, FE, 03, FE, FF, FE, 00, FE, 02, FD, 01, FD, 01, FD, 03, FD, 02, FF, 01, FD, 01, FD]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [FF, FD, 01, FE, 00, FE, 03, FE, 00, FE, 02, FD, 00, FD, 01, FD, 01, FE, 01, FD, 01, FE, 01, FC, 02, FE, 01, FD, FF, FD, FE, FD, 01, FF, 01, FD, 02, FF, 00, FD, 02, FF, FF, FF, 00, FE, 01, FE, 02, FC, 00, FE, 01, FC, 00, FE, 01, FE, 04, FF, FF, FD, 00, FF, 01, FE, 02, FE, 00, FF, 01, FF, FE, FE, 02, FD, 02, FE, 02, FB, FF, FE, 02, FD, 00, FF, 01, FE, 01, FF, 02, FF, 02, FE, FF, FB, 00, FE, 00, FC]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [FF, FD, 01, FE, 00, FE, 03, FE, 00, FE, 02, FD, 00, FD, 01, FD, 01, FE, 01, FD, 01, FE, 01, FC, 02, FE, 01, FD, FF, FD, FE, FD, 01, FF, 01, FD, 02, FF, 00, FD, 02, FF, FF, FF, 00, FE, 01, FE, 02, FC, 00, FE, 01, FC, 00, FE, 01, FE, 04, FF, FF, FD, 00, FF, 01, FE, 02, FE, 00, FF, 01, FF, FE, FE, 02, FD, 02, FE, 02, FB, FF, FE, 02, FD, 00, FF, 01, FE, 01, FF, 02, FF, 02, FE, FF, FB, 00, FE, 00, FC]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC 18E0 and 512 data bytes: [FF, FD, 01, FE, 00, FE, 03, FE, 00, FE, 02, FD, 00, FD, 01, FD, 01, FE, 01, FD, 01, FE, 01, FC, 02, FE, 01, FD, FF, FD, FE, FD, 01, FF, 01, FD, 02, FF, 00, FD, 02, FF, FF, FF, 00, FE, 01, FE, 02, FC, 00, FE, 01, FC, 00, FE, 01, FE, 04, FF, FF, FD, 00, FF, 01, FE, 02, FE, 00, FF, 01, FF, FE, FE, 02, FD, 02, FE, 02, FB, FF, FE, 02, FD, 00, FF, 01, FE, 01, FF, 02, FF, 02, FE, FF, FB, 00, FE, 00, FC]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [02, FE, 01, 00, 03, FE, 02, 00, 02, FF, 02, FE, 01, FC, 01, FE, 00, FD, 01, FE, 02, FC, 01, FE, 00, FF, 02, FE, FF, FE, 00, FD, 00, FF, 00, FE, 00, FF, 02, FF, 00, FE, 00, FC, 01, FE, 00, FC, 01, FF, 01, FE, 02, FD, 00, FE, FF, FE, 00, FF, 00, FE, 00, FE, 03, FE, FE, FD, 00, FE, 00, 00, 00, FF, 00, FF, 01, FD, 02, 00, 02, FF, 01, FF, 00, FD, 01, FE, 01, FF, 01, 00, FF, FD, 00, FE, 00, FF, 03, FC]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [02, FE, 01, 00, 03, FE, 02, 00, 02, FF, 02, FE, 01, FC, 01, FE, 00, FD, 01, FE, 02, FC, 01, FE, 00, FF, 02, FE, FF, FE, 00, FD, 00, FF, 00, FE, 00, FF, 02, FF, 00, FE, 00, FC, 01, FE, 00, FC, 01, FF, 01, FE, 02, FD, 00, FE, FF, FE, 00, FF, 00, FE, 00, FE, 03, FE, FE, FD, 00, FE, 00, 00, 00, FF, 00, FF, 01, FD, 02, 00, 02, FF, 01, FF, 00, FD, 01, FE, 01, FF, 01, 00, FF, FD, 00, FE, 00, FF, 03, FC]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC D42C and 512 data bytes: [02, FE, 01, 00, 03, FE, 02, 00, 02, FF, 02, FE, 01, FC, 01, FE, 00, FD, 01, FE, 02, FC, 01, FE, 00, FF, 02, FE, FF, FE, 00, FD, 00, FF, 00, FE, 00, FF, 02, FF, 00, FE, 00, FC, 01, FE, 00, FC, 01, FF, 01, FE, 02, FD, 00, FE, FF, FE, 00, FF, 00, FE, 00, FE, 03, FE, FE, FD, 00, FE, 00, 00, 00, FF, 00, FF, 01, FD, 02, 00, 02, FF, 01, FF, 00, FD, 01, FE, 01, FF, 01, 00, FF, FD, 00, FE, 00, FF, 03, FC]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [00, 00, FF, FE, 01, FF, 00, FD, 02, FD, 00, FC, 01, FD, FF, FE, 04, FD, 04, FD, 01, FD, 01, FF, 01, FD, FF, FE, 00, FE, 02, FE, 00, FB, FF, FF, 00, FE, 00, FE, FF, FD, FF, FD, 00, FF, 03, FF, FE, FE, FF, FF, FD, FE, 02, FD, 02, FE, 00, FF, FF, FF, 02, FA, 01, FD, 02, FE, 00, FE, FF, FF, 02, FF, 00, FC, 02, FE, 01, FE, FF, FD, 00, FF, 03, FF, 03, FD, 01, FC, 00, FF, 02, FE, 00, FF, 01, FF, FF, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [00, 00, FF, FE, 01, FF, 00, FD, 02, FD, 00, FC, 01, FD, FF, FE, 04, FD, 04, FD, 01, FD, 01, FF, 01, FD, FF, FE, 00, FE, 02, FE, 00, FB, FF, FF, 00, FE, 00, FE, FF, FD, FF, FD, 00, FF, 03, FF, FE, FE, FF, FF, FD, FE, 02, FD, 02, FE, 00, FF, FF, FF, 02, FA, 01, FD, 02, FE, 00, FE, FF, FF, 02, FF, 00, FC, 02, FE, 01, FE, FF, FD, 00, FF, 03, FF, 03, FD, 01, FC, 00, FF, 02, FE, 00, FF, 01, FF, FF, FE]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC 32BF and 512 data bytes: [00, 00, FF, FE, 01, FF, 00, FD, 02, FD, 00, FC, 01, FD, FF, FE, 04, FD, 04, FD, 01, FD, 01, FF, 01, FD, FF, FE, 00, FE, 02, FE, 00, FB, FF, FF, 00, FE, 00, FE, FF, FD, FF, FD, 00, FF, 03, FF, FE, FE, FF, FF, FD, FE, 02, FD, 02, FE, 00, FF, FF, FF, 02, FA, 01, FD, 02, FE, 00, FE, FF, FF, 02, FF, 00, FC, 02, FE, 01, FE, FF, FD, 00, FF, 03, FF, 03, FD, 01, FC, 00, FF, 02, FE, 00, FF, 01, FF, FF, FE]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [FE, FE, 02, FE, 00, FD, 02, FD, 00, FB, 02, FD, 00, FE, 02, FE, 01, FE, FF, FC, FF, 00, 02, 00, 01, 00, FF, FD, 01, FF, 01, FD, 02, 00, 01, FF, FF, FD, 00, FF, 01, FF, 02, FF, 00, FE, 00, FF, 03, FD, 00, FF, 01, FE, 00, FE, 01, FD, 01, FE, 01, FE, 01, 00, FE, FF, 02, FE, 01, FE, 02, FE, 00, FD, 03, FE, 00, FE, 03, FC, 04, FE, 00, FE, 01, FE, 01, FD, 00, FE, 01, FE, 01, FF, 00, FC, 00, FE, 01, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [FE, FE, 02, FE, 00, FD, 02, FD, 00, FB, 02, FD, 00, FE, 02, FE, 01, FE, FF, FC, FF, 00, 02, 00, 01, 00, FF, FD, 01, FF, 01, FD, 02, 00, 01, FF, FF, FD, 00, FF, 01, FF, 02, FF, 00, FE, 00, FF, 03, FD, 00, FF, 01, FE, 00, FE, 01, FD, 01, FE, 01, FE, 01, 00, FE, FF, 02, FE, 01, FE, 02, FE, 00, FD, 03, FE, 00, FE, 03, FC, 04, FE, 00, FE, 01, FE, 01, FD, 00, FE, 01, FE, 01, FF, 00, FC, 00, FE, 01, FE]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC 2138 and 512 data bytes: [FE, FE, 02, FE, 00, FD, 02, FD, 00, FB, 02, FD, 00, FE, 02, FE, 01, FE, FF, FC, FF, 00, 02, 00, 01, 00, FF, FD, 01, FF, 01, FD, 02, 00, 01, FF, FF, FD, 00, FF, 01, FF, 02, FF, 00, FE, 00, FF, 03, FD, 00, FF, 01, FE, 00, FE, 01, FD, 01, FE, 01, FE, 01, 00, FE, FF, 02, FE, 01, FE, 02, FE, 00, FD, 03, FE, 00, FE, 03, FC, 04, FE, 00, FE, 01, FE, 01, FD, 00, FE, 01, FE, 01, FF, 00, FC, 00, FE, 01, FE]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, FE, 01, FD, 01, FC, FF, FE, 01, FD, 01, 00, 02, FD, 00, FD, 00, FE, 01, FF, FE, FE, 01, FC, 01, FB, 00, FD, 00, FF, 02, FD, 02, FF, 02, FD, 01, FC, 01, FE, 00, FC, FF, FE, 01, FF, 00, FC, 01, FE, FF, FC, FF, FD, 00, FE, 04, FE, 02, FE, 01, FD, 00, FE, 01, FE, 00, FC, 00, FE, 00, FE, 02, FD, 01, 01, 01, FC, 00, FE, 00, FE, 01, FE, 00, FB, 04, FE, 01, FE, 01, FE, 00, 00, 02, FD, 00, FF, 01, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, FE, 01, FD, 01, FC, FF, FE, 01, FD, 01, 00, 02, FD, 00, FD, 00, FE, 01, FF, FE, FE, 01, FC, 01, FB, 00, FD, 00, FF, 02, FD, 02, FF, 02, FD, 01, FC, 01, FE, 00, FC, FF, FE, 01, FF, 00, FC, 01, FE, FF, FC, FF, FD, 00, FE, 04, FE, 02, FE, 01, FD, 00, FE, 01, FE, 00, FC, 00, FE, 00, FE, 02, FD, 01, 01, 01, FC, 00, FE, 00, FE, 01, FE, 00, FB, 04, FE, 01, FE, 01, FE, 00, 00, 02, FD, 00, FF, 01, FE]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC 4BF7 and 512 data bytes: [01, FE, 01, FD, 01, FC, FF, FE, 01, FD, 01, 00, 02, FD, 00, FD, 00, FE, 01, FF, FE, FE, 01, FC, 01, FB, 00, FD, 00, FF, 02, FD, 02, FF, 02, FD, 01, FC, 01, FE, 00, FC, FF, FE, 01, FF, 00, FC, 01, FE, FF, FC, FF, FD, 00, FE, 04, FE, 02, FE, 01, FD, 00, FE, 01, FE, 00, FC, 00, FE, 00, FE, 02, FD, 01, 01, 01, FC, 00, FE, 00, FE, 01, FE, 00, FB, 04, FE, 01, FE, 01, FE, 00, 00, 02, FD, 00, FF, 01, FE]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [FF, FE, 00, FE, 00, FE, 00, FB, 01, FC, 00, FF, 01, FF, 01, FD, 00, FE, 00, FD, 01, FE, 02, FF, 03, FD, 00, FF, 00, FD, 00, FE, 00, FF, 03, FF, 00, FD, 01, FE, 01, FD, 01, FF, FE, FD, 01, FC, 00, FE, 00, FC, 01, FF, 00, FE, 00, FE, 02, FD, 00, FF, 02, FF, 02, 00, 00, FD, 01, FE, FF, FD, 01, FE, 00, FD, 02, FD, 01, FD, 02, FF, 01, FF, 01, FC, FF, FD, 02, FE, 01, 00, 01, FD, 02, FE, 01, FD, 02, FF]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [FF, FE, 00, FE, 00, FE, 00, FB, 01, FC, 00, FF, 01, FF, 01, FD, 00, FE, 00, FD, 01, FE, 02, FF, 03, FD, 00, FF, 00, FD, 00, FE, 00, FF, 03, FF, 00, FD, 01, FE, 01, FD, 01, FF, FE, FD, 01, FC, 00, FE, 00, FC, 01, FF, 00, FE, 00, FE, 02, FD, 00, FF, 02, FF, 02, 00, 00, FD, 01, FE, FF, FD, 01, FE, 00, FD, 02, FD, 01, FD, 02, FF, 01, FF, 01, FC, FF, FD, 02, FE, 01, 00, 01, FD, 02, FE, 01, FD, 02, FF]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC 91D4 and 512 data bytes: [FF, FE, 00, FE, 00, FE, 00, FB, 01, FC, 00, FF, 01, FF, 01, FD, 00, FE, 00, FD, 01, FE, 02, FF, 03, FD, 00, FF, 00, FD, 00, FE, 00, FF, 03, FF, 00, FD, 01, FE, 01, FD, 01, FF, FE, FD, 01, FC, 00, FE, 00, FC, 01, FF, 00, FE, 00, FE, 02, FD, 00, FF, 02, FF, 02, 00, 00, FD, 01, FE, FF, FD, 01, FE, 00, FD, 02, FD, 01, FD, 02, FF, 01, FF, 01, FC, FF, FD, 02, FE, 01, 00, 01, FD, 02, FE, 01, FD, 02, FF]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [02, FF, 04, FE, 01, FF, 02, FD, 03, 00, 01, FE, 01, FD, 02, FD, 01, 00, 01, FD, 01, FF, 01, FE, FF, 00, 01, FF, 01, FD, 00, FF, 02, FF, 02, FD, 02, FC, 00, FC, 01, FF, 01, FF, 03, FB, 01, 00, 02, FE, 01, FD, 02, FD, 00, 00, FF, FE, 01, FE, 01, FC, FF, FF, 01, 00, 03, FD, 00, FF, 02, 00, 00, FE, 01, FD, 00, 00, 00, FF, 01, FF, 01, FD, 03, 00, 00, FC, 01, FF, 00, FE, 01, FF, FF, FE, 01, FE, 01, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [02, FF, 04, FE, 01, FF, 02, FD, 03, 00, 01, FE, 01, FD, 02, FD, 01, 00, 01, FD, 01, FF, 01, FE, FF, 00, 01, FF, 01, FD, 00, FF, 02, FF, 02, FD, 02, FC, 00, FC, 01, FF, 01, FF, 03, FB, 01, 00, 02, FE, 01, FD, 02, FD, 00, 00, FF, FE, 01, FE, 01, FC, FF, FF, 01, 00, 03, FD, 00, FF, 02, 00, 00, FE, 01, FD, 00, 00, 00, FF, 01, FF, 01, FD, 03, 00, 00, FC, 01, FF, 00, FE, 01, FF, FF, FE, 01, FE, 01, FE]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC 2864 and 512 data bytes: [02, FF, 04, FE, 01, FF, 02, FD, 03, 00, 01, FE, 01, FD, 02, FD, 01, 00, 01, FD, 01, FF, 01, FE, FF, 00, 01, FF, 01, FD, 00, FF, 02, FF, 02, FD, 02, FC, 00, FC, 01, FF, 01, FF, 03, FB, 01, 00, 02, FE, 01, FD, 02, FD, 00, 00, FF, FE, 01, FE, 01, FC, FF, FF, 01, 00, 03, FD, 00, FF, 02, 00, 00, FE, 01, FD, 00, 00, 00, FF, 01, FF, 01, FD, 03, 00, 00, FC, 01, FF, 00, FE, 01, FF, FF, FE, 01, FE, 01, FE]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [03, FE, 01, 01, 01, FC, 02, FC, 01, FE, 01, 01, FF, FF, 01, 00, 00, FE, FF, FC, 02, FE, 02, FF, FF, FE, 02, FF, 00, FE, 00, FE, 01, 00, FF, FD, 01, FE, 00, FC, 00, FF, 01, FF, 01, 00, 01, FE, 01, FE, 02, FD, 01, FD, 00, 00, 02, FD, FF, FD, 02, FE, 01, FF, 02, FE, 01, FE, 01, FD, 01, FE, 01, FE, 00, FE, 00, FE, FF, FD, 01, FD, 04, FF, 00, FF, 00, FF, FE, FC, 04, FC, 00, FF, FF, FE, 02, FE, 02, FC]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [03, FE, 01, 01, 01, FC, 02, FC, 01, FE, 01, 01, FF, FF, 01, 00, 00, FE, FF, FC, 02, FE, 02, FF, FF, FE, 02, FF, 00, FE, 00, FE, 01, 00, FF, FD, 01, FE, 00, FC, 00, FF, 01, FF, 01, 00, 01, FE, 01, FE, 02, FD, 01, FD, 00, 00, 02, FD, FF, FD, 02, FE, 01, FF, 02, FE, 01, FE, 01, FD, 01, FE, 01, FE, 00, FE, 00, FE, FF, FD, 01, FD, 04, FF, 00, FF, 00, FF, FE, FC, 04, FC, 00, FF, FF, FE, 02, FE, 02, FC]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC 9621 and 512 data bytes: [03, FE, 01, 01, 01, FC, 02, FC, 01, FE, 01, 01, FF, FF, 01, 00, 00, FE, FF, FC, 02, FE, 02, FF, FF, FE, 02, FF, 00, FE, 00, FE, 01, 00, FF, FD, 01, FE, 00, FC, 00, FF, 01, FF, 01, 00, 01, FE, 01, FE, 02, FD, 01, FD, 00, 00, 02, FD, FF, FD, 02, FE, 01, FF, 02, FE, 01, FE, 01, FD, 01, FE, 01, FE, 00, FE, 00, FE, FF, FD, 01, FD, 04, FF, 00, FF, 00, FF, FE, FC, 04, FC, 00, FF, FF, FE, 02, FE, 02, FC]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, FD, 01, FC, 01, FE, 00, FC, 02, FE, 02, 00, 02, FE, 00, FF, 02, FF, 01, FE, 01, FE, 00, FF, 01, FD, 00, 00, 01, FE, 00, 00, 00, FE, 01, FF, 00, FF, 01, FF, FF, FF, 01, FF, 00, FD, 02, FE, 00, FF, 01, FC, 01, FE, 01, FD, 00, FC, 00, FD, 02, FF, 01, FC, 02, FE, 00, FC, 01, FE, 00, FE, 01, FD, 01, FE, 01, FF, 00, FE, 01, FE, FF, FE, 01, FD, 00, FF, 02, FD, 00, FE, 00, FD, 00, FF, 01, FD, 00, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, FD, 01, FC, 01, FE, 00, FC, 02, FE, 02, 00, 02, FE, 00, FF, 02, FF, 01, FE, 01, FE, 00, FF, 01, FD, 00, 00, 01, FE, 00, 00, 00, FE, 01, FF, 00, FF, 01, FF, FF, FF, 01, FF, 00, FD, 02, FE, 00, FF, 01, FC, 01, FE, 01, FD, 00, FC, 00, FD, 02, FF, 01, FC, 02, FE, 00, FC, 01, FE, 00, FE, 01, FD, 01, FE, 01, FF, 00, FE, 01, FE, FF, FE, 01, FD, 00, FF, 02, FD, 00, FE, 00, FD, 00, FF, 01, FD, 00, FE]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC DBAC and 512 data bytes: [01, FD, 01, FC, 01, FE, 00, FC, 02, FE, 02, 00, 02, FE, 00, FF, 02, FF, 01, FE, 01, FE, 00, FF, 01, FD, 00, 00, 01, FE, 00, 00, 00, FE, 01, FF, 00, FF, 01, FF, FF, FF, 01, FF, 00, FD, 02, FE, 00, FF, 01, FC, 01, FE, 01, FD, 00, FC, 00, FD, 02, FF, 01, FC, 02, FE, 00, FC, 01, FE, 00, FE, 01, FD, 01, FE, 01, FF, 00, FE, 01, FE, FF, FE, 01, FD, 00, FF, 02, FD, 00, FE, 00, FD, 00, FF, 01, FD, 00, FE]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, FF, 01, FE, FF, FF, 00, FE, 02, FE, 03, FD, 01, FF, 03, FD, 00, FD, 00, FB, 01, FC, 00, FC, 02, 00, 00, FE, 02, FE, 00, FD, 04, FE, 01, FE, 00, FD, FF, 00, 02, FD, 01, FE, 02, FD, 01, FE, 00, FE, 02, FF, 01, FC, 00, FD, 01, FD, 01, FE, 00, FF, 02, FF, 00, FD, 00, FE, 02, 00, 00, FB, 00, FD, 03, FD, FE, FE, 01, FD, 00, FE, 00, FD, FE, FE, 00, FF, 02, FF, FF, FD, 00, FE, 00, FF, 00, FD, FF, FC]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, FF, 01, FE, FF, FF, 00, FE, 02, FE, 03, FD, 01, FF, 03, FD, 00, FD, 00, FB, 01, FC, 00, FC, 02, 00, 00, FE, 02, FE, 00, FD, 04, FE, 01, FE, 00, FD, FF, 00, 02, FD, 01, FE, 02, FD, 01, FE, 00, FE, 02, FF, 01, FC, 00, FD, 01, FD, 01, FE, 00, FF, 02, FF, 00, FD, 00, FE, 02, 00, 00, FB, 00, FD, 03, FD, FE, FE, 01, FD, 00, FE, 00, FD, FE, FE, 00, FF, 02, FF, FF, FD, 00, FE, 00, FF, 00, FD, FF, FC]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC 92FF and 512 data bytes: [01, FF, 01, FE, FF, FF, 00, FE, 02, FE, 03, FD, 01, FF, 03, FD, 00, FD, 00, FB, 01, FC, 00, FC, 02, 00, 00, FE, 02, FE, 00, FD, 04, FE, 01, FE, 00, FD, FF, 00, 02, FD, 01, FE, 02, FD, 01, FE, 00, FE, 02, FF, 01, FC, 00, FD, 01, FD, 01, FE, 00, FF, 02, FF, 00, FD, 00, FE, 02, 00, 00, FB, 00, FD, 03, FD, FE, FE, 01, FD, 00, FE, 00, FD, FE, FE, 00, FF, 02, FF, FF, FD, 00, FE, 00, FF, 00, FD, FF, FC]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [00, FE, 00, 00, 03, FD, FF, FE, FF, FF, 01, FF, 01, FE, 01, FE, FF, FE, FF, FE, 01, FF, 01, FE, 01, FE, FF, FF, FF, 00, 01, FE, FE, FE, FF, FD, 01, FF, 00, FE, 01, FE, 02, 00, 00, FE, FF, FB, 02, FE, 02, FF, 01, FE, FF, FD, 00, 00, 01, FF, 02, FE, 02, FF, 03, FD, 03, FF, 01, FD, 01, FE, 01, FE, 02, 01, 01, FC, 02, FE, FF, FD, 01, FF, 02, FE, 02, FF, FF, FD, 01, FF, 00, FD, 02, FC, 01, FF, 02, FD]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [00, FE, 00, 00, 03, FD, FF, FE, FF, FF, 01, FF, 01, FE, 01, FE, FF, FE, FF, FE, 01, FF, 01, FE, 01, FE, FF, FF, FF, 00, 01, FE, FE, FE, FF, FD, 01, FF, 00, FE, 01, FE, 02, 00, 00, FE, FF, FB, 02, FE, 02, FF, 01, FE, FF, FD, 00, 00, 01, FF, 02, FE, 02, FF, 03, FD, 03, FF, 01, FD, 01, FE, 01, FE, 02, 01, 01, FC, 02, FE, FF, FD, 01, FF, 02, FE, 02, FF, FF, FD, 01, FF, 00, FD, 02, FC, 01, FF, 02, FD]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC D66B and 512 data bytes: [00, FE, 00, 00, 03, FD, FF, FE, FF, FF, 01, FF, 01, FE, 01, FE, FF, FE, FF, FE, 01, FF, 01, FE, 01, FE, FF, FF, FF, 00, 01, FE, FE, FE, FF, FD, 01, FF, 00, FE, 01, FE, 02, 00, 00, FE, FF, FB, 02, FE, 02, FF, 01, FE, FF, FD, 00, 00, 01, FF, 02, FE, 02, FF, 03, FD, 03, FF, 01, FD, 01, FE, 01, FE, 02, 01, 01, FC, 02, FE, FF, FD, 01, FF, 02, FE, 02, FF, FF, FD, 01, FF, 00, FD, 02, FC, 01, FF, 02, FD]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, FF, 00, FD, 01, FF, 01, 00, 00, FE, FF, FD, 00, FF, 00, FE, 03, FE, 01, FF, 01, FC, 00, FE, 01, FD, 00, FD, 01, FC, 01, FF, 00, FD, 03, 01, 00, FD, 02, FD, FF, FE, 01, FD, FE, FE, 00, FE, FE, FE, 01, FD, 01, FE, 01, FC, 02, FB, 00, FD, 01, FD, 01, FB, 02, FC, 01, FE, 02, FF, FF, FE, 01, FE, 00, FE, 02, FF, FF, FF, 00, FD, FF, FD, 02, FD, 00, FC, 01, FC, 01, FE, 01, FC, 01, FC, 01, FC, 01, FD]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, FF, 00, FD, 01, FF, 01, 00, 00, FE, FF, FD, 00, FF, 00, FE, 03, FE, 01, FF, 01, FC, 00, FE, 01, FD, 00, FD, 01, FC, 01, FF, 00, FD, 03, 01, 00, FD, 02, FD, FF, FE, 01, FD, FE, FE, 00, FE, FE, FE, 01, FD, 01, FE, 01, FC, 02, FB, 00, FD, 01, FD, 01, FB, 02, FC, 01, FE, 02, FF, FF, FE, 01, FE, 00, FE, 02, FF, FF, FF, 00, FD, FF, FD, 02, FD, 00, FC, 01, FC, 01, FE, 01, FC, 01, FC, 01, FC, 01, FD]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC E8BB and 512 data bytes: [01, FF, 00, FD, 01, FF, 01, 00, 00, FE, FF, FD, 00, FF, 00, FE, 03, FE, 01, FF, 01, FC, 00, FE, 01, FD, 00, FD, 01, FC, 01, FF, 00, FD, 03, 01, 00, FD, 02, FD, FF, FE, 01, FD, FE, FE, 00, FE, FE, FE, 01, FD, 01, FE, 01, FC, 02, FB, 00, FD, 01, FD, 01, FB, 02, FC, 01, FE, 02, FF, FF, FE, 01, FE, 00, FE, 02, FF, FF, FF, 00, FD, FF, FD, 02, FD, 00, FC, 01, FC, 01, FE, 01, FC, 01, FC, 01, FC, 01, FD]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [00, 00, 02, FD, 02, FF, 00, FE, 02, FE, 01, FD, FF, FE, 01, FB, 00, FE, FF, FE, 01, 00, 00, FD, 00, FE, FE, FF, 01, FF, 01, FE, 02, FD, 00, FE, 00, FD, 02, FE, 02, FE, 01, FE, 01, FD, 00, FF, FF, FE, 01, FF, 02, FE, 02, FD, 00, FD, 02, FD, 00, FD, 02, FC, 01, FC, 01, FF, 00, FF, FF, FD, 00, FD, 01, FD, FF, 00, 02, FD, 02, FD, 01, FD, 02, 02, 00, FF, 01, 00, 01, FE, 00, FD, 00, FE, 02, FE, FF, FF]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [00, 00, 02, FD, 02, FF, 00, FE, 02, FE, 01, FD, FF, FE, 01, FB, 00, FE, FF, FE, 01, 00, 00, FD, 00, FE, FE, FF, 01, FF, 01, FE, 02, FD, 00, FE, 00, FD, 02, FE, 02, FE, 01, FE, 01, FD, 00, FF, FF, FE, 01, FF, 02, FE, 02, FD, 00, FD, 02, FD, 00, FD, 02, FC, 01, FC, 01, FF, 00, FF, FF, FD, 00, FD, 01, FD, FF, 00, 02, FD, 02, FD, 01, FD, 02, 02, 00, FF, 01, 00, 01, FE, 00, FD, 00, FE, 02, FE, FF, FF]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC 9538 and 512 data bytes: [00, 00, 02, FD, 02, FF, 00, FE, 02, FE, 01, FD, FF, FE, 01, FB, 00, FE, FF, FE, 01, 00, 00, FD, 00, FE, FE, FF, 01, FF, 01, FE, 02, FD, 00, FE, 00, FD, 02, FE, 02, FE, 01, FE, 01, FD, 00, FF, FF, FE, 01, FF, 02, FE, 02, FD, 00, FD, 02, FD, 00, FD, 02, FC, 01, FC, 01, FF, 00, FF, FF, FD, 00, FD, 01, FD, FF, 00, 02, FD, 02, FD, 01, FD, 02, 02, 00, FF, 01, 00, 01, FE, 00, FD, 00, FE, 02, FE, FF, FF]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [02, FE, 00, FD, 00, FE, 00, 00, 02, FD, FE, FD, FF, FF, 01, 01, 00, 00, 02, FF, FF, FD, 02, FE, 00, FE, FF, FD, 01, FC, 01, FC, 01, FD, 02, FE, 00, FE, 01, FC, 03, FE, 01, FE, 01, FF, 01, FD, 02, FE, 00, FD, 01, FD, FF, FE, 00, FD, FF, FF, 01, FD, FF, FF, 01, FE, FF, FE, 00, FD, 00, FE, 01, FD, 01, FB, 00, FC, 01, FD, FF, FE, FF, FD, FE, FD, 02, FF, FF, FE, 02, FD, FF, FE, 02, FC, 01, FF, 00, FD]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [02, FE, 00, FD, 00, FE, 00, 00, 02, FD, FE, FD, FF, FF, 01, 01, 00, 00, 02, FF, FF, FD, 02, FE, 00, FE, FF, FD, 01, FC, 01, FC, 01, FD, 02, FE, 00, FE, 01, FC, 03, FE, 01, FE, 01, FF, 01, FD, 02, FE, 00, FD, 01, FD, FF, FE, 00, FD, FF, FF, 01, FD, FF, FF, 01, FE, FF, FE, 00, FD, 00, FE, 01, FD, 01, FB, 00, FC, 01, FD, FF, FE, FF, FD, FE, FD, 02, FF, FF, FE, 02, FD, FF, FE, 02, FC, 01, FF, 00, FD]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC B505 and 512 data bytes: [02, FE, 00, FD, 00, FE, 00, 00, 02, FD, FE, FD, FF, FF, 01, 01, 00, 00, 02, FF, FF, FD, 02, FE, 00, FE, FF, FD, 01, FC, 01, FC, 01, FD, 02, FE, 00, FE, 01, FC, 03, FE, 01, FE, 01, FF, 01, FD, 02, FE, 00, FD, 01, FD, FF, FE, 00, FD, FF, FF, 01, FD, FF, FF, 01, FE, FF, FE, 00, FD, 00, FE, 01, FD, 01, FB, 00, FC, 01, FD, FF, FE, FF, FD, FE, FD, 02, FF, FF, FE, 02, FD, FF, FE, 02, FC, 01, FF, 00, FD]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, FD, FF, FF, 01, FE, 00, FE, 03, FE, 01, 00, 01, FE, 01, FF, 01, FD, 00, FE, 00, FC, 01, FF, 00, FD, 00, FE, 02, FE, 01, FE, 00, FD, 00, FF, 00, FF, 02, FF, 00, FF, 02, FC, 01, FF, 02, FD, 00, FD, 00, FE, FF, FE, 00, FB, 02, FF, 01, FF, 02, FE, 02, FE, 01, FF, 00, FD, 02, FF, FF, 00, 03, FF, 01, FF, 02, FE, 00, FE, 00, FD, FF, FF, 01, FC, 01, FC, 02, FD, 02, 00, 01, 00, 02, 00, FF, FF, 00, FD]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, FD, FF, FF, 01, FE, 00, FE, 03, FE, 01, 00, 01, FE, 01, FF, 01, FD, 00, FE, 00, FC, 01, FF, 00, FD, 00, FE, 02, FE, 01, FE, 00, FD, 00, FF, 00, FF, 02, FF, 00, FF, 02, FC, 01, FF, 02, FD, 00, FD, 00, FE, FF, FE, 00, FB, 02, FF, 01, FF, 02, FE, 02, FE, 01, FF, 00, FD, 02, FF, FF, 00, 03, FF, 01, FF, 02, FE, 00, FE, 00, FD, FF, FF, 01, FC, 01, FC, 02, FD, 02, 00, 01, 00, 02, 00, FF, FF, 00, FD]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC 6ED1 and 512 data bytes: [01, FD, FF, FF, 01, FE, 00, FE, 03, FE, 01, 00, 01, FE, 01, FF, 01, FD, 00, FE, 00, FC, 01, FF, 00, FD, 00, FE, 02, FE, 01, FE, 00, FD, 00, FF, 00, FF, 02, FF, 00, FF, 02, FC, 01, FF, 02, FD, 00, FD, 00, FE, FF, FE, 00, FB, 02, FF, 01, FF, 02, FE, 02, FE, 01, FF, 00, FD, 02, FF, FF, 00, 03, FF, 01, FF, 02, FE, 00, FE, 00, FD, FF, FF, 01, FC, 01, FC, 02, FD, 02, 00, 01, 00, 02, 00, FF, FF, 00, FD]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, FE, 00, FC, FF, FF, 01, FD, 01, FF, 00, FD, 02, FD, 02, FE, 02, 00, 00, FD, FE, FC, 00, FE, 03, 00, 00, FC, 02, FE, FF, FE, 00, FE, 01, FF, FE, FD, FF, 00, 00, FD, FF, FC, 01, FC, 02, FD, FF, FE, 02, 01, 01, FE, FF, FC, 00, FF, 01, FC, 01, FC, 01, FF, 01, FD, 00, FE, 00, FE, 00, FC, 01, FE, 02, FE, 00, 01, FF, FD, 00, FF, 00, FE, 02, 00, 02, 00, 02, FF, 01, FD, 00, FD, 01, FE, 02, FD, 00, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, FE, 00, FC, FF, FF, 01, FD, 01, FF, 00, FD, 02, FD, 02, FE, 02, 00, 00, FD, FE, FC, 00, FE, 03, 00, 00, FC, 02, FE, FF, FE, 00, FE, 01, FF, FE, FD, FF, 00, 00, FD, FF, FC, 01, FC, 02, FD, FF, FE, 02, 01, 01, FE, FF, FC, 00, FF, 01, FC, 01, FC, 01, FF, 01, FD, 00, FE, 00, FE, 00, FC, 01, FE, 02, FE, 00, 01, FF, FD, 00, FF, 00, FE, 02, 00, 02, 00, 02, FF, 01, FD, 00, FD, 01, FE, 02, FD, 00, FE]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC B4DC and 512 data bytes: [01, FE, 00, FC, FF, FF, 01, FD, 01, FF, 00, FD, 02, FD, 02, FE, 02, 00, 00, FD, FE, FC, 00, FE, 03, 00, 00, FC, 02, FE, FF, FE, 00, FE, 01, FF, FE, FD, FF, 00, 00, FD, FF, FC, 01, FC, 02, FD, FF, FE, 02, 01, 01, FE, FF, FC, 00, FF, 01, FC, 01, FC, 01, FF, 01, FD, 00, FE, 00, FE, 00, FC, 01, FE, 02, FE, 00, 01, FF, FD, 00, FF, 00, FE, 02, 00, 02, 00, 02, FF, 01, FD, 00, FD, 01, FE, 02, FD, 00, FE]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [03, FE, FF, 00, 02, FE, 00, FE, 00, FC, 01, FD, FF, FE, 02, 00, 00, FE, 01, FF, 00, FF, 02, FB, 02, FE, 02, FD, 02, FD, 02, FE, 01, FE, 00, FE, 01, FF, 01, FC, 01, FE, FF, FD, 02, 00, 00, FD, 02, FD, 00, FF, 01, FE, FF, FE, 03, FD, 01, FF, 01, FE, 01, FD, 02, FC, 03, FE, 00, FB, 01, FE, 00, FE, 01, FE, 01, FF, 01, FE, FE, FC, 02, FF, 00, FE, 00, FF, 00, FF, 02, FD, FE, FE, 01, FF, 02, FE, FF, FD]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [03, FE, FF, 00, 02, FE, 00, FE, 00, FC, 01, FD, FF, FE, 02, 00, 00, FE, 01, FF, 00, FF, 02, FB, 02, FE, 02, FD, 02, FD, 02, FE, 01, FE, 00, FE, 01, FF, 01, FC, 01, FE, FF, FD, 02, 00, 00, FD, 02, FD, 00, FF, 01, FE, FF, FE, 03, FD, 01, FF, 01, FE, 01, FD, 02, FC, 03, FE, 00, FB, 01, FE, 00, FE, 01, FE, 01, FF, 01, FE, FE, FC, 02, FF, 00, FE, 00, FF, 00, FF, 02, FD, FE, FE, 01, FF, 02, FE, FF, FD]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC B2CC and 512 data bytes: [03, FE, FF, 00, 02, FE, 00, FE, 00, FC, 01, FD, FF, FE, 02, 00, 00, FE, 01, FF, 00, FF, 02, FB, 02, FE, 02, FD, 02, FD, 02, FE, 01, FE, 00, FE, 01, FF, 01, FC, 01, FE, FF, FD, 02, 00, 00, FD, 02, FD, 00, FF, 01, FE, FF, FE, 03, FD, 01, FF, 01, FE, 01, FD, 02, FC, 03, FE, 00, FB, 01, FE, 00, FE, 01, FE, 01, FF, 01, FE, FE, FC, 02, FF, 00, FE, 00, FF, 00, FF, 02, FD, FE, FE, 01, FF, 02, FE, FF, FD]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [00, FF, 00, FD, 02, FC, 00, FC, 02, FD, FF, FC, 00, FC, 01, FF, 01, FE, 02, FE, 00, FB, 01, FD, 01, FC, 00, FC, 02, FD, 01, 00, 00, FF, 03, FF, 01, FF, 02, FE, 00, FD, 01, FD, 00, FF, 00, FF, 00, FE, 01, FC, 02, FD, FF, FD, 00, FF, 00, FD, 02, FF, FF, FE, 01, FF, 01, FE, 02, FD, 00, FD, 01, FF, FF, 00, 02, FC, 01, FD, 00, FE, 01, FE, 02, FE, 02, FF, 01, FF, 00, 00, 01, FE, 02, FE, FF, FE, 03, 00]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [00, FF, 00, FD, 02, FC, 00, FC, 02, FD, FF, FC, 00, FC, 01, FF, 01, FE, 02, FE, 00, FB, 01, FD, 01, FC, 00, FC, 02, FD, 01, 00, 00, FF, 03, FF, 01, FF, 02, FE, 00, FD, 01, FD, 00, FF, 00, FF, 00, FE, 01, FC, 02, FD, FF, FD, 00, FF, 00, FD, 02, FF, FF, FE, 01, FF, 01, FE, 02, FD, 00, FD, 01, FF, FF, 00, 02, FC, 01, FD, 00, FE, 01, FE, 02, FE, 02, FF, 01, FF, 00, 00, 01, FE, 02, FE, FF, FE, 03, 00]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC 99C7 and 512 data bytes: [00, FF, 00, FD, 02, FC, 00, FC, 02, FD, FF, FC, 00, FC, 01, FF, 01, FE, 02, FE, 00, FB, 01, FD, 01, FC, 00, FC, 02, FD, 01, 00, 00, FF, 03, FF, 01, FF, 02, FE, 00, FD, 01, FD, 00, FF, 00, FF, 00, FE, 01, FC, 02, FD, FF, FD, 00, FF, 00, FD, 02, FF, FF, FE, 01, FF, 01, FE, 02, FD, 00, FD, 01, FF, FF, 00, 02, FC, 01, FD, 00, FE, 01, FE, 02, FE, 02, FF, 01, FF, 00, 00, 01, FE, 02, FE, FF, FE, 03, 00]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, FE, 00, FE, 00, 00, 01, FE, 00, FD, FF, FC, 02, FE, FE, FE, 01, FF, 01, FF, 00, FE, FF, FE, 03, 00, 02, FE, 02, FF, 01, FE, 01, FC, 00, FF, 00, FD, 00, FD, 01, FE, 01, FE, 01, FD, 00, FD, 01, FD, 01, FF, 00, 00, 02, FD, FF, FD, 02, FE, 00, FE, 01, FC, 00, FD, 02, FF, 00, FF, 02, FD, 01, FE, 01, 00, 01, FE, 00, FC, 01, 00, FF, FC, 01, FD, 00, FD, 00, FD, FF, FE, 02, FE, 02, FF, 02, FD, 01, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, FE, 00, FE, 00, 00, 01, FE, 00, FD, FF, FC, 02, FE, FE, FE, 01, FF, 01, FF, 00, FE, FF, FE, 03, 00, 02, FE, 02, FF, 01, FE, 01, FC, 00, FF, 00, FD, 00, FD, 01, FE, 01, FE, 01, FD, 00, FD, 01, FD, 01, FF, 00, 00, 02, FD, FF, FD, 02, FE, 00, FE, 01, FC, 00, FD, 02, FF, 00, FF, 02, FD, 01, FE, 01, 00, 01, FE, 00, FC, 01, 00, FF, FC, 01, FD, 00, FD, 00, FD, FF, FE, 02, FE, 02, FF, 02, FD, 01, FE]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC F6FC and 512 data bytes: [01, FE, 00, FE, 00, 00, 01, FE, 00, FD, FF, FC, 02, FE, FE, FE, 01, FF, 01, FF, 00, FE, FF, FE, 03, 00, 02, FE, 02, FF, 01, FE, 01, FC, 00, FF, 00, FD, 00, FD, 01, FE, 01, FE, 01, FD, 00, FD, 01, FD, 01, FF, 00, 00, 02, FD, FF, FD, 02, FE, 00, FE, 01, FC, 00, FD, 02, FF, 00, FF, 02, FD, 01, FE, 01, 00, 01, FE, 00, FC, 01, 00, FF, FC, 01, FD, 00, FD, 00, FD, FF, FE, 02, FE, 02, FF, 02, FD, 01, FE]...
   ACK packet
@@ -306,1451 +306,1451 @@ Unidentified transfer of 16 KiB on endpoint 7.1 IN: [FE, FF, 01, FD, 01, FD, 01,
  1 SOF packets
   SOF packet with frame number 996, CRC 06
 Polling 126 times for unidentified transfer on endpoint 7.1 IN
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
 Unidentified transfer of 16 KiB on endpoint 7.1 IN: [00, FE, 00, 00, FE, FD, 00, FF, 02, FF, 01, FD, 01, FE, 01, FF, 01, FD, 03, FD, 01, FE, 01, FF, 00, FE, FF, FB, 00, FE, FF, FC, 00, FE, FF, FD, 01, FE, 00, FE, 00, FF, 00, FC, 02, FD, 02, FE, 02, FC, 00, FC, 01, FD, 01, FF, 00, FC, 00, FE, 01, FE, 00, FF, 01, FE, 00, FF, 00, FE, 02, FE, 00, FD, 02, 00, 01, FF, 02, FC, FF, FE, 01, FF, 00, FF, 01, FD, FF, 01, 01, FE, 00, 00, 00, FE, FF, FA, 00, FD]...
- IN transaction with 512 data bytes, ACK: [00, FE, 00, 00, FE, FD, 00, FF, 02, FF, 01, FD, 01, FE, 01, FF, 01, FD, 03, FD, 01, FE, 01, FF, 00, FE, FF, FB, 00, FE, FF, FC, 00, FE, FF, FD, 01, FE, 00, FE, 00, FF, 00, FC, 02, FD, 02, FE, 02, FC, 00, FC, 01, FD, 01, FF, 00, FC, 00, FE, 01, FE, 00, FF, 01, FE, 00, FF, 00, FE, 02, FE, 00, FD, 02, 00, 01, FF, 02, FC, FF, FE, 01, FF, 00, FF, 01, FD, FF, 01, 01, FE, 00, 00, 00, FE, FF, FA, 00, FD]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [00, FE, 00, 00, FE, FD, 00, FF, 02, FF, 01, FD, 01, FE, 01, FF, 01, FD, 03, FD, 01, FE, 01, FF, 00, FE, FF, FB, 00, FE, FF, FC, 00, FE, FF, FD, 01, FE, 00, FE, 00, FF, 00, FC, 02, FD, 02, FE, 02, FC, 00, FC, 01, FD, 01, FF, 00, FC, 00, FE, 01, FE, 00, FF, 01, FE, 00, FF, 00, FE, 02, FE, 00, FD, 02, 00, 01, FF, 02, FC, FF, FE, 01, FF, 00, FF, 01, FD, FF, 01, 01, FE, 00, 00, 00, FE, FF, FA, 00, FD]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC 983E and 512 data bytes: [00, FE, 00, 00, FE, FD, 00, FF, 02, FF, 01, FD, 01, FE, 01, FF, 01, FD, 03, FD, 01, FE, 01, FF, 00, FE, FF, FB, 00, FE, FF, FC, 00, FE, FF, FD, 01, FE, 00, FE, 00, FF, 00, FC, 02, FD, 02, FE, 02, FC, 00, FC, 01, FD, 01, FF, 00, FC, 00, FE, 01, FE, 00, FF, 01, FE, 00, FF, 00, FE, 02, FE, 00, FD, 02, 00, 01, FF, 02, FC, FF, FE, 01, FF, 00, FF, 01, FD, FF, 01, 01, FE, 00, 00, 00, FE, FF, FA, 00, FD]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [03, FE, 02, FD, 03, FE, 00, FE, 02, FD, 01, 00, 01, 00, 02, FF, 00, FE, 00, FE, 01, FB, 01, FF, 01, FE, 01, FE, FF, FF, 00, FD, 00, FF, 02, FF, FF, FD, 02, FE, 00, FD, 01, FB, 01, FD, 02, FC, 01, FE, 01, FD, 01, FE, 00, FD, 01, FE, FF, FB, 02, FF, 01, FD, 02, FF, FF, FE, 01, FF, FF, FF, 04, FF, 02, 00, 00, FE, 01, FF, 01, FD, FF, FE, 02, FD, 00, FC, 00, FE, 02, 00, 00, FF, 01, FD, 00, FC, FF, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [03, FE, 02, FD, 03, FE, 00, FE, 02, FD, 01, 00, 01, 00, 02, FF, 00, FE, 00, FE, 01, FB, 01, FF, 01, FE, 01, FE, FF, FF, 00, FD, 00, FF, 02, FF, FF, FD, 02, FE, 00, FD, 01, FB, 01, FD, 02, FC, 01, FE, 01, FD, 01, FE, 00, FD, 01, FE, FF, FB, 02, FF, 01, FD, 02, FF, FF, FE, 01, FF, FF, FF, 04, FF, 02, 00, 00, FE, 01, FF, 01, FD, FF, FE, 02, FD, 00, FC, 00, FE, 02, 00, 00, FF, 01, FD, 00, FC, FF, FE]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC 51A8 and 512 data bytes: [03, FE, 02, FD, 03, FE, 00, FE, 02, FD, 01, 00, 01, 00, 02, FF, 00, FE, 00, FE, 01, FB, 01, FF, 01, FE, 01, FE, FF, FF, 00, FD, 00, FF, 02, FF, FF, FD, 02, FE, 00, FD, 01, FB, 01, FD, 02, FC, 01, FE, 01, FD, 01, FE, 00, FD, 01, FE, FF, FB, 02, FF, 01, FD, 02, FF, FF, FE, 01, FF, FF, FF, 04, FF, 02, 00, 00, FE, 01, FF, 01, FD, FF, FE, 02, FD, 00, FC, 00, FE, 02, 00, 00, FF, 01, FD, 00, FC, FF, FE]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [02, FE, 00, FE, 00, FD, 01, FD, 02, FE, 00, FD, 01, 00, 02, FE, 04, FD, 00, FD, 01, FE, 00, FD, 01, FF, 00, 00, 01, FC, 00, FD, 01, FE, 01, FF, 00, FE, 00, FD, 01, FC, 01, FE, 00, FE, 02, FF, 00, FE, 00, FD, 00, FD, 01, FE, 00, FE, 02, FE, 02, FE, 02, FB, 01, FE, 03, FE, 01, FF, 01, FD, 02, 00, 01, FC, 01, FF, 01, FE, 02, 00, 00, FD, 03, FF, 00, FE, 02, FE, 00, FE, 00, FD, 00, FD, 00, FF, 02, 01]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [02, FE, 00, FE, 00, FD, 01, FD, 02, FE, 00, FD, 01, 00, 02, FE, 04, FD, 00, FD, 01, FE, 00, FD, 01, FF, 00, 00, 01, FC, 00, FD, 01, FE, 01, FF, 00, FE, 00, FD, 01, FC, 01, FE, 00, FE, 02, FF, 00, FE, 00, FD, 00, FD, 01, FE, 00, FE, 02, FE, 02, FE, 02, FB, 01, FE, 03, FE, 01, FF, 01, FD, 02, 00, 01, FC, 01, FF, 01, FE, 02, 00, 00, FD, 03, FF, 00, FE, 02, FE, 00, FE, 00, FD, 00, FD, 00, FF, 02, 01]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC 5F4E and 512 data bytes: [02, FE, 00, FE, 00, FD, 01, FD, 02, FE, 00, FD, 01, 00, 02, FE, 04, FD, 00, FD, 01, FE, 00, FD, 01, FF, 00, 00, 01, FC, 00, FD, 01, FE, 01, FF, 00, FE, 00, FD, 01, FC, 01, FE, 00, FE, 02, FF, 00, FE, 00, FD, 00, FD, 01, FE, 00, FE, 02, FE, 02, FE, 02, FB, 01, FE, 03, FE, 01, FF, 01, FD, 02, 00, 01, FC, 01, FF, 01, FE, 02, 00, 00, FD, 03, FF, 00, FE, 02, FE, 00, FE, 00, FD, 00, FD, 00, FF, 02, 01]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, FD, 02, FE, FF, FE, 02, FE, 03, FF, 03, FF, FF, FD, 00, FC, 02, 00, 02, FE, 01, FC, 01, FD, 00, 00, FF, FC, 01, FD, 01, FE, FF, FE, 01, FD, 02, FD, FE, FE, 01, 00, 00, FF, 02, FD, FF, FE, FF, FE, 01, FF, 01, FE, 02, FE, 02, FE, 01, FF, 02, FD, 03, FD, 01, 00, 04, FC, 01, FD, 01, FF, 00, FE, 00, 00, 00, FF, 02, FE, 00, FF, 01, FE, 00, FE, FF, FC, 00, 00, 01, FF, 01, 00, 00, FD, 00, FF, 00, FC]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, FD, 02, FE, FF, FE, 02, FE, 03, FF, 03, FF, FF, FD, 00, FC, 02, 00, 02, FE, 01, FC, 01, FD, 00, 00, FF, FC, 01, FD, 01, FE, FF, FE, 01, FD, 02, FD, FE, FE, 01, 00, 00, FF, 02, FD, FF, FE, FF, FE, 01, FF, 01, FE, 02, FE, 02, FE, 01, FF, 02, FD, 03, FD, 01, 00, 04, FC, 01, FD, 01, FF, 00, FE, 00, 00, 00, FF, 02, FE, 00, FF, 01, FE, 00, FE, FF, FC, 00, 00, 01, FF, 01, 00, 00, FD, 00, FF, 00, FC]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC 6103 and 512 data bytes: [01, FD, 02, FE, FF, FE, 02, FE, 03, FF, 03, FF, FF, FD, 00, FC, 02, 00, 02, FE, 01, FC, 01, FD, 00, 00, FF, FC, 01, FD, 01, FE, FF, FE, 01, FD, 02, FD, FE, FE, 01, 00, 00, FF, 02, FD, FF, FE, FF, FE, 01, FF, 01, FE, 02, FE, 02, FE, 01, FF, 02, FD, 03, FD, 01, 00, 04, FC, 01, FD, 01, FF, 00, FE, 00, 00, 00, FF, 02, FE, 00, FF, 01, FE, 00, FE, FF, FC, 00, 00, 01, FF, 01, 00, 00, FD, 00, FF, 00, FC]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [03, FD, 01, FD, 02, FD, 00, FF, 02, FD, 02, FF, 02, FC, 00, FC, 01, FD, 01, FE, FE, FD, 01, FD, FF, FE, 02, FF, 02, FD, FF, 00, FE, FE, 03, FC, 01, FD, 01, FD, 01, FE, 01, FE, 00, 00, 04, FF, 02, FD, FF, FE, 02, FE, 01, FC, 00, FF, 00, FE, 02, FD, 00, FD, 03, FF, 03, FD, 01, FD, FE, FD, 00, FD, 01, FF, 02, FF, 00, 00, 01, FD, 02, 00, 02, FF, 02, FD, 01, FE, 03, FF, 01, FE, 01, FE, 01, FE, 02, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [03, FD, 01, FD, 02, FD, 00, FF, 02, FD, 02, FF, 02, FC, 00, FC, 01, FD, 01, FE, FE, FD, 01, FD, FF, FE, 02, FF, 02, FD, FF, 00, FE, FE, 03, FC, 01, FD, 01, FD, 01, FE, 01, FE, 00, 00, 04, FF, 02, FD, FF, FE, 02, FE, 01, FC, 00, FF, 00, FE, 02, FD, 00, FD, 03, FF, 03, FD, 01, FD, FE, FD, 00, FD, 01, FF, 02, FF, 00, 00, 01, FD, 02, 00, 02, FF, 02, FD, 01, FE, 03, FF, 01, FE, 01, FE, 01, FE, 02, FE]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC FAA0 and 512 data bytes: [03, FD, 01, FD, 02, FD, 00, FF, 02, FD, 02, FF, 02, FC, 00, FC, 01, FD, 01, FE, FE, FD, 01, FD, FF, FE, 02, FF, 02, FD, FF, 00, FE, FE, 03, FC, 01, FD, 01, FD, 01, FE, 01, FE, 00, 00, 04, FF, 02, FD, FF, FE, 02, FE, 01, FC, 00, FF, 00, FE, 02, FD, 00, FD, 03, FF, 03, FD, 01, FD, FE, FD, 00, FD, 01, FF, 02, FF, 00, 00, 01, FD, 02, 00, 02, FF, 02, FD, 01, FE, 03, FF, 01, FE, 01, FE, 01, FE, 02, FE]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, FD, 01, FD, 01, FF, 00, FD, 01, 00, 00, FF, 01, 01, 00, FF, 00, 00, FF, FF, 01, FD, FE, FE, 01, FE, 01, FE, 01, FD, 01, FF, 02, FD, 02, FE, 00, FD, 02, FE, 00, FE, 01, FF, 00, FC, 01, FE, 00, FD, 01, FD, 00, FE, 01, FC, FE, FE, 02, FF, 03, 00, 02, FE, 01, FE, 01, FE, 01, FF, 01, FB, FF, FD, 01, FD, FF, FE, FF, FD, 02, FF, 01, FE, 01, FD, 00, FD, 00, FE, 01, 00, 01, FF, 02, FE, 01, FD, 01, FF]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, FD, 01, FD, 01, FF, 00, FD, 01, 00, 00, FF, 01, 01, 00, FF, 00, 00, FF, FF, 01, FD, FE, FE, 01, FE, 01, FE, 01, FD, 01, FF, 02, FD, 02, FE, 00, FD, 02, FE, 00, FE, 01, FF, 00, FC, 01, FE, 00, FD, 01, FD, 00, FE, 01, FC, FE, FE, 02, FF, 03, 00, 02, FE, 01, FE, 01, FE, 01, FF, 01, FB, FF, FD, 01, FD, FF, FE, FF, FD, 02, FF, 01, FE, 01, FD, 00, FD, 00, FE, 01, 00, 01, FF, 02, FE, 01, FD, 01, FF]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC 8004 and 512 data bytes: [01, FD, 01, FD, 01, FF, 00, FD, 01, 00, 00, FF, 01, 01, 00, FF, 00, 00, FF, FF, 01, FD, FE, FE, 01, FE, 01, FE, 01, FD, 01, FF, 02, FD, 02, FE, 00, FD, 02, FE, 00, FE, 01, FF, 00, FC, 01, FE, 00, FD, 01, FD, 00, FE, 01, FC, FE, FE, 02, FF, 03, 00, 02, FE, 01, FE, 01, FE, 01, FF, 01, FB, FF, FD, 01, FD, FF, FE, FF, FD, 02, FF, 01, FE, 01, FD, 00, FD, 00, FE, 01, 00, 01, FF, 02, FE, 01, FD, 01, FF]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, FC, 02, FD, 00, FC, 01, FD, FF, FE, 00, FB, 02, FC, 02, FD, 00, FF, 00, FE, 01, FE, 02, FC, 01, FE, 01, FD, 02, 00, 01, FE, 01, FE, FF, FE, 01, FF, 01, FE, 01, FC, 00, FC, FF, FE, FE, FF, 01, FD, 02, FD, 01, FC, 00, FF, 00, FF, 02, 00, 02, FE, 01, FD, 01, FE, 02, FF, 02, FE, 01, FD, FD, FE, 00, FE, 00, FF, 01, FC, FF, 00, 03, FF, 00, FD, 01, FD, 01, FE, FF, FE, 01, 00, 00, FD, 00, FF, 02, FF]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, FC, 02, FD, 00, FC, 01, FD, FF, FE, 00, FB, 02, FC, 02, FD, 00, FF, 00, FE, 01, FE, 02, FC, 01, FE, 01, FD, 02, 00, 01, FE, 01, FE, FF, FE, 01, FF, 01, FE, 01, FC, 00, FC, FF, FE, FE, FF, 01, FD, 02, FD, 01, FC, 00, FF, 00, FF, 02, 00, 02, FE, 01, FD, 01, FE, 02, FF, 02, FE, 01, FD, FD, FE, 00, FE, 00, FF, 01, FC, FF, 00, 03, FF, 00, FD, 01, FD, 01, FE, FF, FE, 01, 00, 00, FD, 00, FF, 02, FF]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC AB44 and 512 data bytes: [01, FC, 02, FD, 00, FC, 01, FD, FF, FE, 00, FB, 02, FC, 02, FD, 00, FF, 00, FE, 01, FE, 02, FC, 01, FE, 01, FD, 02, 00, 01, FE, 01, FE, FF, FE, 01, FF, 01, FE, 01, FC, 00, FC, FF, FE, FE, FF, 01, FD, 02, FD, 01, FC, 00, FF, 00, FF, 02, 00, 02, FE, 01, FD, 01, FE, 02, FF, 02, FE, 01, FD, FD, FE, 00, FE, 00, FF, 01, FC, FF, 00, 03, FF, 00, FD, 01, FD, 01, FE, FF, FE, 01, 00, 00, FD, 00, FF, 02, FF]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, FC, FD, FF, 02, FD, 02, FC, 01, FD, FF, 00, 00, FC, 01, FE, 01, FF, 01, FD, 02, FE, 03, FF, FF, FE, FF, FE, 03, FD, 01, FE, FF, FE, 02, FF, 00, FD, 00, FC, 00, FE, 00, FF, 02, FF, 02, FD, 02, FE, 02, FD, 03, 00, 00, FC, 01, FD, FF, FE, 01, FE, 00, FE, 02, FE, 01, FF, 02, FD, 01, FE, 03, FD, 02, FC, 00, FE, 00, FF, FE, FD, FF, FF, 03, FC, 03, FF, 00, FE, 00, FE, FF, FD, 03, FF, 02, FF, 02, FF]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, FC, FD, FF, 02, FD, 02, FC, 01, FD, FF, 00, 00, FC, 01, FE, 01, FF, 01, FD, 02, FE, 03, FF, FF, FE, FF, FE, 03, FD, 01, FE, FF, FE, 02, FF, 00, FD, 00, FC, 00, FE, 00, FF, 02, FF, 02, FD, 02, FE, 02, FD, 03, 00, 00, FC, 01, FD, FF, FE, 01, FE, 00, FE, 02, FE, 01, FF, 02, FD, 01, FE, 03, FD, 02, FC, 00, FE, 00, FF, FE, FD, FF, FF, 03, FC, 03, FF, 00, FE, 00, FE, FF, FD, 03, FF, 02, FF, 02, FF]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC 5438 and 512 data bytes: [01, FC, FD, FF, 02, FD, 02, FC, 01, FD, FF, 00, 00, FC, 01, FE, 01, FF, 01, FD, 02, FE, 03, FF, FF, FE, FF, FE, 03, FD, 01, FE, FF, FE, 02, FF, 00, FD, 00, FC, 00, FE, 00, FF, 02, FF, 02, FD, 02, FE, 02, FD, 03, 00, 00, FC, 01, FD, FF, FE, 01, FE, 00, FE, 02, FE, 01, FF, 02, FD, 01, FE, 03, FD, 02, FC, 00, FE, 00, FF, FE, FD, FF, FF, 03, FC, 03, FF, 00, FE, 00, FE, FF, FD, 03, FF, 02, FF, 02, FF]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [02, FE, 00, FD, 00, FF, 02, FF, 02, FF, 02, FC, 01, FD, 00, FE, 01, FD, 01, FF, 02, FD, 00, FD, 02, FE, FF, FC, 01, FC, 01, 00, 01, FE, 00, FF, 00, FE, 00, FF, FE, FC, 00, FE, 01, FE, 01, FF, 01, FF, 02, FF, FF, FE, 02, FD, 01, FC, 01, FD, 01, FF, 01, FC, 00, FD, 01, FE, 01, FE, FF, FE, 00, FE, 00, FE, 02, FF, 00, FE, 02, FF, FF, FD, 01, FE, 02, 00, 02, FD, 01, FE, 00, FD, FE, FF, 02, FD, 01, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [02, FE, 00, FD, 00, FF, 02, FF, 02, FF, 02, FC, 01, FD, 00, FE, 01, FD, 01, FF, 02, FD, 00, FD, 02, FE, FF, FC, 01, FC, 01, 00, 01, FE, 00, FF, 00, FE, 00, FF, FE, FC, 00, FE, 01, FE, 01, FF, 01, FF, 02, FF, FF, FE, 02, FD, 01, FC, 01, FD, 01, FF, 01, FC, 00, FD, 01, FE, 01, FE, FF, FE, 00, FE, 00, FE, 02, FF, 00, FE, 02, FF, FF, FD, 01, FE, 02, 00, 02, FD, 01, FE, 00, FD, FE, FF, 02, FD, 01, FE]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC B6B7 and 512 data bytes: [02, FE, 00, FD, 00, FF, 02, FF, 02, FF, 02, FC, 01, FD, 00, FE, 01, FD, 01, FF, 02, FD, 00, FD, 02, FE, FF, FC, 01, FC, 01, 00, 01, FE, 00, FF, 00, FE, 00, FF, FE, FC, 00, FE, 01, FE, 01, FF, 01, FF, 02, FF, FF, FE, 02, FD, 01, FC, 01, FD, 01, FF, 01, FC, 00, FD, 01, FE, 01, FE, FF, FE, 00, FE, 00, FE, 02, FF, 00, FE, 02, FF, FF, FD, 01, FE, 02, 00, 02, FD, 01, FE, 00, FD, FE, FF, 02, FD, 01, FE]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, 00, 02, FE, 01, FD, 01, FD, 03, FC, 02, FC, 00, FE, 02, FC, 01, FE, FF, FF, 01, FF, 00, FE, FF, FE, FF, FC, 00, FD, 00, FD, 02, FD, 01, 00, 01, FE, FF, FE, 02, FF, 02, FE, 01, FD, 01, FF, 00, FF, 00, 00, 00, FD, 01, FD, 01, FE, 03, FE, 00, FC, 01, FD, 00, FD, 02, FE, 00, FF, 02, FD, FF, FE, 01, FE, 01, FD, 02, FD, 01, FF, 02, FD, 01, FE, FF, FD, FF, FD, 02, FB, 01, FD, 00, FC, 02, FD, 01, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, 00, 02, FE, 01, FD, 01, FD, 03, FC, 02, FC, 00, FE, 02, FC, 01, FE, FF, FF, 01, FF, 00, FE, FF, FE, FF, FC, 00, FD, 00, FD, 02, FD, 01, 00, 01, FE, FF, FE, 02, FF, 02, FE, 01, FD, 01, FF, 00, FF, 00, 00, 00, FD, 01, FD, 01, FE, 03, FE, 00, FC, 01, FD, 00, FD, 02, FE, 00, FF, 02, FD, FF, FE, 01, FE, 01, FD, 02, FD, 01, FF, 02, FD, 01, FE, FF, FD, FF, FD, 02, FB, 01, FD, 00, FC, 02, FD, 01, FE]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC 7CF7 and 512 data bytes: [01, 00, 02, FE, 01, FD, 01, FD, 03, FC, 02, FC, 00, FE, 02, FC, 01, FE, FF, FF, 01, FF, 00, FE, FF, FE, FF, FC, 00, FD, 00, FD, 02, FD, 01, 00, 01, FE, FF, FE, 02, FF, 02, FE, 01, FD, 01, FF, 00, FF, 00, 00, 00, FD, 01, FD, 01, FE, 03, FE, 00, FC, 01, FD, 00, FD, 02, FE, 00, FF, 02, FD, FF, FE, 01, FE, 01, FD, 02, FD, 01, FF, 02, FD, 01, FE, FF, FD, FF, FD, 02, FB, 01, FD, 00, FC, 02, FD, 01, FE]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, FD, 01, FD, FF, FE, 00, FD, 00, FC, FF, FE, 00, FE, 02, FF, 00, FD, 03, 01, FF, FF, 02, FF, FF, FE, FF, FE, 00, FE, 02, FE, 01, 00, 03, FE, 02, FE, 02, FD, 01, FC, 00, FD, 02, 00, 00, FE, 00, FE, 00, FF, 01, FE, 00, FE, 02, FC, 01, 00, 02, 01, 01, FF, 00, FF, 00, 00, 00, FD, 00, FE, 01, FD, FF, FD, 01, FF, 02, FF, 00, FE, 02, FD, 00, FC, 00, FE, 00, FC, 01, FD, 00, FF, 02, FE, 00, FD, 01, FD]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, FD, 01, FD, FF, FE, 00, FD, 00, FC, FF, FE, 00, FE, 02, FF, 00, FD, 03, 01, FF, FF, 02, FF, FF, FE, FF, FE, 00, FE, 02, FE, 01, 00, 03, FE, 02, FE, 02, FD, 01, FC, 00, FD, 02, 00, 00, FE, 00, FE, 00, FF, 01, FE, 00, FE, 02, FC, 01, 00, 02, 01, 01, FF, 00, FF, 00, 00, 00, FD, 00, FE, 01, FD, FF, FD, 01, FF, 02, FF, 00, FE, 02, FD, 00, FC, 00, FE, 00, FC, 01, FD, 00, FF, 02, FE, 00, FD, 01, FD]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC D368 and 512 data bytes: [01, FD, 01, FD, FF, FE, 00, FD, 00, FC, FF, FE, 00, FE, 02, FF, 00, FD, 03, 01, FF, FF, 02, FF, FF, FE, FF, FE, 00, FE, 02, FE, 01, 00, 03, FE, 02, FE, 02, FD, 01, FC, 00, FD, 02, 00, 00, FE, 00, FE, 00, FF, 01, FE, 00, FE, 02, FC, 01, 00, 02, 01, 01, FF, 00, FF, 00, 00, 00, FD, 00, FE, 01, FD, FF, FD, 01, FF, 02, FF, 00, FE, 02, FD, 00, FC, 00, FE, 00, FC, 01, FD, 00, FF, 02, FE, 00, FD, 01, FD]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, FF, 00, FC, 00, FE, FE, FC, 01, FF, FF, 00, 01, FF, 00, FE, 01, FE, 00, FF, 02, FE, 00, FD, 00, FE, FF, FE, 01, FD, 03, 00, 00, FC, 01, FE, 02, FD, 00, FE, 00, FD, 01, FD, 00, FD, 00, FC, FF, FF, 01, FD, 00, FD, 01, FE, 01, 01, 01, FD, 00, 00, 00, FD, 00, FE, 03, FF, 03, FF, FF, FC, FF, FF, FF, FC, 00, FE, 00, FE, 02, FD, FE, FD, 02, FD, 03, FE, 01, FE, 02, FE, 01, FE, 00, FF, 01, FC, 00, FF]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, FF, 00, FC, 00, FE, FE, FC, 01, FF, FF, 00, 01, FF, 00, FE, 01, FE, 00, FF, 02, FE, 00, FD, 00, FE, FF, FE, 01, FD, 03, 00, 00, FC, 01, FE, 02, FD, 00, FE, 00, FD, 01, FD, 00, FD, 00, FC, FF, FF, 01, FD, 00, FD, 01, FE, 01, 01, 01, FD, 00, 00, 00, FD, 00, FE, 03, FF, 03, FF, FF, FC, FF, FF, FF, FC, 00, FE, 00, FE, 02, FD, FE, FD, 02, FD, 03, FE, 01, FE, 02, FE, 01, FE, 00, FF, 01, FC, 00, FF]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC B00B and 512 data bytes: [01, FF, 00, FC, 00, FE, FE, FC, 01, FF, FF, 00, 01, FF, 00, FE, 01, FE, 00, FF, 02, FE, 00, FD, 00, FE, FF, FE, 01, FD, 03, 00, 00, FC, 01, FE, 02, FD, 00, FE, 00, FD, 01, FD, 00, FD, 00, FC, FF, FF, 01, FD, 00, FD, 01, FE, 01, 01, 01, FD, 00, 00, 00, FD, 00, FE, 03, FF, 03, FF, FF, FC, FF, FF, FF, FC, 00, FE, 00, FE, 02, FD, FE, FD, 02, FD, 03, FE, 01, FE, 02, FE, 01, FE, 00, FF, 01, FC, 00, FF]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [FE, FF, 02, FE, 02, FD, 01, FC, 00, FF, 01, FD, 01, FD, 01, FD, 02, 00, 00, FF, 00, FD, 01, FC, FF, 00, FF, FD, 00, FD, 01, FE, 02, FF, 00, FE, 02, FD, FF, FF, 01, FE, 03, FD, 02, FD, 01, FF, 01, FC, 02, FE, 02, FD, 01, FD, 01, FD, 00, FE, 00, FE, 01, 00, 01, FF, 01, FE, 00, FD, 02, FD, 02, FE, 00, FF, 00, FF, 02, FF, 01, FE, 01, FE, 01, FF, 00, FD, 01, FF, FF, FC, 00, FF, 00, FF, 00, FF, FF, FF]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [FE, FF, 02, FE, 02, FD, 01, FC, 00, FF, 01, FD, 01, FD, 01, FD, 02, 00, 00, FF, 00, FD, 01, FC, FF, 00, FF, FD, 00, FD, 01, FE, 02, FF, 00, FE, 02, FD, FF, FF, 01, FE, 03, FD, 02, FD, 01, FF, 01, FC, 02, FE, 02, FD, 01, FD, 01, FD, 00, FE, 00, FE, 01, 00, 01, FF, 01, FE, 00, FD, 02, FD, 02, FE, 00, FF, 00, FF, 02, FF, 01, FE, 01, FE, 01, FF, 00, FD, 01, FF, FF, FC, 00, FF, 00, FF, 00, FF, FF, FF]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC 706A and 512 data bytes: [FE, FF, 02, FE, 02, FD, 01, FC, 00, FF, 01, FD, 01, FD, 01, FD, 02, 00, 00, FF, 00, FD, 01, FC, FF, 00, FF, FD, 00, FD, 01, FE, 02, FF, 00, FE, 02, FD, FF, FF, 01, FE, 03, FD, 02, FD, 01, FF, 01, FC, 02, FE, 02, FD, 01, FD, 01, FD, 00, FE, 00, FE, 01, 00, 01, FF, 01, FE, 00, FD, 02, FD, 02, FE, 00, FF, 00, FF, 02, FF, 01, FE, 01, FE, 01, FF, 00, FD, 01, FF, FF, FC, 00, FF, 00, FF, 00, FF, FF, FF]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [02, FE, 00, FD, 01, FC, 00, FE, 00, FD, FF, FF, 01, FF, 02, FE, 00, FD, 03, FE, 01, FD, 03, FC, 00, FF, 01, 00, 02, FD, 02, FD, 00, FF, 01, FC, 00, FF, 00, FE, 01, 00, 00, FF, 01, FD, 01, FC, 00, FE, FE, FE, 03, FF, FF, FD, 00, FE, FF, FF, 01, FD, FE, FE, 02, FC, 01, FE, 01, FD, 01, FE, 01, FC, 02, FD, 00, FC, 01, FD, 01, FC, 01, FD, 00, FC, 00, FE, 02, FE, 02, FC, 01, FF, 02, FE, 00, FE, 01, FF]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [02, FE, 00, FD, 01, FC, 00, FE, 00, FD, FF, FF, 01, FF, 02, FE, 00, FD, 03, FE, 01, FD, 03, FC, 00, FF, 01, 00, 02, FD, 02, FD, 00, FF, 01, FC, 00, FF, 00, FE, 01, 00, 00, FF, 01, FD, 01, FC, 00, FE, FE, FE, 03, FF, FF, FD, 00, FE, FF, FF, 01, FD, FE, FE, 02, FC, 01, FE, 01, FD, 01, FE, 01, FC, 02, FD, 00, FC, 01, FD, 01, FC, 01, FD, 00, FC, 00, FE, 02, FE, 02, FC, 01, FF, 02, FE, 00, FE, 01, FF]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC D510 and 512 data bytes: [02, FE, 00, FD, 01, FC, 00, FE, 00, FD, FF, FF, 01, FF, 02, FE, 00, FD, 03, FE, 01, FD, 03, FC, 00, FF, 01, 00, 02, FD, 02, FD, 00, FF, 01, FC, 00, FF, 00, FE, 01, 00, 00, FF, 01, FD, 01, FC, 00, FE, FE, FE, 03, FF, FF, FD, 00, FE, FF, FF, 01, FD, FE, FE, 02, FC, 01, FE, 01, FD, 01, FE, 01, FC, 02, FD, 00, FC, 01, FD, 01, FC, 01, FD, 00, FC, 00, FE, 02, FE, 02, FC, 01, FF, 02, FE, 00, FE, 01, FF]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [02, FF, 01, FE, 02, FF, FF, FE, 01, FD, 00, FE, 01, 00, 02, FD, 01, FE, 00, FF, 03, FD, 00, FB, 02, FD, 01, 00, 01, FC, 01, FF, 01, FF, 04, 00, 00, FC, 03, FE, 00, FE, 01, FD, 01, FF, 01, FE, FF, 00, 01, FE, 02, FF, 01, FE, 02, FF, 01, FC, 00, 00, 02, FD, 01, FF, 00, 01, 02, FF, FF, FD, 02, FE, 00, FE, 01, FD, 00, FE, 01, FE, 00, FE, 01, FD, 02, FD, 01, FE, 00, FD, 02, FD, 02, 00, 00, FE, 01, FF]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [02, FF, 01, FE, 02, FF, FF, FE, 01, FD, 00, FE, 01, 00, 02, FD, 01, FE, 00, FF, 03, FD, 00, FB, 02, FD, 01, 00, 01, FC, 01, FF, 01, FF, 04, 00, 00, FC, 03, FE, 00, FE, 01, FD, 01, FF, 01, FE, FF, 00, 01, FE, 02, FF, 01, FE, 02, FF, 01, FC, 00, 00, 02, FD, 01, FF, 00, 01, 02, FF, FF, FD, 02, FE, 00, FE, 01, FD, 00, FE, 01, FE, 00, FE, 01, FD, 02, FD, 01, FE, 00, FD, 02, FD, 02, 00, 00, FE, 01, FF]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC 9D38 and 512 data bytes: [02, FF, 01, FE, 02, FF, FF, FE, 01, FD, 00, FE, 01, 00, 02, FD, 01, FE, 00, FF, 03, FD, 00, FB, 02, FD, 01, 00, 01, FC, 01, FF, 01, FF, 04, 00, 00, FC, 03, FE, 00, FE, 01, FD, 01, FF, 01, FE, FF, 00, 01, FE, 02, FF, 01, FE, 02, FF, 01, FC, 00, 00, 02, FD, 01, FF, 00, 01, 02, FF, FF, FD, 02, FE, 00, FE, 01, FD, 00, FE, 01, FE, 00, FE, 01, FD, 02, FD, 01, FE, 00, FD, 02, FD, 02, 00, 00, FE, 01, FF]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [00, FD, 01, FF, 01, FD, 03, FD, 01, FF, FF, FF, 00, FD, 02, FE, 00, FE, 02, FC, 03, FE, 01, FD, 01, FF, 01, FE, 02, FE, 00, FE, 02, FD, 01, FE, 01, FF, 00, FF, 02, FE, 01, FE, 00, FC, 01, FF, 01, FD, 01, FE, FF, FD, 00, FE, 01, FD, 01, FD, 00, FD, 01, FD, 00, FE, 02, FE, 01, FF, 00, FE, FE, 00, 01, FD, 02, FF, 00, FD, FE, FD, 00, FE, FF, FE, FF, FB, 02, FF, 01, FE, 01, FE, FF, FF, 00, FE, FF, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [00, FD, 01, FF, 01, FD, 03, FD, 01, FF, FF, FF, 00, FD, 02, FE, 00, FE, 02, FC, 03, FE, 01, FD, 01, FF, 01, FE, 02, FE, 00, FE, 02, FD, 01, FE, 01, FF, 00, FF, 02, FE, 01, FE, 00, FC, 01, FF, 01, FD, 01, FE, FF, FD, 00, FE, 01, FD, 01, FD, 00, FD, 01, FD, 00, FE, 02, FE, 01, FF, 00, FE, FE, 00, 01, FD, 02, FF, 00, FD, FE, FD, 00, FE, FF, FE, FF, FB, 02, FF, 01, FE, 01, FE, FF, FF, 00, FE, FF, FE]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC 275E and 512 data bytes: [00, FD, 01, FF, 01, FD, 03, FD, 01, FF, FF, FF, 00, FD, 02, FE, 00, FE, 02, FC, 03, FE, 01, FD, 01, FF, 01, FE, 02, FE, 00, FE, 02, FD, 01, FE, 01, FF, 00, FF, 02, FE, 01, FE, 00, FC, 01, FF, 01, FD, 01, FE, FF, FD, 00, FE, 01, FD, 01, FD, 00, FD, 01, FD, 00, FE, 02, FE, 01, FF, 00, FE, FE, 00, 01, FD, 02, FF, 00, FD, FE, FD, 00, FE, FF, FE, FF, FB, 02, FF, 01, FE, 01, FE, FF, FF, 00, FE, FF, FE]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [00, FC, FF, FE, 01, FE, 03, FF, 01, FD, 03, FF, 00, FC, FF, FE, 01, FF, 01, FE, 00, FE, 04, FD, 00, 00, 01, FE, FF, FE, 00, FF, 01, 00, 01, FE, 02, 00, 02, FB, 01, FE, 00, FE, 01, FD, 00, FE, 00, FF, 00, FF, 00, FE, 02, FE, 02, FE, FF, FE, 01, FE, 01, FD, 01, FE, 00, 01, 01, FF, 03, FE, 00, FE, 01, FE, 00, FE, 02, FE, 01, FE, FF, FF, FF, FE, 01, FE, 00, FF, 02, FD, 01, FE, 02, FD, FF, FF, 01, FD]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [00, FC, FF, FE, 01, FE, 03, FF, 01, FD, 03, FF, 00, FC, FF, FE, 01, FF, 01, FE, 00, FE, 04, FD, 00, 00, 01, FE, FF, FE, 00, FF, 01, 00, 01, FE, 02, 00, 02, FB, 01, FE, 00, FE, 01, FD, 00, FE, 00, FF, 00, FF, 00, FE, 02, FE, 02, FE, FF, FE, 01, FE, 01, FD, 01, FE, 00, 01, 01, FF, 03, FE, 00, FE, 01, FE, 00, FE, 02, FE, 01, FE, FF, FF, FF, FE, 01, FE, 00, FF, 02, FD, 01, FE, 02, FD, FF, FF, 01, FD]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC 9B77 and 512 data bytes: [00, FC, FF, FE, 01, FE, 03, FF, 01, FD, 03, FF, 00, FC, FF, FE, 01, FF, 01, FE, 00, FE, 04, FD, 00, 00, 01, FE, FF, FE, 00, FF, 01, 00, 01, FE, 02, 00, 02, FB, 01, FE, 00, FE, 01, FD, 00, FE, 00, FF, 00, FF, 00, FE, 02, FE, 02, FE, FF, FE, 01, FE, 01, FD, 01, FE, 00, 01, 01, FF, 03, FE, 00, FE, 01, FE, 00, FE, 02, FE, 01, FE, FF, FF, FF, FE, 01, FE, 00, FF, 02, FD, 01, FE, 02, FD, FF, FF, 01, FD]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [02, FE, 01, FD, 02, FF, 00, FD, 01, FE, 00, FD, 01, FE, 00, FF, 00, FE, 02, 00, 02, FE, FF, FF, FF, FE, 01, 01, 01, 00, 01, FF, 00, FC, 00, FF, 01, FE, 01, FE, 03, 00, 01, FD, 01, FC, 01, FD, 02, FF, 00, FD, FF, FE, 03, FA, 01, FD, 00, FF, 00, FF, FF, FE, 01, FF, FF, FE, FE, FD, 00, FE, 02, FE, FE, FE, 04, FE, 00, FE, FF, FD, 01, 00, 02, FE, 01, FD, 03, FD, 00, FC, 00, FD, 00, 00, 00, FE, 00, 00]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [02, FE, 01, FD, 02, FF, 00, FD, 01, FE, 00, FD, 01, FE, 00, FF, 00, FE, 02, 00, 02, FE, FF, FF, FF, FE, 01, 01, 01, 00, 01, FF, 00, FC, 00, FF, 01, FE, 01, FE, 03, 00, 01, FD, 01, FC, 01, FD, 02, FF, 00, FD, FF, FE, 03, FA, 01, FD, 00, FF, 00, FF, FF, FE, 01, FF, FF, FE, FE, FD, 00, FE, 02, FE, FE, FE, 04, FE, 00, FE, FF, FD, 01, 00, 02, FE, 01, FD, 03, FD, 00, FC, 00, FD, 00, 00, 00, FE, 00, 00]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC 7DC6 and 512 data bytes: [02, FE, 01, FD, 02, FF, 00, FD, 01, FE, 00, FD, 01, FE, 00, FF, 00, FE, 02, 00, 02, FE, FF, FF, FF, FE, 01, 01, 01, 00, 01, FF, 00, FC, 00, FF, 01, FE, 01, FE, 03, 00, 01, FD, 01, FC, 01, FD, 02, FF, 00, FD, FF, FE, 03, FA, 01, FD, 00, FF, 00, FF, FF, FE, 01, FF, FF, FE, FE, FD, 00, FE, 02, FE, FE, FE, 04, FE, 00, FE, FF, FD, 01, 00, 02, FE, 01, FD, 03, FD, 00, FC, 00, FD, 00, 00, 00, FE, 00, 00]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, FD, 02, FB, 00, FE, 02, FC, 02, FE, 02, 00, 02, FF, 02, FD, 01, FE, 00, FE, 01, FF, 01, FD, 02, FE, FF, FF, 00, FD, 00, FE, 03, FD, 00, FF, 01, FB, FE, FC, 00, FE, 00, FD, 02, FD, 00, FF, 00, FE, 02, 00, 00, FF, FF, FD, FE, FD, 01, FE, 00, FC, 01, FE, 00, 00, 02, FF, 00, FD, 01, FC, 01, FD, 01, FD, 01, FE, 00, FC, FF, FF, 01, FC, 00, FD, FF, FF, 02, FF, 02, FF, 02, FF, FF, FD, 00, FD, 02, FF]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, FD, 02, FB, 00, FE, 02, FC, 02, FE, 02, 00, 02, FF, 02, FD, 01, FE, 00, FE, 01, FF, 01, FD, 02, FE, FF, FF, 00, FD, 00, FE, 03, FD, 00, FF, 01, FB, FE, FC, 00, FE, 00, FD, 02, FD, 00, FF, 00, FE, 02, 00, 00, FF, FF, FD, FE, FD, 01, FE, 00, FC, 01, FE, 00, 00, 02, FF, 00, FD, 01, FC, 01, FD, 01, FD, 01, FE, 00, FC, FF, FF, 01, FC, 00, FD, FF, FF, 02, FF, 02, FF, 02, FF, FF, FD, 00, FD, 02, FF]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC 7FED and 512 data bytes: [01, FD, 02, FB, 00, FE, 02, FC, 02, FE, 02, 00, 02, FF, 02, FD, 01, FE, 00, FE, 01, FF, 01, FD, 02, FE, FF, FF, 00, FD, 00, FE, 03, FD, 00, FF, 01, FB, FE, FC, 00, FE, 00, FD, 02, FD, 00, FF, 00, FE, 02, 00, 00, FF, FF, FD, FE, FD, 01, FE, 00, FC, 01, FE, 00, 00, 02, FF, 00, FD, 01, FC, 01, FD, 01, FD, 01, FE, 00, FC, FF, FF, 01, FC, 00, FD, FF, FF, 02, FF, 02, FF, 02, FF, FF, FD, 00, FD, 02, FF]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [FF, FD, FF, FF, 01, FE, 02, FF, 01, FF, 01, FD, 00, FC, 01, FF, FF, FD, 01, FC, 00, FF, 01, 00, FF, FE, 00, FF, 00, FF, 02, FF, 00, FE, 01, FE, 00, 01, 01, FD, 02, FE, FE, FE, 02, 00, 00, FE, 02, FD, 00, FE, 03, 00, 02, FD, 02, FD, 00, FF, 01, FF, 01, FD, 00, FE, 01, FE, 02, FF, 01, FF, 00, FE, 03, FF, 00, FB, 02, FE, 01, FD, 02, FE, 00, 00, 01, FF, FF, FE, 02, FC, 00, FF, 00, FE, 03, FF, 00, FD]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [FF, FD, FF, FF, 01, FE, 02, FF, 01, FF, 01, FD, 00, FC, 01, FF, FF, FD, 01, FC, 00, FF, 01, 00, FF, FE, 00, FF, 00, FF, 02, FF, 00, FE, 01, FE, 00, 01, 01, FD, 02, FE, FE, FE, 02, 00, 00, FE, 02, FD, 00, FE, 03, 00, 02, FD, 02, FD, 00, FF, 01, FF, 01, FD, 00, FE, 01, FE, 02, FF, 01, FF, 00, FE, 03, FF, 00, FB, 02, FE, 01, FD, 02, FE, 00, 00, 01, FF, FF, FE, 02, FC, 00, FF, 00, FE, 03, FF, 00, FD]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC AB4B and 512 data bytes: [FF, FD, FF, FF, 01, FE, 02, FF, 01, FF, 01, FD, 00, FC, 01, FF, FF, FD, 01, FC, 00, FF, 01, 00, FF, FE, 00, FF, 00, FF, 02, FF, 00, FE, 01, FE, 00, 01, 01, FD, 02, FE, FE, FE, 02, 00, 00, FE, 02, FD, 00, FE, 03, 00, 02, FD, 02, FD, 00, FF, 01, FF, 01, FD, 00, FE, 01, FE, 02, FF, 01, FF, 00, FE, 03, FF, 00, FB, 02, FE, 01, FD, 02, FE, 00, 00, 01, FF, FF, FE, 02, FC, 00, FF, 00, FE, 03, FF, 00, FD]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, FF, 00, 00, 03, FE, 00, FD, FE, FF, 01, FE, 01, FD, 00, 00, 02, FC, 00, FE, 00, FE, 00, FE, 01, FD, 01, FF, 00, FD, 01, FE, 00, FF, 01, FD, 00, FF, 01, FE, 01, 00, FF, FE, FE, FE, 01, FD, 01, FF, 01, FE, 00, FE, 01, FE, 01, 00, 00, FD, 01, FD, 00, 00, 02, FE, 00, FD, 01, FE, FF, FF, 01, FE, 00, FD, 01, FE, 00, FE, 00, FD, 01, FF, 02, FF, 00, FD, 00, FD, 02, FE, 01, FC, 02, FE, 01, FB, 03, FF]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, FF, 00, 00, 03, FE, 00, FD, FE, FF, 01, FE, 01, FD, 00, 00, 02, FC, 00, FE, 00, FE, 00, FE, 01, FD, 01, FF, 00, FD, 01, FE, 00, FF, 01, FD, 00, FF, 01, FE, 01, 00, FF, FE, FE, FE, 01, FD, 01, FF, 01, FE, 00, FE, 01, FE, 01, 00, 00, FD, 01, FD, 00, 00, 02, FE, 00, FD, 01, FE, FF, FF, 01, FE, 00, FD, 01, FE, 00, FE, 00, FD, 01, FF, 02, FF, 00, FD, 00, FD, 02, FE, 01, FC, 02, FE, 01, FB, 03, FF]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC F4E5 and 512 data bytes: [01, FF, 00, 00, 03, FE, 00, FD, FE, FF, 01, FE, 01, FD, 00, 00, 02, FC, 00, FE, 00, FE, 00, FE, 01, FD, 01, FF, 00, FD, 01, FE, 00, FF, 01, FD, 00, FF, 01, FE, 01, 00, FF, FE, FE, FE, 01, FD, 01, FF, 01, FE, 00, FE, 01, FE, 01, 00, 00, FD, 01, FD, 00, 00, 02, FE, 00, FD, 01, FE, FF, FF, 01, FE, 00, FD, 01, FE, 00, FE, 00, FD, 01, FF, 02, FF, 00, FD, 00, FD, 02, FE, 01, FC, 02, FE, 01, FB, 03, FF]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [04, FE, 01, FD, FF, FE, 00, FB, 00, FD, 00, FC, 01, FC, 01, FF, 01, FE, FF, FC, 01, FE, 00, 00, 03, FE, FF, FC, 01, FD, 00, FE, 01, FD, 02, FE, 00, FE, 01, 00, 01, FD, 02, FC, 01, FF, 01, FF, 02, FB, 01, FC, 00, FD, 01, 00, 00, FE, 00, FD, FF, FE, 02, FD, 01, FF, 00, 00, 01, 00, 01, FF, FE, FF, 02, FD, 01, FD, FE, FD, 02, 00, 00, FD, 00, FD, 02, FF, FF, FD, FE, FD, 02, FF, 02, FC, 01, FE, 00, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [04, FE, 01, FD, FF, FE, 00, FB, 00, FD, 00, FC, 01, FC, 01, FF, 01, FE, FF, FC, 01, FE, 00, 00, 03, FE, FF, FC, 01, FD, 00, FE, 01, FD, 02, FE, 00, FE, 01, 00, 01, FD, 02, FC, 01, FF, 01, FF, 02, FB, 01, FC, 00, FD, 01, 00, 00, FE, 00, FD, FF, FE, 02, FD, 01, FF, 00, 00, 01, 00, 01, FF, FE, FF, 02, FD, 01, FD, FE, FD, 02, 00, 00, FD, 00, FD, 02, FF, FF, FD, FE, FD, 02, FF, 02, FC, 01, FE, 00, FE]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC D50B and 512 data bytes: [04, FE, 01, FD, FF, FE, 00, FB, 00, FD, 00, FC, 01, FC, 01, FF, 01, FE, FF, FC, 01, FE, 00, 00, 03, FE, FF, FC, 01, FD, 00, FE, 01, FD, 02, FE, 00, FE, 01, 00, 01, FD, 02, FC, 01, FF, 01, FF, 02, FB, 01, FC, 00, FD, 01, 00, 00, FE, 00, FD, FF, FE, 02, FD, 01, FF, 00, 00, 01, 00, 01, FF, FE, FF, 02, FD, 01, FD, FE, FD, 02, 00, 00, FD, 00, FD, 02, FF, FF, FD, FE, FD, 02, FF, 02, FC, 01, FE, 00, FE]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [00, FC, 00, FE, FF, FF, 01, FF, 01, FD, 00, FE, 00, FD, 03, FE, 01, FE, 03, FD, 02, FC, 01, FE, 00, FD, 01, FB, 00, FE, 00, FE, 00, 00, 00, FD, 02, 00, FF, FC, 00, FF, 01, FF, 01, FE, 00, FE, 01, FD, 00, FE, FF, FE, 02, FE, 01, FC, 01, 00, 02, FD, 01, FF, 02, FE, 01, FF, FF, FE, 02, FE, FF, FE, 01, FF, 01, FD, 02, FF, 00, FD, 02, FD, 00, 00, 01, FC, 01, FF, 01, FE, 00, FE, 03, FC, 01, FF, FF, FD]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [00, FC, 00, FE, FF, FF, 01, FF, 01, FD, 00, FE, 00, FD, 03, FE, 01, FE, 03, FD, 02, FC, 01, FE, 00, FD, 01, FB, 00, FE, 00, FE, 00, 00, 00, FD, 02, 00, FF, FC, 00, FF, 01, FF, 01, FE, 00, FE, 01, FD, 00, FE, FF, FE, 02, FE, 01, FC, 01, 00, 02, FD, 01, FF, 02, FE, 01, FF, FF, FE, 02, FE, FF, FE, 01, FF, 01, FD, 02, FF, 00, FD, 02, FD, 00, 00, 01, FC, 01, FF, 01, FE, 00, FE, 03, FC, 01, FF, FF, FD]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC F8CC and 512 data bytes: [00, FC, 00, FE, FF, FF, 01, FF, 01, FD, 00, FE, 00, FD, 03, FE, 01, FE, 03, FD, 02, FC, 01, FE, 00, FD, 01, FB, 00, FE, 00, FE, 00, 00, 00, FD, 02, 00, FF, FC, 00, FF, 01, FF, 01, FE, 00, FE, 01, FD, 00, FE, FF, FE, 02, FE, 01, FC, 01, 00, 02, FD, 01, FF, 02, FE, 01, FF, FF, FE, 02, FE, FF, FE, 01, FF, 01, FD, 02, FF, 00, FD, 02, FD, 00, 00, 01, FC, 01, FF, 01, FE, 00, FE, 03, FC, 01, FF, FF, FD]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [05, FD, FE, FF, 02, FF, 01, FE, 00, FC, FF, FE, 00, FE, 00, 00, 04, FC, 02, FD, 00, FE, 02, FD, FF, FE, 00, FD, 00, FE, 00, 00, 02, FE, 03, FE, 01, FD, 02, FD, 02, FE, 02, FF, 01, 01, 01, FF, 01, FF, 02, FD, 00, FF, 01, FB, 01, FC, 01, FD, 02, FE, 00, FF, 00, FE, FF, FE, 02, FE, 01, FD, 01, FC, 01, 01, 01, FE, 00, FE, 02, FE, 00, FD, 00, FF, 02, 00, 00, FE, 01, FF, 00, FE, 02, FF, 00, FD, 01, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [05, FD, FE, FF, 02, FF, 01, FE, 00, FC, FF, FE, 00, FE, 00, 00, 04, FC, 02, FD, 00, FE, 02, FD, FF, FE, 00, FD, 00, FE, 00, 00, 02, FE, 03, FE, 01, FD, 02, FD, 02, FE, 02, FF, 01, 01, 01, FF, 01, FF, 02, FD, 00, FF, 01, FB, 01, FC, 01, FD, 02, FE, 00, FF, 00, FE, FF, FE, 02, FE, 01, FD, 01, FC, 01, 01, 01, FE, 00, FE, 02, FE, 00, FD, 00, FF, 02, 00, 00, FE, 01, FF, 00, FE, 02, FF, 00, FD, 01, FE]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC 1017 and 512 data bytes: [05, FD, FE, FF, 02, FF, 01, FE, 00, FC, FF, FE, 00, FE, 00, 00, 04, FC, 02, FD, 00, FE, 02, FD, FF, FE, 00, FD, 00, FE, 00, 00, 02, FE, 03, FE, 01, FD, 02, FD, 02, FE, 02, FF, 01, 01, 01, FF, 01, FF, 02, FD, 00, FF, 01, FB, 01, FC, 01, FD, 02, FE, 00, FF, 00, FE, FF, FE, 02, FE, 01, FD, 01, FC, 01, 01, 01, FE, 00, FE, 02, FE, 00, FD, 00, FF, 02, 00, 00, FE, 01, FF, 00, FE, 02, FF, 00, FD, 01, FE]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [00, FC, 00, FC, 01, FF, 01, FF, 00, FE, 00, FD, 00, 00, 01, FB, 03, FE, 00, FE, 02, FC, FF, FD, 03, FE, 00, FD, 02, FE, 00, 00, 00, FD, 01, FF, 01, FD, 00, 00, 00, FE, 02, FF, 02, FD, 00, FF, 01, FD, 02, FD, 00, FD, 00, FE, 02, FD, 01, FB, 00, FF, 02, FE, FE, FF, 01, FC, 00, FE, 03, FC, 02, FE, 00, FE, 00, FF, 00, FD, 02, FD, FF, FD, 01, FD, 01, FD, 04, FD, 00, FD, 02, FE, 01, FE, 03, FE, 02, FF]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [00, FC, 00, FC, 01, FF, 01, FF, 00, FE, 00, FD, 00, 00, 01, FB, 03, FE, 00, FE, 02, FC, FF, FD, 03, FE, 00, FD, 02, FE, 00, 00, 00, FD, 01, FF, 01, FD, 00, 00, 00, FE, 02, FF, 02, FD, 00, FF, 01, FD, 02, FD, 00, FD, 00, FE, 02, FD, 01, FB, 00, FF, 02, FE, FE, FF, 01, FC, 00, FE, 03, FC, 02, FE, 00, FE, 00, FF, 00, FD, 02, FD, FF, FD, 01, FD, 01, FD, 04, FD, 00, FD, 02, FE, 01, FE, 03, FE, 02, FF]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC EFD0 and 512 data bytes: [00, FC, 00, FC, 01, FF, 01, FF, 00, FE, 00, FD, 00, 00, 01, FB, 03, FE, 00, FE, 02, FC, FF, FD, 03, FE, 00, FD, 02, FE, 00, 00, 00, FD, 01, FF, 01, FD, 00, 00, 00, FE, 02, FF, 02, FD, 00, FF, 01, FD, 02, FD, 00, FD, 00, FE, 02, FD, 01, FB, 00, FF, 02, FE, FE, FF, 01, FC, 00, FE, 03, FC, 02, FE, 00, FE, 00, FF, 00, FD, 02, FD, FF, FD, 01, FD, 01, FD, 04, FD, 00, FD, 02, FE, 01, FE, 03, FE, 02, FF]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, FE, 00, FE, FF, FC, 01, FE, 01, FE, 01, FD, 00, FD, 02, FE, 01, 00, 02, FD, 00, FD, 02, FD, 00, FE, 00, FF, 00, 00, 02, FB, 00, FF, 02, 00, 03, 00, 01, FE, 02, FD, FF, FD, 01, FE, 01, FE, 01, FD, FF, FE, 00, FD, 00, FF, 02, FC, 02, FD, 01, FE, 02, FE, 01, FB, 02, FF, 01, FD, 02, FC, FF, FD, 01, FE, 00, FE, 01, FD, 00, FF, 02, FD, FF, 01, 00, FE, 02, FC, 00, FC, 00, FE, 00, FF, 02, FF, 00, FD]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, FE, 00, FE, FF, FC, 01, FE, 01, FE, 01, FD, 00, FD, 02, FE, 01, 00, 02, FD, 00, FD, 02, FD, 00, FE, 00, FF, 00, 00, 02, FB, 00, FF, 02, 00, 03, 00, 01, FE, 02, FD, FF, FD, 01, FE, 01, FE, 01, FD, FF, FE, 00, FD, 00, FF, 02, FC, 02, FD, 01, FE, 02, FE, 01, FB, 02, FF, 01, FD, 02, FC, FF, FD, 01, FE, 00, FE, 01, FD, 00, FF, 02, FD, FF, 01, 00, FE, 02, FC, 00, FC, 00, FE, 00, FF, 02, FF, 00, FD]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC 820C and 512 data bytes: [01, FE, 00, FE, FF, FC, 01, FE, 01, FE, 01, FD, 00, FD, 02, FE, 01, 00, 02, FD, 00, FD, 02, FD, 00, FE, 00, FF, 00, 00, 02, FB, 00, FF, 02, 00, 03, 00, 01, FE, 02, FD, FF, FD, 01, FE, 01, FE, 01, FD, FF, FE, 00, FD, 00, FF, 02, FC, 02, FD, 01, FE, 02, FE, 01, FB, 02, FF, 01, FD, 02, FC, FF, FD, 01, FE, 00, FE, 01, FD, 00, FF, 02, FD, FF, 01, 00, FE, 02, FC, 00, FC, 00, FE, 00, FF, 02, FF, 00, FD]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [00, FF, 02, FE, 00, FE, 00, FF, 02, FD, 00, FE, 02, FE, 02, FE, 01, FC, 00, 01, 00, FE, 01, 00, FE, FC, 02, FF, 01, FC, 02, FD, 01, FE, 01, FF, 00, 00, 01, FF, 03, FD, 02, FE, FF, 00, 01, FC, FF, FE, 00, FD, FF, FE, 00, FD, 01, FE, 00, FB, 01, FE, FE, 00, FF, FC, FF, FE, 00, FF, 00, FF, 01, FD, FF, FF, 02, FC, FF, FC, 00, FF, 02, FE, FF, FC, 02, FE, 01, FC, 00, FD, 00, FC, 00, FE, 00, FE, 01, FD]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [00, FF, 02, FE, 00, FE, 00, FF, 02, FD, 00, FE, 02, FE, 02, FE, 01, FC, 00, 01, 00, FE, 01, 00, FE, FC, 02, FF, 01, FC, 02, FD, 01, FE, 01, FF, 00, 00, 01, FF, 03, FD, 02, FE, FF, 00, 01, FC, FF, FE, 00, FD, FF, FE, 00, FD, 01, FE, 00, FB, 01, FE, FE, 00, FF, FC, FF, FE, 00, FF, 00, FF, 01, FD, FF, FF, 02, FC, FF, FC, 00, FF, 02, FE, FF, FC, 02, FE, 01, FC, 00, FD, 00, FC, 00, FE, 00, FE, 01, FD]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC 05F7 and 512 data bytes: [00, FF, 02, FE, 00, FE, 00, FF, 02, FD, 00, FE, 02, FE, 02, FE, 01, FC, 00, 01, 00, FE, 01, 00, FE, FC, 02, FF, 01, FC, 02, FD, 01, FE, 01, FF, 00, 00, 01, FF, 03, FD, 02, FE, FF, 00, 01, FC, FF, FE, 00, FD, FF, FE, 00, FD, 01, FE, 00, FB, 01, FE, FE, 00, FF, FC, FF, FE, 00, FF, 00, FF, 01, FD, FF, FF, 02, FC, FF, FC, 00, FF, 02, FE, FF, FC, 02, FE, 01, FC, 00, FD, 00, FC, 00, FE, 00, FE, 01, FD]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [FF, FF, FF, FE, 01, FF, 02, FE, 01, FC, 01, FD, 01, FF, 00, FD, 02, FD, 01, FD, 00, FD, FF, FE, 00, FF, FF, FF, 01, FE, 00, FD, 01, FD, 01, FE, 01, FD, 01, FF, FF, FD, 01, FF, 00, FF, 01, FF, 01, FF, 01, 00, 01, FE, 02, FE, FF, FD, 03, FC, 01, 00, 00, FE, 01, FF, 02, FF, 00, FE, FF, FE, 00, FD, 01, FE, 02, 01, 01, FD, 02, FD, 02, FF, 04, FE, 01, FB, 02, FD, 00, FE, FF, 00, 01, FF, 02, FC, 01, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [FF, FF, FF, FE, 01, FF, 02, FE, 01, FC, 01, FD, 01, FF, 00, FD, 02, FD, 01, FD, 00, FD, FF, FE, 00, FF, FF, FF, 01, FE, 00, FD, 01, FD, 01, FE, 01, FD, 01, FF, FF, FD, 01, FF, 00, FF, 01, FF, 01, FF, 01, 00, 01, FE, 02, FE, FF, FD, 03, FC, 01, 00, 00, FE, 01, FF, 02, FF, 00, FE, FF, FE, 00, FD, 01, FE, 02, 01, 01, FD, 02, FD, 02, FF, 04, FE, 01, FB, 02, FD, 00, FE, FF, 00, 01, FF, 02, FC, 01, FE]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC EAC5 and 512 data bytes: [FF, FF, FF, FE, 01, FF, 02, FE, 01, FC, 01, FD, 01, FF, 00, FD, 02, FD, 01, FD, 00, FD, FF, FE, 00, FF, FF, FF, 01, FE, 00, FD, 01, FD, 01, FE, 01, FD, 01, FF, FF, FD, 01, FF, 00, FF, 01, FF, 01, FF, 01, 00, 01, FE, 02, FE, FF, FD, 03, FC, 01, 00, 00, FE, 01, FF, 02, FF, 00, FE, FF, FE, 00, FD, 01, FE, 02, 01, 01, FD, 02, FD, 02, FF, 04, FE, 01, FB, 02, FD, 00, FE, FF, 00, 01, FF, 02, FC, 01, FE]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, FF, 01, 00, FE, 00, 00, 00, 01, 01, 01, FE, FF, FE, 01, FD, FE, FF, 02, FF, 01, FC, 00, FF, 01, 00, 00, FE, 00, FE, 00, FD, 00, FE, 00, FD, 00, FE, 02, FC, 02, FD, 00, 00, 02, FE, 00, FD, 00, FE, 00, FF, 01, FD, 02, FF, 01, FE, 00, FD, 02, FE, 02, FF, 01, FC, 01, FF, FF, FD, 00, FE, 00, FD, 03, FE, 00, FE, 02, FD, FF, FE, 03, FD, 02, FE, 00, FD, 01, FF, 03, FD, 02, 00, 01, FD, 01, FE, 01, FF]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, FF, 01, 00, FE, 00, 00, 00, 01, 01, 01, FE, FF, FE, 01, FD, FE, FF, 02, FF, 01, FC, 00, FF, 01, 00, 00, FE, 00, FE, 00, FD, 00, FE, 00, FD, 00, FE, 02, FC, 02, FD, 00, 00, 02, FE, 00, FD, 00, FE, 00, FF, 01, FD, 02, FF, 01, FE, 00, FD, 02, FE, 02, FF, 01, FC, 01, FF, FF, FD, 00, FE, 00, FD, 03, FE, 00, FE, 02, FD, FF, FE, 03, FD, 02, FE, 00, FD, 01, FF, 03, FD, 02, 00, 01, FD, 01, FE, 01, FF]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC 90CD and 512 data bytes: [01, FF, 01, 00, FE, 00, 00, 00, 01, 01, 01, FE, FF, FE, 01, FD, FE, FF, 02, FF, 01, FC, 00, FF, 01, 00, 00, FE, 00, FE, 00, FD, 00, FE, 00, FD, 00, FE, 02, FC, 02, FD, 00, 00, 02, FE, 00, FD, 00, FE, 00, FF, 01, FD, 02, FF, 01, FE, 00, FD, 02, FE, 02, FF, 01, FC, 01, FF, FF, FD, 00, FE, 00, FD, 03, FE, 00, FE, 02, FD, FF, FE, 03, FD, 02, FE, 00, FD, 01, FF, 03, FD, 02, 00, 01, FD, 01, FE, 01, FF]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [02, FC, FF, 00, 01, FD, 01, FE, 03, FE, 00, 00, 01, FD, 01, FD, 00, FC, FF, FC, 01, FE, 02, FE, 01, FE, 01, FD, FF, FB, 03, FE, FF, FF, 02, 00, 01, FF, 01, FD, 00, FE, 01, FC, 00, FE, 02, FD, 02, FD, 00, FD, 01, FD, FF, FD, 01, FF, FF, FE, 01, FD, FF, FD, 01, 00, 02, FE, 03, FC, 02, FE, 02, FE, FF, FD, 00, FC, 02, FF, 00, FF, 01, FF, 00, FC, 01, FD, 00, FD, FF, FD, FE, FC, 01, FF, 01, FF, 02, FC]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [02, FC, FF, 00, 01, FD, 01, FE, 03, FE, 00, 00, 01, FD, 01, FD, 00, FC, FF, FC, 01, FE, 02, FE, 01, FE, 01, FD, FF, FB, 03, FE, FF, FF, 02, 00, 01, FF, 01, FD, 00, FE, 01, FC, 00, FE, 02, FD, 02, FD, 00, FD, 01, FD, FF, FD, 01, FF, FF, FE, 01, FD, FF, FD, 01, 00, 02, FE, 03, FC, 02, FE, 02, FE, FF, FD, 00, FC, 02, FF, 00, FF, 01, FF, 00, FC, 01, FD, 00, FD, FF, FD, FE, FC, 01, FF, 01, FF, 02, FC]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC CF68 and 512 data bytes: [02, FC, FF, 00, 01, FD, 01, FE, 03, FE, 00, 00, 01, FD, 01, FD, 00, FC, FF, FC, 01, FE, 02, FE, 01, FE, 01, FD, FF, FB, 03, FE, FF, FF, 02, 00, 01, FF, 01, FD, 00, FE, 01, FC, 00, FE, 02, FD, 02, FD, 00, FD, 01, FD, FF, FD, 01, FF, FF, FE, 01, FD, FF, FD, 01, 00, 02, FE, 03, FC, 02, FE, 02, FE, FF, FD, 00, FC, 02, FF, 00, FF, 01, FF, 00, FC, 01, FD, 00, FD, FF, FD, FE, FC, 01, FF, 01, FF, 02, FC]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [00, FE, FF, FD, 00, FF, 00, FE, 03, FD, 00, FD, 01, FD, 01, FD, 02, FE, 01, FD, 01, FE, 00, 00, 02, FD, 00, 00, 03, FF, 01, FF, 01, FC, 00, FF, FF, FD, 00, FE, 01, FD, 00, FE, 01, FD, 02, FE, FF, FE, 03, FF, 03, FD, 02, FE, FE, FF, 01, FD, 02, FF, 01, FD, 00, FD, 01, FE, 00, FE, FE, FC, FF, FE, 00, FD, 01, FD, 01, FF, 01, FE, 01, FF, 03, FE, 01, FC, FF, FC, 00, 00, 01, FD, 00, FE, 01, FD, 00, 00]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [00, FE, FF, FD, 00, FF, 00, FE, 03, FD, 00, FD, 01, FD, 01, FD, 02, FE, 01, FD, 01, FE, 00, 00, 02, FD, 00, 00, 03, FF, 01, FF, 01, FC, 00, FF, FF, FD, 00, FE, 01, FD, 00, FE, 01, FD, 02, FE, FF, FE, 03, FF, 03, FD, 02, FE, FE, FF, 01, FD, 02, FF, 01, FD, 00, FD, 01, FE, 00, FE, FE, FC, FF, FE, 00, FD, 01, FD, 01, FF, 01, FE, 01, FF, 03, FE, 01, FC, FF, FC, 00, 00, 01, FD, 00, FE, 01, FD, 00, 00]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC B159 and 512 data bytes: [00, FE, FF, FD, 00, FF, 00, FE, 03, FD, 00, FD, 01, FD, 01, FD, 02, FE, 01, FD, 01, FE, 00, 00, 02, FD, 00, 00, 03, FF, 01, FF, 01, FC, 00, FF, FF, FD, 00, FE, 01, FD, 00, FE, 01, FD, 02, FE, FF, FE, 03, FF, 03, FD, 02, FE, FE, FF, 01, FD, 02, FF, 01, FD, 00, FD, 01, FE, 00, FE, FE, FC, FF, FE, 00, FD, 01, FD, 01, FF, 01, FE, 01, FF, 03, FE, 01, FC, FF, FC, 00, 00, 01, FD, 00, FE, 01, FD, 00, 00]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [00, FD, 01, FD, 00, FD, 01, FD, FF, FE, 02, FF, 01, FF, 00, FE, 01, FD, 02, FE, 04, 01, 01, FE, FF, FE, FE, FF, FF, 01, FF, FE, 01, FC, 01, FC, 01, FE, 01, FE, 01, FF, 01, FF, 00, FE, 02, FF, 01, FD, 00, FE, 03, FD, 00, FF, 01, FD, 03, FE, 00, FD, 02, FF, 01, FE, 01, FF, 01, FE, 02, FE, 01, FF, 01, FD, 00, 00, 04, FF, 01, FC, 00, FE, 02, 00, 02, FD, 00, FE, FF, FE, 00, FE, 02, FE, 02, 00, FE, FD]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [00, FD, 01, FD, 00, FD, 01, FD, FF, FE, 02, FF, 01, FF, 00, FE, 01, FD, 02, FE, 04, 01, 01, FE, FF, FE, FE, FF, FF, 01, FF, FE, 01, FC, 01, FC, 01, FE, 01, FE, 01, FF, 01, FF, 00, FE, 02, FF, 01, FD, 00, FE, 03, FD, 00, FF, 01, FD, 03, FE, 00, FD, 02, FF, 01, FE, 01, FF, 01, FE, 02, FE, 01, FF, 01, FD, 00, 00, 04, FF, 01, FC, 00, FE, 02, 00, 02, FD, 00, FE, FF, FE, 00, FE, 02, FE, 02, 00, FE, FD]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC 66CC and 512 data bytes: [00, FD, 01, FD, 00, FD, 01, FD, FF, FE, 02, FF, 01, FF, 00, FE, 01, FD, 02, FE, 04, 01, 01, FE, FF, FE, FE, FF, FF, 01, FF, FE, 01, FC, 01, FC, 01, FE, 01, FE, 01, FF, 01, FF, 00, FE, 02, FF, 01, FD, 00, FE, 03, FD, 00, FF, 01, FD, 03, FE, 00, FD, 02, FF, 01, FE, 01, FF, 01, FE, 02, FE, 01, FF, 01, FD, 00, 00, 04, FF, 01, FC, 00, FE, 02, 00, 02, FD, 00, FE, FF, FE, 00, FE, 02, FE, 02, 00, FE, FD]...
   ACK packet
 Polling 71 times for unidentified transfer on endpoint 7.1 IN
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
 Vendor request #1, index 0, value 0 for device 7
- SETUP transaction with 8 data bytes, ACK: [40, 01, 00, 00, 00, 00, 00, 00]
+ SETUP transaction on 7.0 with 8 data bytes, ACK: [40, 01, 00, 00, 00, 00, 00, 00]
   SETUP packet on 7.0, CRC 0D
   DATA0 packet with CRC 04AB and 8 data bytes: [40, 01, 00, 00, 00, 00, 00, 00]
   ACK packet
- IN transaction with no data, ACK
+ IN transaction on 7.0 with no data, ACK
   IN packet on 7.0, CRC 0D
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Vendor request #1, index 0, value 1 for device 7
- SETUP transaction with 8 data bytes, ACK: [40, 01, 01, 00, 00, 00, 00, 00]
+ SETUP transaction on 7.0 with 8 data bytes, ACK: [40, 01, 01, 00, 00, 00, 00, 00]
   SETUP packet on 7.0, CRC 0D
   DATA0 packet with CRC D5AA and 8 data bytes: [40, 01, 01, 00, 00, 00, 00, 00]
   ACK packet
- IN transaction with no data, ACK
+ IN transaction on 7.0 with no data, ACK
   IN packet on 7.0, CRC 0D
   DATA1 packet with CRC 0000 and no data
   ACK packet
 Unidentified transfer of 16 KiB on endpoint 7.1 IN: [00, FB, 00, FE, FF, FF, 01, FD, 00, FE, FF, FD, 00, FE, 01, FD, 00, FE, FF, FD, 01, 00, 00, FE, 03, 00, 00, FF, 00, FD, 02, FF, 02, FD, 01, FE, 00, FF, FF, FE, 00, FE, 01, 00, 00, FD, 02, FF, 00, FD, 02, FF, 00, FE, 00, FE, 00, FE, 01, FE, 01, FD, 03, FE, 00, FE, 01, FE, 00, FF, 03, FD, 02, FF, 02, FD, 01, FF, 00, FD, FF, 00, 01, FD, 00, FE, 00, FD, 00, FD, 00, FF, 02, FD, FF, FC, 01, FF, 02, FF]...
- IN transaction with 512 data bytes, ACK: [00, FB, 00, FE, FF, FF, 01, FD, 00, FE, FF, FD, 00, FE, 01, FD, 00, FE, FF, FD, 01, 00, 00, FE, 03, 00, 00, FF, 00, FD, 02, FF, 02, FD, 01, FE, 00, FF, FF, FE, 00, FE, 01, 00, 00, FD, 02, FF, 00, FD, 02, FF, 00, FE, 00, FE, 00, FE, 01, FE, 01, FD, 03, FE, 00, FE, 01, FE, 00, FF, 03, FD, 02, FF, 02, FD, 01, FF, 00, FD, FF, 00, 01, FD, 00, FE, 00, FD, 00, FD, 00, FF, 02, FD, FF, FC, 01, FF, 02, FF]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [00, FB, 00, FE, FF, FF, 01, FD, 00, FE, FF, FD, 00, FE, 01, FD, 00, FE, FF, FD, 01, 00, 00, FE, 03, 00, 00, FF, 00, FD, 02, FF, 02, FD, 01, FE, 00, FF, FF, FE, 00, FE, 01, 00, 00, FD, 02, FF, 00, FD, 02, FF, 00, FE, 00, FE, 00, FE, 01, FE, 01, FD, 03, FE, 00, FE, 01, FE, 00, FF, 03, FD, 02, FF, 02, FD, 01, FF, 00, FD, FF, 00, 01, FD, 00, FE, 00, FD, 00, FD, 00, FF, 02, FD, FF, FC, 01, FF, 02, FF]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC 6957 and 512 data bytes: [00, FB, 00, FE, FF, FF, 01, FD, 00, FE, FF, FD, 00, FE, 01, FD, 00, FE, FF, FD, 01, 00, 00, FE, 03, 00, 00, FF, 00, FD, 02, FF, 02, FD, 01, FE, 00, FF, FF, FE, 00, FE, 01, 00, 00, FD, 02, FF, 00, FD, 02, FF, 00, FE, 00, FE, 00, FE, 01, FE, 01, FD, 03, FE, 00, FE, 01, FE, 00, FF, 03, FD, 02, FF, 02, FD, 01, FF, 00, FD, FF, 00, 01, FD, 00, FE, 00, FD, 00, FD, 00, FF, 02, FD, FF, FC, 01, FF, 02, FF]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [00, FD, 01, FF, 00, FD, 00, FE, 00, FE, 01, FE, 00, FD, 00, FD, FD, FF, FF, FE, 00, FF, 03, FD, 00, FF, 02, FD, 01, FE, 01, FC, 00, FE, 01, FE, 02, FE, 01, FE, 02, FD, 00, FE, 02, 00, 01, FE, FF, FE, 00, FF, 01, FD, FF, FE, 01, FD, 00, 00, 02, FF, 02, 00, 02, FE, 02, FE, 01, FD, 00, FD, 01, FD, 02, FE, FF, FF, 01, FE, 00, FE, 01, FE, 01, 00, 02, 00, 00, FD, 02, FE, 01, FF, 00, FC, 00, FE, 00, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [00, FD, 01, FF, 00, FD, 00, FE, 00, FE, 01, FE, 00, FD, 00, FD, FD, FF, FF, FE, 00, FF, 03, FD, 00, FF, 02, FD, 01, FE, 01, FC, 00, FE, 01, FE, 02, FE, 01, FE, 02, FD, 00, FE, 02, 00, 01, FE, FF, FE, 00, FF, 01, FD, FF, FE, 01, FD, 00, 00, 02, FF, 02, 00, 02, FE, 02, FE, 01, FD, 00, FD, 01, FD, 02, FE, FF, FF, 01, FE, 00, FE, 01, FE, 01, 00, 02, 00, 00, FD, 02, FE, 01, FF, 00, FC, 00, FE, 00, FE]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC 6A79 and 512 data bytes: [00, FD, 01, FF, 00, FD, 00, FE, 00, FE, 01, FE, 00, FD, 00, FD, FD, FF, FF, FE, 00, FF, 03, FD, 00, FF, 02, FD, 01, FE, 01, FC, 00, FE, 01, FE, 02, FE, 01, FE, 02, FD, 00, FE, 02, 00, 01, FE, FF, FE, 00, FF, 01, FD, FF, FE, 01, FD, 00, 00, 02, FF, 02, 00, 02, FE, 02, FE, 01, FD, 00, FD, 01, FD, 02, FE, FF, FF, 01, FE, 00, FE, 01, FE, 01, 00, 02, 00, 00, FD, 02, FE, 01, FF, 00, FC, 00, FE, 00, FE]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [02, FF, 00, FF, 01, FF, 00, FE, 01, FD, 02, FE, 02, FD, 00, FF, 01, FD, 00, FE, 00, FC, 00, FE, 01, FD, 02, FF, FF, FE, 00, FF, 00, FE, 03, FD, FF, 00, 01, FE, FE, FE, 01, FE, 00, FE, FF, FD, 00, 00, 01, FD, 02, FD, 02, FD, FF, FE, FF, FF, 03, FE, 01, FE, 00, FD, 00, FE, 01, FE, FE, FF, 01, FF, 02, FD, 01, FC, 01, FD, 01, FD, 01, FF, 00, FC, 01, FE, 00, FE, 01, FF, 00, FF, 01, FE, FF, FE, FF, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [02, FF, 00, FF, 01, FF, 00, FE, 01, FD, 02, FE, 02, FD, 00, FF, 01, FD, 00, FE, 00, FC, 00, FE, 01, FD, 02, FF, FF, FE, 00, FF, 00, FE, 03, FD, FF, 00, 01, FE, FE, FE, 01, FE, 00, FE, FF, FD, 00, 00, 01, FD, 02, FD, 02, FD, FF, FE, FF, FF, 03, FE, 01, FE, 00, FD, 00, FE, 01, FE, FE, FF, 01, FF, 02, FD, 01, FC, 01, FD, 01, FD, 01, FF, 00, FC, 01, FE, 00, FE, 01, FF, 00, FF, 01, FE, FF, FE, FF, FE]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC 28F7 and 512 data bytes: [02, FF, 00, FF, 01, FF, 00, FE, 01, FD, 02, FE, 02, FD, 00, FF, 01, FD, 00, FE, 00, FC, 00, FE, 01, FD, 02, FF, FF, FE, 00, FF, 00, FE, 03, FD, FF, 00, 01, FE, FE, FE, 01, FE, 00, FE, FF, FD, 00, 00, 01, FD, 02, FD, 02, FD, FF, FE, FF, FF, 03, FE, 01, FE, 00, FD, 00, FE, 01, FE, FE, FF, 01, FF, 02, FD, 01, FC, 01, FD, 01, FD, 01, FF, 00, FC, 01, FE, 00, FE, 01, FF, 00, FF, 01, FE, FF, FE, FF, FE]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [FF, 00, 02, FC, 02, FD, 01, FD, 02, FE, 02, FE, 03, FD, 00, FD, 01, FE, FF, FD, 01, FD, 00, FE, 01, FF, 01, FE, 00, FC, 01, FE, 03, FE, 01, FD, 00, FD, 00, FF, 01, FE, 00, FF, 02, FD, 02, FF, 00, FD, 01, FF, 01, FD, 01, FD, FF, FE, 02, FE, 00, FE, 02, FE, 00, 00, 01, FE, 02, 00, 02, FF, 00, FC, 00, FD, 02, FE, 01, FC, 02, 01, 00, FE, 02, FE, 00, FF, 02, FF, FF, FF, 01, FE, 00, FF, 02, FD, 02, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [FF, 00, 02, FC, 02, FD, 01, FD, 02, FE, 02, FE, 03, FD, 00, FD, 01, FE, FF, FD, 01, FD, 00, FE, 01, FF, 01, FE, 00, FC, 01, FE, 03, FE, 01, FD, 00, FD, 00, FF, 01, FE, 00, FF, 02, FD, 02, FF, 00, FD, 01, FF, 01, FD, 01, FD, FF, FE, 02, FE, 00, FE, 02, FE, 00, 00, 01, FE, 02, 00, 02, FF, 00, FC, 00, FD, 02, FE, 01, FC, 02, 01, 00, FE, 02, FE, 00, FF, 02, FF, FF, FF, 01, FE, 00, FF, 02, FD, 02, FE]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC 0211 and 512 data bytes: [FF, 00, 02, FC, 02, FD, 01, FD, 02, FE, 02, FE, 03, FD, 00, FD, 01, FE, FF, FD, 01, FD, 00, FE, 01, FF, 01, FE, 00, FC, 01, FE, 03, FE, 01, FD, 00, FD, 00, FF, 01, FE, 00, FF, 02, FD, 02, FF, 00, FD, 01, FF, 01, FD, 01, FD, FF, FE, 02, FE, 00, FE, 02, FE, 00, 00, 01, FE, 02, 00, 02, FF, 00, FC, 00, FD, 02, FE, 01, FC, 02, 01, 00, FE, 02, FE, 00, FF, 02, FF, FF, FF, 01, FE, 00, FF, 02, FD, 02, FE]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [FF, FD, FF, FD, 01, FF, 03, FE, 01, FF, 02, FE, FF, FE, 00, FF, 02, FF, 00, FF, 00, FF, 02, FE, 00, FE, 02, FB, 03, FC, 01, FB, 02, FF, 01, FD, 00, FF, FF, FD, 01, FE, 01, 00, 01, FE, 00, FE, 02, FE, FF, FE, 03, FE, 01, FD, 00, FD, 00, FE, FF, FE, 00, FE, 01, FC, 00, FE, FD, FE, 00, FF, 00, FF, 02, FF, 01, FE, 03, FE, 00, FF, 01, FC, FF, FC, 01, FB, 00, FF, 00, FC, 01, FD, 01, FE, 00, 01, 00, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [FF, FD, FF, FD, 01, FF, 03, FE, 01, FF, 02, FE, FF, FE, 00, FF, 02, FF, 00, FF, 00, FF, 02, FE, 00, FE, 02, FB, 03, FC, 01, FB, 02, FF, 01, FD, 00, FF, FF, FD, 01, FE, 01, 00, 01, FE, 00, FE, 02, FE, FF, FE, 03, FE, 01, FD, 00, FD, 00, FE, FF, FE, 00, FE, 01, FC, 00, FE, FD, FE, 00, FF, 00, FF, 02, FF, 01, FE, 03, FE, 00, FF, 01, FC, FF, FC, 01, FB, 00, FF, 00, FC, 01, FD, 01, FE, 00, 01, 00, FE]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC 81D8 and 512 data bytes: [FF, FD, FF, FD, 01, FF, 03, FE, 01, FF, 02, FE, FF, FE, 00, FF, 02, FF, 00, FF, 00, FF, 02, FE, 00, FE, 02, FB, 03, FC, 01, FB, 02, FF, 01, FD, 00, FF, FF, FD, 01, FE, 01, 00, 01, FE, 00, FE, 02, FE, FF, FE, 03, FE, 01, FD, 00, FD, 00, FE, FF, FE, 00, FE, 01, FC, 00, FE, FD, FE, 00, FF, 00, FF, 02, FF, 01, FE, 03, FE, 00, FF, 01, FC, FF, FC, 01, FB, 00, FF, 00, FC, 01, FD, 01, FE, 00, 01, 00, FE]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, FD, 04, FD, 03, FD, 00, FE, 00, FC, FF, FF, 00, FE, 00, FE, FF, FD, 02, FF, 00, FD, 01, 01, 00, FD, FF, FC, 01, FF, 02, 00, 00, FD, 00, FD, 01, FF, 01, FF, 00, FF, FF, FD, 00, 01, 02, FF, 00, FE, 00, FD, 03, FE, 00, FE, 02, 00, 02, FE, 02, FE, 01, FC, 02, FD, 00, FF, 01, FD, FD, FF, 01, FF, 01, FD, 00, FC, 00, FE, 00, FE, 00, FF, 01, FC, 00, FE, FF, FC, 02, FF, 01, FF, 02, FD, 00, FE, 02, FF]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, FD, 04, FD, 03, FD, 00, FE, 00, FC, FF, FF, 00, FE, 00, FE, FF, FD, 02, FF, 00, FD, 01, 01, 00, FD, FF, FC, 01, FF, 02, 00, 00, FD, 00, FD, 01, FF, 01, FF, 00, FF, FF, FD, 00, 01, 02, FF, 00, FE, 00, FD, 03, FE, 00, FE, 02, 00, 02, FE, 02, FE, 01, FC, 02, FD, 00, FF, 01, FD, FD, FF, 01, FF, 01, FD, 00, FC, 00, FE, 00, FE, 00, FF, 01, FC, 00, FE, FF, FC, 02, FF, 01, FF, 02, FD, 00, FE, 02, FF]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC A2C8 and 512 data bytes: [01, FD, 04, FD, 03, FD, 00, FE, 00, FC, FF, FF, 00, FE, 00, FE, FF, FD, 02, FF, 00, FD, 01, 01, 00, FD, FF, FC, 01, FF, 02, 00, 00, FD, 00, FD, 01, FF, 01, FF, 00, FF, FF, FD, 00, 01, 02, FF, 00, FE, 00, FD, 03, FE, 00, FE, 02, 00, 02, FE, 02, FE, 01, FC, 02, FD, 00, FF, 01, FD, FD, FF, 01, FF, 01, FD, 00, FC, 00, FE, 00, FE, 00, FF, 01, FC, 00, FE, FF, FC, 02, FF, 01, FF, 02, FD, 00, FE, 02, FF]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [00, FD, 01, FE, 02, FE, 00, FD, FF, FF, 00, FD, 03, FF, FF, FD, 00, FD, 00, FE, 02, FD, FE, FE, 00, FE, FF, FF, 01, FD, 03, FC, 03, FD, 01, FF, 02, FC, 01, FE, 02, FD, 01, FD, 00, FB, 01, FC, FF, FF, 02, 00, 01, FD, 03, FD, 00, FD, 01, FC, 01, FF, 03, FC, 02, FE, 00, FE, FF, FD, 01, FC, 00, FF, FF, FC, 01, FF, 00, FD, 01, FC, FF, FD, 00, FD, 01, FD, 02, FD, 02, 00, 02, FF, FF, FE, 01, FD, 02, 00]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [00, FD, 01, FE, 02, FE, 00, FD, FF, FF, 00, FD, 03, FF, FF, FD, 00, FD, 00, FE, 02, FD, FE, FE, 00, FE, FF, FF, 01, FD, 03, FC, 03, FD, 01, FF, 02, FC, 01, FE, 02, FD, 01, FD, 00, FB, 01, FC, FF, FF, 02, 00, 01, FD, 03, FD, 00, FD, 01, FC, 01, FF, 03, FC, 02, FE, 00, FE, FF, FD, 01, FC, 00, FF, FF, FC, 01, FF, 00, FD, 01, FC, FF, FD, 00, FD, 01, FD, 02, FD, 02, 00, 02, FF, FF, FE, 01, FD, 02, 00]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC EB7E and 512 data bytes: [00, FD, 01, FE, 02, FE, 00, FD, FF, FF, 00, FD, 03, FF, FF, FD, 00, FD, 00, FE, 02, FD, FE, FE, 00, FE, FF, FF, 01, FD, 03, FC, 03, FD, 01, FF, 02, FC, 01, FE, 02, FD, 01, FD, 00, FB, 01, FC, FF, FF, 02, 00, 01, FD, 03, FD, 00, FD, 01, FC, 01, FF, 03, FC, 02, FE, 00, FE, FF, FD, 01, FC, 00, FF, FF, FC, 01, FF, 00, FD, 01, FC, FF, FD, 00, FD, 01, FD, 02, FD, 02, 00, 02, FF, FF, FE, 01, FD, 02, 00]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [00, FF, FF, FF, 01, FD, 01, FF, FF, FF, 00, FE, 01, FE, 02, FD, FE, FE, 01, FF, 03, FD, 02, FD, 01, FE, 01, FD, 01, FE, 00, FE, 01, FE, 00, FF, 01, FE, 00, FF, 01, FE, 01, FF, 01, FE, FF, FF, 02, FF, 01, FF, 01, FE, 02, FC, 02, FB, 01, FE, 01, FC, 00, FF, 02, FE, 01, FF, FF, FC, 02, FF, 01, FF, 01, FE, FF, FE, 01, FE, 00, 00, 01, FE, 00, FE, 03, FE, FF, FE, 00, FD, 01, FE, 00, FE, 01, FF, 00, FC]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [00, FF, FF, FF, 01, FD, 01, FF, FF, FF, 00, FE, 01, FE, 02, FD, FE, FE, 01, FF, 03, FD, 02, FD, 01, FE, 01, FD, 01, FE, 00, FE, 01, FE, 00, FF, 01, FE, 00, FF, 01, FE, 01, FF, 01, FE, FF, FF, 02, FF, 01, FF, 01, FE, 02, FC, 02, FB, 01, FE, 01, FC, 00, FF, 02, FE, 01, FF, FF, FC, 02, FF, 01, FF, 01, FE, FF, FE, 01, FE, 00, 00, 01, FE, 00, FE, 03, FE, FF, FE, 00, FD, 01, FE, 00, FE, 01, FF, 00, FC]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC C99D and 512 data bytes: [00, FF, FF, FF, 01, FD, 01, FF, FF, FF, 00, FE, 01, FE, 02, FD, FE, FE, 01, FF, 03, FD, 02, FD, 01, FE, 01, FD, 01, FE, 00, FE, 01, FE, 00, FF, 01, FE, 00, FF, 01, FE, 01, FF, 01, FE, FF, FF, 02, FF, 01, FF, 01, FE, 02, FC, 02, FB, 01, FE, 01, FC, 00, FF, 02, FE, 01, FF, FF, FC, 02, FF, 01, FF, 01, FE, FF, FE, 01, FE, 00, 00, 01, FE, 00, FE, 03, FE, FF, FE, 00, FD, 01, FE, 00, FE, 01, FF, 00, FC]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [00, FD, 01, FF, 03, FD, FF, FD, 01, FE, 00, FF, 00, FD, FF, FB, 02, FD, 02, FD, FF, FC, 01, FF, 01, FF, 02, FF, FE, FE, 01, FC, 01, FD, 02, FD, 02, FE, 02, FE, 01, 00, 02, FA, 02, FD, 02, FE, 00, FE, 01, FD, 01, FE, FF, FE, FF, FF, FF, FE, 02, FE, FE, FE, FF, FF, 00, FE, 02, FD, 01, FE, 01, FE, 01, FD, 00, FE, 00, FE, 02, FF, 01, FF, 01, FD, 01, FF, 01, FD, 02, FF, FF, FD, 00, FD, FE, FF, 01, FF]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [00, FD, 01, FF, 03, FD, FF, FD, 01, FE, 00, FF, 00, FD, FF, FB, 02, FD, 02, FD, FF, FC, 01, FF, 01, FF, 02, FF, FE, FE, 01, FC, 01, FD, 02, FD, 02, FE, 02, FE, 01, 00, 02, FA, 02, FD, 02, FE, 00, FE, 01, FD, 01, FE, FF, FE, FF, FF, FF, FE, 02, FE, FE, FE, FF, FF, 00, FE, 02, FD, 01, FE, 01, FE, 01, FD, 00, FE, 00, FE, 02, FF, 01, FF, 01, FD, 01, FF, 01, FD, 02, FF, FF, FD, 00, FD, FE, FF, 01, FF]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC 8243 and 512 data bytes: [00, FD, 01, FF, 03, FD, FF, FD, 01, FE, 00, FF, 00, FD, FF, FB, 02, FD, 02, FD, FF, FC, 01, FF, 01, FF, 02, FF, FE, FE, 01, FC, 01, FD, 02, FD, 02, FE, 02, FE, 01, 00, 02, FA, 02, FD, 02, FE, 00, FE, 01, FD, 01, FE, FF, FE, FF, FF, FF, FE, 02, FE, FE, FE, FF, FF, 00, FE, 02, FD, 01, FE, 01, FE, 01, FD, 00, FE, 00, FE, 02, FF, 01, FF, 01, FD, 01, FF, 01, FD, 02, FF, FF, FD, 00, FD, FE, FF, 01, FF]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [02, FC, 01, FC, 01, 00, 00, FD, 02, FD, 00, FC, 00, FD, 01, FC, 01, FF, FF, 00, 02, FE, 00, FF, 01, FC, 01, FD, 02, FE, 00, 00, 01, FD, 00, FF, 00, FC, 02, FD, 00, FC, 03, FD, 01, 00, 02, FE, 03, FE, 02, FE, FF, FE, 00, FE, 00, FE, 00, FE, 00, FF, FF, FE, 02, FE, 02, FD, 01, FD, FF, FE, 00, 00, 00, FE, 01, FF, 01, FF, 02, FE, FF, FE, 02, FE, 03, FD, 01, FD, 01, FE, 01, FB, 00, FE, 02, FC, 01, FD]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [02, FC, 01, FC, 01, 00, 00, FD, 02, FD, 00, FC, 00, FD, 01, FC, 01, FF, FF, 00, 02, FE, 00, FF, 01, FC, 01, FD, 02, FE, 00, 00, 01, FD, 00, FF, 00, FC, 02, FD, 00, FC, 03, FD, 01, 00, 02, FE, 03, FE, 02, FE, FF, FE, 00, FE, 00, FE, 00, FE, 00, FF, FF, FE, 02, FE, 02, FD, 01, FD, FF, FE, 00, 00, 00, FE, 01, FF, 01, FF, 02, FE, FF, FE, 02, FE, 03, FD, 01, FD, 01, FE, 01, FB, 00, FE, 02, FC, 01, FD]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC C788 and 512 data bytes: [02, FC, 01, FC, 01, 00, 00, FD, 02, FD, 00, FC, 00, FD, 01, FC, 01, FF, FF, 00, 02, FE, 00, FF, 01, FC, 01, FD, 02, FE, 00, 00, 01, FD, 00, FF, 00, FC, 02, FD, 00, FC, 03, FD, 01, 00, 02, FE, 03, FE, 02, FE, FF, FE, 00, FE, 00, FE, 00, FE, 00, FF, FF, FE, 02, FE, 02, FD, 01, FD, FF, FE, 00, 00, 00, FE, 01, FF, 01, FF, 02, FE, FF, FE, 02, FE, 03, FD, 01, FD, 01, FE, 01, FB, 00, FE, 02, FC, 01, FD]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [00, FD, 01, FE, FF, FC, 00, FD, FF, FE, FF, 00, 00, FD, 01, FD, 02, FE, 02, FC, 00, FC, 01, FE, 00, FF, 02, FE, 03, FE, FF, FB, 01, FC, FF, FD, 03, FF, 01, FE, 01, FF, 00, FF, 00, FE, 01, FF, 03, FD, 01, FE, 00, FD, 00, FF, FF, FE, 01, FF, FF, FC, 01, FF, 00, FF, 02, FF, FF, FE, 03, FE, 00, FE, 03, FC, 02, FD, 02, FE, 00, FF, 03, FD, 01, FD, FF, FF, 00, FE, 01, FE, 00, FF, 01, FE, 01, FF, FD, FD]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [00, FD, 01, FE, FF, FC, 00, FD, FF, FE, FF, 00, 00, FD, 01, FD, 02, FE, 02, FC, 00, FC, 01, FE, 00, FF, 02, FE, 03, FE, FF, FB, 01, FC, FF, FD, 03, FF, 01, FE, 01, FF, 00, FF, 00, FE, 01, FF, 03, FD, 01, FE, 00, FD, 00, FF, FF, FE, 01, FF, FF, FC, 01, FF, 00, FF, 02, FF, FF, FE, 03, FE, 00, FE, 03, FC, 02, FD, 02, FE, 00, FF, 03, FD, 01, FD, FF, FF, 00, FE, 01, FE, 00, FF, 01, FE, 01, FF, FD, FD]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC 804C and 512 data bytes: [00, FD, 01, FE, FF, FC, 00, FD, FF, FE, FF, 00, 00, FD, 01, FD, 02, FE, 02, FC, 00, FC, 01, FE, 00, FF, 02, FE, 03, FE, FF, FB, 01, FC, FF, FD, 03, FF, 01, FE, 01, FF, 00, FF, 00, FE, 01, FF, 03, FD, 01, FE, 00, FD, 00, FF, FF, FE, 01, FF, FF, FC, 01, FF, 00, FF, 02, FF, FF, FE, 03, FE, 00, FE, 03, FC, 02, FD, 02, FE, 00, FF, 03, FD, 01, FD, FF, FF, 00, FE, 01, FE, 00, FF, 01, FE, 01, FF, FD, FD]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, FE, 00, FF, 00, FD, 01, FD, 01, FD, FF, FC, FF, FB, 00, FD, 00, FE, 03, 00, 01, FE, 02, FE, 00, 00, 01, FC, 02, FB, 02, FC, FE, FC, 02, FD, 02, FF, 01, FC, 01, FE, 00, 00, 01, FD, 00, FB, 00, FF, 01, FC, 02, FD, 00, FD, 03, FE, 01, FC, 02, FE, 01, 00, 04, FF, 02, 00, 02, FD, 00, FE, 01, FD, 00, 00, 00, FC, 02, FF, 02, FE, 01, FE, 00, FE, 01, FF, 00, FE, 02, FE, 01, FE, 02, 00, 00, FF, 01, FD]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, FE, 00, FF, 00, FD, 01, FD, 01, FD, FF, FC, FF, FB, 00, FD, 00, FE, 03, 00, 01, FE, 02, FE, 00, 00, 01, FC, 02, FB, 02, FC, FE, FC, 02, FD, 02, FF, 01, FC, 01, FE, 00, 00, 01, FD, 00, FB, 00, FF, 01, FC, 02, FD, 00, FD, 03, FE, 01, FC, 02, FE, 01, 00, 04, FF, 02, 00, 02, FD, 00, FE, 01, FD, 00, 00, 00, FC, 02, FF, 02, FE, 01, FE, 00, FE, 01, FF, 00, FE, 02, FE, 01, FE, 02, 00, 00, FF, 01, FD]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC 7D2F and 512 data bytes: [01, FE, 00, FF, 00, FD, 01, FD, 01, FD, FF, FC, FF, FB, 00, FD, 00, FE, 03, 00, 01, FE, 02, FE, 00, 00, 01, FC, 02, FB, 02, FC, FE, FC, 02, FD, 02, FF, 01, FC, 01, FE, 00, 00, 01, FD, 00, FB, 00, FF, 01, FC, 02, FD, 00, FD, 03, FE, 01, FC, 02, FE, 01, 00, 04, FF, 02, 00, 02, FD, 00, FE, 01, FD, 00, 00, 00, FC, 02, FF, 02, FE, 01, FE, 00, FE, 01, FF, 00, FE, 02, FE, 01, FE, 02, 00, 00, FF, 01, FD]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [00, FF, 01, FE, 02, 00, 00, FE, 01, FD, FF, FD, 01, FD, 00, FE, 03, FE, FF, 00, 00, FE, 01, FE, 01, FF, 01, FF, 01, FD, 01, FF, FF, FD, 00, FD, 01, FE, 02, FE, FF, FD, 01, FD, FF, FE, 02, FD, 03, FE, 03, FD, 00, FD, 05, FC, 02, FE, 02, FF, 01, FC, 01, FC, 01, FE, 01, FC, 02, FD, 02, FD, 01, FF, FF, FE, 01, FE, 00, FE, 02, FF, 00, FF, 03, FE, 00, FF, 02, FF, 02, FE, 00, FE, FD, 00, 00, FE, 02, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [00, FF, 01, FE, 02, 00, 00, FE, 01, FD, FF, FD, 01, FD, 00, FE, 03, FE, FF, 00, 00, FE, 01, FE, 01, FF, 01, FF, 01, FD, 01, FF, FF, FD, 00, FD, 01, FE, 02, FE, FF, FD, 01, FD, FF, FE, 02, FD, 03, FE, 03, FD, 00, FD, 05, FC, 02, FE, 02, FF, 01, FC, 01, FC, 01, FE, 01, FC, 02, FD, 02, FD, 01, FF, FF, FE, 01, FE, 00, FE, 02, FF, 00, FF, 03, FE, 00, FF, 02, FF, 02, FE, 00, FE, FD, 00, 00, FE, 02, FE]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC 93F2 and 512 data bytes: [00, FF, 01, FE, 02, 00, 00, FE, 01, FD, FF, FD, 01, FD, 00, FE, 03, FE, FF, 00, 00, FE, 01, FE, 01, FF, 01, FF, 01, FD, 01, FF, FF, FD, 00, FD, 01, FE, 02, FE, FF, FD, 01, FD, FF, FE, 02, FD, 03, FE, 03, FD, 00, FD, 05, FC, 02, FE, 02, FF, 01, FC, 01, FC, 01, FE, 01, FC, 02, FD, 02, FD, 01, FF, FF, FE, 01, FE, 00, FE, 02, FF, 00, FF, 03, FE, 00, FF, 02, FF, 02, FE, 00, FE, FD, 00, 00, FE, 02, FE]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [00, FE, 03, FE, 01, FD, 02, FC, 00, FE, 02, FE, 01, FE, 01, FE, 02, 01, 01, FE, 01, FF, 00, FD, 04, FF, 01, FD, 00, 00, FF, FD, 01, FC, 01, FF, 02, FC, 02, FE, 02, FC, FF, FD, 03, FF, 01, FD, 01, FC, 01, FE, FF, FD, 01, FD, 00, FC, FF, FE, FF, FD, 01, FF, FF, FD, 02, FF, 01, FD, 01, FE, 00, 00, 01, FF, 01, FD, 00, FC, 02, FF, 02, FD, 01, 00, 02, FE, 00, FD, 00, FD, 02, FE, 02, FD, 00, FF, FF, FF]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [00, FE, 03, FE, 01, FD, 02, FC, 00, FE, 02, FE, 01, FE, 01, FE, 02, 01, 01, FE, 01, FF, 00, FD, 04, FF, 01, FD, 00, 00, FF, FD, 01, FC, 01, FF, 02, FC, 02, FE, 02, FC, FF, FD, 03, FF, 01, FD, 01, FC, 01, FE, FF, FD, 01, FD, 00, FC, FF, FE, FF, FD, 01, FF, FF, FD, 02, FF, 01, FD, 01, FE, 00, 00, 01, FF, 01, FD, 00, FC, 02, FF, 02, FD, 01, 00, 02, FE, 00, FD, 00, FD, 02, FE, 02, FD, 00, FF, FF, FF]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC EEB0 and 512 data bytes: [00, FE, 03, FE, 01, FD, 02, FC, 00, FE, 02, FE, 01, FE, 01, FE, 02, 01, 01, FE, 01, FF, 00, FD, 04, FF, 01, FD, 00, 00, FF, FD, 01, FC, 01, FF, 02, FC, 02, FE, 02, FC, FF, FD, 03, FF, 01, FD, 01, FC, 01, FE, FF, FD, 01, FD, 00, FC, FF, FE, FF, FD, 01, FF, FF, FD, 02, FF, 01, FD, 01, FE, 00, 00, 01, FF, 01, FD, 00, FC, 02, FF, 02, FD, 01, 00, 02, FE, 00, FD, 00, FD, 02, FE, 02, FD, 00, FF, FF, FF]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [02, FD, 00, FD, FF, FE, 01, FE, 02, FE, 01, 00, 00, FD, FF, FD, 00, FD, 01, FF, 00, FF, 02, FE, FF, FF, 00, 00, 01, FF, 00, FE, FF, FE, 01, FE, 00, FE, 01, FB, 00, FC, 01, FF, 03, FE, 02, FC, 00, FD, FF, FC, 00, FF, 01, FD, 02, FF, FF, 00, 01, FE, 01, FE, 00, FD, 01, FD, 00, FD, 01, 00, 01, FC, FF, FD, 00, FD, 02, FF, FF, FD, 01, FF, FF, FD, FF, FC, FF, FF, 00, FE, 00, FD, 03, FE, 00, FE, 02, FC]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [02, FD, 00, FD, FF, FE, 01, FE, 02, FE, 01, 00, 00, FD, FF, FD, 00, FD, 01, FF, 00, FF, 02, FE, FF, FF, 00, 00, 01, FF, 00, FE, FF, FE, 01, FE, 00, FE, 01, FB, 00, FC, 01, FF, 03, FE, 02, FC, 00, FD, FF, FC, 00, FF, 01, FD, 02, FF, FF, 00, 01, FE, 01, FE, 00, FD, 01, FD, 00, FD, 01, 00, 01, FC, FF, FD, 00, FD, 02, FF, FF, FD, 01, FF, FF, FD, FF, FC, FF, FF, 00, FE, 00, FD, 03, FE, 00, FE, 02, FC]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC D8DC and 512 data bytes: [02, FD, 00, FD, FF, FE, 01, FE, 02, FE, 01, 00, 00, FD, FF, FD, 00, FD, 01, FF, 00, FF, 02, FE, FF, FF, 00, 00, 01, FF, 00, FE, FF, FE, 01, FE, 00, FE, 01, FB, 00, FC, 01, FF, 03, FE, 02, FC, 00, FD, FF, FC, 00, FF, 01, FD, 02, FF, FF, 00, 01, FE, 01, FE, 00, FD, 01, FD, 00, FD, 01, 00, 01, FC, FF, FD, 00, FD, 02, FF, FF, FD, 01, FF, FF, FD, FF, FC, FF, FF, 00, FE, 00, FD, 03, FE, 00, FE, 02, FC]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, FD, 02, FD, 03, FE, 00, FE, 02, FE, 00, FB, 00, FD, 00, FE, 00, FD, FF, FD, FF, FC, 00, FE, 02, FE, FF, 00, 01, FE, 01, 01, 00, FF, 02, FF, 03, FE, 02, FE, FF, FE, 02, 00, 00, 00, 01, FF, 01, FD, 02, FC, FF, 00, 01, FE, 00, FD, 00, FE, 00, FE, FF, FF, 01, 00, 01, FE, 01, FE, 01, FF, 02, FE, FF, FD, 01, FF, 01, 00, 02, FD, 00, FE, 00, FF, 01, FF, 00, FE, 00, FE, 01, FD, 00, FF, FE, FD, 02, FF]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, FD, 02, FD, 03, FE, 00, FE, 02, FE, 00, FB, 00, FD, 00, FE, 00, FD, FF, FD, FF, FC, 00, FE, 02, FE, FF, 00, 01, FE, 01, 01, 00, FF, 02, FF, 03, FE, 02, FE, FF, FE, 02, 00, 00, 00, 01, FF, 01, FD, 02, FC, FF, 00, 01, FE, 00, FD, 00, FE, 00, FE, FF, FF, 01, 00, 01, FE, 01, FE, 01, FF, 02, FE, FF, FD, 01, FF, 01, 00, 02, FD, 00, FE, 00, FF, 01, FF, 00, FE, 00, FE, 01, FD, 00, FF, FE, FD, 02, FF]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC 8599 and 512 data bytes: [01, FD, 02, FD, 03, FE, 00, FE, 02, FE, 00, FB, 00, FD, 00, FE, 00, FD, FF, FD, FF, FC, 00, FE, 02, FE, FF, 00, 01, FE, 01, 01, 00, FF, 02, FF, 03, FE, 02, FE, FF, FE, 02, 00, 00, 00, 01, FF, 01, FD, 02, FC, FF, 00, 01, FE, 00, FD, 00, FE, 00, FE, FF, FF, 01, 00, 01, FE, 01, FE, 01, FF, 02, FE, FF, FD, 01, FF, 01, 00, 02, FD, 00, FE, 00, FF, 01, FF, 00, FE, 00, FE, 01, FD, 00, FF, FE, FD, 02, FF]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [00, FF, 02, FC, 00, FE, 02, FF, 02, FD, 01, FC, 01, FE, 01, FE, 01, 00, FF, FD, 02, FE, 00, FD, FF, FF, FF, FE, 00, FE, FF, FD, 00, FF, 01, FF, 01, FD, FD, FF, 00, FE, 02, FD, 02, FD, 03, FE, 01, FD, 01, 00, FF, FD, 01, FD, 02, FC, 00, FF, FE, FE, 02, 00, 01, FE, 01, FF, 02, FF, 03, FD, FF, FE, 02, FE, 01, FF, 02, FF, 01, FE, 00, FC, 00, FF, FF, FC, FF, FE, 00, FD, 00, FD, 00, FB, 02, FD, 01, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [00, FF, 02, FC, 00, FE, 02, FF, 02, FD, 01, FC, 01, FE, 01, FE, 01, 00, FF, FD, 02, FE, 00, FD, FF, FF, FF, FE, 00, FE, FF, FD, 00, FF, 01, FF, 01, FD, FD, FF, 00, FE, 02, FD, 02, FD, 03, FE, 01, FD, 01, 00, FF, FD, 01, FD, 02, FC, 00, FF, FE, FE, 02, 00, 01, FE, 01, FF, 02, FF, 03, FD, FF, FE, 02, FE, 01, FF, 02, FF, 01, FE, 00, FC, 00, FF, FF, FC, FF, FE, 00, FD, 00, FD, 00, FB, 02, FD, 01, FE]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC 18E3 and 512 data bytes: [00, FF, 02, FC, 00, FE, 02, FF, 02, FD, 01, FC, 01, FE, 01, FE, 01, 00, FF, FD, 02, FE, 00, FD, FF, FF, FF, FE, 00, FE, FF, FD, 00, FF, 01, FF, 01, FD, FD, FF, 00, FE, 02, FD, 02, FD, 03, FE, 01, FD, 01, 00, FF, FD, 01, FD, 02, FC, 00, FF, FE, FE, 02, 00, 01, FE, 01, FF, 02, FF, 03, FD, FF, FE, 02, FE, 01, FF, 02, FF, 01, FE, 00, FC, 00, FF, FF, FC, FF, FE, 00, FD, 00, FD, 00, FB, 02, FD, 01, FE]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, FD, 01, FD, 01, FB, 01, FE, 04, 00, 02, FE, 01, FE, 01, FD, 00, FD, 02, FE, FF, FF, 02, FF, 01, FC, 00, FD, 02, FE, 01, FD, 01, 00, 02, FC, 01, FE, 02, FF, 01, FF, 00, FF, 00, FF, FF, FE, 01, FF, 01, FE, 02, FC, 01, FD, 01, FE, FE, FF, 02, FC, 01, FD, 03, FC, 00, FE, 01, FF, 01, FF, 01, FE, 00, FE, FF, FD, 01, FF, 01, FE, 02, 00, FE, FD, 01, FE, 00, FE, 03, FC, 01, FE, 00, FE, 00, 00, 01, FD]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, FD, 01, FD, 01, FB, 01, FE, 04, 00, 02, FE, 01, FE, 01, FD, 00, FD, 02, FE, FF, FF, 02, FF, 01, FC, 00, FD, 02, FE, 01, FD, 01, 00, 02, FC, 01, FE, 02, FF, 01, FF, 00, FF, 00, FF, FF, FE, 01, FF, 01, FE, 02, FC, 01, FD, 01, FE, FE, FF, 02, FC, 01, FD, 03, FC, 00, FE, 01, FF, 01, FF, 01, FE, 00, FE, FF, FD, 01, FF, 01, FE, 02, 00, FE, FD, 01, FE, 00, FE, 03, FC, 01, FE, 00, FE, 00, 00, 01, FD]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC 2BCA and 512 data bytes: [01, FD, 01, FD, 01, FB, 01, FE, 04, 00, 02, FE, 01, FE, 01, FD, 00, FD, 02, FE, FF, FF, 02, FF, 01, FC, 00, FD, 02, FE, 01, FD, 01, 00, 02, FC, 01, FE, 02, FF, 01, FF, 00, FF, 00, FF, FF, FE, 01, FF, 01, FE, 02, FC, 01, FD, 01, FE, FE, FF, 02, FC, 01, FD, 03, FC, 00, FE, 01, FF, 01, FF, 01, FE, 00, FE, FF, FD, 01, FF, 01, FE, 02, 00, FE, FD, 01, FE, 00, FE, 03, FC, 01, FE, 00, FE, 00, 00, 01, FD]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, FF, 01, FD, 02, FF, 00, FE, 01, FF, 01, FD, 04, FF, 03, FF, 00, FD, 00, FF, 02, FE, 02, 00, 04, FE, 00, FE, FF, FD, 02, 00, 00, FE, 01, FE, 00, FC, 00, FE, FF, FD, 01, FD, 01, FE, 01, FF, 01, FE, 00, FD, 00, 00, 03, FD, 00, FD, 01, FD, 01, 01, 02, FD, 01, 00, 00, FE, FF, FE, 00, FE, 02, FF, 01, FE, 00, FE, FF, FE, 00, 00, 00, FF, 01, FD, 00, FF, 01, FD, 01, FE, 00, FC, 03, FC, 00, FD, FF, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, FF, 01, FD, 02, FF, 00, FE, 01, FF, 01, FD, 04, FF, 03, FF, 00, FD, 00, FF, 02, FE, 02, 00, 04, FE, 00, FE, FF, FD, 02, 00, 00, FE, 01, FE, 00, FC, 00, FE, FF, FD, 01, FD, 01, FE, 01, FF, 01, FE, 00, FD, 00, 00, 03, FD, 00, FD, 01, FD, 01, 01, 02, FD, 01, 00, 00, FE, FF, FE, 00, FE, 02, FF, 01, FE, 00, FE, FF, FE, 00, 00, 00, FF, 01, FD, 00, FF, 01, FD, 01, FE, 00, FC, 03, FC, 00, FD, FF, FE]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC 5C6B and 512 data bytes: [01, FF, 01, FD, 02, FF, 00, FE, 01, FF, 01, FD, 04, FF, 03, FF, 00, FD, 00, FF, 02, FE, 02, 00, 04, FE, 00, FE, FF, FD, 02, 00, 00, FE, 01, FE, 00, FC, 00, FE, FF, FD, 01, FD, 01, FE, 01, FF, 01, FE, 00, FD, 00, 00, 03, FD, 00, FD, 01, FD, 01, 01, 02, FD, 01, 00, 00, FE, FF, FE, 00, FE, 02, FF, 01, FE, 00, FE, FF, FE, 00, 00, 00, FF, 01, FD, 00, FF, 01, FD, 01, FE, 00, FC, 03, FC, 00, FD, FF, FE]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, 00, 01, FE, 01, FE, 03, FE, 03, FD, FF, FD, 00, 00, FF, FE, FF, FF, 02, FE, 00, FE, 00, FD, 02, 00, 00, FE, 01, FE, 00, FF, 00, FE, 01, 01, 03, FD, 00, FF, 01, FF, 00, FF, 00, FD, 00, FF, FF, FC, 01, FE, 01, FE, 02, FE, 00, FE, 02, 00, 00, FD, 01, FD, 03, FC, 01, FC, 00, FF, 01, FD, FF, FD, 01, FD, 01, FE, 01, FF, 02, 01, 01, FE, FF, 00, 01, FC, 02, FD, FF, FF, 01, FE, 00, FB, 00, FD, FE, FD]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, 00, 01, FE, 01, FE, 03, FE, 03, FD, FF, FD, 00, 00, FF, FE, FF, FF, 02, FE, 00, FE, 00, FD, 02, 00, 00, FE, 01, FE, 00, FF, 00, FE, 01, 01, 03, FD, 00, FF, 01, FF, 00, FF, 00, FD, 00, FF, FF, FC, 01, FE, 01, FE, 02, FE, 00, FE, 02, 00, 00, FD, 01, FD, 03, FC, 01, FC, 00, FF, 01, FD, FF, FD, 01, FD, 01, FE, 01, FF, 02, 01, 01, FE, FF, 00, 01, FC, 02, FD, FF, FF, 01, FE, 00, FB, 00, FD, FE, FD]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC E1EF and 512 data bytes: [01, 00, 01, FE, 01, FE, 03, FE, 03, FD, FF, FD, 00, 00, FF, FE, FF, FF, 02, FE, 00, FE, 00, FD, 02, 00, 00, FE, 01, FE, 00, FF, 00, FE, 01, 01, 03, FD, 00, FF, 01, FF, 00, FF, 00, FD, 00, FF, FF, FC, 01, FE, 01, FE, 02, FE, 00, FE, 02, 00, 00, FD, 01, FD, 03, FC, 01, FC, 00, FF, 01, FD, FF, FD, 01, FD, 01, FE, 01, FF, 02, 01, 01, FE, FF, 00, 01, FC, 02, FD, FF, FF, 01, FE, 00, FB, 00, FD, FE, FD]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, FD, 01, FF, 01, FC, 01, 00, 00, FE, 02, 00, 01, FC, 01, FE, 01, FD, 02, FE, 00, FF, 02, FE, 00, FD, 01, FC, 02, FE, 00, FE, FE, FF, 00, FD, 00, 00, FF, FD, 02, 00, 01, FD, 01, FE, FF, FE, 02, FD, 00, 00, 00, FF, 03, FE, 02, FE, 00, 00, 01, FD, FF, FE, 01, FC, 02, FD, FF, FD, 00, FF, 02, FB, 01, FD, 00, FC, 02, FB, 01, FD, 04, FE, 03, FE, 01, FC, 00, FF, FF, FD, 00, FE, 02, FB, 01, FE, 01, FF]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, FD, 01, FF, 01, FC, 01, 00, 00, FE, 02, 00, 01, FC, 01, FE, 01, FD, 02, FE, 00, FF, 02, FE, 00, FD, 01, FC, 02, FE, 00, FE, FE, FF, 00, FD, 00, 00, FF, FD, 02, 00, 01, FD, 01, FE, FF, FE, 02, FD, 00, 00, 00, FF, 03, FE, 02, FE, 00, 00, 01, FD, FF, FE, 01, FC, 02, FD, FF, FD, 00, FF, 02, FB, 01, FD, 00, FC, 02, FB, 01, FD, 04, FE, 03, FE, 01, FC, 00, FF, FF, FD, 00, FE, 02, FB, 01, FE, 01, FF]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC 1CED and 512 data bytes: [01, FD, 01, FF, 01, FC, 01, 00, 00, FE, 02, 00, 01, FC, 01, FE, 01, FD, 02, FE, 00, FF, 02, FE, 00, FD, 01, FC, 02, FE, 00, FE, FE, FF, 00, FD, 00, 00, FF, FD, 02, 00, 01, FD, 01, FE, FF, FE, 02, FD, 00, 00, 00, FF, 03, FE, 02, FE, 00, 00, 01, FD, FF, FE, 01, FC, 02, FD, FF, FD, 00, FF, 02, FB, 01, FD, 00, FC, 02, FB, 01, FD, 04, FE, 03, FE, 01, FC, 00, FF, FF, FD, 00, FE, 02, FB, 01, FE, 01, FF]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, FF, FF, FC, 03, FC, 00, FF, 01, 00, 01, FE, 02, FE, 00, FE, FF, FD, 01, FD, 00, FD, FE, 00, 00, FD, 01, FD, 00, FD, 00, FF, 01, 00, 03, FD, FE, FD, 00, 00, 00, FE, 01, FE, FF, FD, 02, FC, 00, FD, 02, FC, 00, FE, 00, FE, 01, FE, 00, FD, FF, FD, FF, FE, 01, FE, FE, FF, 01, FF, 01, FE, 02, FD, FF, FE, 01, FF, 01, FD, 02, FC, 02, FD, 01, FE, FE, FE, 02, FB, 01, FC, 00, FC, 01, 01, 01, FE, 03, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, FF, FF, FC, 03, FC, 00, FF, 01, 00, 01, FE, 02, FE, 00, FE, FF, FD, 01, FD, 00, FD, FE, 00, 00, FD, 01, FD, 00, FD, 00, FF, 01, 00, 03, FD, FE, FD, 00, 00, 00, FE, 01, FE, FF, FD, 02, FC, 00, FD, 02, FC, 00, FE, 00, FE, 01, FE, 00, FD, FF, FD, FF, FE, 01, FE, FE, FF, 01, FF, 01, FE, 02, FD, FF, FE, 01, FF, 01, FD, 02, FC, 02, FD, 01, FE, FE, FE, 02, FB, 01, FC, 00, FC, 01, 01, 01, FE, 03, FE]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC 8C6B and 512 data bytes: [01, FF, FF, FC, 03, FC, 00, FF, 01, 00, 01, FE, 02, FE, 00, FE, FF, FD, 01, FD, 00, FD, FE, 00, 00, FD, 01, FD, 00, FD, 00, FF, 01, 00, 03, FD, FE, FD, 00, 00, 00, FE, 01, FE, FF, FD, 02, FC, 00, FD, 02, FC, 00, FE, 00, FE, 01, FE, 00, FD, FF, FD, FF, FE, 01, FE, FE, FF, 01, FF, 01, FE, 02, FD, FF, FE, 01, FF, 01, FD, 02, FC, 02, FD, 01, FE, FE, FE, 02, FB, 01, FC, 00, FC, 01, 01, 01, FE, 03, FE]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [00, FF, 01, FC, 00, FD, 01, FF, 01, FF, 00, FE, 02, FE, 00, FD, 01, FF, 01, FF, 00, FE, 01, FD, 02, FD, 00, FF, 02, FD, 00, FE, 02, FD, 00, FF, 00, FC, FF, FE, FE, FC, 01, FF, 01, FF, FF, FE, 00, FC, 02, FF, 00, FB, 01, FC, 02, 00, 02, FF, 00, FF, 00, FD, 01, FE, 01, FD, FE, FF, 01, FF, FE, FF, 01, FD, 04, FE, 01, FD, 01, FE, 01, FB, 01, FD, 01, FE, 01, FE, 01, FD, 02, FD, FF, FD, 01, FC, 01, FF]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [00, FF, 01, FC, 00, FD, 01, FF, 01, FF, 00, FE, 02, FE, 00, FD, 01, FF, 01, FF, 00, FE, 01, FD, 02, FD, 00, FF, 02, FD, 00, FE, 02, FD, 00, FF, 00, FC, FF, FE, FE, FC, 01, FF, 01, FF, FF, FE, 00, FC, 02, FF, 00, FB, 01, FC, 02, 00, 02, FF, 00, FF, 00, FD, 01, FE, 01, FD, FE, FF, 01, FF, FE, FF, 01, FD, 04, FE, 01, FD, 01, FE, 01, FB, 01, FD, 01, FE, 01, FE, 01, FD, 02, FD, FF, FD, 01, FC, 01, FF]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC 0137 and 512 data bytes: [00, FF, 01, FC, 00, FD, 01, FF, 01, FF, 00, FE, 02, FE, 00, FD, 01, FF, 01, FF, 00, FE, 01, FD, 02, FD, 00, FF, 02, FD, 00, FE, 02, FD, 00, FF, 00, FC, FF, FE, FE, FC, 01, FF, 01, FF, FF, FE, 00, FC, 02, FF, 00, FB, 01, FC, 02, 00, 02, FF, 00, FF, 00, FD, 01, FE, 01, FD, FE, FF, 01, FF, FE, FF, 01, FD, 04, FE, 01, FD, 01, FE, 01, FB, 01, FD, 01, FE, 01, FE, 01, FD, 02, FD, FF, FD, 01, FC, 01, FF]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [02, FE, 02, FF, 00, 00, 00, FD, FF, FE, 00, 00, 00, FE, 01, FE, 00, FF, 02, FE, 00, FE, 00, FC, FF, FF, 01, FE, 02, FD, 00, FD, 01, FE, 01, FE, 01, FF, 01, FC, 01, FD, 01, FE, 01, FE, FF, FD, 00, FF, 01, FC, 02, FE, 01, FF, 01, FE, 00, FE, 02, FC, 01, FD, 00, FF, 00, FF, 00, FF, 02, FF, 02, FD, 03, FE, 00, FD, 02, FF, FF, FE, 02, FE, FF, FF, 02, FC, 00, 00, 02, FD, 00, FF, 00, FE, 00, FD, 02, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [02, FE, 02, FF, 00, 00, 00, FD, FF, FE, 00, 00, 00, FE, 01, FE, 00, FF, 02, FE, 00, FE, 00, FC, FF, FF, 01, FE, 02, FD, 00, FD, 01, FE, 01, FE, 01, FF, 01, FC, 01, FD, 01, FE, 01, FE, FF, FD, 00, FF, 01, FC, 02, FE, 01, FF, 01, FE, 00, FE, 02, FC, 01, FD, 00, FF, 00, FF, 00, FF, 02, FF, 02, FD, 03, FE, 00, FD, 02, FF, FF, FE, 02, FE, FF, FF, 02, FC, 00, 00, 02, FD, 00, FF, 00, FE, 00, FD, 02, FE]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC C051 and 512 data bytes: [02, FE, 02, FF, 00, 00, 00, FD, FF, FE, 00, 00, 00, FE, 01, FE, 00, FF, 02, FE, 00, FE, 00, FC, FF, FF, 01, FE, 02, FD, 00, FD, 01, FE, 01, FE, 01, FF, 01, FC, 01, FD, 01, FE, 01, FE, FF, FD, 00, FF, 01, FC, 02, FE, 01, FF, 01, FE, 00, FE, 02, FC, 01, FD, 00, FF, 00, FF, 00, FF, 02, FF, 02, FD, 03, FE, 00, FD, 02, FF, FF, FE, 02, FE, FF, FF, 02, FC, 00, 00, 02, FD, 00, FF, 00, FE, 00, FD, 02, FE]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [00, FF, 04, 00, 01, FD, 01, FE, 01, FE, 01, FF, 02, FD, 00, FD, 01, FD, 00, FF, FF, FE, 01, FE, 02, FE, 01, 00, FF, FF, 02, FE, 01, FD, 02, FE, 02, FF, 02, FE, 02, FE, 01, 00, 01, FF, 00, FE, FF, FF, 00, FD, 00, FF, 00, FE, 02, FF, 01, FD, 01, FE, 00, FC, 02, FC, FF, FE, 02, FE, 01, FF, 01, 00, FE, FF, 00, FD, 00, FF, 01, FE, 01, FC, 02, FD, 01, FF, 00, FC, 03, FD, FF, FD, 01, FD, 01, FC, 02, FD]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [00, FF, 04, 00, 01, FD, 01, FE, 01, FE, 01, FF, 02, FD, 00, FD, 01, FD, 00, FF, FF, FE, 01, FE, 02, FE, 01, 00, FF, FF, 02, FE, 01, FD, 02, FE, 02, FF, 02, FE, 02, FE, 01, 00, 01, FF, 00, FE, FF, FF, 00, FD, 00, FF, 00, FE, 02, FF, 01, FD, 01, FE, 00, FC, 02, FC, FF, FE, 02, FE, 01, FF, 01, 00, FE, FF, 00, FD, 00, FF, 01, FE, 01, FC, 02, FD, 01, FF, 00, FC, 03, FD, FF, FD, 01, FD, 01, FC, 02, FD]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC B057 and 512 data bytes: [00, FF, 04, 00, 01, FD, 01, FE, 01, FE, 01, FF, 02, FD, 00, FD, 01, FD, 00, FF, FF, FE, 01, FE, 02, FE, 01, 00, FF, FF, 02, FE, 01, FD, 02, FE, 02, FF, 02, FE, 02, FE, 01, 00, 01, FF, 00, FE, FF, FF, 00, FD, 00, FF, 00, FE, 02, FF, 01, FD, 01, FE, 00, FC, 02, FC, FF, FE, 02, FE, 01, FF, 01, 00, FE, FF, 00, FD, 00, FF, 01, FE, 01, FC, 02, FD, 01, FF, 00, FC, 03, FD, FF, FD, 01, FD, 01, FC, 02, FD]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [FF, 01, 02, FF, 00, FD, FF, FD, 01, FE, 01, FD, 00, FD, FF, FB, FF, FE, 01, FF, 01, FF, 00, FE, 02, FE, 01, FE, 03, FE, 01, FC, 00, FF, 00, 00, 00, FD, 01, FF, 02, FD, FF, FF, 00, FE, 02, 00, FE, FD, FF, FE, 00, FE, 01, FF, 00, FD, 00, FE, 00, FF, 01, 00, 01, FD, FF, FC, FF, FF, 00, FC, 02, 01, 01, FD, 00, FD, 02, FC, 02, FF, 00, FC, 01, FD, FF, FF, 00, FE, 01, FF, 01, FF, FF, FE, 00, FF, 00, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [FF, 01, 02, FF, 00, FD, FF, FD, 01, FE, 01, FD, 00, FD, FF, FB, FF, FE, 01, FF, 01, FF, 00, FE, 02, FE, 01, FE, 03, FE, 01, FC, 00, FF, 00, 00, 00, FD, 01, FF, 02, FD, FF, FF, 00, FE, 02, 00, FE, FD, FF, FE, 00, FE, 01, FF, 00, FD, 00, FE, 00, FF, 01, 00, 01, FD, FF, FC, FF, FF, 00, FC, 02, 01, 01, FD, 00, FD, 02, FC, 02, FF, 00, FC, 01, FD, FF, FF, 00, FE, 01, FF, 01, FF, FF, FE, 00, FF, 00, FE]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC 1A2D and 512 data bytes: [FF, 01, 02, FF, 00, FD, FF, FD, 01, FE, 01, FD, 00, FD, FF, FB, FF, FE, 01, FF, 01, FF, 00, FE, 02, FE, 01, FE, 03, FE, 01, FC, 00, FF, 00, 00, 00, FD, 01, FF, 02, FD, FF, FF, 00, FE, 02, 00, FE, FD, FF, FE, 00, FE, 01, FF, 00, FD, 00, FE, 00, FF, 01, 00, 01, FD, FF, FC, FF, FF, 00, FC, 02, 01, 01, FD, 00, FD, 02, FC, 02, FF, 00, FC, 01, FD, FF, FF, 00, FE, 01, FF, 01, FF, FF, FE, 00, FF, 00, FE]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [00, FB, 02, FF, 02, FD, 00, FE, 02, FF, 02, FF, FF, FD, 03, FD, FF, FF, 01, FF, 00, FE, 02, FE, 01, FD, 01, FC, 01, FF, 02, FC, 01, FE, 02, FD, 02, FF, 00, FD, 01, FF, 00, FD, 02, FD, FF, 01, 02, FC, 00, FB, 01, FF, 00, FF, 00, FC, FE, FF, 02, FC, 00, FD, 00, FE, 01, FF, FF, FC, 01, 00, 02, FC, 00, FC, 00, FF, 02, FE, 00, FF, 03, 00, 03, FE, 01, FF, 01, 00, 01, FD, 00, FF, 00, FD, 00, 00, 00, FD]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [00, FB, 02, FF, 02, FD, 00, FE, 02, FF, 02, FF, FF, FD, 03, FD, FF, FF, 01, FF, 00, FE, 02, FE, 01, FD, 01, FC, 01, FF, 02, FC, 01, FE, 02, FD, 02, FF, 00, FD, 01, FF, 00, FD, 02, FD, FF, 01, 02, FC, 00, FB, 01, FF, 00, FF, 00, FC, FE, FF, 02, FC, 00, FD, 00, FE, 01, FF, FF, FC, 01, 00, 02, FC, 00, FC, 00, FF, 02, FE, 00, FF, 03, 00, 03, FE, 01, FF, 01, 00, 01, FD, 00, FF, 00, FD, 00, 00, 00, FD]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC 00D9 and 512 data bytes: [00, FB, 02, FF, 02, FD, 00, FE, 02, FF, 02, FF, FF, FD, 03, FD, FF, FF, 01, FF, 00, FE, 02, FE, 01, FD, 01, FC, 01, FF, 02, FC, 01, FE, 02, FD, 02, FF, 00, FD, 01, FF, 00, FD, 02, FD, FF, 01, 02, FC, 00, FB, 01, FF, 00, FF, 00, FC, FE, FF, 02, FC, 00, FD, 00, FE, 01, FF, FF, FC, 01, 00, 02, FC, 00, FC, 00, FF, 02, FE, 00, FF, 03, 00, 03, FE, 01, FF, 01, 00, 01, FD, 00, FF, 00, FD, 00, 00, 00, FD]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, FE, FF, FE, 01, FF, FE, FD, 01, 00, 02, 00, 00, FD, 00, FF, 00, FE, FF, FE, 01, FC, 01, FE, 01, FE, 01, FD, 00, FF, 02, FE, FF, FD, 01, FF, 00, FF, 02, FD, 02, FF, 01, FD, FF, FF, 01, FD, 00, FD, 00, FE, 01, FE, FF, FD, FF, 00, 02, FE, 02, FE, 01, FE, 02, FE, FE, FE, 01, FE, 01, FE, 02, FE, 01, FF, 01, FE, FF, 00, 02, FD, 01, FD, 02, FD, 01, FF, 01, FC, 02, FE, FF, FD, 01, FD, 02, FE, 02, FF]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, FE, FF, FE, 01, FF, FE, FD, 01, 00, 02, 00, 00, FD, 00, FF, 00, FE, FF, FE, 01, FC, 01, FE, 01, FE, 01, FD, 00, FF, 02, FE, FF, FD, 01, FF, 00, FF, 02, FD, 02, FF, 01, FD, FF, FF, 01, FD, 00, FD, 00, FE, 01, FE, FF, FD, FF, 00, 02, FE, 02, FE, 01, FE, 02, FE, FE, FE, 01, FE, 01, FE, 02, FE, 01, FF, 01, FE, FF, 00, 02, FD, 01, FD, 02, FD, 01, FF, 01, FC, 02, FE, FF, FD, 01, FD, 02, FE, 02, FF]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC 66AB and 512 data bytes: [01, FE, FF, FE, 01, FF, FE, FD, 01, 00, 02, 00, 00, FD, 00, FF, 00, FE, FF, FE, 01, FC, 01, FE, 01, FE, 01, FD, 00, FF, 02, FE, FF, FD, 01, FF, 00, FF, 02, FD, 02, FF, 01, FD, FF, FF, 01, FD, 00, FD, 00, FE, 01, FE, FF, FD, FF, 00, 02, FE, 02, FE, 01, FE, 02, FE, FE, FE, 01, FE, 01, FE, 02, FE, 01, FF, 01, FE, FF, 00, 02, FD, 01, FD, 02, FD, 01, FF, 01, FC, 02, FE, FF, FD, 01, FD, 02, FE, 02, FF]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [03, FF, 00, FD, 01, FE, 02, FE, 01, FC, 00, FD, 01, FF, 00, FE, 02, FF, FE, FE, 03, FE, 00, FE, 01, 00, 00, FF, 00, FC, 01, FC, 02, FC, 01, FE, 01, FE, FF, FE, 00, FE, 02, FE, 02, FE, 00, 00, FF, FF, 02, 00, FF, FE, FF, FD, 01, FE, 01, FD, 01, FF, 02, FF, 01, 00, 01, FF, FF, FD, 02, FE, 04, FF, 00, FF, 01, FF, 02, FC, 01, FF, 00, FE, 01, FD, FF, FD, 00, FB, FF, FF, 02, FE, 00, FF, 02, FE, 00, FF]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [03, FF, 00, FD, 01, FE, 02, FE, 01, FC, 00, FD, 01, FF, 00, FE, 02, FF, FE, FE, 03, FE, 00, FE, 01, 00, 00, FF, 00, FC, 01, FC, 02, FC, 01, FE, 01, FE, FF, FE, 00, FE, 02, FE, 02, FE, 00, 00, FF, FF, 02, 00, FF, FE, FF, FD, 01, FE, 01, FD, 01, FF, 02, FF, 01, 00, 01, FF, FF, FD, 02, FE, 04, FF, 00, FF, 01, FF, 02, FC, 01, FF, 00, FE, 01, FD, FF, FD, 00, FB, FF, FF, 02, FE, 00, FF, 02, FE, 00, FF]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC F84D and 512 data bytes: [03, FF, 00, FD, 01, FE, 02, FE, 01, FC, 00, FD, 01, FF, 00, FE, 02, FF, FE, FE, 03, FE, 00, FE, 01, 00, 00, FF, 00, FC, 01, FC, 02, FC, 01, FE, 01, FE, FF, FE, 00, FE, 02, FE, 02, FE, 00, 00, FF, FF, 02, 00, FF, FE, FF, FD, 01, FE, 01, FD, 01, FF, 02, FF, 01, 00, 01, FF, FF, FD, 02, FE, 04, FF, 00, FF, 01, FF, 02, FC, 01, FF, 00, FE, 01, FD, FF, FD, 00, FB, FF, FF, 02, FE, 00, FF, 02, FE, 00, FF]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, FD, 01, FE, 01, FF, 02, FE, FE, FE, 01, FE, 00, FE, 00, FD, 02, FD, 03, FE, 01, FF, 01, FC, 01, FD, 00, FD, 00, FD, FF, FC, 00, FF, 00, FD, FF, FF, 00, FD, 02, FD, FF, FF, 03, FE, 02, FE, 00, FE, FF, FF, 00, FD, 01, FF, 02, FD, 00, FC, 01, FE, 03, FF, 00, FD, 01, FD, FF, FE, 02, FE, FF, FC, 01, FD, 02, FE, 03, FD, FE, FE, 00, FD, 00, FD, 01, FD, 01, FD, 01, FE, 01, 00, 01, FD, 01, FF, 00, FD]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, FD, 01, FE, 01, FF, 02, FE, FE, FE, 01, FE, 00, FE, 00, FD, 02, FD, 03, FE, 01, FF, 01, FC, 01, FD, 00, FD, 00, FD, FF, FC, 00, FF, 00, FD, FF, FF, 00, FD, 02, FD, FF, FF, 03, FE, 02, FE, 00, FE, FF, FF, 00, FD, 01, FF, 02, FD, 00, FC, 01, FE, 03, FF, 00, FD, 01, FD, FF, FE, 02, FE, FF, FC, 01, FD, 02, FE, 03, FD, FE, FE, 00, FD, 00, FD, 01, FD, 01, FD, 01, FE, 01, 00, 01, FD, 01, FF, 00, FD]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC 2E1A and 512 data bytes: [01, FD, 01, FE, 01, FF, 02, FE, FE, FE, 01, FE, 00, FE, 00, FD, 02, FD, 03, FE, 01, FF, 01, FC, 01, FD, 00, FD, 00, FD, FF, FC, 00, FF, 00, FD, FF, FF, 00, FD, 02, FD, FF, FF, 03, FE, 02, FE, 00, FE, FF, FF, 00, FD, 01, FF, 02, FD, 00, FC, 01, FE, 03, FF, 00, FD, 01, FD, FF, FE, 02, FE, FF, FC, 01, FD, 02, FE, 03, FD, FE, FE, 00, FD, 00, FD, 01, FD, 01, FD, 01, FE, 01, 00, 01, FD, 01, FF, 00, FD]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [00, FD, 00, FF, 01, FD, 01, FF, 01, FE, 00, FD, 01, FD, 01, FC, FF, FD, 01, 00, FF, FD, 00, FE, 00, FD, 02, FD, 01, FD, 01, FF, 02, FD, 02, FE, 02, FE, 01, FD, 00, FE, 00, FD, 00, FC, 02, FC, 01, FF, 01, FD, 01, FE, 01, FD, 02, FF, FC, FE, FF, FD, FF, FE, 01, FE, 00, FD, 02, FD, 00, FE, 00, FE, 00, FC, 00, FE, 00, FD, 01, FD, 01, FF, 00, FD, 01, 00, 00, FB, 01, FE, 01, FE, 02, FF, 01, FE, 01, FD]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [00, FD, 00, FF, 01, FD, 01, FF, 01, FE, 00, FD, 01, FD, 01, FC, FF, FD, 01, 00, FF, FD, 00, FE, 00, FD, 02, FD, 01, FD, 01, FF, 02, FD, 02, FE, 02, FE, 01, FD, 00, FE, 00, FD, 00, FC, 02, FC, 01, FF, 01, FD, 01, FE, 01, FD, 02, FF, FC, FE, FF, FD, FF, FE, 01, FE, 00, FD, 02, FD, 00, FE, 00, FE, 00, FC, 00, FE, 00, FD, 01, FD, 01, FF, 00, FD, 01, 00, 00, FB, 01, FE, 01, FE, 02, FF, 01, FE, 01, FD]...
   IN packet on 7.1, CRC 1B
   DATA1 packet with CRC D137 and 512 data bytes: [00, FD, 00, FF, 01, FD, 01, FF, 01, FE, 00, FD, 01, FD, 01, FC, FF, FD, 01, 00, FF, FD, 00, FE, 00, FD, 02, FD, 01, FD, 01, FF, 02, FD, 02, FE, 02, FE, 01, FD, 00, FE, 00, FD, 00, FC, 02, FC, 01, FF, 01, FD, 01, FE, 01, FD, 02, FF, FC, FE, FF, FD, FF, FE, 01, FE, 00, FD, 02, FD, 00, FE, 00, FE, 00, FC, 00, FE, 00, FD, 01, FD, 01, FF, 00, FD, 01, 00, 00, FB, 01, FE, 01, FE, 02, FF, 01, FE, 01, FD]...
   ACK packet
- IN transaction with 512 data bytes, ACK: [01, FE, 00, FD, 01, FE, 00, FC, 02, FE, FF, FF, FF, FE, 01, FF, 03, FF, 02, FE, 02, FF, 01, FD, 02, FE, FE, FD, 00, FD, FF, FE, 01, FE, 02, FE, FF, FE, FF, FF, 01, FD, 00, FE, FE, FE, 00, FE, 00, FC, 02, FD, 01, FD, 00, FD, 01, FE, 03, FC, 00, FB, 00, FC, 02, FF, 02, FD, FF, FD, FF, FB, 01, FE, 01, FD, 01, FE, FE, FD, 00, FE, 01, FD, 01, FE, 01, FE, 02, FF, 01, FE, 03, FE, 01, FD, 01, FC, 01, FE]...
+ IN transaction on 7.1 with 512 data bytes, ACK: [01, FE, 00, FD, 01, FE, 00, FC, 02, FE, FF, FF, FF, FE, 01, FF, 03, FF, 02, FE, 02, FF, 01, FD, 02, FE, FE, FD, 00, FD, FF, FE, 01, FE, 02, FE, FF, FE, FF, FF, 01, FD, 00, FE, FE, FE, 00, FE, 00, FC, 02, FD, 01, FD, 00, FD, 01, FE, 03, FC, 00, FB, 00, FC, 02, FF, 02, FD, FF, FD, FF, FB, 01, FE, 01, FD, 01, FE, FE, FD, 00, FE, 01, FD, 01, FE, 01, FE, 02, FF, 01, FE, 03, FE, 01, FD, 01, FC, 01, FE]...
   IN packet on 7.1, CRC 1B
   DATA0 packet with CRC E4DA and 512 data bytes: [01, FE, 00, FD, 01, FE, 00, FC, 02, FE, FF, FF, FF, FE, 01, FF, 03, FF, 02, FE, 02, FF, 01, FD, 02, FE, FE, FD, 00, FD, FF, FE, 01, FE, 02, FE, FF, FE, FF, FF, 01, FD, 00, FE, FE, FE, 00, FE, 00, FC, 02, FD, 01, FD, 00, FD, 01, FE, 03, FC, 00, FB, 00, FC, 02, FF, 02, FD, FF, FD, FF, FB, 01, FE, 01, FD, 01, FE, FE, FD, 00, FE, 01, FD, 01, FE, 01, FE, 02, FF, 01, FE, 03, FE, 01, FD, 01, FC, 01, FE]...
   ACK packet
 Polling 193 times for unidentified transfer on endpoint 7.1 IN
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
- IN transaction, NAK
+ IN transaction on 7.1, NAK
   IN packet on 7.1, CRC 1B
   NAK packet
