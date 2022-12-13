@@ -1,0 +1,7 @@
+emf2022-badge
+hackrf-connect
+hackrf-dfu-enum
+hackrf-restart-failure
+mouse
+split-enum
+split-poll
