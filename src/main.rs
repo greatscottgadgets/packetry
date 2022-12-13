@@ -49,7 +49,7 @@ use pcap_file::{
 
 use backend::luna::{LunaDevice, LunaStop, Speed};
 use model::{GenericModel, TrafficModel, DeviceModel};
-use row_data::{GenericRowData, TrafficRowData, DeviceRowData};
+use row_data::{GenericRowData, ToGenericRowData, TrafficRowData, DeviceRowData};
 use expander::ExpanderWrapper;
 use tree_list_model::ModelError;
 
@@ -102,21 +102,44 @@ struct UserInterface {
     capture_button: Button,
     stop_button: Button,
     speed_dropdown: DropDown,
+    #[cfg(feature="record-ui-test")]
+    recording: Rc<RefCell<Recording>>,
 }
+
+#[cfg(feature="record-ui-test")]
+mod record_ui;
+
+#[cfg(feature="record-ui-test")]
+use {
+    std::rc::Rc,
+    crate::record_ui::Recording,
+};
+
+#[cfg(feature="record-ui-test")]
+static UPDATE_LOCK: Mutex<()> = Mutex::new(());
 
 thread_local!(
     static WINDOW: RefCell<Option<ApplicationWindow>> = RefCell::new(None);
     static UI: RefCell<Option<UserInterface>> = RefCell::new(None);
 );
 
-fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
+fn create_view<Item: 'static, Model, RowData>(
+        capture: &Arc<Mutex<Capture>>,
+        #[cfg(feature="record-ui-test")]
+        recording_args: (&Rc<RefCell<Recording>>, &'static str))
     -> (Model, ListView)
     where
         Item: Copy,
         Model: GenericModel<Item> + IsA<ListModel> + IsA<Object>,
         RowData: GenericRowData<Item> + IsA<Object>,
-        Capture: ItemSource<Item>
+        Capture: ItemSource<Item>,
+        Object: ToGenericRowData<Item>
 {
+    #[cfg(feature="record-ui-test")]
+    let (name, expand_rec, changed_rec) = {
+        let (recording, name) = recording_args;
+        (name, recording.clone(), recording.clone())
+    };
     let model = Model::new(capture.clone())
                       .expect("Failed to create model");
     let bind_model = model.clone();
@@ -155,9 +178,14 @@ fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
                 let model = bind_model.clone();
                 let node_ref = node_ref.clone();
                 let list_item = list_item.clone();
+                #[cfg(feature="record-ui-test")]
+                let recording = expand_rec.clone();
                 let handler = expander.connect_expanded_notify(move |expander| {
                     let position = list_item.position();
                     let expanded = expander.is_expanded();
+                    #[cfg(feature="record-ui-test")]
+                    recording.borrow_mut().log_item_expanded(
+                        name, position, expanded);
                     display_error(
                         model.set_expanded(&node_ref, position, expanded)
                             .map_err(PacketryError::Model))
@@ -201,6 +229,11 @@ fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
     factory.connect_unbind(move |_, item| display_error(unbind(item)));
 
     let view = ListView::new(Some(&selection_model), Some(&factory));
+
+    #[cfg(feature="record-ui-test")]
+    model.connect_items_changed(move |model, position, removed, added|
+        changed_rec.borrow_mut().log_items_changed(
+            name, model, position, removed, added));
 
     (model, view)
 }
@@ -303,9 +336,12 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
     open_button.connect_clicked(|_| display_error(choose_file(Load)));
     save_button.connect_clicked(|_| display_error(choose_file(Save)));
 
-    UI.with(|cell|
+    UI.with(|cell| {
         cell.borrow_mut().replace(
             UserInterface {
+                #[cfg(feature="record-ui-test")]
+                recording: Rc::new(RefCell::new(
+                    Recording::new(capture.clone()))),
                 capture,
                 stop_handle: None,
                 traffic_window,
@@ -323,7 +359,7 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
                 speed_dropdown,
             }
         )
-    );
+    });
 
     reset_capture()?;
 
@@ -352,9 +388,17 @@ fn reset_capture() -> Result<(), PacketryError> {
     let capture = Arc::new(Mutex::new(Capture::new()?));
     with_ui(|ui| {
         let (traffic_model, traffic_view) =
-            create_view::<TrafficItem, TrafficModel, TrafficRowData>(&capture);
+            create_view::<TrafficItem, TrafficModel, TrafficRowData>(
+                &capture,
+                #[cfg(feature="record-ui-test")]
+                (&ui.recording, "traffic")
+            );
         let (device_model, device_view) =
-            create_view::<DeviceItem, DeviceModel, DeviceRowData>(&capture);
+            create_view::<DeviceItem, DeviceModel, DeviceRowData>(
+                &capture,
+                #[cfg(feature="record-ui-test")]
+                (&ui.recording, "devices")
+            );
         ui.capture = capture;
         ui.traffic_model = Some(traffic_model);
         ui.device_model = Some(device_model);
@@ -370,6 +414,18 @@ fn update_view() -> Result<(), PacketryError> {
     use FileAction::*;
     with_ui(|ui| {
         use PacketryError::Lock;
+        #[cfg(feature="record-ui-test")]
+        let guard = {
+            let guard = UPDATE_LOCK.lock();
+            let packet_count = ui.capture
+                .lock()
+                .or(Err(Lock))?
+                .packet_index.len();
+            ui.recording
+                .borrow_mut()
+                .log_update(packet_count);
+            guard
+        };
         let mut more_updates = false;
         if ui.show_progress == Some(Save) {
             more_updates = true;
@@ -414,6 +470,8 @@ fn update_view() -> Result<(), PacketryError> {
                 || display_error(update_view())
             );
         }
+        #[cfg(feature="record-ui-test")]
+        drop(guard);
         Ok(())
     })
 }
@@ -458,6 +516,8 @@ fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), PacketryError> {
         reset_capture()?;
     }
     with_ui(|ui| {
+        #[cfg(feature="record-ui-test")]
+        ui.recording.borrow_mut().log_open_file(&path, &ui.capture);
         ui.open_button.set_sensitive(false);
         ui.save_button.set_sensitive(false);
         ui.capture_button.set_sensitive(false);
@@ -487,8 +547,12 @@ fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), PacketryError> {
                         client.read(&mut buf).unwrap();
                     };
                     let packet = result?;
+                    #[cfg(feature="record-ui-test")]
+                    let guard = UPDATE_LOCK.lock();
                     let mut cap = capture.lock().or(Err(Lock))?;
                     decoder.handle_raw_packet(&mut cap, &packet.data)?;
+                    #[cfg(feature="record-ui-test")]
+                    drop(guard);
                     let size = 16 + packet.data.len();
                     bytes_read += size as u64;
                     CURRENT.store(bytes_read, Ordering::Relaxed);

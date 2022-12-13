@@ -91,7 +91,7 @@ struct RootNode<Item> {
 
 pub struct ItemNode<Item> {
     /// The item at this tree node.
-    item: Item,
+    pub item: Item,
 
     /// Parent of this node in the tree.
     parent: Weak<RefCell<dyn Node<Item>>>,

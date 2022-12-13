@@ -6,7 +6,7 @@
 
 mod imp;
 
-use gtk::glib;
+use gtk::glib::{self, Cast};
 use gtk::subclass::prelude::*;
 
 use crate::capture::{TrafficItem, DeviceItem};
@@ -22,7 +22,7 @@ glib::wrapper! {
 }
 
 pub trait GenericRowData<Item> where Item: Copy {
-    fn new(node: Result<ItemNodeRc<Item>, String>) -> Self;
+    fn new(node: Result<ItemNodeRc<Item>, String>) -> Self where Self: Sized;
     fn node(&self) -> Result<ItemNodeRc<Item>, String>;
 }
 
@@ -49,5 +49,21 @@ impl GenericRowData<DeviceItem> for DeviceRowData {
 
     fn node(&self) -> Result<ItemNodeRc<DeviceItem>, String> {
         self.imp().node.borrow().as_ref().unwrap().clone()
+    }
+}
+
+pub trait ToGenericRowData<Item> {
+    fn to_generic_row_data(self) -> Box<dyn GenericRowData<Item>>;
+}
+
+impl ToGenericRowData<TrafficItem> for glib::Object {
+    fn to_generic_row_data(self) -> Box<dyn GenericRowData<TrafficItem>> {
+        Box::new(self.downcast::<TrafficRowData>().unwrap())
+    }
+}
+
+impl ToGenericRowData<DeviceItem> for glib::Object {
+    fn to_generic_row_data(self) -> Box<dyn GenericRowData<DeviceItem>> {
+        Box::new(self.downcast::<DeviceRowData>().unwrap())
     }
 }
