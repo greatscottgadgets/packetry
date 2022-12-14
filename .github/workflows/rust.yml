@@ -72,9 +72,9 @@ jobs:
           args: --release --all-features
 
       - name: Test
-        uses: actions-rs/cargo@v1
+        uses: GabrielBB/xvfb-action@v1
         with:
-          command: test
+          run: cargo test
 
       - uses: actions/upload-artifact@v2
         with:
