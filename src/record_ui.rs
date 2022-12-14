@@ -37,6 +37,7 @@ impl std::fmt::Display for UiAction {
 
 pub struct Recording {
     capture: Arc<Mutex<Capture>>,
+    packet_count: u64,
     #[cfg(feature="record-ui-test")]
     action_log: File,
     #[cfg(feature="record-ui-test")]
@@ -50,6 +51,7 @@ impl Recording {
     pub fn new(capture: Arc<Mutex<Capture>>) -> Recording {
         Recording {
             capture,
+            packet_count: 0,
             #[cfg(feature="record-ui-test")]
             action_log: File::options()
                 .write(true)
@@ -107,11 +109,15 @@ impl Recording {
     {
         self.log_action(UiAction::Open(path.clone()));
         self.capture = capture.clone();
+        self.packet_count = 0;
         self.view_items.clear()
     }
 
     pub fn log_update(&mut self, packet_count: u64) {
-        self.log_action(UiAction::Update(packet_count));
+        if packet_count > self.packet_count {
+            self.log_action(UiAction::Update(packet_count));
+            self.packet_count = packet_count;
+        }
     }
 
     pub fn log_item_expanded(
