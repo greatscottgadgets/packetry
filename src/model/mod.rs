@@ -4,7 +4,7 @@ mod imp;
 
 use std::sync::{Arc, Mutex};
 
-#[cfg(any(test, feature="record-ui-test"))]
+#[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
 use {
     std::cell::RefCell,
     std::rc::Rc,
@@ -26,7 +26,7 @@ glib::wrapper! {
 
 pub trait GenericModel<Item> where Self: Sized {
     fn new(capture: Arc<Mutex<Capture>>,
-           #[cfg(any(test, feature="record-ui-test"))]
+           #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
            on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>)
         -> Result<Self, ModelError>;
     fn set_expanded(&self,
@@ -39,7 +39,7 @@ pub trait GenericModel<Item> where Self: Sized {
 
 impl GenericModel<TrafficItem> for TrafficModel {
     fn new(capture: Arc<Mutex<Capture>>,
-           #[cfg(any(test, feature="record-ui-test"))]
+           #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
            on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>)
         -> Result<Self, ModelError>
     {
@@ -47,7 +47,7 @@ impl GenericModel<TrafficItem> for TrafficModel {
             glib::Object::new(&[]).expect("Failed to create TrafficModel");
         let tree = TreeListModel::new(
             capture,
-            #[cfg(any(test, feature="record-ui-test"))]
+            #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
             on_item_update)?;
         model.imp().tree.replace(Some(tree));
         Ok(model)
@@ -73,7 +73,7 @@ impl GenericModel<TrafficItem> for TrafficModel {
 
 impl GenericModel<DeviceItem> for DeviceModel {
     fn new(capture: Arc<Mutex<Capture>>,
-           #[cfg(any(test, feature="record-ui-test"))]
+           #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
            on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>)
         -> Result<Self, ModelError>
     {
@@ -81,7 +81,7 @@ impl GenericModel<DeviceItem> for DeviceModel {
             glib::Object::new(&[]).expect("Failed to create DeviceModel");
         let tree = TreeListModel::new(
             capture,
-            #[cfg(any(test, feature="record-ui-test"))]
+            #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
             on_item_update)?;
         model.imp().tree.replace(Some(tree));
         Ok(model)

@@ -32,3 +32,10 @@ itertools = "0.10.5"
 [features]
 step-decoder = []
 record-ui-test = ["serde", "serde_json"]
+test-ui-replay = ["serde", "serde_json"]
+
+[[test]]
+name = "test_replay"
+path = "src/test_replay.rs"
+harness = false
+required-features = ["test-ui-replay"]

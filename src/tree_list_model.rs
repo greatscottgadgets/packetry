@@ -290,7 +290,7 @@ pub struct TreeListModel<Item, Model, RowData> {
     _marker: PhantomData<(Model, RowData)>,
     capture: Arc<Mutex<Capture>>,
     root: Rc<RefCell<RootNode<Item>>>,
-    #[cfg(any(test, feature="record-ui-test"))]
+    #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
     on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>,
 }
 
@@ -301,7 +301,7 @@ where Item: 'static + Copy,
       Capture: ItemSource<Item>
 {
     pub fn new(capture: Arc<Mutex<Capture>>,
-               #[cfg(any(test, feature="record-ui-test"))]
+               #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
                on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>)
         -> Result<Self, ModelError>
     {
@@ -315,7 +315,7 @@ where Item: 'static + Copy,
                 children: Children::new(child_count),
                 complete: matches!(completion, CompletionStatus::Complete),
             })),
-            #[cfg(any(test, feature="record-ui-test"))]
+            #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
             on_item_update,
         })
     }
@@ -431,7 +431,7 @@ where Item: 'static + Copy,
             if item_updated {
                 // The node's description may change.
                 let summary = cap.summary(&item_node.item)?;
-                #[cfg(any(test, feature="record-ui-test"))]
+                #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
                 (self.on_item_update.borrow_mut())(position, summary.clone());
                 for widget in item_node.widgets.borrow().iter() {
                     widget.set_text(summary.clone());
