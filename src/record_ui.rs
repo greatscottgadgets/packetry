@@ -130,6 +130,26 @@ impl Recording {
         self.log_action(UiAction::SetExpanded(name, position, expanded));
     }
 
+    pub fn log_item_updated(
+        &mut self,
+        name: &str,
+        position: u32,
+        new_summary: String)
+    {
+        let items = self.view_items
+            .get(name)
+            .expect("Recording has no items for model");
+        let old_summary = items
+            .get(position as usize)
+            .expect("Recording has no summary for row")
+            .clone();
+        if new_summary != old_summary {
+            self.log_output(format!("At {} row {}:\n", name, position));
+            self.log_output(format!("- {}\n", old_summary));
+            self.log_output(format!("+ {}\n", new_summary));
+        }
+    }
+
     pub fn log_items_changed<Model, Item>(
         &mut self,
         name: &str,

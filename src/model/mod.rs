@@ -4,6 +4,12 @@ mod imp;
 
 use std::sync::{Arc, Mutex};
 
+#[cfg(any(test, feature="record-ui-test"))]
+use {
+    std::cell::RefCell,
+    std::rc::Rc,
+};
+
 use gtk::subclass::prelude::*;
 use gtk::{gio, glib};
 
@@ -19,7 +25,10 @@ glib::wrapper! {
 }
 
 pub trait GenericModel<Item> where Self: Sized {
-    fn new(capture: Arc<Mutex<Capture>>) -> Result<Self, ModelError>;
+    fn new(capture: Arc<Mutex<Capture>>,
+           #[cfg(any(test, feature="record-ui-test"))]
+           on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>)
+        -> Result<Self, ModelError>;
     fn set_expanded(&self,
                     node: &ItemNodeRc<Item>,
                     position: u32,
@@ -29,10 +38,17 @@ pub trait GenericModel<Item> where Self: Sized {
 }
 
 impl GenericModel<TrafficItem> for TrafficModel {
-    fn new(capture: Arc<Mutex<Capture>>) -> Result<Self, ModelError> {
+    fn new(capture: Arc<Mutex<Capture>>,
+           #[cfg(any(test, feature="record-ui-test"))]
+           on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>)
+        -> Result<Self, ModelError>
+    {
         let model: TrafficModel =
             glib::Object::new(&[]).expect("Failed to create TrafficModel");
-        let tree = TreeListModel::new(capture)?;
+        let tree = TreeListModel::new(
+            capture,
+            #[cfg(any(test, feature="record-ui-test"))]
+            on_item_update)?;
         model.imp().tree.replace(Some(tree));
         Ok(model)
     }
@@ -56,10 +72,17 @@ impl GenericModel<TrafficItem> for TrafficModel {
 }
 
 impl GenericModel<DeviceItem> for DeviceModel {
-    fn new(capture: Arc<Mutex<Capture>>) -> Result<Self, ModelError> {
+    fn new(capture: Arc<Mutex<Capture>>,
+           #[cfg(any(test, feature="record-ui-test"))]
+           on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>)
+        -> Result<Self, ModelError>
+    {
         let model: DeviceModel =
             glib::Object::new(&[]).expect("Failed to create DeviceModel");
-        let tree = TreeListModel::new(capture)?;
+        let tree = TreeListModel::new(
+            capture,
+            #[cfg(any(test, feature="record-ui-test"))]
+            on_item_update)?;
         model.imp().tree.replace(Some(tree));
         Ok(model)
     }

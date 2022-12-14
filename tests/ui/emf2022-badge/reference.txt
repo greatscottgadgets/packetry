@@ -41,6 +41,12 @@ At devices row 0:
 + Device 1: USB JTAG/serial debug unit\u{0}
 + Device 2: TiDAL
 Updating after 4406 packets decoded
+At traffic row 0:
+- 209 SOF groups
++ 278 SOF groups
+At traffic row 35:
+- Polling 194 times for interrupt transfer on endpoint 2.3 IN
++ Polling 263 times for interrupt transfer on endpoint 2.3 IN
 Expanding devices view, row 0
 At devices row 1:
 + Device descriptor

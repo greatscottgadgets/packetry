@@ -290,6 +290,8 @@ pub struct TreeListModel<Item, Model, RowData> {
     _marker: PhantomData<(Model, RowData)>,
     capture: Arc<Mutex<Capture>>,
     root: Rc<RefCell<RootNode<Item>>>,
+    #[cfg(any(test, feature="record-ui-test"))]
+    on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>,
 }
 
 impl<Item, Model, RowData> TreeListModel<Item, Model, RowData>
@@ -298,7 +300,11 @@ where Item: 'static + Copy,
       RowData: GenericRowData<Item> + IsA<Object> + Cast,
       Capture: ItemSource<Item>
 {
-    pub fn new(capture: Arc<Mutex<Capture>>) -> Result<Self, ModelError> {
+    pub fn new(capture: Arc<Mutex<Capture>>,
+               #[cfg(any(test, feature="record-ui-test"))]
+               on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>)
+        -> Result<Self, ModelError>
+    {
         let mut cap = capture.lock().or(Err(ModelError::LockError))?;
         let (completion, item_count) = cap.item_children(None)?;
         let child_count = u32::try_from(item_count)?;
@@ -309,6 +315,8 @@ where Item: 'static + Copy,
                 children: Children::new(child_count),
                 complete: matches!(completion, CompletionStatus::Complete),
             })),
+            #[cfg(any(test, feature="record-ui-test"))]
+            on_item_update,
         })
     }
 
@@ -423,6 +431,8 @@ where Item: 'static + Copy,
             if item_updated {
                 // The node's description may change.
                 let summary = cap.summary(&item_node.item)?;
+                #[cfg(any(test, feature="record-ui-test"))]
+                (self.on_item_update.borrow_mut())(position, summary.clone());
                 for widget in item_node.widgets.borrow().iter() {
                     widget.set_text(summary.clone());
                     // If there were no previous children, the row was not

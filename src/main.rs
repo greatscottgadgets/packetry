@@ -140,12 +140,21 @@ fn create_view<Item: 'static, Model, RowData>(
         Object: ToGenericRowData<Item>
 {
     #[cfg(any(test, feature="record-ui-test"))]
-    let (name, expand_rec, changed_rec) = {
+    let (name, expand_rec, update_rec, changed_rec) = {
         let (recording, name) = recording_args;
-        (name, recording.clone(), recording.clone())
+        (name, recording.clone(), recording.clone(), recording.clone())
     };
-    let model = Model::new(capture.clone())
-                      .expect("Failed to create model");
+    let model = Model::new(
+        capture.clone(),
+        #[cfg(any(test, feature="record-ui-test"))]
+        Rc::new(
+            RefCell::new(
+                move |position, summary|
+                    update_rec
+                        .borrow_mut()
+                        .log_item_updated(name, position, summary)
+            )
+        )).expect("Failed to create model");
     let bind_model = model.clone();
     let cap_arc = capture.clone();
     let selection_model = SingleSelection::new(Some(&model));
