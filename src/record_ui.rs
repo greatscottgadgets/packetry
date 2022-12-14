@@ -37,8 +37,12 @@ impl std::fmt::Display for UiAction {
 
 pub struct Recording {
     capture: Arc<Mutex<Capture>>,
+    #[cfg(feature="record-ui-test")]
     action_log: File,
+    #[cfg(feature="record-ui-test")]
     output_log: File,
+    #[cfg(test)]
+    output_log: Option<File>,
     view_items: HashMap<String, Vec<String>>,
 }
 
@@ -46,23 +50,33 @@ impl Recording {
     pub fn new(capture: Arc<Mutex<Capture>>) -> Recording {
         Recording {
             capture,
+            #[cfg(feature="record-ui-test")]
             action_log: File::options()
                 .write(true)
                 .create(true)
                 .truncate(true)
                 .open("actions.json")
                 .expect("Failed to open UI action log file"),
+            #[cfg(feature="record-ui-test")]
             output_log: File::options()
                 .write(true)
                 .create(true)
                 .truncate(true)
                 .open("output.txt")
                 .expect("Failed to open UI output log file"),
+            #[cfg(test)]
+            output_log: None,
             view_items: HashMap::new(),
         }
     }
 
+    #[cfg(test)]
+    pub fn set_output(&mut self, file: File) {
+        self.output_log = Some(file)
+    }
+
     fn log_action(&mut self, action: UiAction) {
+        #[cfg(feature="record-ui-test")]
         self.action_log
             .write_all(
                 format!("{}\n",
@@ -75,7 +89,14 @@ impl Recording {
     }
 
     fn log_output(&mut self, string: String) {
-        self.output_log
+        #[cfg(feature="record-ui-test")]
+        let output_log = &mut self.output_log;
+        #[cfg(test)]
+        let output_log = self.output_log
+            .as_mut()
+            .expect("Recording has no output file set");
+
+        output_log
             .write_all(string.as_bytes())
             .expect("Failed to write to UI output log");
     }
