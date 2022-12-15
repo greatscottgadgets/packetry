@@ -211,14 +211,14 @@ pub type EndpointId = Id<Endpoint>;
 pub type EndpointByteCount = u64;
 pub type DeviceVersion = u32;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum TrafficItem {
     Transfer(TransferId),
     Transaction(TransferId, TransactionId),
     Packet(TransferId, TransactionId, PacketId),
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum DeviceItem {
     Device(DeviceId, DeviceVersion),
     DeviceDescriptor(DeviceId),
