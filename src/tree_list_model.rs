@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashSet};
+use std::collections::btree_map::Entry;
 use std::marker::PhantomData;
 use std::num::TryFromIntError;
 use std::rc::{Rc, Weak};
@@ -10,6 +11,7 @@ use gtk::prelude::{IsA, Cast, WidgetExt};
 use gtk::glib::Object;
 use gtk::gio::prelude::ListModelExt;
 
+use itertools::Itertools;
 use thiserror::Error;
 
 use crate::capture::{Capture, CaptureError, ItemSource, CompletionStatus};
@@ -27,8 +29,13 @@ pub enum ModelError {
     LockError,
     #[error("Node references a dropped parent")]
     ParentDropped,
+    #[error("Internal error: {0}")]
+    InternalError(String),
 }
 
+use ModelError::InternalError;
+
+type RootNodeRc<Item> = Rc<RefCell<RootNode<Item>>>;
 pub type ItemNodeRc<Item> = Rc<RefCell<ItemNode<Item>>>;
 pub type ItemNodeWeak<Item> = Weak<RefCell<ItemNode<Item>>>;
 type AnyNodeRc<Item> = Rc<RefCell<dyn Node<Item>>>;
@@ -220,12 +227,12 @@ impl<Item> Node<Item> for ItemNode<Item> where Item: Copy {
     }
 }
 
-trait NodeRcOps<Item> {
+trait UpdateTotal<Item> {
     fn update_total(&self, expanded: bool, rows_affected: u32)
         -> Result<(), ModelError>;
 }
 
-impl<T, Item> NodeRcOps<Item> for Rc<RefCell<T>>
+impl<T, Item> UpdateTotal<Item> for Rc<RefCell<T>>
 where T: Node<Item> + 'static, Item: Copy + 'static
 {
     fn update_total(&self, expanded: bool, rows_affected: u32)
@@ -244,6 +251,26 @@ where T: Node<Item> + 'static, Item: Copy + 'static
             node_rc = parent_rc;
         }
         Ok(())
+    }
+}
+
+trait NodeRcOps<Item>: UpdateTotal<Item> {
+    fn source(&self) -> Source<Item>;
+}
+
+impl<Item> NodeRcOps<Item> for RootNodeRc<Item>
+where Item: Copy + 'static
+{
+    fn source(&self) -> Source<Item> {
+        TopLevelItems()
+    }
+}
+
+impl<Item> NodeRcOps<Item> for ItemNodeRc<Item>
+where Item: Copy + 'static
+{
+    fn source(&self) -> Source<Item> {
+        ChildrenOf(self.clone())
     }
 }
 
@@ -286,10 +313,52 @@ impl<Item> ItemNode<Item> where Item: Copy {
     }
 }
 
+#[derive(Clone)]
+enum Source<Item> {
+    TopLevelItems(),
+    ChildrenOf(ItemNodeRc<Item>),
+}
+
+use Source::*;
+
+#[derive(Clone)]
+struct Region<Item> {
+    source: Source<Item>,
+    offset: u32,
+    length: u32,
+}
+
+impl<Item> Region<Item> where Item: Clone {
+    fn merge(
+        region_a: &Region<Item>,
+        region_b: &Region<Item>
+    ) -> Option<Region<Item>> {
+        match (&region_a.source, &region_b.source) {
+            (ChildrenOf(a_ref), ChildrenOf(b_ref))
+                if Rc::ptr_eq(a_ref, b_ref) => Some(
+                    Region {
+                        source: region_a.source.clone(),
+                        offset: region_a.offset,
+                        length: region_a.length + region_b.length,
+                    }
+                ),
+            (TopLevelItems(), TopLevelItems()) => Some(
+                Region {
+                    source: TopLevelItems(),
+                    offset: region_a.offset,
+                    length: region_a.length + region_b.length,
+                }
+            ),
+            (..) => None,
+        }
+    }
+}
+
 pub struct TreeListModel<Item, Model, RowData> {
     _marker: PhantomData<(Model, RowData)>,
     capture: Arc<Mutex<Capture>>,
-    root: Rc<RefCell<RootNode<Item>>>,
+    root: RootNodeRc<Item>,
+    regions: RefCell<BTreeMap<u32, Region<Item>>>,
     #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
     on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>,
 }
@@ -315,12 +384,12 @@ where Item: 'static + Copy,
                 children: Children::new(child_count),
                 complete: matches!(completion, CompletionStatus::Complete),
             })),
+            regions: RefCell::new(BTreeMap::new()),
             #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
             on_item_update,
         })
     }
 
-    #[allow(clippy::only_used_in_recursion)]
     pub fn set_expanded(&self,
                         model: &Model,
                         node_ref: &ItemNodeRc<Item>,
@@ -349,13 +418,21 @@ where Item: 'static + Copy,
         // The children of this node appear after its own row.
         let children_position = position + 1;
 
-        // If collapsing, first recursively collapse the children of this node.
-        if !expanded {
+        if expanded {
+            // Update the region map for the added children.
+            self.expand(children_position, node_ref)?;
+        } else {
+            // If collapsing, first recursively collapse children of this node.
             for (index, child_ref) in expanded_children {
                 let child_position = children_position + index;
                 self.set_expanded(model, &child_ref, child_position, false)?;
             }
+            // Update the region map for the removed children.
+            self.collapse(children_position, node_ref)?;
         }
+
+        // Merge adjacent regions with the same source.
+        self.merge_regions();
 
         // Add or remove this node from the parent's expanded children.
         parent_rc
@@ -376,6 +453,188 @@ where Item: 'static + Copy,
         Ok(())
     }
 
+    fn expand(&self, position: u32, node_ref: &ItemNodeRc<Item>)
+        -> Result<(), ModelError>
+    {
+        // Find the start of the parent region.
+        let (&parent_start, _) = self.regions
+            .borrow()
+            .range(..position)
+            .next_back()
+            .ok_or_else(||
+                InternalError(format!(
+                    "No region before position {position}")))?;
+
+        // Find position of the new region relative to its parent.
+        let relative_position = position - parent_start;
+
+        // Remove the parent region.
+        let parent = self.regions
+            .borrow_mut()
+            .remove(&parent_start)
+            .ok_or_else(||
+                InternalError(format!(
+                    "Parent not found at position {parent_start}")))?;
+
+        // Remove all following regions, to iterate over later.
+        let following_regions = self.regions
+            .borrow_mut()
+            .split_off(&parent_start)
+            .into_iter();
+
+        // Split the parent region and construct a new region between.
+        let rows_added = self.split_parent(parent_start, &parent, node_ref,
+            vec![Region {
+                source: parent.source.clone(),
+                offset: parent.offset,
+                length: relative_position,
+            }],
+            Region {
+                source: ChildrenOf(node_ref.clone()),
+                offset: 0,
+                length: node_ref.borrow().children.direct_count,
+            },
+            vec![Region {
+                source: parent.source.clone(),
+                offset: parent.offset + relative_position,
+                length: parent.length - relative_position,
+            }]
+        )?;
+
+        // Shift all remaining regions down by the added rows.
+        for (start, region) in following_regions {
+            self.insert_region(start + rows_added, region)?;
+        }
+
+        Ok(())
+    }
+
+    fn collapse(&self, position: u32, node_ref: &ItemNodeRc<Item>)
+        -> Result<(), ModelError>
+    {
+        // Clone the region starting at this position.
+        let region = self.regions
+            .borrow()
+            .get(&position)
+            .ok_or_else(||
+                InternalError(format!(
+                    "No region to delete at position {position}")))?
+            .clone();
+
+        // Remove it with following regions, to iterate over and replace them.
+        let mut following_regions = self.regions
+            .borrow_mut()
+            .split_off(&position)
+            .into_iter();
+
+        // Process the effects of removing this region.
+        let rows_removed = match &region.source {
+            // Root regions cannot be collapsed.
+            TopLevelItems() => return Err(
+                InternalError(String::from(
+                    "Unable to collapse root region"))),
+            // Non-interleaved region is just removed.
+            ChildrenOf(_) => {
+                let (_, _region) = following_regions.next().unwrap();
+                node_ref.borrow().children.direct_count
+            }
+        };
+
+        // Shift all following regions up by the removed rows.
+        for (start, region) in following_regions {
+            self.insert_region(start - rows_removed, region)?;
+        }
+
+        Ok(())
+    }
+
+    fn insert_region(&self, position: u32, region: Region<Item>)
+        -> Result<(), ModelError>
+    {
+        match self.regions.borrow_mut().entry(position) {
+            Entry::Occupied(mut entry) => {
+                let old_region = entry.get();
+                if old_region.length == 0 {
+                    entry.insert(region);
+                    Ok(())
+                } else {
+                    Err(InternalError(format!(
+                        "At position {position}, overwriting region")))
+                }
+            },
+            Entry::Vacant(entry) => {
+                entry.insert(region);
+                Ok(())
+            }
+        }
+    }
+
+    fn split_parent(&self,
+                    parent_start: u32,
+                    parent: &Region<Item>,
+                    _node_ref: &ItemNodeRc<Item>,
+                    parts_before: Vec<Region<Item>>,
+                    new_region: Region<Item>,
+                    parts_after: Vec<Region<Item>>)
+        -> Result<u32, ModelError>
+    {
+        let length_before: u32 = parts_before
+            .iter()
+            .map(|region| region.length)
+            .sum();
+
+        let length_after: u32 = parts_after
+            .iter()
+            .map(|region| region.length)
+            .sum();
+
+        let total_length = length_before + new_region.length + length_after;
+
+        let rows_added = total_length - parent.length;
+        let _rows_changed = parent.length - length_before - length_after;
+
+        let new_position = parent_start + length_before;
+        let position_after = new_position + new_region.length;
+
+        let mut position = parent_start;
+        for region in parts_before {
+            let length = region.length;
+            self.insert_region(position, region)?;
+            position += length;
+        }
+
+        self.insert_region(new_position, new_region)?;
+
+        position = position_after;
+        for region in parts_after
+            .into_iter()
+            .filter(|region| region.length > 0)
+        {
+            let length = region.length;
+            self.insert_region(position, region)?;
+            position += length;
+        }
+
+        Ok(rows_added)
+    }
+
+    fn merge_regions(&self) {
+        let new_regions = self.regions
+            .borrow_mut()
+            .split_off(&0)
+            .into_iter()
+            .coalesce(|(start_a, region_a), (start_b, region_b)|
+                match Region::merge(&region_a, &region_b) {
+                    Some(region_c) => {
+                        Ok((start_a, region_c))
+                    },
+                    None => Err(((start_a, region_a), (start_b, region_b)))
+                }
+            )
+            .collect();
+        self.regions.replace(new_regions);
+    }
+
     pub fn update(&self, model: &Model) -> Result<bool, ModelError> {
         self.update_node(&self.root, 0, model)?;
         Ok(!self.root.borrow().complete)
@@ -386,7 +645,8 @@ where Item: 'static + Copy,
                    mut position: u32,
                    model: &Model)
         -> Result<u32, ModelError>
-        where T: Node<Item> + 'static
+        where T: Node<Item> + 'static,
+              Rc<RefCell<T>>: NodeRcOps<Item>,
     {
         use CompletionStatus::*;
 
@@ -466,7 +726,8 @@ where Item: 'static + Copy,
                         .children()
                         .rows_between(last_index, index);
                     // Recursively update this child.
-                    position = self.update_node(&child_rc, position, model)?;
+                    position = self.update_node::<ItemNode<Item>>(
+                        &child_rc, position, model)?;
                     last_index = index + 1;
                 } else {
                     // Child no longer referenced, remove it.
@@ -495,6 +756,25 @@ where Item: 'static + Copy,
             drop(node);
 
             if expanded {
+                // Move the following regions down to make space.
+                let following_regions = self.regions
+                    .borrow_mut()
+                    .split_off(&position);
+                for (start, region) in following_regions {
+                    self.regions
+                        .borrow_mut()
+                        .insert(start + children_added, region);
+                }
+
+                // Insert a new region with the new children.
+                self.insert_region(position, Region {
+                    source: node_rc.source(),
+                    offset: old_direct_count,
+                    length: children_added
+                })?;
+
+                self.merge_regions();
+
                 // Update total counts for parent nodes.
                 node_rc.update_total(true, children_added)?;
 
