@@ -34,6 +34,7 @@ itertools = "0.10.5"
 step-decoder = []
 record-ui-test = ["serde", "serde_json"]
 test-ui-replay = ["serde", "serde_json"]
+debug-region-map = []
 
 [[test]]
 name = "test_replay"

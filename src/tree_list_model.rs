@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashSet};
 use std::collections::btree_map::Entry;
+use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::num::TryFromIntError;
 use std::rc::{Rc, Weak};
@@ -328,6 +329,23 @@ struct Region<Item> {
     length: u32,
 }
 
+impl<Item> Debug for Region<Item>
+where Item: Clone + Debug
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>)
+        -> Result<(), std::fmt::Error>
+    {
+        use Source::*;
+        match &self.source {
+            TopLevelItems() =>
+                write!(f, "Top level items"),
+            ChildrenOf(rc) =>
+                write!(f, "Children of {:?}", rc.borrow().item),
+        }?;
+        write!(f, ", offset {}, length {}", self.offset, self.length)
+    }
+}
+
 impl<Item> Region<Item> where Item: Clone {
     fn merge(
         region_a: &Region<Item>,
@@ -364,7 +382,7 @@ pub struct TreeListModel<Item, Model, RowData> {
 }
 
 impl<Item, Model, RowData> TreeListModel<Item, Model, RowData>
-where Item: 'static + Copy,
+where Item: 'static + Copy + Debug,
       Model: GenericModel<Item> + ListModelExt,
       RowData: GenericRowData<Item> + IsA<Object> + Cast,
       Capture: ItemSource<Item>
@@ -423,12 +441,19 @@ where Item: 'static + Copy,
         let children_position = position + 1;
 
         if expanded {
+            #[cfg(feature="debug-region-map")]
+            println!("\nExpanding node at {}", position);
             // Update the region map for the added children.
             self.expand(children_position, node_ref)?;
         } else {
+            #[cfg(feature="debug-region-map")]
+            println!("\nCollapsing node at {}", position);
             // If collapsing, first recursively collapse children of this node.
             for (index, child_ref) in expanded_children {
                 let child_position = children_position + index;
+                #[cfg(feature="debug-region-map")]
+                println!("\nRecursively collapsing child at {}",
+                         child_position);
                 self.set_expanded(model, &child_ref, child_position, false)?;
             }
             // Update the region map for the removed children.
@@ -452,6 +477,15 @@ where Item: 'static + Copy,
             model.items_changed(children_position, 0, rows_affected);
         } else {
             model.items_changed(children_position, rows_affected, 0);
+        }
+
+        #[cfg(feature="debug-region-map")] {
+            println!();
+            println!("Region map after {}:",
+                     if expanded {"expansion"} else {"collapse"});
+            for (start, region) in self.regions.borrow().iter() {
+                println!("{}: {:?}", start, region);
+            }
         }
 
         Ok(())
@@ -540,6 +574,10 @@ where Item: 'static + Copy,
             // Non-interleaved region is just removed.
             ChildrenOf(_) => {
                 let (_, _region) = following_regions.next().unwrap();
+                #[cfg(feature="debug-region-map")] {
+                    println!();
+                    println!("Removing: {:?}", _region);
+                }
                 node_ref.borrow().children.direct_count
             }
         };
@@ -597,6 +635,31 @@ where Item: 'static + Copy,
         let rows_added = total_length - parent.length;
         let _rows_changed = parent.length - length_before - length_after;
 
+        #[cfg(feature="debug-region-map")] {
+            println!();
+            println!("Splitting: {:?}", parent);
+            for (i, region) in parts_before.iter().enumerate() {
+                if i == 0 {
+                    println!("   before: {:?}", region);
+                } else {
+                    println!("           {:?}", region);
+                }
+            }
+            println!("      new: {:?}", new_region);
+            for (i, region) in parts_after
+                .iter()
+                .filter(|region| region.length > 0)
+                .enumerate()
+            {
+                if i == 0 {
+                    println!("    after: {:?}", region);
+                } else {
+                    println!("           {:?}", region);
+                }
+            }
+            println!("           {} rows added", rows_added);
+        }
+
         let new_position = parent_start + length_before;
         let position_after = new_position + new_region.length;
 
@@ -623,6 +686,14 @@ where Item: 'static + Copy,
     }
 
     fn merge_regions(&self) {
+        #[cfg(feature="debug-region-map")] {
+            println!();
+            println!("Before merge:");
+            for (start, region) in self.regions.borrow().iter() {
+                println!("{}: {:?}", start, region);
+            }
+        }
+
         let new_regions = self.regions
             .borrow_mut()
             .split_off(&0)
@@ -630,6 +701,12 @@ where Item: 'static + Copy,
             .coalesce(|(start_a, region_a), (start_b, region_b)|
                 match Region::merge(&region_a, &region_b) {
                     Some(region_c) => {
+                        #[cfg(feature="debug-region-map")] {
+                            println!();
+                            println!("Merging: {:?}", region_a);
+                            println!("    and: {:?}", region_b);
+                            println!("   into: {:?}", region_c);
+                        }
                         Ok((start_a, region_c))
                     },
                     None => Err(((start_a, region_a), (start_b, region_b)))
@@ -640,7 +717,21 @@ where Item: 'static + Copy,
     }
 
     pub fn update(&self, model: &Model) -> Result<bool, ModelError> {
+        #[cfg(feature="debug-region-map")]
+        let rows_before = self.row_count();
         self.update_node(&self.root, 0, model)?;
+        #[cfg(feature="debug-region-map")] {
+            let rows_after = self.row_count();
+            let rows_added = rows_after - rows_before;
+            if rows_added > 0 {
+                println!();
+                println!("Region map after update adding {} rows:", rows_added);
+                for (start, region) in self.regions.borrow().iter() {
+                    println!("{}: {:?}", start, region);
+                }
+            }
+        }
+
         Ok(!self.root.borrow().complete)
     }
 
@@ -760,6 +851,10 @@ where Item: 'static + Copy,
             drop(node);
 
             if expanded {
+                #[cfg(feature="debug-region-map")]
+                println!("\nAdding {} new children at {}",
+                         children_added, position);
+
                 // Move the following regions down to make space.
                 let following_regions = self.regions
                     .borrow_mut()

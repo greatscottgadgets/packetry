@@ -21,7 +21,7 @@ impl<T> Debug for Id<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>)
         -> Result<(), std::fmt::Error>
     {
-        write!(f, "Id({})", self.value)
+        write!(f, "{}", self.value)
     }
 }
 
