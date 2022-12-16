@@ -62,7 +62,7 @@ impl<T: Pod + Default> FileVec<T> {
     pub fn get(&mut self, id: Id<T>) -> Result<T, FileVecError> {
         let mut result: T = Default::default();
         let start = id.value * std::mem::size_of::<T>() as u64;
-        self.file.seek(SeekFrom::Start(start as u64))?;
+        self.file.seek(SeekFrom::Start(start))?;
         self.file.read_exact(bytes_of_mut(&mut result))?;
         self.file.seek(SeekFrom::Start(self.file_length))?;
         Ok(result)
@@ -73,7 +73,7 @@ impl<T: Pod + Default> FileVec<T> {
         let mut result = Vec::new();
         let start = range.start.value * std::mem::size_of::<T>() as u64;
         let end = range.end.value;
-        self.file.seek(SeekFrom::Start(start as u64))?;
+        self.file.seek(SeekFrom::Start(start))?;
         for _ in start .. end {
             self.file.read_exact(bytes_of_mut(&mut buf))?;
             result.push(buf);
