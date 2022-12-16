@@ -31,7 +31,7 @@ pub trait HasLength {
 
 impl<T> HasLength for Range<Id<T>> {
    fn len(&self) -> u64 {
-      (self.end.value - self.start.value) as u64
+      self.end.value - self.start.value
    }
 }
 
