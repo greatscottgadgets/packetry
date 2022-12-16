@@ -16,7 +16,14 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: libgtk-4-dev build-essential
+          version: 0
+
+      - uses: Swatinem/rust-cache@v2
 
       - name: Install stable components
         uses: actions-rs/toolchain@v1
@@ -24,11 +31,6 @@ jobs:
           toolchain: stable
           override: true
           components: clippy
-
-      - name: Install dependencies
-        run: |
-          sudo apt update
-          sudo apt install libgtk-4-dev build-essential
 
       - name: Run clippy
         uses: actions-rs/clippy-check@v1
@@ -51,15 +53,17 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
 
-      - name: Install dependencies (Ubuntu)
-        run: |
-          sudo apt update
-          sudo apt install libgtk-4-dev build-essential
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: libgtk-4-dev build-essential
+          version: 0
         if: startsWith(matrix.os, 'ubuntu-')
 
       - name: Install dependencies (macOS)
         run: brew install gtk4
         if: matrix.os == 'macos-latest'
+
+      - uses: Swatinem/rust-cache@v2
 
       - name: Build
         uses: actions-rs/cargo@v1
