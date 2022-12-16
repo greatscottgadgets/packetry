@@ -120,11 +120,6 @@ impl<Item> Children<Item> {
         self.expanded.contains_key(&index)
     }
 
-    /// Iterate over the expanded children.
-    fn iter_expanded(&self) -> impl Iterator<Item=(&u32, &ItemNodeRc<Item>)> + '_ {
-        self.expanded.iter()
-    }
-
     /// Set whether this child of the owning node is expanded.
     fn set_expanded(&mut self, child_rc: &ItemNodeRc<Item>, expanded: bool) {
         let child = child_rc.borrow();
@@ -912,39 +907,37 @@ where Item: 'static + Copy + Debug,
     }
 
     fn fetch(&self, position: u32) -> Result<ItemNodeRc<Item>, ModelError> {
-        let mut parent_ref: Rc<RefCell<dyn Node<Item>>> = self.root.clone();
-        let mut relative_position = position;
-        'outer: loop {
-            for (_, node_rc) in parent_ref
-                .clone()
-                .borrow()
-                .children()
-                .iter_expanded()
-            {
-                let node = node_rc.borrow();
-                // If the position is before this node, break out of the loop to look it up.
-                if relative_position < node.item_index {
-                    break;
-                // If the position matches this node, return it.
-                } else if relative_position == node.item_index {
-                    return Ok(node_rc.clone());
-                // If the position is within this node's children, traverse down the tree and repeat.
-                } else if relative_position <= node.item_index + node.children.total_count {
-                    parent_ref = node_rc.clone();
-                    relative_position -= node.item_index + 1;
-                    continue 'outer;
-                // Otherwise, if the position is after this node,
-                // adjust the relative position for the node's children above.
-                } else {
-                    relative_position -= node.children.total_count;
-                }
-            }
-            break;
+        // Fetch the region this row is in.
+        let (start, region) = self.regions
+            .borrow()
+            .range(..=position)
+            .next_back()
+            .map(|(start, region)| (*start, region.clone()))
+            .ok_or_else(||
+                InternalError(format!(
+                    "No region before position {position}")))?;
+
+        // Get the index of this row relative to the start of that region.
+        let relative_position = region.offset + (position - start);
+
+        // Get the parent for this row, according to the type of region.
+        let parent_ref: AnyNodeRc<Item> = match region.source {
+            TopLevelItems() => self.root.clone(),
+            ChildrenOf(node_ref) => node_ref.clone()
+        };
+
+        // Check if we already have a node for this item in the parent's
+        // expanded children.
+        if let Some(node_rc) = parent_ref
+            .borrow()
+            .children()
+            .expanded
+            .get(&relative_position)
+        {
+            return Ok(node_rc.clone())
         }
 
-        // If we've broken out to this point, the node must be directly below `parent` - look it up.
-
-        // First, check if we already have an incomplete node for this item.
+        // Also check if we already have an incomplete node for this item.
         if let Some(node_rc) = parent_ref
             .borrow()
             .children()
