@@ -664,19 +664,19 @@ At traffic row 30:
 - IN transaction on 4.0 with 4 data bytes, ACK: [73, 00, 65, 00]
 - OUT transaction on 4.0 with no data, ACK
 Collapsing traffic view, row 3: Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
+At traffic row 15:
+- IN packet on 0.0, CRC 02
+- DATA1 packet with CRC E757 and 8 data bytes: [12, 01, 00, 02, 00, 00, 00, 08]
+- ACK packet
+At traffic row 12:
+- IN packet on 0.0, CRC 02
+- NAK packet
+At traffic row 9:
+- IN packet on 0.0, CRC 02
+- NAK packet
 At traffic row 5:
 - SETUP packet on 0.0, CRC 02
 - DATA0 packet with CRC 94DD and 8 data bytes: [80, 06, 00, 01, 00, 00, 40, 00]
-- ACK packet
-At traffic row 6:
-- IN packet on 0.0, CRC 02
-- NAK packet
-At traffic row 7:
-- IN packet on 0.0, CRC 02
-- NAK packet
-At traffic row 8:
-- IN packet on 0.0, CRC 02
-- DATA1 packet with CRC E757 and 8 data bytes: [12, 01, 00, 02, 00, 00, 00, 08]
 - ACK packet
 At traffic row 4:
 - SETUP transaction on 0.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 40, 00]

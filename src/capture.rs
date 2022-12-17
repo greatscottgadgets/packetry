@@ -1109,9 +1109,10 @@ impl ItemSource<TrafficItem> for Capture {
                 let transaction_count = self.transfer_range(&entry)?.len();
                 let ep_traf = self.endpoint_traffic(entry.endpoint_id())?;
                 if entry.transfer_id().value >= ep_traf.end_index.len() {
-                    (Ongoing, transaction_count)
+                    (InterleavedOngoing, transaction_count)
                 } else {
-                    (Complete, transaction_count)
+                    let end = ep_traf.end_index.get(entry.transfer_id())?;
+                    (InterleavedComplete(end.value), transaction_count)
                 }
             },
             Some(Transaction(_, transaction_id)) => {

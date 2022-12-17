@@ -26,7 +26,7 @@ At traffic row 3:
 Updating after 5 packets decoded
 Updating after 6 packets decoded
 Updating after 7 packets decoded
-At traffic row 2:
+At traffic row 4:
 + Completing IN transaction on 14.1, NAK
 Updating after 8 packets decoded
 Updating after 9 packets decoded
@@ -38,11 +38,11 @@ Updating after 12 packets decoded
 At traffic row 0:
 - Polling 1 times for interrupt transfer on endpoint 14.1 IN
 + Polling 2 times for interrupt transfer on endpoint 14.1 IN
-At traffic row 3:
+At traffic row 6:
 + Starting IN transaction on 14.1
 Updating after 13 packets decoded
 Updating after 14 packets decoded
-At traffic row 4:
+At traffic row 2:
 - Polling 1 times for interrupt transfer on endpoint 14.2 IN
 + Polling 2 times for interrupt transfer on endpoint 14.2 IN
 At traffic row 7:
@@ -53,12 +53,12 @@ Updating after 17 packets decoded
 At traffic row 0:
 - Polling 1 times for interrupt transfer on endpoint 14.1 IN
 + Polling 2 times for interrupt transfer on endpoint 14.1 IN
-At traffic row 4:
+At traffic row 8:
 + Completing IN transaction on 14.1, NAK
 Updating after 18 packets decoded
 Updating after 19 packets decoded
 Updating after 20 packets decoded
-At traffic row 5:
+At traffic row 2:
 - Polling 1 times for interrupt transfer on endpoint 14.2 IN
 + Polling 2 times for interrupt transfer on endpoint 14.2 IN
 At traffic row 9:
@@ -68,11 +68,11 @@ Updating after 22 packets decoded
 At traffic row 0:
 - Polling 1 times for interrupt transfer on endpoint 14.1 IN
 + Polling 3 times for interrupt transfer on endpoint 14.1 IN
-At traffic row 5:
+At traffic row 10:
 + Starting IN transaction on 14.1
 Updating after 23 packets decoded
 Updating after 24 packets decoded
-At traffic row 6:
+At traffic row 2:
 - Polling 1 times for interrupt transfer on endpoint 14.2 IN
 + Polling 3 times for interrupt transfer on endpoint 14.2 IN
 At traffic row 11:
@@ -83,12 +83,12 @@ Updating after 27 packets decoded
 At traffic row 0:
 - Polling 1 times for interrupt transfer on endpoint 14.1 IN
 + Polling 3 times for interrupt transfer on endpoint 14.1 IN
-At traffic row 6:
+At traffic row 12:
 + Completing IN transaction on 14.1, NAK
 Updating after 28 packets decoded
 Updating after 29 packets decoded
 Updating after 30 packets decoded
-At traffic row 7:
+At traffic row 2:
 - Polling 1 times for interrupt transfer on endpoint 14.2 IN
 + Polling 3 times for interrupt transfer on endpoint 14.2 IN
 At traffic row 13:
@@ -98,11 +98,11 @@ Updating after 32 packets decoded
 At traffic row 0:
 - Polling 1 times for interrupt transfer on endpoint 14.1 IN
 + Polling 4 times for interrupt transfer on endpoint 14.1 IN
-At traffic row 7:
+At traffic row 14:
 + Starting IN transaction on 14.1
 Updating after 33 packets decoded
 Updating after 34 packets decoded
-At traffic row 8:
+At traffic row 2:
 - Polling 1 times for interrupt transfer on endpoint 14.2 IN
 + Polling 4 times for interrupt transfer on endpoint 14.2 IN
 At traffic row 15:
@@ -113,12 +113,12 @@ Updating after 37 packets decoded
 At traffic row 0:
 - Polling 1 times for interrupt transfer on endpoint 14.1 IN
 + Polling 4 times for interrupt transfer on endpoint 14.1 IN
-At traffic row 8:
+At traffic row 16:
 + Completing IN transaction on 14.1, NAK
 Updating after 38 packets decoded
 Updating after 39 packets decoded
 Updating after 40 packets decoded
-At traffic row 9:
+At traffic row 2:
 - Polling 1 times for interrupt transfer on endpoint 14.2 IN
 + Polling 4 times for interrupt transfer on endpoint 14.2 IN
 At traffic row 17:
@@ -126,14 +126,32 @@ At traffic row 17:
 Collapsing traffic view, row 0: Polling 1 times for interrupt transfer on endpoint 14.1 IN
 At traffic row 1:
 - Starting IN transaction on 14.1
+- Polling 1 times for interrupt transfer on endpoint 14.2 IN
+- Starting IN transaction on 14.2
 - Completing IN transaction on 14.1, NAK
+- Completing IN transaction on 14.2, NAK
 - Starting IN transaction on 14.1
+- Starting IN transaction on 14.2
 - Completing IN transaction on 14.1, NAK
+- Completing IN transaction on 14.2, NAK
 - Starting IN transaction on 14.1
+- Starting IN transaction on 14.2
 - Completing IN transaction on 14.1, NAK
+- Completing IN transaction on 14.2, NAK
 - Starting IN transaction on 14.1
+- Starting IN transaction on 14.2
 - Completing IN transaction on 14.1, NAK
-Collapsing traffic view, row 1: Polling 1 times for interrupt transfer on endpoint 14.2 IN
+- Completing IN transaction on 14.2, NAK
++ Polling 4 times for interrupt transfer on endpoint 14.2 IN
++ Starting IN transaction on 14.2
++ Completing IN transaction on 14.2, NAK
++ Starting IN transaction on 14.2
++ Completing IN transaction on 14.2, NAK
++ Starting IN transaction on 14.2
++ Completing IN transaction on 14.2, NAK
++ Starting IN transaction on 14.2
++ Completing IN transaction on 14.2, NAK
+Collapsing traffic view, row 1: Polling 4 times for interrupt transfer on endpoint 14.2 IN
 At traffic row 2:
 - Starting IN transaction on 14.2
 - Completing IN transaction on 14.2, NAK
