@@ -12,6 +12,7 @@ use gtk::prelude::{IsA, Cast, WidgetExt};
 use gtk::glib::Object;
 use gtk::gio::prelude::ListModelExt;
 
+use derive_more::AddAssign;
 use itertools::Itertools;
 use thiserror::Error;
 
@@ -367,6 +368,20 @@ impl<Item> Region<Item> where Item: Clone {
     }
 }
 
+#[derive(Default, AddAssign)]
+struct ModelUpdate {
+    rows_added: u32,
+    rows_removed: u32,
+    rows_changed: u32,
+}
+
+impl std::fmt::Display for ModelUpdate {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{} added, {} removed, {} changed",
+               self.rows_added, self.rows_removed, self.rows_changed)
+    }
+}
+
 pub struct TreeListModel<Item, Model, RowData> {
     _marker: PhantomData<(Model, RowData)>,
     capture: Arc<Mutex<Capture>>,
@@ -453,11 +468,11 @@ where Item: 'static + Copy + Debug,
         // The children of this node appear after its own row.
         let children_position = position + 1;
 
-        if expanded {
+        let update = if expanded {
             #[cfg(feature="debug-region-map")]
             println!("\nExpanding node at {}", position);
             // Update the region map for the added children.
-            self.expand(children_position, node_ref)?;
+            self.expand(children_position, node_ref)?
         } else {
             #[cfg(feature="debug-region-map")]
             println!("\nCollapsing node at {}", position);
@@ -470,8 +485,8 @@ where Item: 'static + Copy + Debug,
                 self.set_expanded(model, &child_ref, child_position, false)?;
             }
             // Update the region map for the removed children.
-            self.collapse(children_position, node_ref)?;
-        }
+            self.collapse(children_position, node_ref)?
+        };
 
         // Merge adjacent regions with the same source.
         self.merge_regions();
@@ -486,12 +501,6 @@ where Item: 'static + Copy + Debug,
         // expanded/collapsed entries.
         node_ref.update_total(expanded, rows_affected)?;
 
-        if expanded {
-            model.items_changed(children_position, 0, rows_affected);
-        } else {
-            model.items_changed(children_position, rows_affected, 0);
-        }
-
         #[cfg(feature="debug-region-map")] {
             println!();
             println!("Region map after {}:",
@@ -503,11 +512,14 @@ where Item: 'static + Copy + Debug,
 
         self.check()?;
 
+        // Update model.
+        self.apply_update(model, children_position, update);
+
         Ok(())
     }
 
     fn expand(&self, position: u32, node_ref: &ItemNodeRc<Item>)
-        -> Result<(), ModelError>
+        -> Result<ModelUpdate, ModelError>
     {
         // Find the start of the parent region.
         let (&parent_start, _) = self.regions
@@ -536,7 +548,7 @@ where Item: 'static + Copy + Debug,
             .into_iter();
 
         // Split the parent region and construct a new region between.
-        let rows_added = self.split_parent(parent_start, &parent, node_ref,
+        let update = self.split_parent(parent_start, &parent, node_ref,
             vec![Region {
                 source: parent.source.clone(),
                 offset: parent.offset,
@@ -556,14 +568,14 @@ where Item: 'static + Copy + Debug,
 
         // Shift all remaining regions down by the added rows.
         for (start, region) in following_regions {
-            self.insert_region(start + rows_added, region)?;
+            self.insert_region(start + update.rows_added, region)?;
         }
 
-        Ok(())
+        Ok(update)
     }
 
     fn collapse(&self, position: u32, node_ref: &ItemNodeRc<Item>)
-        -> Result<(), ModelError>
+        -> Result<ModelUpdate, ModelError>
     {
         // Clone the region starting at this position.
         let region = self.regions
@@ -581,7 +593,7 @@ where Item: 'static + Copy + Debug,
             .into_iter();
 
         // Process the effects of removing this region.
-        let rows_removed = match &region.source {
+        let update = match &region.source {
             // Root regions cannot be collapsed.
             TopLevelItems() => return Err(
                 InternalError(String::from(
@@ -593,16 +605,20 @@ where Item: 'static + Copy + Debug,
                     println!();
                     println!("Removing: {:?}", _region);
                 }
-                node_ref.borrow().children.direct_count
+                ModelUpdate {
+                    rows_added: 0,
+                    rows_removed: node_ref.borrow().children.direct_count,
+                    rows_changed: 0,
+                }
             }
         };
 
         // Shift all following regions up by the removed rows.
         for (start, region) in following_regions {
-            self.insert_region(start - rows_removed, region)?;
+            self.insert_region(start - update.rows_removed, region)?;
         }
 
-        Ok(())
+        Ok(update)
     }
 
     fn insert_region(&self, position: u32, region: Region<Item>)
@@ -633,7 +649,7 @@ where Item: 'static + Copy + Debug,
                     parts_before: Vec<Region<Item>>,
                     new_region: Region<Item>,
                     parts_after: Vec<Region<Item>>)
-        -> Result<u32, ModelError>
+        -> Result<ModelUpdate, ModelError>
     {
         let length_before: u32 = parts_before
             .iter()
@@ -648,7 +664,13 @@ where Item: 'static + Copy + Debug,
         let total_length = length_before + new_region.length + length_after;
 
         let rows_added = total_length - parent.length;
-        let _rows_changed = parent.length - length_before - length_after;
+        let rows_changed = parent.length - length_before - length_after;
+
+        let update = ModelUpdate {
+            rows_added,
+            rows_removed: 0,
+            rows_changed,
+        };
 
         #[cfg(feature="debug-region-map")] {
             println!();
@@ -672,7 +694,7 @@ where Item: 'static + Copy + Debug,
                     println!("           {:?}", region);
                 }
             }
-            println!("           {} rows added", rows_added);
+            println!("           {}", &update);
         }
 
         let new_position = parent_start + length_before;
@@ -697,7 +719,7 @@ where Item: 'static + Copy + Debug,
             position += length;
         }
 
-        Ok(rows_added)
+        Ok(update)
     }
 
     fn merge_regions(&self) {
@@ -895,7 +917,11 @@ where Item: 'static + Copy + Debug,
                 node_rc.update_total(true, children_added)?;
 
                 // Add rows for the new children.
-                model.items_changed(position, 0, children_added);
+                self.apply_update(model, position, ModelUpdate {
+                    rows_added: children_added,
+                    rows_removed: 0,
+                    rows_changed: 0
+                });
 
                 // Update the position to continue from.
                 position += children_added;
@@ -965,6 +991,13 @@ where Item: 'static + Copy + Debug,
                 .add_incomplete(relative_position, &node_rc);
         }
         Ok(node_rc)
+    }
+
+    fn apply_update(&self, model: &Model, position: u32, update: ModelUpdate)
+    {
+        let rows_removed = update.rows_removed + update.rows_changed;
+        let rows_added = update.rows_added + update.rows_changed;
+        model.items_changed(position, rows_removed, rows_added);
     }
 
     // The following methods correspond to the ListModel interface, and can be
