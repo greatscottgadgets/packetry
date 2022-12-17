@@ -17,7 +17,7 @@ use derive_more::AddAssign;
 use itertools::Itertools;
 use thiserror::Error;
 
-use crate::capture::{Capture, CaptureError, ItemSource, CompletionStatus};
+use crate::capture::{Capture, CaptureError, ItemSource};
 use crate::model::GenericModel;
 use crate::row_data::GenericRowData;
 use crate::expander::ExpanderWrapper;
@@ -410,7 +410,7 @@ where Item: 'static + Copy + Debug,
             capture: capture.clone(),
             root: Rc::new(RefCell::new(RootNode {
                 children: Children::new(item_count),
-                complete: matches!(completion, CompletionStatus::Complete),
+                complete: completion.is_complete(),
             })),
             regions: RefCell::new(BTreeMap::new()),
             #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
@@ -782,8 +782,6 @@ where Item: 'static + Copy + Debug,
         where T: Node<Item> + 'static,
               Rc<RefCell<T>>: NodeRcOps<Item>,
     {
-        use CompletionStatus::*;
-
         // Extract details about the current node.
         let mut node = node_rc.borrow_mut();
         let expanded = node.expanded();
@@ -799,7 +797,7 @@ where Item: 'static + Copy + Debug,
             .lock()
             .or(Err(ModelError::LockError))?
             .item_children(node.item())?;
-        let completed = matches!(completion, Complete);
+        let completed = completion.is_complete();
         let children_added = new_direct_count - old_direct_count;
 
         // Deal with this node's own row, if it has one.
@@ -987,7 +985,7 @@ where Item: 'static + Copy + Debug,
             widgets: RefCell::new(HashSet::new()),
         };
         let node_rc = Rc::new(RefCell::new(node));
-        if matches!(completion, CompletionStatus::Ongoing) {
+        if !completion.is_complete() {
             parent
                 .children_mut()
                 .add_incomplete(relative_position, &node_rc);
