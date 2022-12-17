@@ -1067,6 +1067,16 @@ pub enum CompletionStatus {
     Ongoing
 }
 
+impl CompletionStatus {
+    pub fn is_complete(&self) -> bool {
+        use CompletionStatus::*;
+        match self {
+            Complete => true,
+            Ongoing => false,
+        }
+    }
+}
+
 pub trait ItemSource<Item> {
     fn item(&mut self, parent: Option<&Item>, index: u64)
         -> Result<Item, CaptureError>;
