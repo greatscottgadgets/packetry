@@ -61,7 +61,7 @@ impl GenericModel<TrafficItem> for TrafficModel {
     {
         let tree_opt  = self.imp().tree.borrow();
         let tree = tree_opt.as_ref().unwrap();
-        tree.set_expanded(self, node, position, expanded)
+        tree.set_expanded(self, node, position as u64, expanded)
     }
 
     fn update(&self) -> Result<bool, ModelError> {
@@ -95,7 +95,7 @@ impl GenericModel<DeviceItem> for DeviceModel {
     {
         let tree_opt  = self.imp().tree.borrow();
         let tree = tree_opt.as_ref().unwrap();
-        tree.set_expanded(self, node, position, expanded)
+        tree.set_expanded(self, node, position as u64, expanded)
     }
 
     fn update(&self) -> Result<bool, ModelError> {

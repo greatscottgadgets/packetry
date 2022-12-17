@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::cmp::min;
 use std::collections::{BTreeMap, HashSet};
 use std::collections::btree_map::Entry;
 use std::fmt::Debug;
@@ -67,20 +68,20 @@ trait Node<Item> {
 
 struct Children<Item> {
     /// Number of direct children below this node.
-    direct_count: u32,
+    direct_count: u64,
 
     /// Total number of displayed rows below this node, recursively.
-    total_count: u32,
+    total_count: u64,
 
     /// Expanded children of this item.
-    expanded: BTreeMap<u32, ItemNodeRc<Item>>,
+    expanded: BTreeMap<u64, ItemNodeRc<Item>>,
 
     /// Incomplete children of this item.
-    incomplete: BTreeMap<u32, ItemNodeWeak<Item>>,
+    incomplete: BTreeMap<u64, ItemNodeWeak<Item>>,
 }
 
 impl<Item> Children<Item> {
-    fn new(child_count: u32) -> Self {
+    fn new(child_count: u64) -> Self {
         Children {
             direct_count: child_count,
             total_count: child_count,
@@ -106,7 +107,7 @@ pub struct ItemNode<Item> {
     parent: Weak<RefCell<dyn Node<Item>>>,
 
     /// Index of this node below the parent Item.
-    item_index: u32,
+    item_index: u64,
 
     /// Children of this item.
     children: Children<Item>,
@@ -117,7 +118,7 @@ pub struct ItemNode<Item> {
 
 impl<Item> Children<Item> {
     /// Whether this child is expanded.
-    fn expanded(&self, index: u32) -> bool {
+    fn expanded(&self, index: u64) -> bool {
         self.expanded.contains_key(&index)
     }
 
@@ -132,22 +133,22 @@ impl<Item> Children<Item> {
     }
 
     /// Add an incomplete child.
-    fn add_incomplete(&mut self, index: u32, child_rc: &ItemNodeRc<Item>) {
+    fn add_incomplete(&mut self, index: u64, child_rc: &ItemNodeRc<Item>) {
         self.incomplete.insert(index, Rc::downgrade(child_rc));
     }
 
     /// Fetch an incomplete child.
-    fn fetch_incomplete(&self, index: u32) -> Option<ItemNodeRc<Item>> {
+    fn fetch_incomplete(&self, index: u64) -> Option<ItemNodeRc<Item>> {
         self.incomplete.get(&index).and_then(Weak::upgrade)
     }
 
     /// Get the number of rows between two children.
-    fn rows_between(&self, start: u32, end: u32) -> u32 {
+    fn rows_between(&self, start: u64, end: u64) -> u64 {
         (end - start) +
             self.expanded
                 .range(start..end)
                 .map(|(_, node_rc)| node_rc.borrow().children.total_count)
-                .sum::<u32>()
+                .sum::<u64>()
     }
 }
 
@@ -225,14 +226,14 @@ impl<Item> Node<Item> for ItemNode<Item> where Item: Copy {
 }
 
 trait UpdateTotal<Item> {
-    fn update_total(&self, expanded: bool, rows_affected: u32)
+    fn update_total(&self, expanded: bool, rows_affected: u64)
         -> Result<(), ModelError>;
 }
 
 impl<T, Item> UpdateTotal<Item> for Rc<RefCell<T>>
 where T: Node<Item> + 'static, Item: Copy + 'static
 {
-    fn update_total(&self, expanded: bool, rows_affected: u32)
+    fn update_total(&self, expanded: bool, rows_affected: u64)
         -> Result<(), ModelError>
     {
         let mut node_rc: AnyNodeRc<Item> = self.clone();
@@ -321,8 +322,8 @@ use Source::*;
 #[derive(Clone)]
 struct Region<Item> {
     source: Source<Item>,
-    offset: u32,
-    length: u32,
+    offset: u64,
+    length: u64,
 }
 
 impl<Item> Debug for Region<Item>
@@ -370,9 +371,9 @@ impl<Item> Region<Item> where Item: Clone {
 
 #[derive(Default, AddAssign)]
 struct ModelUpdate {
-    rows_added: u32,
-    rows_removed: u32,
-    rows_changed: u32,
+    rows_added: u64,
+    rows_removed: u64,
+    rows_changed: u64,
 }
 
 impl std::fmt::Display for ModelUpdate {
@@ -386,7 +387,7 @@ pub struct TreeListModel<Item, Model, RowData> {
     _marker: PhantomData<(Model, RowData)>,
     capture: Arc<Mutex<Capture>>,
     root: RootNodeRc<Item>,
-    regions: RefCell<BTreeMap<u32, Region<Item>>>,
+    regions: RefCell<BTreeMap<u64, Region<Item>>>,
     #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
     on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>,
 }
@@ -404,12 +405,11 @@ where Item: 'static + Copy + Debug,
     {
         let mut cap = capture.lock().or(Err(ModelError::LockError))?;
         let (completion, item_count) = cap.item_children(None)?;
-        let child_count = u32::try_from(item_count)?;
         Ok(TreeListModel {
             _marker: PhantomData,
             capture: capture.clone(),
             root: Rc::new(RefCell::new(RootNode {
-                children: Children::new(child_count),
+                children: Children::new(item_count),
                 complete: matches!(completion, CompletionStatus::Complete),
             })),
             regions: RefCell::new(BTreeMap::new()),
@@ -418,7 +418,7 @@ where Item: 'static + Copy + Debug,
         })
     }
 
-    fn row_count(&self) -> u32 {
+    fn row_count(&self) -> u64 {
         self.root.borrow().children().total_count
     }
 
@@ -443,7 +443,7 @@ where Item: 'static + Copy + Debug,
     pub fn set_expanded(&self,
                         model: &Model,
                         node_ref: &ItemNodeRc<Item>,
-                        position: u32,
+                        position: u64,
                         expanded: bool)
         -> Result<(), ModelError>
     {
@@ -518,7 +518,7 @@ where Item: 'static + Copy + Debug,
         Ok(())
     }
 
-    fn expand(&self, position: u32, node_ref: &ItemNodeRc<Item>)
+    fn expand(&self, position: u64, node_ref: &ItemNodeRc<Item>)
         -> Result<ModelUpdate, ModelError>
     {
         // Find the start of the parent region.
@@ -574,7 +574,7 @@ where Item: 'static + Copy + Debug,
         Ok(update)
     }
 
-    fn collapse(&self, position: u32, node_ref: &ItemNodeRc<Item>)
+    fn collapse(&self, position: u64, node_ref: &ItemNodeRc<Item>)
         -> Result<ModelUpdate, ModelError>
     {
         // Clone the region starting at this position.
@@ -621,7 +621,7 @@ where Item: 'static + Copy + Debug,
         Ok(update)
     }
 
-    fn insert_region(&self, position: u32, region: Region<Item>)
+    fn insert_region(&self, position: u64, region: Region<Item>)
         -> Result<(), ModelError>
     {
         match self.regions.borrow_mut().entry(position) {
@@ -643,7 +643,7 @@ where Item: 'static + Copy + Debug,
     }
 
     fn split_parent(&self,
-                    parent_start: u32,
+                    parent_start: u64,
                     parent: &Region<Item>,
                     _node_ref: &ItemNodeRc<Item>,
                     parts_before: Vec<Region<Item>>,
@@ -651,12 +651,12 @@ where Item: 'static + Copy + Debug,
                     parts_after: Vec<Region<Item>>)
         -> Result<ModelUpdate, ModelError>
     {
-        let length_before: u32 = parts_before
+        let length_before: u64 = parts_before
             .iter()
             .map(|region| region.length)
             .sum();
 
-        let length_after: u32 = parts_after
+        let length_after: u64 = parts_after
             .iter()
             .map(|region| region.length)
             .sum();
@@ -776,9 +776,9 @@ where Item: 'static + Copy + Debug,
 
     fn update_node<T>(&self,
                    node_rc: &Rc<RefCell<T>>,
-                   mut position: u32,
+                   mut position: u64,
                    model: &Model)
-        -> Result<u32, ModelError>
+        -> Result<u64, ModelError>
         where T: Node<Item> + 'static,
               Rc<RefCell<T>>: NodeRcOps<Item>,
     {
@@ -792,14 +792,13 @@ where Item: 'static + Copy + Debug,
         let incomplete_children = children.incomplete
             .range(0..)
             .map(|(i, weak)| (*i, weak.clone()))
-            .collect::<Vec<(u32, ItemNodeWeak<Item>)>>();
+            .collect::<Vec<(u64, ItemNodeWeak<Item>)>>();
 
         // Check if this node had children added and/or was completed.
         let (completion, new_direct_count) = self.capture
             .lock()
             .or(Err(ModelError::LockError))?
             .item_children(node.item())?;
-        let new_direct_count = new_direct_count as u32;
         let completed = matches!(completion, Complete);
         let children_added = new_direct_count - old_direct_count;
 
@@ -826,7 +825,10 @@ where Item: 'static + Copy + Debug,
                 // The node's description may change.
                 let summary = cap.summary(&item_node.item)?;
                 #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
-                (self.on_item_update.borrow_mut())(position, summary.clone());
+                if let Ok(position) = u32::try_from(position) {
+                    let mut on_item_update = self.on_item_update.borrow_mut();
+                    on_item_update(position, summary.clone());
+                }
                 for widget in item_node.widgets.borrow().iter() {
                     widget.set_text(summary.clone());
                     // If there were no previous children, the row was not
@@ -932,7 +934,7 @@ where Item: 'static + Copy + Debug,
         Ok(position)
     }
 
-    fn fetch(&self, position: u32) -> Result<ItemNodeRc<Item>, ModelError> {
+    fn fetch(&self, position: u64) -> Result<ItemNodeRc<Item>, ModelError> {
         // Fetch the region this row is in.
         let (start, region) = self.regions
             .borrow()
@@ -981,7 +983,7 @@ where Item: 'static + Copy + Debug,
             item,
             parent: Rc::downgrade(&parent_ref),
             item_index: relative_position,
-            children: Children::new(child_count.try_into()?),
+            children: Children::new(child_count),
             widgets: RefCell::new(HashSet::new()),
         };
         let node_rc = Rc::new(RefCell::new(node));
@@ -993,23 +995,31 @@ where Item: 'static + Copy + Debug,
         Ok(node_rc)
     }
 
-    fn apply_update(&self, model: &Model, position: u32, update: ModelUpdate)
+    fn apply_update(&self, model: &Model, position: u64, update: ModelUpdate)
     {
-        let rows_removed = update.rows_removed + update.rows_changed;
-        let rows_added = update.rows_added + update.rows_changed;
-        model.items_changed(position, rows_removed, rows_added);
+        if let Ok(position) = u32::try_from(position) {
+            let rows_addressable = u32::MAX - position;
+            let rows_removed = clamp(
+                update.rows_removed + update.rows_changed,
+                rows_addressable);
+            let rows_added = clamp(
+                update.rows_added + update.rows_changed,
+                rows_addressable);
+            model.items_changed(position, rows_removed, rows_added);
+        }
     }
 
     // The following methods correspond to the ListModel interface, and can be
     // called by a GObject wrapper class to implement that interface.
 
     pub fn n_items(&self) -> u32 {
-        self.row_count()
+        clamp(self.row_count(), u32::MAX)
     }
 
     pub fn item(&self, position: u32) -> Option<Object> {
         // First check that the position is valid (must be within the root
         // node's total child count).
+        let position = position as u64;
         if position >= self.row_count() {
             return None
         }
@@ -1017,4 +1027,8 @@ where Item: 'static + Copy + Debug,
         let row_data = RowData::new(node_or_err_msg);
         Some(row_data.upcast::<Object>())
     }
+}
+
+fn clamp(value: u64, max: u32) -> u32 {
+    min(value, max as u64) as u32
 }
