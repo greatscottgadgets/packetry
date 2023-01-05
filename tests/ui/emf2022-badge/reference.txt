@@ -1,7 +1,7 @@
 Opening file tests/emf2022-badge/capture.pcap
 Updating after 3710 packets decoded
 At traffic row 0:
-+ 209 SOF groups
++ 202 SOF groups
 + Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
 + Setting address to 1 for device 0
 + Getting device descriptor #0 for device 1, reading 18 bytes
@@ -32,17 +32,17 @@ At traffic row 0:
 + Class request #10, index 0, value 0 for interface 2.2
 + Getting unknown descriptor #0 for interface 2.2, reading 144 bytes
 + Class request #9, index 0, value 513 for interface 2.2, writing 2 bytes
-+ Polling 194 times for interrupt transfer on endpoint 2.3 IN
++ Polling 187 times for interrupt transfer on endpoint 2.3 IN
 At devices row 0:
 + Device 1: USB JTAG/serial debug unit\u{0}
 + Device 2: TiDAL
 Updating after 4406 packets decoded
 At traffic row 0:
-- 209 SOF groups
-+ 278 SOF groups
+- 202 SOF groups
++ 272 SOF groups
 At traffic row 35:
-- Polling 194 times for interrupt transfer on endpoint 2.3 IN
-+ Polling 263 times for interrupt transfer on endpoint 2.3 IN
+- Polling 187 times for interrupt transfer on endpoint 2.3 IN
++ Polling 257 times for interrupt transfer on endpoint 2.3 IN
 Expanding devices view, row 0: Device 1: USB JTAG/serial debug unit\u{0}
 At devices row 1:
 + Device descriptor
