@@ -1,7 +1,7 @@
 Opening file tests/emf2022-badge/capture.pcap
 Updating after 3710 packets decoded
 At traffic-hierarchical row 0:
-+ 209 SOF groups
++ 202 SOF groups
 + Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
 + Setting address to 1 for device 0
 + Getting device descriptor #0 for device 1, reading 18 bytes
@@ -32,9 +32,9 @@ At traffic-hierarchical row 0:
 + Class request #10, index 0, value 0 for interface 2.2
 + Getting HID report descriptor #0 for interface 2.2, reading 144 bytes
 + Class request #9, index 0, value 513 for interface 2.2, writing 2 bytes
-+ Polling 194 times for interrupt transfer on endpoint 2.3 IN
++ Polling 187 times for interrupt transfer on endpoint 2.3 IN
 At traffic-interleaved row 0:
-+ 209 SOF groups
++ 202 SOF groups
 + Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
 + Setting address to 1 for device 0
 + Getting device descriptor #0 for device 1, reading 18 bytes
@@ -65,9 +65,9 @@ At traffic-interleaved row 0:
 + Class request #10, index 0, value 0 for interface 2.2
 + Getting HID report descriptor #0 for interface 2.2, reading 144 bytes
 + Class request #9, index 0, value 513 for interface 2.2, writing 2 bytes
-+ Polling 194 times for interrupt transfer on endpoint 2.3 IN
++ Polling 187 times for interrupt transfer on endpoint 2.3 IN
 At traffic-transactions row 0:
-+ 6 SOF packets
++ 73 SOF packets
 + SETUP transaction on 0.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 40, 00]
 + IN transaction on 0.0 with 18 data bytes, ACK: [12, 01, 00, 02, EF, 02, 01, 40, 3A, 30, 01, 10, 01, 01, 01, 02, 03, 01]
 + OUT transaction on 0.0 with no data, ACK
@@ -584,22 +584,75 @@ At traffic-transactions row 0:
 + IN transaction on 2.3, NAK
 + 8 SOF packets
 + IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 2 SOF packets
++ 5 SOF packets
 At traffic-packets row 0:
++ SOF packet with frame number 530, CRC 03
++ SOF packet with frame number 531, CRC 1C
++ SOF packet with frame number 532, CRC 13
++ SOF packet with frame number 533, CRC 0C
++ SOF packet with frame number 534, CRC 04
++ SOF packet with frame number 535, CRC 1B
++ SOF packet with frame number 536, CRC 1A
++ SOF packet with frame number 537, CRC 05
++ SOF packet with frame number 538, CRC 0D
++ SOF packet with frame number 539, CRC 12
++ SOF packet with frame number 540, CRC 1D
++ SOF packet with frame number 541, CRC 02
++ SOF packet with frame number 542, CRC 0A
++ SOF packet with frame number 543, CRC 15
++ SOF packet with frame number 544, CRC 19
++ SOF packet with frame number 545, CRC 06
++ SOF packet with frame number 546, CRC 0E
++ SOF packet with frame number 547, CRC 11
++ SOF packet with frame number 548, CRC 1E
++ SOF packet with frame number 549, CRC 01
++ SOF packet with frame number 550, CRC 09
++ SOF packet with frame number 551, CRC 16
++ SOF packet with frame number 552, CRC 17
++ SOF packet with frame number 553, CRC 08
++ SOF packet with frame number 554, CRC 00
++ SOF packet with frame number 555, CRC 1F
++ SOF packet with frame number 556, CRC 10
++ SOF packet with frame number 557, CRC 0F
++ SOF packet with frame number 558, CRC 07
++ SOF packet with frame number 559, CRC 18
++ SOF packet with frame number 560, CRC 05
++ SOF packet with frame number 561, CRC 1A
++ SOF packet with frame number 562, CRC 12
++ SOF packet with frame number 563, CRC 0D
++ SOF packet with frame number 564, CRC 02
++ SOF packet with frame number 565, CRC 1D
++ SOF packet with frame number 566, CRC 15
++ SOF packet with frame number 567, CRC 0A
++ SOF packet with frame number 568, CRC 0B
++ SOF packet with frame number 569, CRC 14
++ SOF packet with frame number 570, CRC 1C
++ SOF packet with frame number 571, CRC 03
++ SOF packet with frame number 572, CRC 0C
++ SOF packet with frame number 573, CRC 13
++ SOF packet with frame number 574, CRC 1B
++ SOF packet with frame number 575, CRC 04
++ SOF packet with frame number 576, CRC 03
++ SOF packet with frame number 577, CRC 1C
++ SOF packet with frame number 578, CRC 14
++ SOF packet with frame number 579, CRC 0B
++ SOF packet with frame number 580, CRC 04
++ SOF packet with frame number 581, CRC 1B
++ SOF packet with frame number 582, CRC 13
++ SOF packet with frame number 583, CRC 0C
++ SOF packet with frame number 584, CRC 0D
++ SOF packet with frame number 585, CRC 12
++ SOF packet with frame number 586, CRC 1A
++ SOF packet with frame number 587, CRC 05
++ SOF packet with frame number 588, CRC 0A
++ SOF packet with frame number 589, CRC 15
++ SOF packet with frame number 590, CRC 1D
++ SOF packet with frame number 591, CRC 02
++ SOF packet with frame number 592, CRC 1F
++ SOF packet with frame number 593, CRC 00
++ SOF packet with frame number 594, CRC 08
++ SOF packet with frame number 595, CRC 17
++ SOF packet with frame number 596, CRC 18
 + SOF packet with frame number 597, CRC 07
 + SOF packet with frame number 598, CRC 0F
 + SOF packet with frame number 599, CRC 10
@@ -4243,6 +4296,164 @@ At traffic-packets row 0:
 + SOF packet with frame number 1787, CRC 0A
 + SOF packet with frame number 1788, CRC 05
 + SOF packet with frame number 1789, CRC 1A
+At devices row 0:
++ Device 1: USB JTAG/serial debug unit\u{0}
++ Device 2: TiDAL
+Updating after 4406 packets decoded
+At traffic-hierarchical row 0:
+- 202 SOF groups
++ 272 SOF groups
+At traffic-hierarchical row 35:
+- Polling 187 times for interrupt transfer on endpoint 2.3 IN
++ Polling 257 times for interrupt transfer on endpoint 2.3 IN
+At traffic-interleaved row 0:
+- 202 SOF groups
++ 272 SOF groups
+At traffic-interleaved row 35:
+- Polling 187 times for interrupt transfer on endpoint 2.3 IN
++ Polling 257 times for interrupt transfer on endpoint 2.3 IN
+At traffic-transactions row 528:
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 8 SOF packets
++ IN transaction on 2.3, NAK
++ 1 SOF packets
+At traffic-packets row 3710:
 + SOF packet with frame number 1790, CRC 12
 + SOF packet with frame number 1791, CRC 0D
 + SOF packet with frame number 1792, CRC 19
@@ -4310,162 +4521,6 @@ At traffic-packets row 0:
 + NAK packet
 + SOF packet with frame number 1841, CRC 0B
 + SOF packet with frame number 1842, CRC 03
-At devices row 0:
-+ Device 1: USB JTAG/serial debug unit\u{0}
-+ Device 2: TiDAL
-Updating after 4406 packets decoded
-At traffic-hierarchical row 0:
-- 209 SOF groups
-+ 278 SOF groups
-At traffic-hierarchical row 35:
-- Polling 194 times for interrupt transfer on endpoint 2.3 IN
-+ Polling 263 times for interrupt transfer on endpoint 2.3 IN
-At traffic-interleaved row 0:
-- 209 SOF groups
-+ 278 SOF groups
-At traffic-interleaved row 35:
-- Polling 194 times for interrupt transfer on endpoint 2.3 IN
-+ Polling 263 times for interrupt transfer on endpoint 2.3 IN
-At traffic-transactions row 542:
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-+ IN transaction on 2.3, NAK
-+ 8 SOF packets
-At traffic-packets row 3710:
 + SOF packet with frame number 1843, CRC 1C
 + SOF packet with frame number 1844, CRC 13
 + SOF packet with frame number 1845, CRC 0C
@@ -5095,73 +5150,6 @@ At traffic-packets row 3710:
 + IN packet on 2.3, CRC 06
 + NAK packet
 + SOF packet with frame number 297, CRC 07
-+ SOF packet with frame number 298, CRC 0F
-+ SOF packet with frame number 299, CRC 10
-+ SOF packet with frame number 300, CRC 1F
-+ SOF packet with frame number 301, CRC 00
-+ SOF packet with frame number 302, CRC 08
-+ SOF packet with frame number 303, CRC 17
-+ SOF packet with frame number 304, CRC 0A
-+ IN packet on 2.3, CRC 06
-+ NAK packet
-+ SOF packet with frame number 305, CRC 15
-+ SOF packet with frame number 306, CRC 1D
-+ SOF packet with frame number 307, CRC 02
-+ SOF packet with frame number 308, CRC 0D
-+ SOF packet with frame number 309, CRC 12
-+ SOF packet with frame number 310, CRC 1A
-+ SOF packet with frame number 311, CRC 05
-+ SOF packet with frame number 312, CRC 04
-+ IN packet on 2.3, CRC 06
-+ NAK packet
-+ SOF packet with frame number 313, CRC 1B
-+ SOF packet with frame number 314, CRC 13
-+ SOF packet with frame number 315, CRC 0C
-+ SOF packet with frame number 316, CRC 03
-+ SOF packet with frame number 317, CRC 1C
-+ SOF packet with frame number 318, CRC 14
-+ SOF packet with frame number 319, CRC 0B
-+ SOF packet with frame number 320, CRC 0C
-+ IN packet on 2.3, CRC 06
-+ NAK packet
-+ SOF packet with frame number 321, CRC 13
-+ SOF packet with frame number 322, CRC 1B
-+ SOF packet with frame number 323, CRC 04
-+ SOF packet with frame number 324, CRC 0B
-+ SOF packet with frame number 325, CRC 14
-+ SOF packet with frame number 326, CRC 1C
-+ SOF packet with frame number 327, CRC 03
-+ SOF packet with frame number 328, CRC 02
-+ IN packet on 2.3, CRC 06
-+ NAK packet
-+ SOF packet with frame number 329, CRC 1D
-+ SOF packet with frame number 330, CRC 15
-+ SOF packet with frame number 331, CRC 0A
-+ SOF packet with frame number 332, CRC 05
-+ SOF packet with frame number 333, CRC 1A
-+ SOF packet with frame number 334, CRC 12
-+ SOF packet with frame number 335, CRC 0D
-+ SOF packet with frame number 336, CRC 10
-+ IN packet on 2.3, CRC 06
-+ NAK packet
-+ SOF packet with frame number 337, CRC 0F
-+ SOF packet with frame number 338, CRC 07
-+ SOF packet with frame number 339, CRC 18
-+ SOF packet with frame number 340, CRC 17
-+ SOF packet with frame number 341, CRC 08
-+ SOF packet with frame number 342, CRC 00
-+ SOF packet with frame number 343, CRC 1F
-+ SOF packet with frame number 344, CRC 1E
-+ IN packet on 2.3, CRC 06
-+ NAK packet
-+ SOF packet with frame number 345, CRC 01
-+ SOF packet with frame number 346, CRC 09
-+ SOF packet with frame number 347, CRC 16
-+ SOF packet with frame number 348, CRC 19
-+ SOF packet with frame number 349, CRC 06
-+ SOF packet with frame number 350, CRC 0E
-+ SOF packet with frame number 351, CRC 11
-+ SOF packet with frame number 352, CRC 1D
 Expanding traffic-hierarchical view, row 10: Getting string descriptor #2, language 0x0409 (English/US) for device 1, reading 56 of 255 requested bytes: 'USB JTAG/serial debug unit\u{0}'
 At traffic-hierarchical row 11:
 + SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, FF, 00]
