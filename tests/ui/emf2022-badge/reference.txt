@@ -243,3 +243,355 @@ At devices row 4:
 At devices row 2:
 - Device descriptor
 - Configuration 1
+Updating after 83809 packets decoded
+At traffic row 0:
+- 202 SOF groups
++ 1903 SOF groups
+At traffic row 35:
+- Polling 187 times for interrupt transfer on endpoint 2.3 IN
++ Polling 993 times for interrupt transfer on endpoint 2.3 IN
+At traffic row 36:
++ Polling 35941 times for bulk transfer on endpoint 2.2 IN
++ Class request #34, index 0, value 3 for interface 2.0
++ Class request #32, index 0, value 0 for interface 2.0, writing 7 bytes
++ Polling 63 times for interrupt transfer on endpoint 2.1 IN
++ Bulk transfer of 1 byte on endpoint 2.2 OUT: '\r'
+At traffic row 0:
+- 202 SOF groups
+- Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
+- Setting address to 1 for device 0
+- Getting device descriptor #0 for device 1, reading 18 bytes
+- 3 times: Getting device qualifier descriptor #0 for device 1, reading 0 of 10 requested bytes, stalled
+- Getting configuration descriptor #0 for device 1, reading 9 bytes
+- Getting configuration descriptor #0 for device 1, reading 98 bytes
+- Getting string descriptor #0 for device 1, reading 4 of 255 requested bytes
+- Getting string descriptor #2, language 0x0409 for device 1, reading 56 of 255 requested bytes: 'USB JTAG/serial debug unit\u{0}'
+- Getting string descriptor #1, language 0x0409 for device 1, reading 22 of 255 requested bytes: 'Espressif\u{0}'
+- Getting string descriptor #3, language 0x0409 for device 1, reading 36 of 255 requested bytes: 'F4:12:FA:4D:F1:7C'
+- Setting configuration 1 for device 1
+- Class request #32, index 0, value 0 for interface 1.0, writing 7 bytes
+- Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
+- Setting address to 2 for device 0
+- Getting device descriptor #0 for device 2, reading 18 bytes
+- 3 times: Getting device qualifier descriptor #0 for device 2, reading 0 of 10 requested bytes, stalled
+- Getting configuration descriptor #0 for device 2, reading 9 bytes
+- Getting configuration descriptor #0 for device 2, reading 100 bytes
+- Getting string descriptor #0 for device 2, reading 4 of 255 requested bytes
+- Getting string descriptor #2, language 0x0409 for device 2, reading 12 of 255 requested bytes: 'TiDAL'
+- Getting string descriptor #1, language 0x0409 for device 2, reading 44 of 255 requested bytes: 'Electromagnetic Field'
+- Getting string descriptor #3, language 0x0409 for device 2, reading 14 of 255 requested bytes: '123456'
+- Setting configuration 1 for device 2
+- Getting string descriptor #4, language 0x0409 for device 2, reading 42 of 255 requested bytes: 'Espressif CDC Device'
+- Class request #32, index 0, value 0 for interface 2.0, writing 7 bytes
+- Getting string descriptor #5, language 0x0409 for device 2, reading 24 of 255 requested bytes: 'TiDAL badge'
+- Getting string descriptor #3, language 0x0409 for device 2, reading 14 of 255 requested bytes: '123456'
+- Class request #10, index 0, value 0 for interface 2.2
+- Getting unknown descriptor #0 for interface 2.2, reading 144 bytes
+- Class request #9, index 0, value 513 for interface 2.2, writing 2 bytes
+- Polling 187 times for interrupt transfer on endpoint 2.3 IN
++ 1903 SOF groups
++ Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
++ Setting address to 1 for device 0
++ Getting device descriptor #0 for device 1, reading 18 bytes
++ 3 times: Getting device qualifier descriptor #0 for device 1, reading 0 of 10 requested bytes, stalled
++ Getting configuration descriptor #0 for device 1, reading 9 bytes
++ Getting configuration descriptor #0 for device 1, reading 98 bytes
++ Getting string descriptor #0 for device 1, reading 4 of 255 requested bytes
++ Getting string descriptor #2, language 0x0409 for device 1, reading 56 of 255 requested bytes: 'USB JTAG/serial debug unit\u{0}'
++ Getting string descriptor #1, language 0x0409 for device 1, reading 22 of 255 requested bytes: 'Espressif\u{0}'
++ Getting string descriptor #3, language 0x0409 for device 1, reading 36 of 255 requested bytes: 'F4:12:FA:4D:F1:7C'
++ Setting configuration 1 for device 1
++ Class request #32, index 0, value 0 for interface 1.0, writing 7 bytes
++ Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
++ Setting address to 2 for device 0
++ Getting device descriptor #0 for device 2, reading 18 bytes
++ 3 times: Getting device qualifier descriptor #0 for device 2, reading 0 of 10 requested bytes, stalled
++ Getting configuration descriptor #0 for device 2, reading 9 bytes
++ Getting configuration descriptor #0 for device 2, reading 100 bytes
++ Getting string descriptor #0 for device 2, reading 4 of 255 requested bytes
++ Getting string descriptor #2, language 0x0409 for device 2, reading 12 of 255 requested bytes: 'TiDAL'
++ Getting string descriptor #1, language 0x0409 for device 2, reading 44 of 255 requested bytes: 'Electromagnetic Field'
++ Getting string descriptor #3, language 0x0409 for device 2, reading 14 of 255 requested bytes: '123456'
++ Setting configuration 1 for device 2
++ Getting string descriptor #4, language 0x0409 for device 2, reading 42 of 255 requested bytes: 'Espressif CDC Device'
++ Class request #32, index 0, value 0 for interface 2.0, writing 7 bytes
++ Getting string descriptor #5, language 0x0409 for device 2, reading 24 of 255 requested bytes: 'TiDAL badge'
++ Getting string descriptor #3, language 0x0409 for device 2, reading 14 of 255 requested bytes: '123456'
++ Class request #10, index 0, value 0 for interface 2.2
++ Getting unknown descriptor #0 for interface 2.2, reading 144 bytes
++ Class request #9, index 0, value 513 for interface 2.2, writing 2 bytes
++ Polling 993 times for interrupt transfer on endpoint 2.3 IN
+Expanding traffic view, row 36: Polling 35941 times for bulk transfer on endpoint 2.2 IN
+At traffic row 37:
+- Class request #34, index 0, value 3 for interface 2.0
+- Class request #32, index 0, value 0 for interface 2.0, writing 7 bytes
+- Polling 63 times for interrupt transfer on endpoint 2.1 IN
+- Bulk transfer of 1 byte on endpoint 2.2 OUT: '\r'
++ IN transaction on 2.2, NAK
++ Class request #34, index 0, value 3 for interface 2.0
++ 8 times: IN transaction on 2.2, NAK
++ Class request #32, index 0, value 0 for interface 2.0, writing 7 bytes
++ 497 times: IN transaction on 2.2, NAK
++ Polling 63 times for interrupt transfer on endpoint 2.1 IN
++ 35434 times: IN transaction on 2.2, NAK
++ Bulk transfer of 1 byte on endpoint 2.2 OUT: '\r'
++ IN transaction on 2.2, NAK
+Expanding traffic view, row 40: IN transaction on 2.2, NAK
+At traffic row 41:
++ IN packet on 2.2, CRC 10
++ NAK packet
+Expanding traffic view, row 38: Class request #34, index 0, value 3 for interface 2.0
+At traffic row 39:
+- 2 times: IN transaction on 2.2, NAK
+- IN packet on 2.2, CRC 10
+- NAK packet
+- 6 times: IN transaction on 2.2, NAK
++ SETUP transaction on 2.0 with 8 data bytes, ACK: [21, 22, 03, 00, 00, 00, 00, 00]
++ IN transaction on 2.2, NAK
++ 2 times: IN transaction on 2.0, NAK
++ IN transaction on 2.2, NAK
++ IN packet on 2.2, CRC 10
++ NAK packet
++ IN transaction on 2.0, NAK
++ IN transaction on 2.2, NAK
++ IN transaction on 2.0 with no data, ACK
++ 5 times: IN transaction on 2.2, NAK
+Expanding traffic view, row 50: IN transaction on 2.2, NAK
+At traffic row 51:
++ IN packet on 2.2, CRC 10
++ NAK packet
+Expanding traffic view, row 56: Class request #32, index 0, value 0 for interface 2.0, writing 7 bytes
+At traffic row 57:
+- 497 times: IN transaction on 2.2, NAK
++ SETUP transaction on 2.0 with 8 data bytes, ACK: [21, 20, 00, 00, 00, 00, 07, 00]
++ IN transaction on 2.2, NAK
++ OUT transaction on 2.0 with 7 data bytes, NAK: [00, C2, 01, 00, 00, 00, 08]
++ OUT transaction on 2.0 with 7 data bytes, ACK: [00, C2, 01, 00, 00, 00, 08]
++ IN transaction on 2.2, NAK
++ IN transaction on 2.0, NAK
++ IN transaction on 2.0 with no data, ACK
++ 495 times: IN transaction on 2.2, NAK
+Expanding traffic view, row 61: IN transaction on 2.2, NAK
+At traffic row 62:
++ IN packet on 2.2, CRC 10
++ NAK packet
+Collapsing traffic view, row 56: Class request #32, index 0, value 0 for interface 2.0, writing 7 bytes
+At traffic row 57:
+- SETUP transaction on 2.0 with 8 data bytes, ACK: [21, 20, 00, 00, 00, 00, 07, 00]
+- IN transaction on 2.2, NAK
+- OUT transaction on 2.0 with 7 data bytes, NAK: [00, C2, 01, 00, 00, 00, 08]
+- OUT transaction on 2.0 with 7 data bytes, ACK: [00, C2, 01, 00, 00, 00, 08]
+- IN transaction on 2.2, NAK
+- IN packet on 2.2, CRC 10
+- NAK packet
+- IN transaction on 2.0, NAK
+- IN transaction on 2.0 with no data, ACK
+- 495 times: IN transaction on 2.2, NAK
++ 2 times: IN transaction on 2.2, NAK
++ IN packet on 2.2, CRC 10
++ NAK packet
++ 495 times: IN transaction on 2.2, NAK
+Collapsing traffic view, row 38: Class request #34, index 0, value 3 for interface 2.0
+At traffic row 39:
+- SETUP transaction on 2.0 with 8 data bytes, ACK: [21, 22, 03, 00, 00, 00, 00, 00]
+- IN transaction on 2.2, NAK
+- 2 times: IN transaction on 2.0, NAK
+- IN transaction on 2.2, NAK
+- IN packet on 2.2, CRC 10
+- NAK packet
+- IN transaction on 2.0, NAK
+- IN transaction on 2.2, NAK
+- IN transaction on 2.0 with no data, ACK
+- 2 times: IN transaction on 2.2, NAK
+- IN packet on 2.2, CRC 10
+- NAK packet
+- 3 times: IN transaction on 2.2, NAK
++ 2 times: IN transaction on 2.2, NAK
++ IN packet on 2.2, CRC 10
++ NAK packet
++ 3 times: IN transaction on 2.2, NAK
++ IN packet on 2.2, CRC 10
++ NAK packet
++ 3 times: IN transaction on 2.2, NAK
+Collapsing traffic view, row 36: Polling 35941 times for bulk transfer on endpoint 2.2 IN
+At traffic row 54:
+- IN packet on 2.2, CRC 10
+- NAK packet
+At traffic row 46:
+- IN packet on 2.2, CRC 10
+- NAK packet
+At traffic row 41:
+- IN packet on 2.2, CRC 10
+- NAK packet
+At traffic row 37:
+- IN transaction on 2.2, NAK
+- Class request #34, index 0, value 3 for interface 2.0
+- 8 times: IN transaction on 2.2, NAK
+- Class request #32, index 0, value 0 for interface 2.0, writing 7 bytes
+- 497 times: IN transaction on 2.2, NAK
+- Polling 63 times for interrupt transfer on endpoint 2.1 IN
+- 35434 times: IN transaction on 2.2, NAK
+- Bulk transfer of 1 byte on endpoint 2.2 OUT: '\r'
+- IN transaction on 2.2, NAK
++ Class request #34, index 0, value 3 for interface 2.0
++ Class request #32, index 0, value 0 for interface 2.0, writing 7 bytes
++ Polling 63 times for interrupt transfer on endpoint 2.1 IN
++ Bulk transfer of 1 byte on endpoint 2.2 OUT: '\r'
+Expanding traffic view, row 36: Polling 35941 times for bulk transfer on endpoint 2.2 IN
+At traffic row 37:
+- Class request #34, index 0, value 3 for interface 2.0
+- Class request #32, index 0, value 0 for interface 2.0, writing 7 bytes
+- Polling 63 times for interrupt transfer on endpoint 2.1 IN
+- Bulk transfer of 1 byte on endpoint 2.2 OUT: '\r'
++ IN transaction on 2.2, NAK
++ Class request #34, index 0, value 3 for interface 2.0
++ 8 times: IN transaction on 2.2, NAK
++ Class request #32, index 0, value 0 for interface 2.0, writing 7 bytes
++ 497 times: IN transaction on 2.2, NAK
++ Polling 63 times for interrupt transfer on endpoint 2.1 IN
++ 35434 times: IN transaction on 2.2, NAK
++ Bulk transfer of 1 byte on endpoint 2.2 OUT: '\r'
++ IN transaction on 2.2, NAK
+Expanding traffic view, row 38: Class request #34, index 0, value 3 for interface 2.0
+At traffic row 39:
+- 8 times: IN transaction on 2.2, NAK
++ SETUP transaction on 2.0 with 8 data bytes, ACK: [21, 22, 03, 00, 00, 00, 00, 00]
++ IN transaction on 2.2, NAK
++ 2 times: IN transaction on 2.0, NAK
++ IN transaction on 2.2, NAK
++ IN transaction on 2.0, NAK
++ IN transaction on 2.2, NAK
++ IN transaction on 2.0 with no data, ACK
++ 5 times: IN transaction on 2.2, NAK
+Expanding traffic view, row 52: Class request #32, index 0, value 0 for interface 2.0, writing 7 bytes
+At traffic row 53:
+- 497 times: IN transaction on 2.2, NAK
++ SETUP transaction on 2.0 with 8 data bytes, ACK: [21, 20, 00, 00, 00, 00, 07, 00]
++ IN transaction on 2.2, NAK
++ OUT transaction on 2.0 with 7 data bytes, NAK: [00, C2, 01, 00, 00, 00, 08]
++ OUT transaction on 2.0 with 7 data bytes, ACK: [00, C2, 01, 00, 00, 00, 08]
++ IN transaction on 2.2, NAK
++ IN transaction on 2.0, NAK
++ IN transaction on 2.0 with no data, ACK
++ 495 times: IN transaction on 2.2, NAK
+Collapsing traffic view, row 36: Polling 35941 times for bulk transfer on endpoint 2.2 IN
+At traffic row 37:
+- IN transaction on 2.2, NAK
+- Class request #34, index 0, value 3 for interface 2.0
+- SETUP transaction on 2.0 with 8 data bytes, ACK: [21, 22, 03, 00, 00, 00, 00, 00]
+- IN transaction on 2.2, NAK
+- 2 times: IN transaction on 2.0, NAK
+- IN transaction on 2.2, NAK
+- IN transaction on 2.0, NAK
+- IN transaction on 2.2, NAK
+- IN transaction on 2.0 with no data, ACK
+- 5 times: IN transaction on 2.2, NAK
+- Class request #32, index 0, value 0 for interface 2.0, writing 7 bytes
+- SETUP transaction on 2.0 with 8 data bytes, ACK: [21, 20, 00, 00, 00, 00, 07, 00]
+- IN transaction on 2.2, NAK
+- OUT transaction on 2.0 with 7 data bytes, NAK: [00, C2, 01, 00, 00, 00, 08]
+- OUT transaction on 2.0 with 7 data bytes, ACK: [00, C2, 01, 00, 00, 00, 08]
+- IN transaction on 2.2, NAK
+- IN transaction on 2.0, NAK
+- IN transaction on 2.0 with no data, ACK
+- 495 times: IN transaction on 2.2, NAK
+- Polling 63 times for interrupt transfer on endpoint 2.1 IN
+- 35434 times: IN transaction on 2.2, NAK
+- Bulk transfer of 1 byte on endpoint 2.2 OUT: '\r'
+- IN transaction on 2.2, NAK
++ Class request #34, index 0, value 3 for interface 2.0
++ SETUP transaction on 2.0 with 8 data bytes, ACK: [21, 22, 03, 00, 00, 00, 00, 00]
++ 3 times: IN transaction on 2.0, NAK
++ IN transaction on 2.0 with no data, ACK
++ Class request #32, index 0, value 0 for interface 2.0, writing 7 bytes
++ SETUP transaction on 2.0 with 8 data bytes, ACK: [21, 20, 00, 00, 00, 00, 07, 00]
++ OUT transaction on 2.0 with 7 data bytes, NAK: [00, C2, 01, 00, 00, 00, 08]
++ OUT transaction on 2.0 with 7 data bytes, ACK: [00, C2, 01, 00, 00, 00, 08]
++ IN transaction on 2.0, NAK
++ IN transaction on 2.0 with no data, ACK
++ Polling 63 times for interrupt transfer on endpoint 2.1 IN
++ Bulk transfer of 1 byte on endpoint 2.2 OUT: '\r'
+Collapsing traffic view, row 37: Class request #34, index 0, value 3 for interface 2.0
+At traffic row 38:
+- SETUP transaction on 2.0 with 8 data bytes, ACK: [21, 22, 03, 00, 00, 00, 00, 00]
+- 3 times: IN transaction on 2.0, NAK
+- IN transaction on 2.0 with no data, ACK
+Expanding traffic view, row 36: Polling 35941 times for bulk transfer on endpoint 2.2 IN
+At traffic row 37:
+- Class request #34, index 0, value 3 for interface 2.0
+- Class request #32, index 0, value 0 for interface 2.0, writing 7 bytes
+- SETUP transaction on 2.0 with 8 data bytes, ACK: [21, 20, 00, 00, 00, 00, 07, 00]
+- OUT transaction on 2.0 with 7 data bytes, NAK: [00, C2, 01, 00, 00, 00, 08]
+- OUT transaction on 2.0 with 7 data bytes, ACK: [00, C2, 01, 00, 00, 00, 08]
+- IN transaction on 2.0, NAK
+- IN transaction on 2.0 with no data, ACK
+- Polling 63 times for interrupt transfer on endpoint 2.1 IN
+- Bulk transfer of 1 byte on endpoint 2.2 OUT: '\r'
++ IN transaction on 2.2, NAK
++ Class request #34, index 0, value 3 for interface 2.0
++ 8 times: IN transaction on 2.2, NAK
++ Class request #32, index 0, value 0 for interface 2.0, writing 7 bytes
++ SETUP transaction on 2.0 with 8 data bytes, ACK: [21, 20, 00, 00, 00, 00, 07, 00]
++ IN transaction on 2.2, NAK
++ OUT transaction on 2.0 with 7 data bytes, NAK: [00, C2, 01, 00, 00, 00, 08]
++ OUT transaction on 2.0 with 7 data bytes, ACK: [00, C2, 01, 00, 00, 00, 08]
++ IN transaction on 2.2, NAK
++ IN transaction on 2.0, NAK
++ IN transaction on 2.0 with no data, ACK
++ 495 times: IN transaction on 2.2, NAK
++ Polling 63 times for interrupt transfer on endpoint 2.1 IN
++ 35434 times: IN transaction on 2.2, NAK
++ Bulk transfer of 1 byte on endpoint 2.2 OUT: '\r'
++ IN transaction on 2.2, NAK
+Expanding traffic view, row 38: Class request #34, index 0, value 3 for interface 2.0
+At traffic row 39:
+- 8 times: IN transaction on 2.2, NAK
++ SETUP transaction on 2.0 with 8 data bytes, ACK: [21, 22, 03, 00, 00, 00, 00, 00]
++ IN transaction on 2.2, NAK
++ 2 times: IN transaction on 2.0, NAK
++ IN transaction on 2.2, NAK
++ IN transaction on 2.0, NAK
++ IN transaction on 2.2, NAK
++ IN transaction on 2.0 with no data, ACK
++ 5 times: IN transaction on 2.2, NAK
+Collapsing traffic view, row 52: Class request #32, index 0, value 0 for interface 2.0, writing 7 bytes
+At traffic row 53:
+- SETUP transaction on 2.0 with 8 data bytes, ACK: [21, 20, 00, 00, 00, 00, 07, 00]
+- IN transaction on 2.2, NAK
+- OUT transaction on 2.0 with 7 data bytes, NAK: [00, C2, 01, 00, 00, 00, 08]
+- OUT transaction on 2.0 with 7 data bytes, ACK: [00, C2, 01, 00, 00, 00, 08]
+- IN transaction on 2.2, NAK
+- IN transaction on 2.0, NAK
+- IN transaction on 2.0 with no data, ACK
+- 495 times: IN transaction on 2.2, NAK
++ 497 times: IN transaction on 2.2, NAK
+Collapsing traffic view, row 36: Polling 35941 times for bulk transfer on endpoint 2.2 IN
+At traffic row 37:
+- IN transaction on 2.2, NAK
+- Class request #34, index 0, value 3 for interface 2.0
+- SETUP transaction on 2.0 with 8 data bytes, ACK: [21, 22, 03, 00, 00, 00, 00, 00]
+- IN transaction on 2.2, NAK
+- 2 times: IN transaction on 2.0, NAK
+- IN transaction on 2.2, NAK
+- IN transaction on 2.0, NAK
+- IN transaction on 2.2, NAK
+- IN transaction on 2.0 with no data, ACK
+- 5 times: IN transaction on 2.2, NAK
+- Class request #32, index 0, value 0 for interface 2.0, writing 7 bytes
+- 497 times: IN transaction on 2.2, NAK
+- Polling 63 times for interrupt transfer on endpoint 2.1 IN
+- 35434 times: IN transaction on 2.2, NAK
+- Bulk transfer of 1 byte on endpoint 2.2 OUT: '\r'
+- IN transaction on 2.2, NAK
++ Class request #34, index 0, value 3 for interface 2.0
++ SETUP transaction on 2.0 with 8 data bytes, ACK: [21, 22, 03, 00, 00, 00, 00, 00]
++ 3 times: IN transaction on 2.0, NAK
++ IN transaction on 2.0 with no data, ACK
++ Class request #32, index 0, value 0 for interface 2.0, writing 7 bytes
++ Polling 63 times for interrupt transfer on endpoint 2.1 IN
++ Bulk transfer of 1 byte on endpoint 2.2 OUT: '\r'
+Collapsing traffic view, row 37: Class request #34, index 0, value 3 for interface 2.0
+At traffic row 38:
+- SETUP transaction on 2.0 with 8 data bytes, ACK: [21, 22, 03, 00, 00, 00, 00, 00]
+- 3 times: IN transaction on 2.0, NAK
+- IN transaction on 2.0 with no data, ACK
