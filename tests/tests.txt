@@ -5,3 +5,4 @@ hackrf-restart-failure
 mouse
 split-enum
 split-poll
+hub
