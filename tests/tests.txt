@@ -11,3 +11,4 @@ ksolti-core-enum
 mouse
 split-enum
 split-poll
+hub
