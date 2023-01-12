@@ -197,11 +197,7 @@ At traffic row 0:
 - IN packet on 0.0, CRC 02
 - DATA1 packet with CRC E757 and 8 data bytes: [12, 01, 00, 02, 00, 00, 00, 08]
 - ACK packet
-- IN transaction on 0.0
-- IN transaction on 0.0
-- IN transaction on 0.0
-- IN transaction on 0.0
-- IN transaction on 0.0
+- 5 times: IN transaction on 0.0
 - OUT transaction on 0.0
 - Incomplete control transfer on device 0
 + 1 invalid groups
@@ -222,8 +218,7 @@ At traffic row 0:
 + IN packet on 0.0, CRC 02
 + DATA1 packet with CRC E757 and 8 data bytes: [12, 01, 00, 02, 00, 00, 00, 08]
 + ACK packet
-+ IN transaction on 0.0, NAK
-+ IN transaction on 0.0, NAK
++ 2 times: IN transaction on 0.0, NAK
 + IN transaction on 0.0 with 8 data bytes, ACK: [CF, 1B, 05, 00, 14, 00, 00, 02]
 + IN transaction on 0.0, NAK
 + IN transaction on 0.0 with 2 data bytes, ACK: [00, 01]
@@ -594,15 +589,12 @@ At devices row 13:
 Expanding traffic view, row 29
 At traffic row 30:
 + SETUP transaction on 4.0 with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, FF, 00]
-+ IN transaction on 4.0, NAK
-+ IN transaction on 4.0, NAK
++ 2 times: IN transaction on 4.0, NAK
 + IN transaction on 4.0 with 8 data bytes, ACK: [24, 03, 55, 00, 53, 00, 42, 00]
 + IN transaction on 4.0 with 8 data bytes, ACK: [20, 00, 4F, 00, 70, 00, 74, 00]
-+ IN transaction on 4.0, NAK
-+ IN transaction on 4.0, NAK
++ 2 times: IN transaction on 4.0, NAK
 + IN transaction on 4.0 with 8 data bytes, ACK: [69, 00, 63, 00, 61, 00, 6C, 00]
-+ IN transaction on 4.0, NAK
-+ IN transaction on 4.0, NAK
++ 2 times: IN transaction on 4.0, NAK
 + IN transaction on 4.0 with 8 data bytes, ACK: [20, 00, 4D, 00, 6F, 00, 75, 00]
 + IN transaction on 4.0, NAK
 + IN transaction on 4.0 with 4 data bytes, ACK: [73, 00, 65, 00]
@@ -661,15 +653,12 @@ At devices row 1:
 Collapsing traffic view, row 29
 At traffic row 30:
 - SETUP transaction on 4.0 with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, FF, 00]
-- IN transaction on 4.0, NAK
-- IN transaction on 4.0, NAK
+- 2 times: IN transaction on 4.0, NAK
 - IN transaction on 4.0 with 8 data bytes, ACK: [24, 03, 55, 00, 53, 00, 42, 00]
 - IN transaction on 4.0 with 8 data bytes, ACK: [20, 00, 4F, 00, 70, 00, 74, 00]
-- IN transaction on 4.0, NAK
-- IN transaction on 4.0, NAK
+- 2 times: IN transaction on 4.0, NAK
 - IN transaction on 4.0 with 8 data bytes, ACK: [69, 00, 63, 00, 61, 00, 6C, 00]
-- IN transaction on 4.0, NAK
-- IN transaction on 4.0, NAK
+- 2 times: IN transaction on 4.0, NAK
 - IN transaction on 4.0 with 8 data bytes, ACK: [20, 00, 4D, 00, 6F, 00, 75, 00]
 - IN transaction on 4.0, NAK
 - IN transaction on 4.0 with 4 data bytes, ACK: [73, 00, 65, 00]
@@ -691,11 +680,9 @@ At traffic row 8:
 - ACK packet
 At traffic row 4:
 - SETUP transaction on 0.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 40, 00]
-- IN transaction on 0.0, NAK
-- IN transaction on 0.0, NAK
+- 2 times: IN transaction on 0.0, NAK
 - IN transaction on 0.0 with 8 data bytes, ACK: [12, 01, 00, 02, 00, 00, 00, 08]
-- IN transaction on 0.0, NAK
-- IN transaction on 0.0, NAK
+- 2 times: IN transaction on 0.0, NAK
 - IN transaction on 0.0 with 8 data bytes, ACK: [CF, 1B, 05, 00, 14, 00, 00, 02]
 - IN transaction on 0.0, NAK
 - IN transaction on 0.0 with 2 data bytes, ACK: [00, 01]

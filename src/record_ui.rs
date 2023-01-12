@@ -6,6 +6,7 @@ use std::sync::{Arc, Mutex};
 
 use gtk::glib::Object;
 use gtk::gio::prelude::ListModelExt;
+use itertools::Itertools;
 use serde::{Serialize, Deserialize};
 
 use crate::capture::{Capture, ItemSource};
@@ -180,11 +181,19 @@ impl Recording {
             .splice(removed_range, added_items.clone())
             .collect();
         self.log_output(format!("At {} row {}:\n", name, position));
-        for string in removed_items {
-            self.log_output(format!("- {}\n", string));
+        for (n, string) in removed_items.iter().dedup_with_count() {
+            if n == 1 {
+                self.log_output(format!("- {}\n", string));
+            } else {
+                self.log_output(format!("- {} times: {}\n", n, string));
+            }
         }
-        for string in added_items {
-            self.log_output(format!("+ {}\n", string));
+        for (n, string) in added_items.iter().dedup_with_count() {
+            if n == 1 {
+                self.log_output(format!("+ {}\n", string));
+            } else {
+                self.log_output(format!("+ {} times: {}\n", n, string));
+            }
         }
     }
 
