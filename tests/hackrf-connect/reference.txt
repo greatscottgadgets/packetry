@@ -1,816 +1,117 @@
 7 SOF groups
  13 SOF packets
-  SOF packet with frame number 228, CRC 09
-  SOF packet with frame number 228, CRC 09
-  SOF packet with frame number 228, CRC 09
-  SOF packet with frame number 228, CRC 09
-  SOF packet with frame number 228, CRC 09
-  SOF packet with frame number 228, CRC 09
-  SOF packet with frame number 228, CRC 09
-  SOF packet with frame number 228, CRC 09
-  SOF packet with frame number 229, CRC 16
-  SOF packet with frame number 229, CRC 16
-  SOF packet with frame number 229, CRC 16
-  SOF packet with frame number 229, CRC 16
-  SOF packet with frame number 229, CRC 16
+  8 times: SOF packet with frame number 228, CRC 09
+  5 times: SOF packet with frame number 229, CRC 16
  615 SOF packets
   SOF packet with frame number 229, CRC 16
   SOF packet with frame number 284, CRC 12
-  SOF packet with frame number 285, CRC 0D
-  SOF packet with frame number 285, CRC 0D
-  SOF packet with frame number 285, CRC 0D
-  SOF packet with frame number 285, CRC 0D
-  SOF packet with frame number 285, CRC 0D
-  SOF packet with frame number 285, CRC 0D
-  SOF packet with frame number 285, CRC 0D
-  SOF packet with frame number 285, CRC 0D
-  SOF packet with frame number 286, CRC 05
-  SOF packet with frame number 286, CRC 05
-  SOF packet with frame number 286, CRC 05
-  SOF packet with frame number 286, CRC 05
-  SOF packet with frame number 286, CRC 05
-  SOF packet with frame number 286, CRC 05
-  SOF packet with frame number 286, CRC 05
-  SOF packet with frame number 286, CRC 05
-  SOF packet with frame number 287, CRC 1A
-  SOF packet with frame number 287, CRC 1A
-  SOF packet with frame number 287, CRC 1A
-  SOF packet with frame number 287, CRC 1A
-  SOF packet with frame number 287, CRC 1A
-  SOF packet with frame number 287, CRC 1A
-  SOF packet with frame number 287, CRC 1A
-  SOF packet with frame number 287, CRC 1A
-  SOF packet with frame number 288, CRC 16
-  SOF packet with frame number 288, CRC 16
-  SOF packet with frame number 288, CRC 16
-  SOF packet with frame number 288, CRC 16
-  SOF packet with frame number 288, CRC 16
-  SOF packet with frame number 288, CRC 16
-  SOF packet with frame number 288, CRC 16
-  SOF packet with frame number 288, CRC 16
-  SOF packet with frame number 289, CRC 09
-  SOF packet with frame number 289, CRC 09
-  SOF packet with frame number 289, CRC 09
-  SOF packet with frame number 289, CRC 09
-  SOF packet with frame number 289, CRC 09
-  SOF packet with frame number 289, CRC 09
-  SOF packet with frame number 289, CRC 09
-  SOF packet with frame number 289, CRC 09
-  SOF packet with frame number 290, CRC 01
-  SOF packet with frame number 290, CRC 01
-  SOF packet with frame number 290, CRC 01
-  SOF packet with frame number 290, CRC 01
-  SOF packet with frame number 290, CRC 01
-  SOF packet with frame number 290, CRC 01
-  SOF packet with frame number 290, CRC 01
-  SOF packet with frame number 290, CRC 01
-  SOF packet with frame number 291, CRC 1E
-  SOF packet with frame number 291, CRC 1E
-  SOF packet with frame number 291, CRC 1E
-  SOF packet with frame number 291, CRC 1E
-  SOF packet with frame number 291, CRC 1E
-  SOF packet with frame number 291, CRC 1E
-  SOF packet with frame number 291, CRC 1E
-  SOF packet with frame number 291, CRC 1E
-  SOF packet with frame number 292, CRC 11
-  SOF packet with frame number 292, CRC 11
-  SOF packet with frame number 292, CRC 11
-  SOF packet with frame number 292, CRC 11
-  SOF packet with frame number 292, CRC 11
-  SOF packet with frame number 292, CRC 11
-  SOF packet with frame number 292, CRC 11
-  SOF packet with frame number 292, CRC 11
-  SOF packet with frame number 293, CRC 0E
-  SOF packet with frame number 293, CRC 0E
-  SOF packet with frame number 293, CRC 0E
-  SOF packet with frame number 293, CRC 0E
-  SOF packet with frame number 293, CRC 0E
-  SOF packet with frame number 293, CRC 0E
-  SOF packet with frame number 293, CRC 0E
-  SOF packet with frame number 293, CRC 0E
-  SOF packet with frame number 294, CRC 06
-  SOF packet with frame number 294, CRC 06
-  SOF packet with frame number 294, CRC 06
-  SOF packet with frame number 294, CRC 06
-  SOF packet with frame number 294, CRC 06
-  SOF packet with frame number 294, CRC 06
-  SOF packet with frame number 294, CRC 06
-  SOF packet with frame number 294, CRC 06
-  SOF packet with frame number 295, CRC 19
-  SOF packet with frame number 295, CRC 19
-  SOF packet with frame number 295, CRC 19
-  SOF packet with frame number 295, CRC 19
-  SOF packet with frame number 295, CRC 19
-  SOF packet with frame number 295, CRC 19
-  SOF packet with frame number 295, CRC 19
-  SOF packet with frame number 295, CRC 19
-  SOF packet with frame number 296, CRC 18
-  SOF packet with frame number 296, CRC 18
-  SOF packet with frame number 296, CRC 18
-  SOF packet with frame number 296, CRC 18
-  SOF packet with frame number 296, CRC 18
-  SOF packet with frame number 296, CRC 18
-  SOF packet with frame number 296, CRC 18
-  SOF packet with frame number 296, CRC 18
-  SOF packet with frame number 297, CRC 07
-  SOF packet with frame number 297, CRC 07
-  SOF packet with frame number 297, CRC 07
-  SOF packet with frame number 297, CRC 07
-  SOF packet with frame number 297, CRC 07
-  SOF packet with frame number 297, CRC 07
-  SOF packet with frame number 297, CRC 07
-  SOF packet with frame number 297, CRC 07
-  SOF packet with frame number 298, CRC 0F
-  SOF packet with frame number 298, CRC 0F
-  SOF packet with frame number 298, CRC 0F
-  SOF packet with frame number 298, CRC 0F
-  SOF packet with frame number 298, CRC 0F
-  SOF packet with frame number 298, CRC 0F
-  SOF packet with frame number 298, CRC 0F
-  SOF packet with frame number 298, CRC 0F
-  SOF packet with frame number 299, CRC 10
-  SOF packet with frame number 299, CRC 10
-  SOF packet with frame number 299, CRC 10
-  SOF packet with frame number 299, CRC 10
-  SOF packet with frame number 299, CRC 10
-  SOF packet with frame number 299, CRC 10
-  SOF packet with frame number 299, CRC 10
-  SOF packet with frame number 299, CRC 10
-  SOF packet with frame number 300, CRC 1F
-  SOF packet with frame number 300, CRC 1F
-  SOF packet with frame number 300, CRC 1F
-  SOF packet with frame number 300, CRC 1F
-  SOF packet with frame number 300, CRC 1F
-  SOF packet with frame number 300, CRC 1F
-  SOF packet with frame number 300, CRC 1F
-  SOF packet with frame number 300, CRC 1F
-  SOF packet with frame number 301, CRC 00
-  SOF packet with frame number 301, CRC 00
-  SOF packet with frame number 301, CRC 00
-  SOF packet with frame number 301, CRC 00
-  SOF packet with frame number 301, CRC 00
-  SOF packet with frame number 301, CRC 00
-  SOF packet with frame number 301, CRC 00
-  SOF packet with frame number 301, CRC 00
-  SOF packet with frame number 302, CRC 08
-  SOF packet with frame number 302, CRC 08
-  SOF packet with frame number 302, CRC 08
-  SOF packet with frame number 302, CRC 08
-  SOF packet with frame number 302, CRC 08
-  SOF packet with frame number 302, CRC 08
-  SOF packet with frame number 302, CRC 08
-  SOF packet with frame number 302, CRC 08
-  SOF packet with frame number 303, CRC 17
-  SOF packet with frame number 303, CRC 17
-  SOF packet with frame number 303, CRC 17
-  SOF packet with frame number 303, CRC 17
-  SOF packet with frame number 303, CRC 17
-  SOF packet with frame number 303, CRC 17
-  SOF packet with frame number 303, CRC 17
-  SOF packet with frame number 303, CRC 17
-  SOF packet with frame number 304, CRC 0A
-  SOF packet with frame number 304, CRC 0A
-  SOF packet with frame number 304, CRC 0A
-  SOF packet with frame number 304, CRC 0A
-  SOF packet with frame number 304, CRC 0A
-  SOF packet with frame number 304, CRC 0A
-  SOF packet with frame number 304, CRC 0A
-  SOF packet with frame number 304, CRC 0A
-  SOF packet with frame number 305, CRC 15
-  SOF packet with frame number 305, CRC 15
-  SOF packet with frame number 305, CRC 15
-  SOF packet with frame number 305, CRC 15
-  SOF packet with frame number 305, CRC 15
-  SOF packet with frame number 305, CRC 15
-  SOF packet with frame number 305, CRC 15
-  SOF packet with frame number 305, CRC 15
-  SOF packet with frame number 306, CRC 1D
-  SOF packet with frame number 306, CRC 1D
-  SOF packet with frame number 306, CRC 1D
-  SOF packet with frame number 306, CRC 1D
-  SOF packet with frame number 306, CRC 1D
-  SOF packet with frame number 306, CRC 1D
-  SOF packet with frame number 306, CRC 1D
-  SOF packet with frame number 306, CRC 1D
-  SOF packet with frame number 307, CRC 02
-  SOF packet with frame number 307, CRC 02
-  SOF packet with frame number 307, CRC 02
-  SOF packet with frame number 307, CRC 02
-  SOF packet with frame number 307, CRC 02
-  SOF packet with frame number 307, CRC 02
-  SOF packet with frame number 307, CRC 02
-  SOF packet with frame number 307, CRC 02
-  SOF packet with frame number 308, CRC 0D
-  SOF packet with frame number 308, CRC 0D
-  SOF packet with frame number 308, CRC 0D
-  SOF packet with frame number 308, CRC 0D
-  SOF packet with frame number 308, CRC 0D
-  SOF packet with frame number 308, CRC 0D
-  SOF packet with frame number 308, CRC 0D
-  SOF packet with frame number 308, CRC 0D
-  SOF packet with frame number 309, CRC 12
-  SOF packet with frame number 309, CRC 12
-  SOF packet with frame number 309, CRC 12
-  SOF packet with frame number 309, CRC 12
-  SOF packet with frame number 309, CRC 12
-  SOF packet with frame number 309, CRC 12
-  SOF packet with frame number 309, CRC 12
-  SOF packet with frame number 309, CRC 12
-  SOF packet with frame number 310, CRC 1A
-  SOF packet with frame number 310, CRC 1A
-  SOF packet with frame number 310, CRC 1A
-  SOF packet with frame number 310, CRC 1A
-  SOF packet with frame number 310, CRC 1A
-  SOF packet with frame number 310, CRC 1A
-  SOF packet with frame number 310, CRC 1A
-  SOF packet with frame number 310, CRC 1A
-  SOF packet with frame number 311, CRC 05
-  SOF packet with frame number 311, CRC 05
-  SOF packet with frame number 311, CRC 05
-  SOF packet with frame number 311, CRC 05
-  SOF packet with frame number 311, CRC 05
-  SOF packet with frame number 311, CRC 05
-  SOF packet with frame number 311, CRC 05
-  SOF packet with frame number 311, CRC 05
-  SOF packet with frame number 312, CRC 04
-  SOF packet with frame number 312, CRC 04
-  SOF packet with frame number 312, CRC 04
-  SOF packet with frame number 312, CRC 04
-  SOF packet with frame number 312, CRC 04
-  SOF packet with frame number 312, CRC 04
-  SOF packet with frame number 312, CRC 04
-  SOF packet with frame number 312, CRC 04
-  SOF packet with frame number 313, CRC 1B
-  SOF packet with frame number 313, CRC 1B
-  SOF packet with frame number 313, CRC 1B
-  SOF packet with frame number 313, CRC 1B
-  SOF packet with frame number 313, CRC 1B
-  SOF packet with frame number 313, CRC 1B
-  SOF packet with frame number 313, CRC 1B
-  SOF packet with frame number 313, CRC 1B
-  SOF packet with frame number 314, CRC 13
-  SOF packet with frame number 314, CRC 13
-  SOF packet with frame number 314, CRC 13
-  SOF packet with frame number 314, CRC 13
-  SOF packet with frame number 314, CRC 13
-  SOF packet with frame number 314, CRC 13
-  SOF packet with frame number 314, CRC 13
-  SOF packet with frame number 314, CRC 13
-  SOF packet with frame number 315, CRC 0C
-  SOF packet with frame number 315, CRC 0C
-  SOF packet with frame number 315, CRC 0C
-  SOF packet with frame number 315, CRC 0C
-  SOF packet with frame number 315, CRC 0C
-  SOF packet with frame number 315, CRC 0C
-  SOF packet with frame number 315, CRC 0C
-  SOF packet with frame number 315, CRC 0C
-  SOF packet with frame number 316, CRC 03
-  SOF packet with frame number 316, CRC 03
-  SOF packet with frame number 316, CRC 03
-  SOF packet with frame number 316, CRC 03
-  SOF packet with frame number 316, CRC 03
-  SOF packet with frame number 316, CRC 03
-  SOF packet with frame number 316, CRC 03
-  SOF packet with frame number 316, CRC 03
-  SOF packet with frame number 317, CRC 1C
-  SOF packet with frame number 317, CRC 1C
-  SOF packet with frame number 317, CRC 1C
-  SOF packet with frame number 317, CRC 1C
-  SOF packet with frame number 317, CRC 1C
-  SOF packet with frame number 317, CRC 1C
-  SOF packet with frame number 317, CRC 1C
-  SOF packet with frame number 317, CRC 1C
-  SOF packet with frame number 318, CRC 14
-  SOF packet with frame number 318, CRC 14
-  SOF packet with frame number 318, CRC 14
-  SOF packet with frame number 318, CRC 14
-  SOF packet with frame number 318, CRC 14
-  SOF packet with frame number 318, CRC 14
-  SOF packet with frame number 318, CRC 14
-  SOF packet with frame number 318, CRC 14
-  SOF packet with frame number 319, CRC 0B
-  SOF packet with frame number 319, CRC 0B
-  SOF packet with frame number 319, CRC 0B
-  SOF packet with frame number 319, CRC 0B
-  SOF packet with frame number 319, CRC 0B
-  SOF packet with frame number 319, CRC 0B
-  SOF packet with frame number 319, CRC 0B
-  SOF packet with frame number 319, CRC 0B
-  SOF packet with frame number 320, CRC 0C
-  SOF packet with frame number 320, CRC 0C
-  SOF packet with frame number 320, CRC 0C
-  SOF packet with frame number 320, CRC 0C
-  SOF packet with frame number 320, CRC 0C
-  SOF packet with frame number 320, CRC 0C
-  SOF packet with frame number 320, CRC 0C
-  SOF packet with frame number 320, CRC 0C
-  SOF packet with frame number 321, CRC 13
-  SOF packet with frame number 321, CRC 13
-  SOF packet with frame number 321, CRC 13
-  SOF packet with frame number 321, CRC 13
-  SOF packet with frame number 321, CRC 13
-  SOF packet with frame number 321, CRC 13
-  SOF packet with frame number 321, CRC 13
-  SOF packet with frame number 321, CRC 13
-  SOF packet with frame number 322, CRC 1B
-  SOF packet with frame number 322, CRC 1B
-  SOF packet with frame number 322, CRC 1B
-  SOF packet with frame number 322, CRC 1B
-  SOF packet with frame number 322, CRC 1B
-  SOF packet with frame number 322, CRC 1B
-  SOF packet with frame number 322, CRC 1B
-  SOF packet with frame number 322, CRC 1B
-  SOF packet with frame number 323, CRC 04
-  SOF packet with frame number 323, CRC 04
-  SOF packet with frame number 323, CRC 04
-  SOF packet with frame number 323, CRC 04
-  SOF packet with frame number 323, CRC 04
-  SOF packet with frame number 323, CRC 04
-  SOF packet with frame number 323, CRC 04
-  SOF packet with frame number 323, CRC 04
-  SOF packet with frame number 324, CRC 0B
-  SOF packet with frame number 324, CRC 0B
-  SOF packet with frame number 324, CRC 0B
-  SOF packet with frame number 324, CRC 0B
-  SOF packet with frame number 324, CRC 0B
-  SOF packet with frame number 324, CRC 0B
-  SOF packet with frame number 324, CRC 0B
-  SOF packet with frame number 324, CRC 0B
-  SOF packet with frame number 325, CRC 14
-  SOF packet with frame number 325, CRC 14
-  SOF packet with frame number 325, CRC 14
-  SOF packet with frame number 325, CRC 14
-  SOF packet with frame number 325, CRC 14
-  SOF packet with frame number 325, CRC 14
-  SOF packet with frame number 325, CRC 14
-  SOF packet with frame number 325, CRC 14
-  SOF packet with frame number 326, CRC 1C
-  SOF packet with frame number 326, CRC 1C
-  SOF packet with frame number 326, CRC 1C
-  SOF packet with frame number 326, CRC 1C
-  SOF packet with frame number 326, CRC 1C
-  SOF packet with frame number 326, CRC 1C
-  SOF packet with frame number 326, CRC 1C
-  SOF packet with frame number 326, CRC 1C
-  SOF packet with frame number 327, CRC 03
-  SOF packet with frame number 327, CRC 03
-  SOF packet with frame number 327, CRC 03
-  SOF packet with frame number 327, CRC 03
-  SOF packet with frame number 327, CRC 03
-  SOF packet with frame number 327, CRC 03
-  SOF packet with frame number 327, CRC 03
-  SOF packet with frame number 327, CRC 03
-  SOF packet with frame number 328, CRC 02
-  SOF packet with frame number 328, CRC 02
-  SOF packet with frame number 328, CRC 02
-  SOF packet with frame number 328, CRC 02
-  SOF packet with frame number 328, CRC 02
-  SOF packet with frame number 328, CRC 02
-  SOF packet with frame number 328, CRC 02
-  SOF packet with frame number 328, CRC 02
-  SOF packet with frame number 329, CRC 1D
-  SOF packet with frame number 329, CRC 1D
-  SOF packet with frame number 329, CRC 1D
-  SOF packet with frame number 329, CRC 1D
-  SOF packet with frame number 329, CRC 1D
-  SOF packet with frame number 329, CRC 1D
-  SOF packet with frame number 329, CRC 1D
-  SOF packet with frame number 329, CRC 1D
-  SOF packet with frame number 330, CRC 15
-  SOF packet with frame number 330, CRC 15
-  SOF packet with frame number 330, CRC 15
-  SOF packet with frame number 330, CRC 15
-  SOF packet with frame number 330, CRC 15
-  SOF packet with frame number 330, CRC 15
-  SOF packet with frame number 330, CRC 15
-  SOF packet with frame number 330, CRC 15
-  SOF packet with frame number 331, CRC 0A
-  SOF packet with frame number 331, CRC 0A
-  SOF packet with frame number 331, CRC 0A
-  SOF packet with frame number 331, CRC 0A
-  SOF packet with frame number 331, CRC 0A
-  SOF packet with frame number 331, CRC 0A
-  SOF packet with frame number 331, CRC 0A
-  SOF packet with frame number 331, CRC 0A
-  SOF packet with frame number 332, CRC 05
-  SOF packet with frame number 332, CRC 05
-  SOF packet with frame number 332, CRC 05
-  SOF packet with frame number 332, CRC 05
-  SOF packet with frame number 332, CRC 05
-  SOF packet with frame number 332, CRC 05
-  SOF packet with frame number 332, CRC 05
-  SOF packet with frame number 332, CRC 05
-  SOF packet with frame number 333, CRC 1A
-  SOF packet with frame number 333, CRC 1A
-  SOF packet with frame number 333, CRC 1A
-  SOF packet with frame number 333, CRC 1A
-  SOF packet with frame number 333, CRC 1A
-  SOF packet with frame number 333, CRC 1A
-  SOF packet with frame number 333, CRC 1A
-  SOF packet with frame number 333, CRC 1A
-  SOF packet with frame number 334, CRC 12
-  SOF packet with frame number 334, CRC 12
-  SOF packet with frame number 334, CRC 12
-  SOF packet with frame number 334, CRC 12
-  SOF packet with frame number 334, CRC 12
-  SOF packet with frame number 334, CRC 12
-  SOF packet with frame number 334, CRC 12
-  SOF packet with frame number 334, CRC 12
-  SOF packet with frame number 335, CRC 0D
-  SOF packet with frame number 335, CRC 0D
-  SOF packet with frame number 335, CRC 0D
-  SOF packet with frame number 335, CRC 0D
-  SOF packet with frame number 335, CRC 0D
-  SOF packet with frame number 335, CRC 0D
-  SOF packet with frame number 335, CRC 0D
-  SOF packet with frame number 335, CRC 0D
-  SOF packet with frame number 336, CRC 10
-  SOF packet with frame number 336, CRC 10
-  SOF packet with frame number 336, CRC 10
-  SOF packet with frame number 336, CRC 10
-  SOF packet with frame number 336, CRC 10
-  SOF packet with frame number 336, CRC 10
-  SOF packet with frame number 336, CRC 10
-  SOF packet with frame number 336, CRC 10
-  SOF packet with frame number 337, CRC 0F
-  SOF packet with frame number 337, CRC 0F
-  SOF packet with frame number 337, CRC 0F
-  SOF packet with frame number 337, CRC 0F
-  SOF packet with frame number 337, CRC 0F
-  SOF packet with frame number 337, CRC 0F
-  SOF packet with frame number 337, CRC 0F
-  SOF packet with frame number 337, CRC 0F
-  SOF packet with frame number 338, CRC 07
-  SOF packet with frame number 338, CRC 07
-  SOF packet with frame number 338, CRC 07
-  SOF packet with frame number 338, CRC 07
-  SOF packet with frame number 338, CRC 07
-  SOF packet with frame number 338, CRC 07
-  SOF packet with frame number 338, CRC 07
-  SOF packet with frame number 338, CRC 07
-  SOF packet with frame number 339, CRC 18
-  SOF packet with frame number 339, CRC 18
-  SOF packet with frame number 339, CRC 18
-  SOF packet with frame number 339, CRC 18
-  SOF packet with frame number 339, CRC 18
-  SOF packet with frame number 339, CRC 18
-  SOF packet with frame number 339, CRC 18
-  SOF packet with frame number 339, CRC 18
-  SOF packet with frame number 340, CRC 17
-  SOF packet with frame number 340, CRC 17
-  SOF packet with frame number 340, CRC 17
-  SOF packet with frame number 340, CRC 17
-  SOF packet with frame number 340, CRC 17
-  SOF packet with frame number 340, CRC 17
-  SOF packet with frame number 340, CRC 17
-  SOF packet with frame number 340, CRC 17
-  SOF packet with frame number 341, CRC 08
-  SOF packet with frame number 341, CRC 08
-  SOF packet with frame number 341, CRC 08
-  SOF packet with frame number 341, CRC 08
-  SOF packet with frame number 341, CRC 08
-  SOF packet with frame number 341, CRC 08
-  SOF packet with frame number 341, CRC 08
-  SOF packet with frame number 341, CRC 08
-  SOF packet with frame number 342, CRC 00
-  SOF packet with frame number 342, CRC 00
-  SOF packet with frame number 342, CRC 00
-  SOF packet with frame number 342, CRC 00
-  SOF packet with frame number 342, CRC 00
-  SOF packet with frame number 342, CRC 00
-  SOF packet with frame number 342, CRC 00
-  SOF packet with frame number 342, CRC 00
-  SOF packet with frame number 343, CRC 1F
-  SOF packet with frame number 343, CRC 1F
-  SOF packet with frame number 343, CRC 1F
-  SOF packet with frame number 343, CRC 1F
-  SOF packet with frame number 343, CRC 1F
-  SOF packet with frame number 343, CRC 1F
-  SOF packet with frame number 343, CRC 1F
-  SOF packet with frame number 343, CRC 1F
-  SOF packet with frame number 344, CRC 1E
-  SOF packet with frame number 344, CRC 1E
-  SOF packet with frame number 344, CRC 1E
-  SOF packet with frame number 344, CRC 1E
-  SOF packet with frame number 344, CRC 1E
-  SOF packet with frame number 344, CRC 1E
-  SOF packet with frame number 344, CRC 1E
-  SOF packet with frame number 344, CRC 1E
-  SOF packet with frame number 345, CRC 01
-  SOF packet with frame number 345, CRC 01
-  SOF packet with frame number 345, CRC 01
-  SOF packet with frame number 345, CRC 01
-  SOF packet with frame number 345, CRC 01
-  SOF packet with frame number 345, CRC 01
-  SOF packet with frame number 345, CRC 01
-  SOF packet with frame number 345, CRC 01
-  SOF packet with frame number 346, CRC 09
-  SOF packet with frame number 346, CRC 09
-  SOF packet with frame number 346, CRC 09
-  SOF packet with frame number 346, CRC 09
-  SOF packet with frame number 346, CRC 09
-  SOF packet with frame number 346, CRC 09
-  SOF packet with frame number 346, CRC 09
-  SOF packet with frame number 346, CRC 09
-  SOF packet with frame number 347, CRC 16
-  SOF packet with frame number 347, CRC 16
-  SOF packet with frame number 347, CRC 16
-  SOF packet with frame number 347, CRC 16
-  SOF packet with frame number 347, CRC 16
-  SOF packet with frame number 347, CRC 16
-  SOF packet with frame number 347, CRC 16
-  SOF packet with frame number 347, CRC 16
-  SOF packet with frame number 348, CRC 19
-  SOF packet with frame number 348, CRC 19
-  SOF packet with frame number 348, CRC 19
-  SOF packet with frame number 348, CRC 19
-  SOF packet with frame number 348, CRC 19
-  SOF packet with frame number 348, CRC 19
-  SOF packet with frame number 348, CRC 19
-  SOF packet with frame number 348, CRC 19
-  SOF packet with frame number 349, CRC 06
-  SOF packet with frame number 349, CRC 06
-  SOF packet with frame number 349, CRC 06
-  SOF packet with frame number 349, CRC 06
-  SOF packet with frame number 349, CRC 06
-  SOF packet with frame number 349, CRC 06
-  SOF packet with frame number 349, CRC 06
-  SOF packet with frame number 349, CRC 06
-  SOF packet with frame number 350, CRC 0E
-  SOF packet with frame number 350, CRC 0E
-  SOF packet with frame number 350, CRC 0E
-  SOF packet with frame number 350, CRC 0E
-  SOF packet with frame number 350, CRC 0E
-  SOF packet with frame number 350, CRC 0E
-  SOF packet with frame number 350, CRC 0E
-  SOF packet with frame number 350, CRC 0E
-  SOF packet with frame number 351, CRC 11
-  SOF packet with frame number 351, CRC 11
-  SOF packet with frame number 351, CRC 11
-  SOF packet with frame number 351, CRC 11
-  SOF packet with frame number 351, CRC 11
-  SOF packet with frame number 351, CRC 11
-  SOF packet with frame number 351, CRC 11
-  SOF packet with frame number 351, CRC 11
-  SOF packet with frame number 352, CRC 1D
-  SOF packet with frame number 352, CRC 1D
-  SOF packet with frame number 352, CRC 1D
-  SOF packet with frame number 352, CRC 1D
-  SOF packet with frame number 352, CRC 1D
-  SOF packet with frame number 352, CRC 1D
-  SOF packet with frame number 352, CRC 1D
-  SOF packet with frame number 352, CRC 1D
-  SOF packet with frame number 353, CRC 02
-  SOF packet with frame number 353, CRC 02
-  SOF packet with frame number 353, CRC 02
-  SOF packet with frame number 353, CRC 02
-  SOF packet with frame number 353, CRC 02
-  SOF packet with frame number 353, CRC 02
-  SOF packet with frame number 353, CRC 02
-  SOF packet with frame number 353, CRC 02
-  SOF packet with frame number 354, CRC 0A
-  SOF packet with frame number 354, CRC 0A
-  SOF packet with frame number 354, CRC 0A
-  SOF packet with frame number 354, CRC 0A
-  SOF packet with frame number 354, CRC 0A
-  SOF packet with frame number 354, CRC 0A
-  SOF packet with frame number 354, CRC 0A
-  SOF packet with frame number 354, CRC 0A
-  SOF packet with frame number 355, CRC 15
-  SOF packet with frame number 355, CRC 15
-  SOF packet with frame number 355, CRC 15
-  SOF packet with frame number 355, CRC 15
-  SOF packet with frame number 355, CRC 15
-  SOF packet with frame number 355, CRC 15
-  SOF packet with frame number 355, CRC 15
-  SOF packet with frame number 355, CRC 15
-  SOF packet with frame number 356, CRC 1A
-  SOF packet with frame number 356, CRC 1A
-  SOF packet with frame number 356, CRC 1A
-  SOF packet with frame number 356, CRC 1A
-  SOF packet with frame number 356, CRC 1A
-  SOF packet with frame number 356, CRC 1A
-  SOF packet with frame number 356, CRC 1A
-  SOF packet with frame number 356, CRC 1A
-  SOF packet with frame number 357, CRC 05
-  SOF packet with frame number 357, CRC 05
-  SOF packet with frame number 357, CRC 05
-  SOF packet with frame number 357, CRC 05
-  SOF packet with frame number 357, CRC 05
-  SOF packet with frame number 357, CRC 05
-  SOF packet with frame number 357, CRC 05
-  SOF packet with frame number 357, CRC 05
-  SOF packet with frame number 358, CRC 0D
-  SOF packet with frame number 358, CRC 0D
-  SOF packet with frame number 358, CRC 0D
-  SOF packet with frame number 358, CRC 0D
-  SOF packet with frame number 358, CRC 0D
-  SOF packet with frame number 358, CRC 0D
-  SOF packet with frame number 358, CRC 0D
-  SOF packet with frame number 358, CRC 0D
-  SOF packet with frame number 359, CRC 12
-  SOF packet with frame number 359, CRC 12
-  SOF packet with frame number 359, CRC 12
-  SOF packet with frame number 359, CRC 12
-  SOF packet with frame number 359, CRC 12
-  SOF packet with frame number 359, CRC 12
-  SOF packet with frame number 359, CRC 12
-  SOF packet with frame number 359, CRC 12
-  SOF packet with frame number 360, CRC 13
-  SOF packet with frame number 360, CRC 13
-  SOF packet with frame number 360, CRC 13
-  SOF packet with frame number 360, CRC 13
-  SOF packet with frame number 360, CRC 13
-  SOF packet with frame number 360, CRC 13
-  SOF packet with frame number 360, CRC 13
-  SOF packet with frame number 360, CRC 13
-  SOF packet with frame number 361, CRC 0C
-  SOF packet with frame number 361, CRC 0C
-  SOF packet with frame number 361, CRC 0C
-  SOF packet with frame number 361, CRC 0C
-  SOF packet with frame number 361, CRC 0C
+  8 times: SOF packet with frame number 285, CRC 0D
+  8 times: SOF packet with frame number 286, CRC 05
+  8 times: SOF packet with frame number 287, CRC 1A
+  8 times: SOF packet with frame number 288, CRC 16
+  8 times: SOF packet with frame number 289, CRC 09
+  8 times: SOF packet with frame number 290, CRC 01
+  8 times: SOF packet with frame number 291, CRC 1E
+  8 times: SOF packet with frame number 292, CRC 11
+  8 times: SOF packet with frame number 293, CRC 0E
+  8 times: SOF packet with frame number 294, CRC 06
+  8 times: SOF packet with frame number 295, CRC 19
+  8 times: SOF packet with frame number 296, CRC 18
+  8 times: SOF packet with frame number 297, CRC 07
+  8 times: SOF packet with frame number 298, CRC 0F
+  8 times: SOF packet with frame number 299, CRC 10
+  8 times: SOF packet with frame number 300, CRC 1F
+  8 times: SOF packet with frame number 301, CRC 00
+  8 times: SOF packet with frame number 302, CRC 08
+  8 times: SOF packet with frame number 303, CRC 17
+  8 times: SOF packet with frame number 304, CRC 0A
+  8 times: SOF packet with frame number 305, CRC 15
+  8 times: SOF packet with frame number 306, CRC 1D
+  8 times: SOF packet with frame number 307, CRC 02
+  8 times: SOF packet with frame number 308, CRC 0D
+  8 times: SOF packet with frame number 309, CRC 12
+  8 times: SOF packet with frame number 310, CRC 1A
+  8 times: SOF packet with frame number 311, CRC 05
+  8 times: SOF packet with frame number 312, CRC 04
+  8 times: SOF packet with frame number 313, CRC 1B
+  8 times: SOF packet with frame number 314, CRC 13
+  8 times: SOF packet with frame number 315, CRC 0C
+  8 times: SOF packet with frame number 316, CRC 03
+  8 times: SOF packet with frame number 317, CRC 1C
+  8 times: SOF packet with frame number 318, CRC 14
+  8 times: SOF packet with frame number 319, CRC 0B
+  8 times: SOF packet with frame number 320, CRC 0C
+  8 times: SOF packet with frame number 321, CRC 13
+  8 times: SOF packet with frame number 322, CRC 1B
+  8 times: SOF packet with frame number 323, CRC 04
+  8 times: SOF packet with frame number 324, CRC 0B
+  8 times: SOF packet with frame number 325, CRC 14
+  8 times: SOF packet with frame number 326, CRC 1C
+  8 times: SOF packet with frame number 327, CRC 03
+  8 times: SOF packet with frame number 328, CRC 02
+  8 times: SOF packet with frame number 329, CRC 1D
+  8 times: SOF packet with frame number 330, CRC 15
+  8 times: SOF packet with frame number 331, CRC 0A
+  8 times: SOF packet with frame number 332, CRC 05
+  8 times: SOF packet with frame number 333, CRC 1A
+  8 times: SOF packet with frame number 334, CRC 12
+  8 times: SOF packet with frame number 335, CRC 0D
+  8 times: SOF packet with frame number 336, CRC 10
+  8 times: SOF packet with frame number 337, CRC 0F
+  8 times: SOF packet with frame number 338, CRC 07
+  8 times: SOF packet with frame number 339, CRC 18
+  8 times: SOF packet with frame number 340, CRC 17
+  8 times: SOF packet with frame number 341, CRC 08
+  8 times: SOF packet with frame number 342, CRC 00
+  8 times: SOF packet with frame number 343, CRC 1F
+  8 times: SOF packet with frame number 344, CRC 1E
+  8 times: SOF packet with frame number 345, CRC 01
+  8 times: SOF packet with frame number 346, CRC 09
+  8 times: SOF packet with frame number 347, CRC 16
+  8 times: SOF packet with frame number 348, CRC 19
+  8 times: SOF packet with frame number 349, CRC 06
+  8 times: SOF packet with frame number 350, CRC 0E
+  8 times: SOF packet with frame number 351, CRC 11
+  8 times: SOF packet with frame number 352, CRC 1D
+  8 times: SOF packet with frame number 353, CRC 02
+  8 times: SOF packet with frame number 354, CRC 0A
+  8 times: SOF packet with frame number 355, CRC 15
+  8 times: SOF packet with frame number 356, CRC 1A
+  8 times: SOF packet with frame number 357, CRC 05
+  8 times: SOF packet with frame number 358, CRC 0D
+  8 times: SOF packet with frame number 359, CRC 12
+  8 times: SOF packet with frame number 360, CRC 13
+  5 times: SOF packet with frame number 361, CRC 0C
  160 SOF packets
-  SOF packet with frame number 361, CRC 0C
-  SOF packet with frame number 361, CRC 0C
-  SOF packet with frame number 361, CRC 0C
-  SOF packet with frame number 362, CRC 04
-  SOF packet with frame number 362, CRC 04
-  SOF packet with frame number 362, CRC 04
-  SOF packet with frame number 362, CRC 04
-  SOF packet with frame number 362, CRC 04
-  SOF packet with frame number 362, CRC 04
-  SOF packet with frame number 362, CRC 04
-  SOF packet with frame number 362, CRC 04
-  SOF packet with frame number 363, CRC 1B
-  SOF packet with frame number 363, CRC 1B
-  SOF packet with frame number 363, CRC 1B
-  SOF packet with frame number 363, CRC 1B
-  SOF packet with frame number 363, CRC 1B
-  SOF packet with frame number 363, CRC 1B
-  SOF packet with frame number 363, CRC 1B
-  SOF packet with frame number 363, CRC 1B
-  SOF packet with frame number 364, CRC 14
-  SOF packet with frame number 364, CRC 14
-  SOF packet with frame number 364, CRC 14
-  SOF packet with frame number 364, CRC 14
-  SOF packet with frame number 364, CRC 14
-  SOF packet with frame number 364, CRC 14
-  SOF packet with frame number 364, CRC 14
-  SOF packet with frame number 364, CRC 14
-  SOF packet with frame number 365, CRC 0B
-  SOF packet with frame number 365, CRC 0B
-  SOF packet with frame number 365, CRC 0B
-  SOF packet with frame number 365, CRC 0B
-  SOF packet with frame number 365, CRC 0B
-  SOF packet with frame number 365, CRC 0B
-  SOF packet with frame number 365, CRC 0B
-  SOF packet with frame number 365, CRC 0B
-  SOF packet with frame number 366, CRC 03
-  SOF packet with frame number 366, CRC 03
-  SOF packet with frame number 366, CRC 03
-  SOF packet with frame number 366, CRC 03
-  SOF packet with frame number 366, CRC 03
-  SOF packet with frame number 366, CRC 03
-  SOF packet with frame number 366, CRC 03
-  SOF packet with frame number 366, CRC 03
-  SOF packet with frame number 367, CRC 1C
-  SOF packet with frame number 367, CRC 1C
-  SOF packet with frame number 367, CRC 1C
-  SOF packet with frame number 367, CRC 1C
-  SOF packet with frame number 367, CRC 1C
-  SOF packet with frame number 367, CRC 1C
-  SOF packet with frame number 367, CRC 1C
-  SOF packet with frame number 367, CRC 1C
-  SOF packet with frame number 368, CRC 01
-  SOF packet with frame number 368, CRC 01
-  SOF packet with frame number 368, CRC 01
-  SOF packet with frame number 368, CRC 01
-  SOF packet with frame number 368, CRC 01
-  SOF packet with frame number 368, CRC 01
-  SOF packet with frame number 368, CRC 01
-  SOF packet with frame number 368, CRC 01
-  SOF packet with frame number 369, CRC 1E
-  SOF packet with frame number 369, CRC 1E
-  SOF packet with frame number 369, CRC 1E
-  SOF packet with frame number 369, CRC 1E
-  SOF packet with frame number 369, CRC 1E
-  SOF packet with frame number 369, CRC 1E
-  SOF packet with frame number 369, CRC 1E
-  SOF packet with frame number 369, CRC 1E
-  SOF packet with frame number 370, CRC 16
-  SOF packet with frame number 370, CRC 16
-  SOF packet with frame number 370, CRC 16
-  SOF packet with frame number 370, CRC 16
-  SOF packet with frame number 370, CRC 16
-  SOF packet with frame number 370, CRC 16
-  SOF packet with frame number 370, CRC 16
-  SOF packet with frame number 370, CRC 16
-  SOF packet with frame number 371, CRC 09
-  SOF packet with frame number 371, CRC 09
-  SOF packet with frame number 371, CRC 09
-  SOF packet with frame number 371, CRC 09
-  SOF packet with frame number 371, CRC 09
-  SOF packet with frame number 371, CRC 09
-  SOF packet with frame number 371, CRC 09
-  SOF packet with frame number 371, CRC 09
-  SOF packet with frame number 372, CRC 06
-  SOF packet with frame number 372, CRC 06
-  SOF packet with frame number 372, CRC 06
-  SOF packet with frame number 372, CRC 06
-  SOF packet with frame number 372, CRC 06
-  SOF packet with frame number 372, CRC 06
-  SOF packet with frame number 372, CRC 06
-  SOF packet with frame number 372, CRC 06
-  SOF packet with frame number 373, CRC 19
-  SOF packet with frame number 373, CRC 19
-  SOF packet with frame number 373, CRC 19
-  SOF packet with frame number 373, CRC 19
-  SOF packet with frame number 373, CRC 19
-  SOF packet with frame number 373, CRC 19
-  SOF packet with frame number 373, CRC 19
-  SOF packet with frame number 373, CRC 19
-  SOF packet with frame number 374, CRC 11
-  SOF packet with frame number 374, CRC 11
-  SOF packet with frame number 374, CRC 11
-  SOF packet with frame number 374, CRC 11
-  SOF packet with frame number 374, CRC 11
-  SOF packet with frame number 374, CRC 11
-  SOF packet with frame number 374, CRC 11
-  SOF packet with frame number 374, CRC 11
-  SOF packet with frame number 375, CRC 0E
-  SOF packet with frame number 375, CRC 0E
-  SOF packet with frame number 375, CRC 0E
-  SOF packet with frame number 375, CRC 0E
-  SOF packet with frame number 375, CRC 0E
-  SOF packet with frame number 375, CRC 0E
-  SOF packet with frame number 375, CRC 0E
-  SOF packet with frame number 375, CRC 0E
-  SOF packet with frame number 376, CRC 0F
-  SOF packet with frame number 376, CRC 0F
-  SOF packet with frame number 376, CRC 0F
-  SOF packet with frame number 376, CRC 0F
-  SOF packet with frame number 376, CRC 0F
-  SOF packet with frame number 376, CRC 0F
-  SOF packet with frame number 376, CRC 0F
-  SOF packet with frame number 376, CRC 0F
-  SOF packet with frame number 377, CRC 10
-  SOF packet with frame number 377, CRC 10
-  SOF packet with frame number 377, CRC 10
-  SOF packet with frame number 377, CRC 10
-  SOF packet with frame number 377, CRC 10
-  SOF packet with frame number 377, CRC 10
-  SOF packet with frame number 377, CRC 10
-  SOF packet with frame number 377, CRC 10
-  SOF packet with frame number 378, CRC 18
-  SOF packet with frame number 378, CRC 18
-  SOF packet with frame number 378, CRC 18
-  SOF packet with frame number 378, CRC 18
-  SOF packet with frame number 378, CRC 18
-  SOF packet with frame number 378, CRC 18
-  SOF packet with frame number 378, CRC 18
-  SOF packet with frame number 378, CRC 18
-  SOF packet with frame number 379, CRC 07
-  SOF packet with frame number 379, CRC 07
-  SOF packet with frame number 379, CRC 07
-  SOF packet with frame number 379, CRC 07
-  SOF packet with frame number 379, CRC 07
-  SOF packet with frame number 379, CRC 07
-  SOF packet with frame number 379, CRC 07
-  SOF packet with frame number 379, CRC 07
-  SOF packet with frame number 380, CRC 08
-  SOF packet with frame number 380, CRC 08
-  SOF packet with frame number 380, CRC 08
-  SOF packet with frame number 380, CRC 08
-  SOF packet with frame number 380, CRC 08
-  SOF packet with frame number 380, CRC 08
-  SOF packet with frame number 380, CRC 08
-  SOF packet with frame number 380, CRC 08
-  SOF packet with frame number 381, CRC 17
-  SOF packet with frame number 381, CRC 17
-  SOF packet with frame number 381, CRC 17
-  SOF packet with frame number 381, CRC 17
-  SOF packet with frame number 381, CRC 17
- 1 SOF packets
-  SOF packet with frame number 381, CRC 17
- 1 SOF packets
+  3 times: SOF packet with frame number 361, CRC 0C
+  8 times: SOF packet with frame number 362, CRC 04
+  8 times: SOF packet with frame number 363, CRC 1B
+  8 times: SOF packet with frame number 364, CRC 14
+  8 times: SOF packet with frame number 365, CRC 0B
+  8 times: SOF packet with frame number 366, CRC 03
+  8 times: SOF packet with frame number 367, CRC 1C
+  8 times: SOF packet with frame number 368, CRC 01
+  8 times: SOF packet with frame number 369, CRC 1E
+  8 times: SOF packet with frame number 370, CRC 16
+  8 times: SOF packet with frame number 371, CRC 09
+  8 times: SOF packet with frame number 372, CRC 06
+  8 times: SOF packet with frame number 373, CRC 19
+  8 times: SOF packet with frame number 374, CRC 11
+  8 times: SOF packet with frame number 375, CRC 0E
+  8 times: SOF packet with frame number 376, CRC 0F
+  8 times: SOF packet with frame number 377, CRC 10
+  8 times: SOF packet with frame number 378, CRC 18
+  8 times: SOF packet with frame number 379, CRC 07
+  8 times: SOF packet with frame number 380, CRC 08
+  5 times: SOF packet with frame number 381, CRC 17
+ 2 times: 1 SOF packets
   SOF packet with frame number 381, CRC 17
  6 SOF packets
   SOF packet with frame number 381, CRC 17
-  SOF packet with frame number 382, CRC 1F
-  SOF packet with frame number 382, CRC 1F
-  SOF packet with frame number 382, CRC 1F
-  SOF packet with frame number 382, CRC 1F
-  SOF packet with frame number 382, CRC 1F
+  5 times: SOF packet with frame number 382, CRC 1F
  9 SOF packets
-  SOF packet with frame number 382, CRC 1F
-  SOF packet with frame number 382, CRC 1F
-  SOF packet with frame number 382, CRC 1F
-  SOF packet with frame number 383, CRC 00
-  SOF packet with frame number 383, CRC 00
-  SOF packet with frame number 383, CRC 00
-  SOF packet with frame number 383, CRC 00
-  SOF packet with frame number 383, CRC 00
-  SOF packet with frame number 383, CRC 00
+  3 times: SOF packet with frame number 382, CRC 1F
+  6 times: SOF packet with frame number 383, CRC 00
 Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
  SETUP transaction on 0.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 40, 00]
   SETUP packet on 0.0, CRC 02

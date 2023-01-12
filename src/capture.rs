@@ -1477,22 +1477,43 @@ mod tests {
     use std::io::{BufReader, BufWriter, BufRead, Write};
     use std::path::PathBuf;
     use crate::decoder::Decoder;
+    use itertools::Itertools;
     use pcap_file::pcap::PcapReader;
 
-    fn write_item(cap: &mut Capture, item: &TrafficItem, depth: u8,
+    fn summarize_item(cap: &mut Capture, item: &TrafficItem, depth: usize)
+        -> String
+    {
+        let mut summary = cap.summary(item).unwrap();
+        let (_completion, num_children) =
+            cap.item_children(Some(item)).unwrap();
+        let child_ids = 0..num_children;
+        for (n, child_summary) in child_ids
+            .map(|child_id| {
+                let child = cap.child_item(item, child_id).unwrap();
+                summarize_item(cap, &child, depth + 1)
+            })
+            .dedup_with_count()
+        {
+            summary += "\n";
+            summary += &" ".repeat(depth + 1);
+            if n > 1 {
+                summary += &format!("{} times: {}", n, &child_summary);
+            } else {
+                summary += &child_summary;
+            }
+        }
+        summary
+    }
+
+    fn write_item(cap: &mut Capture, item: &TrafficItem, depth: usize,
                   writer: &mut dyn Write)
     {
-        let summary = cap.summary(item).unwrap();
+        let summary = summarize_item(cap, item, depth);
         for _ in 0..depth {
             writer.write(b" ").unwrap();
         }
         writer.write(summary.as_bytes()).unwrap();
         writer.write(b"\n").unwrap();
-        let (_completion, num_children) = cap.item_children(Some(item)).unwrap();
-        for child_id in 0..num_children {
-            let child = cap.child_item(item, child_id).unwrap();
-            write_item(cap, &child, depth + 1, writer);
-        }
     }
 
     #[test]
