@@ -88,7 +88,12 @@ impl Recording {
                 ).as_bytes())
             .expect("Failed to write to UI action log");
 
-        self.log_output(format!("{}\n", action));
+        if let UiAction::SetExpanded(ref name, position, _) = action {
+            let summary = self.summary(&name, position);
+            self.log_output(format!("{}: {}\n", action, summary));
+        } else {
+            self.log_output(format!("{}\n", action));
+        }
     }
 
     fn log_output(&mut self, string: String) {
@@ -137,13 +142,7 @@ impl Recording {
         position: u32,
         new_summary: String)
     {
-        let items = self.view_items
-            .get(name)
-            .expect("Recording has no items for model");
-        let old_summary = items
-            .get(position as usize)
-            .expect("Recording has no summary for row")
-            .clone();
+        let old_summary = self.summary(name, position).to_string();
         if new_summary != old_summary {
             self.log_output(format!("At {} row {}:\n", name, position));
             self.log_output(format!("- {}\n", old_summary));
@@ -216,5 +215,13 @@ impl Recording {
             .expect("Failed to lock capture")
             .summary(&item)
             .expect("Failed to generate item summary")
+    }
+
+    fn summary(&self, name: &str, position: u32) -> &str {
+        &self.view_items
+            .get(name)
+            .expect("Recording has no items for model")
+            .get(position as usize)
+            .expect("Recording has no summary for row")
     }
 }

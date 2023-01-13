@@ -5,10 +5,10 @@ At traffic row 0:
 + Polling 1 times for interrupt transfer on endpoint 14.1 IN
 At devices row 0:
 + Device 14: Unknown
-Expanding devices view, row 0
+Expanding devices view, row 0: Device 14: Unknown
 At devices row 1:
 + No device descriptor
-Expanding traffic view, row 0
+Expanding traffic view, row 0: Polling 1 times for interrupt transfer on endpoint 14.1 IN
 At traffic row 1:
 + Starting IN transaction on 14.1
 Updating after 3 packets decoded
@@ -20,7 +20,7 @@ At traffic row 0:
 - Starting IN transaction on 14.1
 + Polling 1 times for interrupt transfer on endpoint 14.1 IN
 + Starting IN transaction on 14.1
-Expanding traffic view, row 2
+Expanding traffic view, row 2: Polling 1 times for interrupt transfer on endpoint 14.2 IN
 At traffic row 3:
 + Starting IN transaction on 14.2
 Updating after 5 packets decoded
@@ -123,7 +123,7 @@ At traffic row 9:
 + Polling 4 times for interrupt transfer on endpoint 14.2 IN
 At traffic row 17:
 + Completing IN transaction on 14.2, NAK
-Collapsing traffic view, row 0
+Collapsing traffic view, row 0: Polling 1 times for interrupt transfer on endpoint 14.1 IN
 At traffic row 1:
 - Starting IN transaction on 14.1
 - Completing IN transaction on 14.1, NAK
@@ -133,7 +133,7 @@ At traffic row 1:
 - Completing IN transaction on 14.1, NAK
 - Starting IN transaction on 14.1
 - Completing IN transaction on 14.1, NAK
-Collapsing traffic view, row 1
+Collapsing traffic view, row 1: Polling 1 times for interrupt transfer on endpoint 14.2 IN
 At traffic row 2:
 - Starting IN transaction on 14.2
 - Completing IN transaction on 14.2, NAK
@@ -143,6 +143,6 @@ At traffic row 2:
 - Completing IN transaction on 14.2, NAK
 - Starting IN transaction on 14.2
 - Completing IN transaction on 14.2, NAK
-Collapsing devices view, row 0
+Collapsing devices view, row 0: Device 14: Unknown
 At devices row 1:
 - No device descriptor

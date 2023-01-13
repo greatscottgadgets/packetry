@@ -2,10 +2,10 @@ Opening file tests/mouse/capture.pcap
 Updating after 1 packets decoded
 At traffic row 0:
 + 1 invalid groups
-Expanding traffic view, row 0
+Expanding traffic view, row 0: 1 invalid groups
 At traffic row 1:
 + 1 malformed packets
-Expanding traffic view, row 1
+Expanding traffic view, row 1: 1 malformed packets
 At traffic row 2:
 + Malformed packet: [FF]
 Updating after 2 packets decoded
@@ -18,10 +18,10 @@ At traffic row 0:
 + 1 invalid groups
 + 1 malformed packets
 + Malformed packet: [FF]
-Expanding traffic view, row 3
+Expanding traffic view, row 3: Incomplete control transfer on device 0
 At traffic row 4:
 + SETUP transaction on 0.0
-Expanding traffic view, row 4
+Expanding traffic view, row 4: SETUP transaction on 0.0
 At traffic row 5:
 + SETUP packet on 0.0, CRC 02
 Updating after 3 packets decoded
@@ -42,7 +42,7 @@ At traffic row 3:
 + Getting device descriptor #0 for device 0, reading 0 of 64 requested bytes, incomplete
 At traffic row 8:
 + IN transaction on 0.0
-Expanding traffic view, row 8
+Expanding traffic view, row 8: IN transaction on 0.0
 At traffic row 9:
 + IN packet on 0.0, CRC 02
 Updating after 6 packets decoded
@@ -57,7 +57,7 @@ At traffic row 3:
 + Getting device descriptor #0 for device 0, reading 0 of 64 requested bytes, incomplete
 At traffic row 11:
 + IN transaction on 0.0
-Expanding traffic view, row 11
+Expanding traffic view, row 11: IN transaction on 0.0
 At traffic row 12:
 + IN packet on 0.0, CRC 02
 Updating after 8 packets decoded
@@ -72,7 +72,7 @@ At traffic row 3:
 + Getting device descriptor #0 for device 0, reading 0 of 64 requested bytes, incomplete
 At traffic row 14:
 + IN transaction on 0.0
-Expanding traffic view, row 14
+Expanding traffic view, row 14: IN transaction on 0.0
 At traffic row 15:
 + IN packet on 0.0, CRC 02
 Updating after 10 packets decoded
@@ -226,7 +226,7 @@ At traffic row 0:
 + Setting address to 4 for device 0
 At devices row 0:
 + Device 4: Unknown
-Expanding devices view, row 0
+Expanding devices view, row 0: Device 4: Unknown
 At devices row 1:
 + No device descriptor
 Updating after 36 packets decoded
@@ -286,7 +286,7 @@ At devices row 0:
 At devices row 1:
 - No device descriptor
 + Device descriptor
-Expanding devices view, row 1
+Expanding devices view, row 1: No device descriptor
 At devices row 2:
 + Length: 18 bytes
 + Type: 0x01
@@ -344,10 +344,10 @@ At devices row 0:
 + Device 4: 1BCF:0005
 At devices row 15:
 + Configuration 1
-Expanding devices view, row 15
+Expanding devices view, row 15: Configuration 1
 At devices row 16:
 + Configuration descriptor
-Expanding devices view, row 16
+Expanding devices view, row 16: Configuration descriptor
 At devices row 17:
 + Length: 9 bytes
 + Type: 0x02
@@ -451,11 +451,11 @@ At devices row 0:
 + Device 4: 1BCF:0005
 At devices row 25:
 + Interface 0
-Expanding devices view, row 25
+Expanding devices view, row 25: Interface 0
 At devices row 26:
 + Interface descriptor
 + Endpoint 1 IN
-Expanding devices view, row 26
+Expanding devices view, row 26: Interface descriptor
 At devices row 27:
 + Length: 9 bytes
 + Type: 0x04
@@ -466,7 +466,7 @@ At devices row 27:
 + Subclass: 0x01
 + Protocol: 0x02
 + Interface string: (none)
-Expanding devices view, row 36
+Expanding devices view, row 36: Endpoint 1 IN
 At devices row 37:
 + Length: 7 bytes
 + Type: 0x05
@@ -586,7 +586,7 @@ At devices row 0:
 At devices row 13:
 - Product string: #2 (not seen)
 + Product string: #2 'USB Optical Mouse'
-Expanding traffic view, row 29
+Expanding traffic view, row 29: Incomplete control transfer on device 4
 At traffic row 30:
 + SETUP transaction on 4.0 with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, FF, 00]
 + 2 times: IN transaction on 4.0, NAK
@@ -599,7 +599,7 @@ At traffic row 30:
 + IN transaction on 4.0, NAK
 + IN transaction on 4.0 with 4 data bytes, ACK: [73, 00, 65, 00]
 + OUT transaction on 4.0 with no data, ACK
-Collapsing devices view, row 15
+Collapsing devices view, row 15: Configuration 1
 At devices row 17:
 - Length: 9 bytes
 - Type: 0x02
@@ -632,7 +632,7 @@ At devices row 18:
 At devices row 16:
 - Configuration descriptor
 - Interface 0
-Collapsing devices view, row 0
+Collapsing devices view, row 0: Device 4: Unknown
 At devices row 2:
 - Length: 18 bytes
 - Type: 0x01
@@ -650,7 +650,7 @@ At devices row 2:
 At devices row 1:
 - No device descriptor
 - Configuration 1
-Collapsing traffic view, row 29
+Collapsing traffic view, row 29: Incomplete control transfer on device 4
 At traffic row 30:
 - SETUP transaction on 4.0 with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, FF, 00]
 - 2 times: IN transaction on 4.0, NAK
@@ -663,7 +663,7 @@ At traffic row 30:
 - IN transaction on 4.0, NAK
 - IN transaction on 4.0 with 4 data bytes, ACK: [73, 00, 65, 00]
 - OUT transaction on 4.0 with no data, ACK
-Collapsing traffic view, row 3
+Collapsing traffic view, row 3: Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
 At traffic row 5:
 - SETUP packet on 0.0, CRC 02
 - DATA0 packet with CRC 94DD and 8 data bytes: [80, 06, 00, 01, 00, 00, 40, 00]
@@ -687,7 +687,7 @@ At traffic row 4:
 - IN transaction on 0.0, NAK
 - IN transaction on 0.0 with 2 data bytes, ACK: [00, 01]
 - OUT transaction on 0.0 with no data, ACK
-Collapsing traffic view, row 0
+Collapsing traffic view, row 0: 1 invalid groups
 At traffic row 2:
 - Malformed packet: [FF]
 At traffic row 1:
