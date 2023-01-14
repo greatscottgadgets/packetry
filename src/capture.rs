@@ -1058,7 +1058,7 @@ pub enum SearchResult<Item> {
     NextLevelItem(u64, u64, u64, Item),
 }
 
-pub trait ItemSource<Item> {
+pub trait ItemSource<Item, Cursor> {
     fn item(&mut self, parent: Option<&Item>, index: u64)
         -> Result<Item, CaptureError>;
     fn item_update(&mut self, item: &Item)
@@ -1082,7 +1082,7 @@ pub trait ItemSource<Item> {
                   expanded: &mut dyn Iterator<Item=(u64, Item)>,
                   region: &Range<u64>,
                   index: u64)
-        -> Result<SearchResult<Item>, CaptureError>;
+        -> Result<(SearchResult<Item>, Cursor), CaptureError>;
     fn summary(&mut self, item: &Item) -> Result<String, CaptureError>;
     fn connectors(&mut self, item: &Item) -> Result<String, CaptureError>;
 }
@@ -1103,7 +1103,7 @@ pub struct TrafficCursor {
     index: u64,
 }
 
-impl ItemSource<TrafficItem> for Capture {
+impl ItemSource<TrafficItem, TrafficCursor> for Capture {
     fn item(&mut self, parent: Option<&TrafficItem>, index: u64)
         -> Result<TrafficItem, CaptureError>
     {
@@ -1240,7 +1240,7 @@ impl ItemSource<TrafficItem> for Capture {
                   expanded: &mut dyn Iterator<Item=(u64, TrafficItem)>,
                   region: &Range<u64>,
                   index: u64)
-        -> Result<SearchResult<TrafficItem>, CaptureError>
+        -> Result<(SearchResult<TrafficItem>, TrafficCursor), CaptureError>
     {
         use SearchResult::*;
         use TrafficItem::*;
@@ -1284,7 +1284,7 @@ impl ItemSource<TrafficItem> for Capture {
                 let item_id = span_item_id + 1;
                 let transfer_id = self.item_index.get(item_id)?;
                 let item = Transfer(transfer_id);
-                return Ok(TopLevelItem(item_id.value, item))
+                return Ok((TopLevelItem(item_id.value, item), cursor))
             // Otherwise, skip over the transfer item.
             } else {
                 cursor.index -= 1;
@@ -1320,8 +1320,9 @@ impl ItemSource<TrafficItem> for Capture {
                     ep_transaction_id - transfer.first_ep_transaction_id;
                 let item = Transaction(
                     transfer.transfer_id, transaction_id);
-                return Ok(NextLevelItem(
-                    cursor.span_index, parent_index, child_index, item));
+                let search_result = NextLevelItem(
+                    cursor.span_index, parent_index, child_index, item);
+                return Ok((search_result, cursor));
             }
 
             // Exclude transactions that cannot possibly match the index.
@@ -1388,8 +1389,9 @@ impl ItemSource<TrafficItem> for Capture {
                     let item = Transaction(
                         cursor.transfers[longest].transfer_id,
                         pivot_transaction_id);
-                    return Ok(NextLevelItem(
-                        cursor.span_index, parent_index, child_index, item));
+                    let search_result = NextLevelItem(
+                        cursor.span_index, parent_index, child_index, item);
+                    return Ok((search_result, cursor))
                 },
                 Less => {
                     // If the index is less than the count, split the ranges
@@ -1437,8 +1439,9 @@ impl ItemSource<TrafficItem> for Capture {
         let child_index = transfer.transaction_range.start -
             transfer.first_ep_transaction_id;
         let item = Transaction(transfer.transfer_id, *transaction_id);
-        Ok(NextLevelItem(
-            cursor.span_index, parent_index, child_index, item))
+        let search_result = NextLevelItem(
+            cursor.span_index, parent_index, child_index, item);
+        Ok((search_result, cursor))
     }
 
     fn summary(&mut self, item: &TrafficItem)
@@ -1663,7 +1666,7 @@ impl ItemSource<TrafficItem> for Capture {
     }
 }
 
-impl ItemSource<DeviceItem> for Capture {
+impl ItemSource<DeviceItem, ()> for Capture {
     fn item(&mut self, parent: Option<&DeviceItem>, index: u64)
         -> Result<DeviceItem, CaptureError>
     {
@@ -1818,7 +1821,7 @@ impl ItemSource<DeviceItem> for Capture {
                   _expanded: &mut dyn Iterator<Item=(u64, DeviceItem)>,
                   _region: &Range<u64>,
                   _index: u64)
-        -> Result<SearchResult<DeviceItem>, CaptureError>
+        -> Result<(SearchResult<DeviceItem>, ()), CaptureError>
     {
         unimplemented!()
     }

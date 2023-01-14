@@ -151,7 +151,7 @@ impl Recording {
         }
     }
 
-    pub fn log_items_changed<Model, Item>(
+    pub fn log_items_changed<Model, Item, Cursor>(
         &mut self,
         name: &str,
         model: &Model,
@@ -160,7 +160,7 @@ impl Recording {
         added: u32)
     where
         Model: ListModelExt + GenericModel<Item>,
-        Capture: ItemSource<Item>,
+        Capture: ItemSource<Item, Cursor>,
         Object: ToGenericRowData<Item>,
         Item: Copy + PartialOrd + Debug
     {
@@ -214,8 +214,9 @@ impl Recording {
         }
     }
 
-    fn item<Model, Item>(&self, model: &Model, position: u32) -> Item
+    fn item<Model, Item, Cursor>(&self, model: &Model, position: u32) -> Item
         where Model: ListModelExt + GenericModel<Item>,
+              Capture: ItemSource<Item, Cursor>,
               Object: ToGenericRowData<Item>,
               Item: Copy
     {
@@ -229,8 +230,8 @@ impl Recording {
             .item
     }
 
-    fn item_text<Item>(&self, item: &Item) -> String
-        where Capture: ItemSource<Item>, Item: Copy
+    fn item_text<Item, Cursor>(&self, item: &Item) -> String
+        where Capture: ItemSource<Item, Cursor>, Item: Copy
     {
         self.capture
             .lock()

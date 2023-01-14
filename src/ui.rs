@@ -50,6 +50,7 @@ use crate::capture::{
     CaptureError,
     ItemSource,
     TrafficItem,
+    TrafficCursor,
     DeviceItem,
     PacketId,
     fmt_size,
@@ -257,7 +258,7 @@ pub fn activate(application: &Application) -> Result<(), PacketryError> {
     Ok(())
 }
 
-fn create_view<Item, Model, RowData>(
+fn create_view<Item, Model, RowData, Cursor>(
         capture: &Arc<Mutex<Capture>>,
         #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
         recording_args: (&Rc<RefCell<Recording>>, &'static str))
@@ -266,7 +267,8 @@ fn create_view<Item, Model, RowData>(
         Item: Copy + PartialOrd + Debug + 'static,
         Model: GenericModel<Item> + IsA<ListModel> + IsA<Object>,
         RowData: GenericRowData<Item> + IsA<Object>,
-        Capture: ItemSource<Item>,
+        Cursor: 'static,
+        Capture: ItemSource<Item, Cursor>,
         Object: ToGenericRowData<Item>
 {
     #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
@@ -386,14 +388,14 @@ fn create_view<Item, Model, RowData>(
 pub fn reset_capture() -> Result<(), PacketryError> {
     let capture = Arc::new(Mutex::new(Capture::new()?));
     with_ui(|ui| {
-        let (traffic_model, traffic_view) =
-            create_view::<TrafficItem, TrafficModel, TrafficRowData>(
+        let (traffic_model, traffic_view) = create_view::<
+            TrafficItem, TrafficModel, TrafficRowData, TrafficCursor>(
                 &capture,
                 #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
                 (&ui.recording, "traffic")
             );
-        let (device_model, device_view) =
-            create_view::<DeviceItem, DeviceModel, DeviceRowData>(
+        let (device_model, device_view) = create_view::<
+            DeviceItem, DeviceModel, DeviceRowData, ()>(
                 &capture,
                 #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
                 (&ui.recording, "devices")

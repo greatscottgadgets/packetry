@@ -498,8 +498,8 @@ enum UpdateState<Item> {
     Contiguous(),
 }
 
-pub struct TreeListModel<Item, Model, RowData> {
-    _marker: PhantomData<(Model, RowData)>,
+pub struct TreeListModel<Item, Model, RowData, Cursor> {
+    _marker: PhantomData<(Model, RowData, Cursor)>,
     capture: Arc<Mutex<Capture>>,
     root: RootNodeRc<Item>,
     regions: RefCell<BTreeMap<u64, Region<Item>>>,
@@ -507,11 +507,11 @@ pub struct TreeListModel<Item, Model, RowData> {
     on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>,
 }
 
-impl<Item, Model, RowData> TreeListModel<Item, Model, RowData>
+impl<Item, Model, RowData, Cursor> TreeListModel<Item, Model, RowData, Cursor>
 where Item: 'static + Copy + Debug,
       Model: GenericModel<Item> + ListModelExt,
       RowData: GenericRowData<Item> + IsA<Object> + Cast,
-      Capture: ItemSource<Item>
+      Capture: ItemSource<Item, Cursor>
 {
     pub fn new(capture: Arc<Mutex<Capture>>,
                #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
@@ -1656,11 +1656,11 @@ where Item: 'static + Copy + Debug,
         let mut cap = self.capture.lock().or(Err(ModelError::LockError))?;
         let search_result = cap.find_child(&mut expanded, range, to_index)?;
         Ok(match search_result {
-            TopLevelItem(found_index, _) => {
+            (TopLevelItem(found_index, _), _cursor) => {
                 let range_to_item = range.start..found_index;
                 cap.count_within(item_index, item, &range_to_item)?
             },
-            NextLevelItem(span_index, .., child) => {
+            (NextLevelItem(span_index, .., child), _cursor) => {
                 let range_to_span = range.start..span_index;
                 cap.count_within(item_index, item, &range_to_span)? +
                     cap.count_before(item_index, item, span_index, &child)?
@@ -2205,8 +2205,8 @@ where Item: 'static + Copy + Debug,
             InterleavedSearch(expanded, range) => {
                 // Run the interleaved search.
                 let mut expanded_items = expanded.iter_items();
-                let search_result = cap.find_child(
-                    &mut expanded_items, &range, row_index)?;
+                let (search_result, _cursor) =
+                    cap.find_child(&mut expanded_items, &range, row_index)?;
                 // Return a node corresponding to the search result.
                 use SearchResult::*;
                 match search_result {
