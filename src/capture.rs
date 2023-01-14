@@ -1083,6 +1083,8 @@ pub trait ItemSource<Item, Cursor> {
                   region: &Range<u64>,
                   index: u64)
         -> Result<(SearchResult<Item>, Cursor), CaptureError>;
+    fn next_child(&mut self, cursor: Cursor)
+        -> Result<(SearchResult<Item>, Cursor), CaptureError>;
     fn summary(&mut self, item: &Item) -> Result<String, CaptureError>;
     fn connectors(&mut self, item: &Item) -> Result<String, CaptureError>;
 }
@@ -1308,21 +1310,7 @@ impl ItemSource<TrafficItem, TrafficCursor> for Capture {
 
             // If only one remains, look up directly.
             if cursor.transfers.len() == 1 {
-                let transfer = &cursor.transfers[0];
-                let ep_traf = self.endpoint_traffic(transfer.endpoint_id)?;
-                // Get the next transaction ID for this transfer.
-                let ep_transaction_id =
-                    transfer.transaction_range.start + cursor.index;
-                let transaction_id =
-                    ep_traf.transaction_ids.get(ep_transaction_id)?;
-                let parent_index = transfer.start_item_id.value;
-                let child_index =
-                    ep_transaction_id - transfer.first_ep_transaction_id;
-                let item = Transaction(
-                    transfer.transfer_id, transaction_id);
-                let search_result = NextLevelItem(
-                    cursor.span_index, parent_index, child_index, item);
-                return Ok((search_result, cursor));
+                return self.next_child(cursor);
             }
 
             // Exclude transactions that cannot possibly match the index.
@@ -1415,6 +1403,45 @@ impl ItemSource<TrafficItem, TrafficCursor> for Capture {
                     cursor.index -= count;
                 }
             }
+        }
+
+        // If we broke out of the loop, the cursor is now set up to retrieve
+        // the correct transaction.
+        self.next_child(cursor)
+    }
+
+    fn next_child(&mut self, mut cursor: TrafficCursor)
+        -> Result<(SearchResult<TrafficItem>, TrafficCursor), CaptureError>
+    {
+        use SearchResult::*;
+        use TrafficItem::*;
+
+        // If at a top level item, return it.
+        if cursor.span_transactions == 0 {
+            assert!(cursor.index == 0);
+            let item_id = TrafficItemId::from_u64(cursor.span_index);
+            let transfer_id = self.item_index.get(item_id)?;
+            let item = Transfer(transfer_id);
+            return Ok((TopLevelItem(item_id.value, item), cursor))
+        }
+
+        // If only one transfer, look up directly.
+        if cursor.transfers.len() == 1 {
+            let transfer = &cursor.transfers[0];
+            let ep_traf = self.endpoint_traffic(transfer.endpoint_id)?;
+            // Get the next transaction ID for this transfer.
+            let ep_transaction_id =
+                transfer.transaction_range.start + cursor.index;
+            let transaction_id =
+                ep_traf.transaction_ids.get(ep_transaction_id)?;
+            let parent_index = transfer.start_item_id.value;
+            let child_index =
+                ep_transaction_id - transfer.first_ep_transaction_id;
+            let item = Transaction(
+                transfer.transfer_id, transaction_id);
+            let search_result = NextLevelItem(
+                cursor.span_index, parent_index, child_index, item);
+            return Ok((search_result, cursor))
         }
 
         // There is now at most one transaction in each transfer. Retrieve each
@@ -1821,6 +1848,12 @@ impl ItemSource<DeviceItem, ()> for Capture {
                   _expanded: &mut dyn Iterator<Item=(u64, DeviceItem)>,
                   _region: &Range<u64>,
                   _index: u64)
+        -> Result<(SearchResult<DeviceItem>, ()), CaptureError>
+    {
+        unimplemented!()
+    }
+
+    fn next_child(&mut self, _cursor: ())
         -> Result<(SearchResult<DeviceItem>, ()), CaptureError>
     {
         unimplemented!()
