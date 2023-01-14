@@ -1105,6 +1105,29 @@ pub struct TrafficCursor {
     index: u64,
 }
 
+impl TrafficCursor {
+    fn start_span(&mut self, capture: &mut Capture, span_index: u64)
+        -> Result<(), CaptureError>
+    {
+        self.span_index = span_index;
+        self.span_transactions = 0;
+        let span_item_id = TrafficItemId::from_u64(span_index);
+        // Count the transactions within this span.
+        for transfer in self.transfers.iter_mut() {
+            let ep_traf = capture.endpoint_traffic(transfer.endpoint_id)?;
+            // Find the transaction counts for this transfer at the
+            // beginning and end of this span.
+            let item_offset = span_item_id - transfer.ep_first_item_id;
+            transfer.transaction_range =
+                ep_traf.progress_index.target_range(
+                    item_offset, ep_traf.transaction_ids.len())?;
+            // Add to the total count for this span.
+            self.span_transactions += transfer.transaction_range.len();
+        }
+        Ok(())
+    }
+}
+
 impl ItemSource<TrafficItem, TrafficCursor> for Capture {
     fn item(&mut self, parent: Option<&TrafficItem>, index: u64)
         -> Result<TrafficItem, CaptureError>
@@ -1257,21 +1280,9 @@ impl ItemSource<TrafficItem, TrafficCursor> for Capture {
 
         // First, find the right span: the space between two contiguous items
         // in which this transaction is to be found.
-        for i in 0..region.len() {
-            cursor.span_index = region.start + i;
-            let span_item_id = TrafficItemId::from_u64(cursor.span_index);
-            // Count the transactions within this span.
-            for transfer in cursor.transfers.iter_mut() {
-                let ep_traf = self.endpoint_traffic(transfer.endpoint_id)?;
-                // Find the transaction counts for this transfer at the
-                // beginning and end of this span.
-                let item_offset = span_item_id - transfer.ep_first_item_id;
-                transfer.transaction_range =
-                    ep_traf.progress_index.target_range(
-                        item_offset, ep_traf.transaction_ids.len())?;
-                // Add to the total count for this span.
-                cursor.span_transactions += transfer.transaction_range.len();
-            }
+        for span_index in region.clone() {
+            // Set up the cursor for this span.
+            cursor.start_span(self, span_index)?;
             // If the index is within this span, proceed to the next stage.
             if cursor.index < cursor.span_transactions {
                 break;
@@ -1283,7 +1294,7 @@ impl ItemSource<TrafficItem, TrafficCursor> for Capture {
             // We are now at the end of a span. If the index is now zero,
             // return the transfer item after this span.
             if cursor.index == 0 {
-                let item_id = span_item_id + 1;
+                let item_id = TrafficItemId::from_u64(cursor.span_index + 1);
                 let transfer_id = self.item_index.get(item_id)?;
                 let item = Transfer(transfer_id);
                 return Ok((TopLevelItem(item_id.value, item), cursor))
