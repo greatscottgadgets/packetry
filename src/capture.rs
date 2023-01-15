@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::fmt::Debug;
 use std::ops::Range;
 use std::num::TryFromIntError;
 use std::mem::size_of;
@@ -547,7 +548,7 @@ pub fn fmt_vec<T>(vec: &FileVec<T>) -> String
 }
 
 pub fn fmt_index<I, T>(idx: &HybridIndex<I, T>) -> String
-    where I: Number, T: Number + Copy + Ord
+    where I: Number + Debug, T: Number + Copy + Ord + Debug
 {
     format!("{} values in {} entries, {}",
             fmt_count(idx.len()),

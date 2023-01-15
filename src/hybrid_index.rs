@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::fmt::Debug;
 use std::io::prelude::*;
 use std::io::SeekFrom;
 use std::ops::Range;
@@ -14,8 +15,14 @@ use crate::id::Id;
 
 #[derive(Error, Debug)]
 pub enum HybridIndexError {
-    #[error(transparent)]
-    IOError(#[from] std::io::Error),
+    #[error("error creating temporary file: {0}")]
+    Temp(std::io::Error),
+    #[error("read error while {0}: {1}")]
+    Read(String, std::io::Error),
+    #[error("write error while {0}: {1}")]
+    Write(String, std::io::Error),
+    #[error("seek error while {0}: {1}")]
+    Seek(String, std::io::Error),
 }
 
 bitfield! {
@@ -57,9 +64,9 @@ pub struct HybridIndex<I, T> {
     at_end: bool,
 }
 
-impl<I: Number, T: Number + Copy + Ord> HybridIndex<I, T> {
+impl<I: Number + Debug, T: Number + Copy + Ord> HybridIndex<I, T> {
     pub fn new(min_width: u8) -> Result<Self, HybridIndexError> {
-        let file = tempfile()?;
+        let file = tempfile().map_err(HybridIndexError::Temp)?;
         Ok(Self{
             _marker: PhantomData,
             min_width,
@@ -102,10 +109,16 @@ impl<I: Number, T: Number + Copy + Ord> HybridIndex<I, T> {
                 }
                 let bytes = increment.to_le_bytes();
                 if !self.at_end {
-                   self.file.seek(SeekFrom::Start(self.file_length))?;
+                   self.file.seek(SeekFrom::Start(self.file_length)).map_err(|e|
+                        HybridIndexError::Seek(format!(
+                            "adding entry {}, seeking to EOF at {}",
+                            self.total_count, self.file_length), e))?;
                    self.at_end = true;
                 }
-                self.file.write_all(&bytes[0..width as usize])?;
+                self.file.write_all(&bytes[0..width as usize]).map_err(|e|
+                    HybridIndexError::Write(format!(
+                        "adding entry {}, writing {} bytes, file length is {}",
+                        self.total_count, width, self.file_length), e))?;
                 self.file_length += width as u64;
                 last_entry.increments.set_count(count + 1);
             }
@@ -127,9 +140,19 @@ impl<I: Number, T: Number + Copy + Ord> HybridIndex<I, T> {
             let width = entry.increments.width();
             let start = entry.file_offset + (increment_id - 1) * width as u64;
             let mut bytes = [0_u8; 8];
-            self.file.seek(SeekFrom::Start(start))?;
+            self.file.seek(SeekFrom::Start(start)).map_err(|e|
+                HybridIndexError::Seek(format!(concat!(
+                    "fetching entry {}, ",
+                    "seeking to {}, ",
+                    "file length is {}"),
+                    id_value, start, self.file_length), e))?;
             self.at_end = false;
-            self.file.read_exact(&mut bytes[0..width as usize])?;
+            self.file.read_exact(&mut bytes[0..width as usize]).map_err(|e|
+                HybridIndexError::Read(format!(concat!(
+                    "fetching entry {}, ",
+                    "reading {} bytes at {}, ",
+                    "file length is {}"),
+                    id_value, width, start, self.file_length), e))?;
             let increment = u64::from_le_bytes(bytes);
             let value = entry.base_value + increment;
             Ok(<T>::from_u64(value))
@@ -160,11 +183,20 @@ impl<I: Number, T: Number + Copy + Ord> HybridIndex<I, T> {
             }
             let width = entry.increments.width();
             let start = entry.file_offset + increment_id * width as u64;
-            self.file.seek(SeekFrom::Start(start))?;
+            self.file.seek(SeekFrom::Start(start)).map_err(|e|
+                HybridIndexError::Seek(format!(concat!(
+                    "fetching range {:?}, ",
+                    "seeking to {}, file length is {}"),
+                    range, start, self.file_length), e))?;
             self.at_end = false;
             let mut bytes = [0_u8; 8];
             for _ in 0..read_count {
-                self.file.read_exact(&mut bytes[0..width as usize])?;
+                self.file.read_exact(&mut bytes[0..width as usize]).map_err(|e|
+                    HybridIndexError::Read(format!(concat!(
+                        "fetching range {:?}, ",
+                        "reading {} bytes at {} ,",
+                        "file length is {}"),
+                        range, width, start, self.file_length), e))?;
                 let increment = u64::from_le_bytes(bytes);
                 let value = entry.base_value + increment;
                 result.push(<T>::from_u64(value));
