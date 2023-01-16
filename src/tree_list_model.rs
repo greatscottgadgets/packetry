@@ -512,7 +512,9 @@ impl<Item, Model, RowData, Cursor> TreeListModel<Item, Model, RowData, Cursor>
 where Item: 'static + Copy + Debug,
       Model: GenericModel<Item> + ListModelExt,
       RowData: GenericRowData<Item> + IsA<Object> + Cast,
-      Capture: ItemSource<Item, Cursor>
+      Capture: ItemSource<Item, Cursor>,
+      SearchResult<Item>: Debug + PartialEq,
+      Cursor: Debug + PartialEq
 {
     pub fn new(capture: Arc<Mutex<Capture>>,
                #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
@@ -2176,6 +2178,7 @@ where Item: 'static + Copy + Debug,
         })
     }
 
+    #[allow(clippy::let_and_return)]
     fn fetch(&self, position: u64) -> Result<ItemNodeRc<Item>, ModelError> {
         // Fetch the region this row is in.
         let (start, region) = self.regions
@@ -2212,7 +2215,39 @@ where Item: 'static + Copy + Debug,
                     // If we do and are fetching the next row of the same
                     // region, reuse the cursor.
                     Some((n, cursor)) if position == n + 1 && n >= start => {
-                        cap.next_child(cursor)?
+                        let next = cap.next_child(cursor)?;
+                        // When testing, verify that the cursor produces the
+                        // same result as searching for the next row.
+                        #[cfg(feature="test-ui-replay")] {
+                            let curr = cap.find_child(
+                                &mut expanded.iter_items(),
+                                &range, row_index)?;
+                            if next.0 != curr.0 {
+                                // Redo the search for the previous row.
+                                let prev = cap.find_child(
+                                    &mut expanded.iter_items(),
+                                    &range, row_index - 1)?;
+                                let (prev_result, prev_cursor) = &prev;
+                                let (next_result, next_cursor) = &next;
+                                let (curr_result, curr_cursor) = &curr;
+                                let m = position;
+                                println!();
+                                println!("Searching row {} returned:", n);
+                                println!("  result: {:?}", prev_result);
+                                println!("  cursor: {:#?}", prev_cursor);
+                                println!();
+                                println!("Using above cursor returned:");
+                                println!("  result: {:?}", next_result);
+                                println!("  cursor: {:#?}", next_cursor);
+                                println!();
+                                println!("Searching row {} returned:", m);
+                                println!("  result: {:?}", curr_result);
+                                println!("  cursor: {:#?}", curr_cursor);
+                                println!();
+                                panic!("Cursor mismatch");
+                            }
+                        }
+                        next
                     },
                     // Otherwise, run the interleaved search.
                     _ => {

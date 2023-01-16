@@ -46,7 +46,7 @@ pub type EndpointByteCount = u64;
 pub type DeviceVersion = u32;
 pub type TrafficItemIdOffset = u64;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum TrafficItem {
     Transfer(TransferId),
     Transaction(TransferId, TransactionId),
@@ -97,7 +97,7 @@ impl PartialOrd for TrafficItem {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd)]
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub enum DeviceItem {
     Device(DeviceId, DeviceVersion),
     DeviceDescriptor(DeviceId),
@@ -1056,6 +1056,7 @@ impl CompletionStatus {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub enum SearchResult<Item> {
     TopLevelItem(u64, Item),
     NextLevelItem(u64, u64, u64, Item),
@@ -1092,6 +1093,7 @@ pub trait ItemSource<Item, Cursor> {
     fn connectors(&mut self, item: &Item) -> Result<String, CaptureError>;
 }
 
+#[derive(Debug, PartialEq)]
 struct Transfer {
     ep_first_item_id: TrafficItemId,
     start_item_id: TrafficItemId,
@@ -1100,12 +1102,14 @@ struct Transfer {
     transaction_range: Range<EndpointTransactionId>,
 }
 
+#[derive(Debug, PartialEq)]
 pub enum CursorState {
     Invalid,
     AtItem(u64),
     BetweenItems(u64, NonZeroU64),
 }
 
+#[derive(Debug, PartialEq)]
 pub struct TrafficCursor {
     transfers: Vec<(Transfer, Range<EndpointTransactionId>)>,
     state: CursorState,
