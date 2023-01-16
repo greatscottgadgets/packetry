@@ -503,6 +503,7 @@ pub struct TreeListModel<Item, Model, RowData, Cursor> {
     capture: Arc<Mutex<Capture>>,
     root: RootNodeRc<Item>,
     regions: RefCell<BTreeMap<u64, Region<Item>>>,
+    last_fetch: RefCell<Option<(u64, Cursor)>>,
     #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
     on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>,
 }
@@ -528,6 +529,7 @@ where Item: 'static + Copy + Debug,
                 complete: completion.is_complete(),
             })),
             regions: RefCell::new(BTreeMap::new()),
+            last_fetch: RefCell::new(None),
             #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
             on_item_update,
         })
@@ -2203,10 +2205,25 @@ where Item: 'static + Copy + Debug,
                 row_index,
                 cap.item(Some(&node_ref.borrow().item), row_index)?),
             InterleavedSearch(expanded, range) => {
-                // Run the interleaved search.
-                let mut expanded_items = expanded.iter_items();
-                let (search_result, _cursor) =
-                    cap.find_child(&mut expanded_items, &range, row_index)?;
+                // Check whether we have a cursor from the last fetch.
+                let (search_result, cursor) =
+                    match self.last_fetch.borrow_mut().take()
+                {
+                    // If we do and are fetching the next row of the same
+                    // region, reuse the cursor.
+                    Some((n, cursor)) if position == n + 1 && n >= start => {
+                        cap.next_child(cursor)?
+                    },
+                    // Otherwise, run the interleaved search.
+                    _ => {
+                        let mut expanded_items = expanded.iter_items();
+                        cap.find_child(&mut expanded_items, &range, row_index)?
+                    }
+                };
+
+                // Store cursor for when we need the next row.
+                self.last_fetch.borrow_mut().replace((position, cursor));
+
                 // Return a node corresponding to the search result.
                 use SearchResult::*;
                 match search_result {
@@ -2270,6 +2287,9 @@ where Item: 'static + Copy + Debug,
 
     fn apply_update(&self, model: &Model, position: u64, update: ModelUpdate)
     {
+        // Invalidate any existing cursor.
+        self.last_fetch.borrow_mut().take();
+
         if let Ok(position) = u32::try_from(position) {
             let rows_addressable = u32::MAX - position;
             let rows_removed = clamp(
