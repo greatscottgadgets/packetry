@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::ops::Range;
-use std::num::TryFromIntError;
+use std::num::{NonZeroU64, TryFromIntError};
 use std::mem::size_of;
 
 use crate::id::{Id, HasLength};
@@ -1099,32 +1099,60 @@ struct Transfer {
     transaction_range: Range<EndpointTransactionId>,
 }
 
+pub enum CursorState {
+    Invalid,
+    AtItem(u64),
+    BetweenItems(u64, NonZeroU64),
+}
+
 pub struct TrafficCursor {
     transfers: Vec<(Transfer, Range<EndpointTransactionId>)>,
-    span_index: u64,
-    span_transactions: u64,
+    state: CursorState,
     index: u64,
 }
 
 impl TrafficCursor {
-    fn start_span(&mut self, capture: &mut Capture, span_index: u64)
+    fn new(capture: &mut Capture,
+           expanded: &mut dyn Iterator<Item=(u64, TrafficItem)>,
+           span_index: u64,
+           index: u64)
+        -> Result<Self, CaptureError>
+    {
+        let mut cursor = TrafficCursor {
+            transfers: capture.transfers(expanded)?,
+            state: CursorState::Invalid,
+            index,
+        };
+        cursor.begin_span(capture, span_index)?;
+        Ok(cursor)
+    }
+
+    fn begin_span(&mut self, capture: &mut Capture, span_index: u64)
         -> Result<(), CaptureError>
     {
-        self.span_index = span_index;
-        self.span_transactions = 0;
-        let span_item_id = TrafficItemId::from_u64(span_index);
-        // Count the transactions within this span.
-        for (transfer, search_range) in self.transfers.iter_mut() {
-            let ep_traf = capture.endpoint_traffic(transfer.endpoint_id)?;
-            // Find the transaction counts for this transfer at the
-            // beginning and end of this span.
-            let item_offset = span_item_id - transfer.ep_first_item_id;
-            *search_range =
-                ep_traf.progress_index.target_range(
-                    item_offset, ep_traf.transaction_ids.len())?;
-            // Add to the total count for this span.
-            self.span_transactions += search_range.len();
-        }
+        use CursorState::*;
+        self.state = if span_index >= capture.item_index.len() {
+            Invalid
+        } else {
+            let mut span_transactions = 0;
+            let span_item_id = TrafficItemId::from_u64(span_index);
+            // Count the transactions within this span.
+            for (transfer, search_range) in self.transfers.iter_mut() {
+                let ep_traf = capture.endpoint_traffic(transfer.endpoint_id)?;
+                // Find the transaction counts for this transfer at the
+                // beginning and end of this span.
+                let item_offset = span_item_id - transfer.ep_first_item_id;
+                *search_range =
+                    ep_traf.progress_index.target_range(
+                        item_offset, ep_traf.transaction_ids.len())?;
+                // Add to the total count for this span.
+                span_transactions += search_range.len();
+            }
+            match NonZeroU64::new(span_transactions) {
+                Some(n) => BetweenItems(span_index, n),
+                None => AtItem(span_index + 1)
+            }
+        };
         Ok(())
     }
 }
@@ -1268,50 +1296,44 @@ impl ItemSource<TrafficItem, TrafficCursor> for Capture {
                   index: u64)
         -> Result<(SearchResult<TrafficItem>, TrafficCursor), CaptureError>
     {
+        use CursorState::*;
         use SearchResult::*;
         use TrafficItem::*;
 
-        // Collect data on the expanded transfers.
-        let mut cursor = TrafficCursor {
-            transfers: self.transfers(expanded)?,
-            span_index: region.start,
-            span_transactions: 0,
-            index,
+        let mut cursor = TrafficCursor::new(
+            self, expanded, region.start, index)?;
+
+        // Advance the cursor until we find either a top level item, or the
+        // correct span to search within for a transaction.
+        let span_index = loop {
+            match cursor.state {
+                Invalid => {
+                    return Err(IndexError(String::from(
+                        "Cursor invalidated before index reached")))
+                },
+                BetweenItems(span_index, span_transactions) => {
+                    let count = u64::from(span_transactions);
+                    // If the index is within this span, proceed to search.
+                    if cursor.index < count {
+                        break span_index;
+                    // Otherwise, advance to the end of this span.
+                    } else {
+                        cursor.index -= count;
+                        cursor.state = AtItem(span_index + 1);
+                    }
+                },
+                AtItem(span_index) => {
+                    if cursor.index == 0 {
+                        // Index falls on a top level item, return it.
+                        return self.next_child(cursor);
+                    } else {
+                        // Skip over this item and continue.
+                        cursor.index -= 1;
+                        cursor.begin_span(self, span_index)?;
+                    }
+                }
+            }
         };
-
-        // First, find the right span: the space between two contiguous items
-        // in which this transaction is to be found.
-        for span_index in region.clone() {
-            // Set up the cursor for this span.
-            cursor.start_span(self, span_index)?;
-            // If the index is within this span, proceed to the next stage.
-            if cursor.index < cursor.span_transactions {
-                break;
-            // Otherwise, advance to the end of this span.
-            } else {
-                cursor.index -= cursor.span_transactions;
-                cursor.span_transactions = 0;
-            }
-            // We are now at the end of a span. If the index is now zero,
-            // return the transfer item after this span.
-            if cursor.index == 0 {
-                let item_id = TrafficItemId::from_u64(cursor.span_index + 1);
-                let transfer_id = self.item_index.get(item_id)?;
-                let item = Transfer(transfer_id);
-                return Ok((TopLevelItem(item_id.value, item), cursor))
-            // Otherwise, skip over the transfer item.
-            } else {
-                cursor.index -= 1;
-            }
-        }
-
-        // Check the index is within the span found by the loop above. This
-        // will fail if the index was past the end of this region's rows.
-        if cursor.index >= cursor.span_transactions {
-            return Err(IndexError(format!(
-                "Index {} is beyond the {} transactions in this span",
-                cursor.index, cursor.span_transactions)));
-        }
 
         // Now we have identified the correct span. Find the transaction with
         // the remaining index from among the active transfers.
@@ -1388,7 +1410,7 @@ impl ItemSource<TrafficItem, TrafficCursor> for Capture {
                         longest_transfer.transfer_id,
                         pivot_transaction_id);
                     let search_result = NextLevelItem(
-                        cursor.span_index, parent_index, child_index, item);
+                        span_index, parent_index, child_index, item);
                     return Ok((search_result, cursor))
                 },
                 Less => {
@@ -1422,60 +1444,69 @@ impl ItemSource<TrafficItem, TrafficCursor> for Capture {
     fn next_child(&mut self, mut cursor: TrafficCursor)
         -> Result<(SearchResult<TrafficItem>, TrafficCursor), CaptureError>
     {
+        use CursorState::*;
         use SearchResult::*;
         use TrafficItem::*;
 
-        // If at a top level item, return it.
-        if cursor.span_transactions == 0 {
-            assert!(cursor.index == 0);
-            let item_id = TrafficItemId::from_u64(cursor.span_index);
-            let transfer_id = self.item_index.get(item_id)?;
-            let item = Transfer(transfer_id);
-            return Ok((TopLevelItem(item_id.value, item), cursor))
-        }
-
-        // If only one transfer, look up directly.
-        if cursor.transfers.len() == 1 {
-            let (transfer, search_range) = &cursor.transfers[0];
-            let ep_traf = self.endpoint_traffic(transfer.endpoint_id)?;
-            // Get the next transaction ID for this transfer.
-            let ep_transaction_id = search_range.start + cursor.index;
-            let transaction_id =
-                ep_traf.transaction_ids.get(ep_transaction_id)?;
-            let parent_index = transfer.start_item_id.value;
-            let child_index =
-                ep_transaction_id - transfer.transaction_range.start;
-            let item = Transaction(
-                transfer.transfer_id, transaction_id);
-            let search_result = NextLevelItem(
-                cursor.span_index, parent_index, child_index, item);
-            return Ok((search_result, cursor))
-        }
-
-        // There is now at most one transaction in each transfer. Retrieve each
-        // and find the one with the lowest transaction ID.
-        let mut results = Vec::with_capacity(cursor.transfers.len());
-        for (i, (transfer, search_range)) in
-            cursor.transfers.iter_mut().enumerate()
-        {
-            if !search_range.is_empty() {
+        let search_result = match cursor.state {
+            Invalid => {
+                return Err(IndexError(String::from("Cursor is invalid")));
+            },
+            // If at a top level item, return it.
+            AtItem(span_index) => {
+                assert!(cursor.index == 0);
+                let item_id = TrafficItemId::from_u64(span_index);
+                let transfer_id = self.item_index.get(item_id)?;
+                let item = Transfer(transfer_id);
+                TopLevelItem(item_id.value, item)
+            },
+            // If there is only a single transfer, look up transaction directly.
+            BetweenItems(span_index, _)
+                if cursor.transfers.len() == 1 =>
+            {
+                let (transfer, search_range) = &cursor.transfers[0];
                 let ep_traf = self.endpoint_traffic(transfer.endpoint_id)?;
+                let ep_transaction_id = search_range.start + cursor.index;
                 let transaction_id =
-                    ep_traf.transaction_ids.get(search_range.start)?;
-                results.push((i, transaction_id));
+                    ep_traf.transaction_ids.get(ep_transaction_id)?;
+                let parent_index = transfer.start_item_id.value;
+                let child_index =
+                    ep_transaction_id - transfer.transaction_range.start;
+                let item = Transaction(
+                    transfer.transfer_id, transaction_id);
+                NextLevelItem(span_index, parent_index, child_index, item)
+            },
+            // Otherwise, choose the next transaction from all transfers.
+            BetweenItems(span_index, _) => {
+                // There is at most one transaction in each transfer's search
+                // range. Retrieve each and find the one with the lowest
+                // transaction ID.
+                let mut results = Vec::with_capacity(cursor.transfers.len());
+                for (i, (transfer, search_range)) in
+                    cursor.transfers.iter_mut().enumerate()
+                {
+                    if !search_range.is_empty() {
+                        let ep_traf =
+                            self.endpoint_traffic(transfer.endpoint_id)?;
+                        let transaction_id =
+                            ep_traf.transaction_ids.get(search_range.start)?;
+                        results.push((i, transaction_id));
+                    }
+                }
+                results.sort_by_key(|(_, id)| id.value);
+                let (transfer_index, transaction_id) = results
+                    .get(cursor.index as usize)
+                    .ok_or_else(||
+                        IndexError(String::from("Index not found")))?;
+                let (transfer, search_range) =
+                    &mut cursor.transfers[*transfer_index];
+                let parent_index = transfer.start_item_id.value;
+                let child_index =
+                    search_range.start - transfer.transaction_range.start;
+                let item = Transaction(transfer.transfer_id, *transaction_id);
+                NextLevelItem(span_index, parent_index, child_index, item)
             }
-        }
-        results.sort_by_key(|(_, id)| id.value);
-        let (transfer_index, transaction_id) = results
-            .get(cursor.index as usize)
-            .ok_or_else(||
-                IndexError(String::from("Index not found")))?;
-        let (transfer, search_range) = &mut cursor.transfers[*transfer_index];
-        let parent_index = transfer.start_item_id.value;
-        let child_index = search_range.start - transfer.transaction_range.start;
-        let item = Transaction(transfer.transfer_id, *transaction_id);
-        let search_result = NextLevelItem(
-            cursor.span_index, parent_index, child_index, item);
+        };
         Ok((search_result, cursor))
     }
 
