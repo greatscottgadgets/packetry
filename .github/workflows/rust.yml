@@ -21,7 +21,7 @@ jobs:
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
           packages: libgtk-4-dev build-essential
-          version: 0
+          version: 2
 
       - uses: Swatinem/rust-cache@v2
 
@@ -56,7 +56,7 @@ jobs:
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
           packages: libgtk-4-dev build-essential
-          version: 0
+          version: 2
         if: startsWith(matrix.os, 'ubuntu-')
 
       - name: Install dependencies (macOS)
