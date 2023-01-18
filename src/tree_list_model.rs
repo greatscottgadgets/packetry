@@ -370,6 +370,10 @@ where Item: 'static + Copy,
         })
     }
 
+    fn row_count(&self) -> u32 {
+        self.root.borrow().children().total_count
+    }
+
     pub fn set_expanded(&self,
                         model: &Model,
                         node_ref: &ItemNodeRc<Item>,
@@ -850,13 +854,13 @@ where Item: 'static + Copy,
     // called by a GObject wrapper class to implement that interface.
 
     pub fn n_items(&self) -> u32 {
-        self.root.borrow().children.total_count
+        self.row_count()
     }
 
     pub fn item(&self, position: u32) -> Option<Object> {
         // First check that the position is valid (must be within the root
         // node's total child count).
-        if position >= self.root.borrow().children.total_count {
+        if position >= self.row_count() {
             return None
         }
         let node_or_err_msg = self.fetch(position).map_err(|e| format!("{e:?}"));
