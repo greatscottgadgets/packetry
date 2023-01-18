@@ -187,7 +187,7 @@ impl PacketFields {
             SOF => PacketFields::SOF(
                 SOFFields(
                     u16::from_le_bytes([packet[1], packet[2]]))),
-            SETUP | IN | OUT => PacketFields::Token(
+            SETUP | IN | OUT | PING => PacketFields::Token(
                 TokenFields(
                     u16::from_le_bytes([packet[1], packet[2]]))),
             DATA0 | DATA1 => PacketFields::Data(
