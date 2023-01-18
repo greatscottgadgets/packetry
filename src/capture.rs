@@ -984,15 +984,25 @@ impl Capture {
 #[derive(Copy, Clone)]
 pub enum CompletionStatus {
     Complete,
-    Ongoing
+    Ongoing,
+    InterleavedComplete(u64),
+    InterleavedOngoing,
 }
 
 impl CompletionStatus {
     pub fn is_complete(&self) -> bool {
         use CompletionStatus::*;
         match self {
-            Complete => true,
-            Ongoing => false,
+            Complete | InterleavedComplete(_) => true,
+            Ongoing | InterleavedOngoing => false,
+        }
+    }
+
+    pub fn is_interleaved(&self) -> bool {
+        use CompletionStatus::*;
+        match self {
+            InterleavedComplete(_) | InterleavedOngoing => true,
+            Complete | Ongoing => false,
         }
     }
 }
