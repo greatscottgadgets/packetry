@@ -57,9 +57,6 @@ trait Node<Item> {
 
     /// Mark this node as completed.
     fn set_completed(&mut self);
-
-    /// Access this node as an item node, if it is one.
-    fn item_node(&mut self) -> Option<&mut ItemNode<Item>>;
 }
 
 struct Children<Item> {
@@ -172,10 +169,6 @@ impl<Item> Node<Item> for RootNode<Item> {
     fn set_completed(&mut self) {
         self.complete = true;
     }
-
-    fn item_node(&mut self) -> Option<&mut ItemNode<Item>> {
-        None
-    }
 }
 
 impl<Item> Node<Item> for ItemNode<Item> where Item: Copy {
@@ -215,10 +208,6 @@ impl<Item> Node<Item> for ItemNode<Item> where Item: Copy {
                 .remove(&self.item_index);
         }
     }
-
-    fn item_node(&mut self) -> Option<&mut ItemNode<Item>> {
-        Some(self)
-    }
 }
 
 trait UpdateTotal<Item> {
@@ -250,6 +239,7 @@ where T: Node<Item> + 'static, Item: Copy + 'static
 
 trait NodeRcOps<Item>: UpdateTotal<Item> {
     fn source(&self) -> Source<Item>;
+    fn item_node_rc(&self) -> Option<ItemNodeRc<Item>>;
 }
 
 impl<Item> NodeRcOps<Item> for RootNodeRc<Item>
@@ -258,6 +248,10 @@ where Item: Copy + 'static
     fn source(&self) -> Source<Item> {
         TopLevelItems()
     }
+
+    fn item_node_rc(&self) -> Option<ItemNodeRc<Item>> {
+        None
+    }
 }
 
 impl<Item> NodeRcOps<Item> for ItemNodeRc<Item>
@@ -265,6 +259,10 @@ where Item: Copy + 'static
 {
     fn source(&self) -> Source<Item> {
         ChildrenOf(self.clone())
+    }
+
+    fn item_node_rc(&self) -> Option<ItemNodeRc<Item>> {
+        Some(self.clone())
     }
 }
 
@@ -758,7 +756,7 @@ where Item: 'static + Copy + Debug,
               Rc<RefCell<T>>: NodeRcOps<Item>,
     {
         // Extract details about the current node.
-        let mut node = node_rc.borrow_mut();
+        let node = node_rc.borrow();
         let expanded = node.expanded();
         let children = node.children();
         let old_direct_count = children.direct_count;
@@ -772,9 +770,11 @@ where Item: 'static + Copy + Debug,
         let (completion, new_direct_count) = cap.item_children(node.item())?;
         let completed = completion.is_complete();
         let children_added = new_direct_count - old_direct_count;
+        drop(node);
 
-        // Deal with this node's own row, if it has one.
-        if let Some(item_node) = node.item_node() {
+        if let Some(item_node_rc) = node_rc.item_node_rc() {
+            // This is an item node.
+            let mut item_node = item_node_rc.borrow_mut();
 
             // Check whether this item itself should be updated.
             let item_updated = if children_added > 0 {
@@ -815,11 +815,8 @@ where Item: 'static + Copy + Debug,
 
         // If completed, remove from incomplete node list.
         if completed {
-            node.set_completed();
+            node_rc.borrow_mut().set_completed();
         }
-
-        // Release our borrow on the node, as it may be needed by other calls.
-        drop(node);
 
         if expanded {
             // Deal with incomplete children of this node.
