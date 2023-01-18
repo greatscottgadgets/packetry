@@ -392,6 +392,24 @@ where Item: 'static + Copy + Debug,
         self.root.borrow().children().total_count
     }
 
+    fn check(&self) -> Result<(), ModelError> {
+        // Check that we have the expected number of rows in the region map.
+        let expected_count = self.row_count();
+        let actual_count = self.regions
+            .borrow()
+            .iter()
+            .next_back()
+            .map(|(start, region)| start + region.length)
+            .unwrap_or(0);
+        if expected_count != actual_count {
+            Err(InternalError(format!(
+                "Region map total row count is {}, expected {}",
+                actual_count, expected_count)))
+        } else {
+            Ok(())
+        }
+    }
+
     pub fn set_expanded(&self,
                         model: &Model,
                         node_ref: &ItemNodeRc<Item>,
@@ -467,6 +485,8 @@ where Item: 'static + Copy + Debug,
                 println!("{}: {:?}", start, region);
             }
         }
+
+        self.check()?;
 
         Ok(())
     }
@@ -711,6 +731,8 @@ where Item: 'static + Copy + Debug,
                 }
             }
         }
+
+        self.check()?;
 
         Ok(!self.root.borrow().complete)
     }
