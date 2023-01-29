@@ -2,7 +2,7 @@
 //!
 //! Defines how items are fetched from the database and described with text.
 
-use std::cmp::min;
+use std::cmp::{Ordering, min};
 use std::fmt::Write;
 use std::ops::Range;
 
@@ -132,7 +132,7 @@ impl CompletionStatus {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TrafficItem {
     TransactionGroup(GroupId),
     Transaction(Option<GroupId>, TransactionId),
@@ -1354,6 +1354,62 @@ impl<T: CaptureReaderOps> ItemSource<DeviceItem, DeviceViewMode> for T {
 
     fn timestamp(&mut self, _item: &DeviceItem) -> Result<Timestamp, Error> {
         unreachable!()
+    }
+}
+
+impl PartialOrd for TrafficItem {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        use TrafficItem::*;
+        use Ordering::*;
+        match (self, other) {
+            // Groups must be ordered with each other.
+            (TransactionGroup(a), TransactionGroup(b)) => Some(a.cmp(b)),
+            // Transactions must be ordered with each other.
+            (Transaction(_, a), Transaction(_, b)) => Some(a.cmp(b)),
+            // Packets must satisfy both transaction and packet ordering.
+            (Packet(_, a, i), Packet(_, b, j)) => {
+                match (a.cmp(b), (i.cmp(j))) {
+                    (Equal, ordering) => Some(ordering),
+                    (Greater, Greater) => Some(Greater),
+                    (Less, Less) => Some(Less),
+                    _ => panic!("Packets have inconsistent ordering")
+                }
+            },
+            // Groups must precede their own transactions and packets.
+            (TransactionGroup(a), Transaction(Some(b), _) | Packet(Some(b), ..))
+                if a == b => Some(Less),
+            // ...and vice versa.
+            (Transaction(Some(a), _) | Packet(Some(a), ..), TransactionGroup(b))
+                if a == b => Some(Greater),
+            // Transactions precede their own packets.
+            (Transaction(_, a), Packet(_, Some(b), _)) => {
+                match a.cmp(b) {
+                    Equal => Some(Less),
+                    ordering => Some(ordering),
+                }
+            },
+            // ...and vice versa.
+            (Packet(_, Some(a), _), Transaction(_, b)) => {
+                match a.cmp(b) {
+                    Equal => Some(Greater),
+                    ordering => Some(ordering),
+                }
+            },
+            // Otherwise, ordering cannot be determined from items alone.
+            _ => None
+        }
+    }
+}
+
+impl PartialOrd for DeviceItem {
+    fn partial_cmp(&self, _other: &Self) -> Option<Ordering> {
+        None
+    }
+}
+
+impl PartialEq for DeviceItem {
+    fn eq(&self, _other: &Self) -> bool {
+        false
     }
 }
 

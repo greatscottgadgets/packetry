@@ -3,6 +3,7 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::ffi::OsStr;
+use std::fmt::Debug;
 use std::io::{Read, Write};
 use std::ops::Range;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -700,7 +701,7 @@ fn create_view<Item, Model, RowData, ViewMode>(
         recording_args: (&Rc<RefCell<Recording>>, &'static str))
     -> (Model, SingleSelection, ColumnView)
     where
-        Item: Clone + 'static,
+        Item: Clone + Debug + PartialOrd + 'static,
         ViewMode: Copy,
         Model: GenericModel<Item, ViewMode> + IsA<ListModel> + IsA<Object>,
         RowData: GenericRowData<Item> + IsA<Object>,
