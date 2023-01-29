@@ -37,57 +37,57 @@ impl std::fmt::Display for PID {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default,
          Pod, Zeroable, From, Into, Display)]
 #[repr(transparent)]
 pub struct DeviceAddr(pub u8);
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default,
          Pod, Zeroable, From, Into, Display)]
 #[repr(transparent)]
 pub struct DeviceField(pub u8);
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default,
          Pod, Zeroable, From, Into, Display)]
 #[repr(transparent)]
 pub struct StringId(pub u8);
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default,
          Pod, Zeroable, From, Into, Display)]
 #[repr(transparent)]
 pub struct ConfigNum(pub u8);
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default,
          Pod, Zeroable, From, Into, Display)]
 #[repr(transparent)]
 pub struct ConfigField(pub u8);
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default,
          Pod, Zeroable, From, Into, Display)]
 #[repr(transparent)]
 pub struct InterfaceNum(pub u8);
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default,
          Pod, Zeroable, From, Into, Display)]
 #[repr(transparent)]
 pub struct InterfaceField(pub u8);
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default,
          Pod, Zeroable, From, Into, Display)]
 #[repr(transparent)]
 pub struct InterfaceEpNum(pub u8);
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default,
          Pod, Zeroable, From, Into, Display)]
 #[repr(transparent)]
 pub struct EndpointNum(pub u8);
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default,
          Pod, Zeroable, From, Into, Display)]
 #[repr(transparent)]
 pub struct EndpointField(pub u8);
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default,
          Pod, Zeroable, From, Into, Display)]
 #[repr(transparent)]
 pub struct EndpointAddr(pub u8);

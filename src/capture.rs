@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::ops::Range;
 use std::num::TryFromIntError;
 use std::mem::size_of;
@@ -43,14 +44,58 @@ pub type EndpointByteCount = u64;
 pub type DeviceVersion = u32;
 pub type TrafficItemIdOffset = u64;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum TrafficItem {
     Transfer(TransferId),
     Transaction(TransferId, TransactionId),
     Packet(TransferId, TransactionId, PacketId),
 }
 
-#[derive(Copy, Clone, Debug)]
+impl PartialOrd for TrafficItem {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        use TrafficItem::*;
+        use Ordering::*;
+        match (self, other) {
+            // Transfers must be ordered with each other.
+            (Transfer(a), Transfer(b)) => Some(a.cmp(b)),
+            // Transactions must be ordered with each other.
+            (Transaction(_, a), Transaction(_, b)) => Some(a.cmp(b)),
+            // Packets must satisfy both transaction and packet ordering.
+            (Packet(_, a, i), Packet(_, b, j)) => {
+                match (a.cmp(b), (i.cmp(j))) {
+                    (Equal, ordering) => Some(ordering),
+                    (Greater, Greater) => Some(Greater),
+                    (Less, Less) => Some(Less),
+                    _ => panic!("Packets have inconsistent ordering")
+                }
+            },
+            // Transfers must precede their own transactions and packets.
+            (Transfer(a), Transaction(b, _) | Packet(b, ..))
+                if a == b => Some(Less),
+            // ...and vice versa.
+            (Transaction(a, _) | Packet(a, ..), Transfer(b))
+                if a == b => Some(Greater),
+            // Transactions precede their own packets.
+            (Transaction(_, a), Packet(_, b, _)) => {
+                match a.cmp(b) {
+                    Equal => Some(Less),
+                    ordering => Some(ordering),
+                }
+            },
+            // ...and vice versa.
+            (Packet(_, a, _), Transaction(_, b)) => {
+                match a.cmp(b) {
+                    Equal => Some(Greater),
+                    ordering => Some(ordering),
+                }
+            },
+            // Otherwise, ordering cannot be determined from items alone.
+            _ => None
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd)]
 pub enum DeviceItem {
     Device(DeviceId, DeviceVersion),
     DeviceDescriptor(DeviceId),

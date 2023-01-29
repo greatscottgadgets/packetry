@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
@@ -161,7 +162,7 @@ impl Recording {
         Model: ListModelExt + GenericModel<Item>,
         Capture: ItemSource<Item>,
         Object: ToGenericRowData<Item>,
-        Item: Copy
+        Item: Copy + PartialOrd + Debug
     {
         if (removed, added) == (0, 0) {
             return;
@@ -170,24 +171,41 @@ impl Recording {
         let position = position as usize;
         let removed = removed as usize;
         let removed_range = position..(position + removed);
-        let added_items: Vec<String> = added_range
+        let added_items: Vec<Item> = added_range
             .clone()
-            .map(|i| self.item_text(model, i))
+            .map(|i| self.item(model, i))
             .collect();
-        let removed_items: Vec<String> = self.view_items
+        for ((i, prev), (j, next)) in added_range
+            .zip(added_items.iter())
+            .tuple_windows()
+        {
+            if prev > next {
+                println!();
+                println!("Item at position {i}: {prev:?}");
+                println!("is followed by");
+                println!("Item at position {j}: {next:?}");
+                println!();
+                panic!("Items out of order")
+            }
+        }
+        let added_texts: Vec<String> = added_items
+            .iter()
+            .map(|item| self.item_text(item))
+            .collect();
+        let removed_texts: Vec<String> = self.view_items
             .entry(name.to_string())
             .or_insert_with(Vec::new)
-            .splice(removed_range, added_items.clone())
+            .splice(removed_range, added_texts.clone())
             .collect();
         self.log_output(format!("At {} row {}:\n", name, position));
-        for (n, string) in removed_items.iter().dedup_with_count() {
+        for (n, string) in removed_texts.iter().dedup_with_count() {
             if n == 1 {
                 self.log_output(format!("- {}\n", string));
             } else {
                 self.log_output(format!("- {} times: {}\n", n, string));
             }
         }
-        for (n, string) in added_items.iter().dedup_with_count() {
+        for (n, string) in added_texts.iter().dedup_with_count() {
             if n == 1 {
                 self.log_output(format!("+ {}\n", string));
             } else {
@@ -196,24 +214,28 @@ impl Recording {
         }
     }
 
-    fn item_text<Model, Item>(&self, model: &Model, position: u32) -> String
+    fn item<Model, Item>(&self, model: &Model, position: u32) -> Item
         where Model: ListModelExt + GenericModel<Item>,
-              Capture: ItemSource<Item>,
               Object: ToGenericRowData<Item>,
               Item: Copy
     {
-        let item = model
+        model
             .item(position)
             .expect("Failed to retrieve row data")
             .to_generic_row_data()
             .node()
             .expect("Failed to fetch item node from row data")
             .borrow()
-            .item;
+            .item
+    }
+
+    fn item_text<Item>(&self, item: &Item) -> String
+        where Capture: ItemSource<Item>, Item: Copy
+    {
         self.capture
             .lock()
             .expect("Failed to lock capture")
-            .summary(&item)
+            .summary(item)
             .expect("Failed to generate item summary")
     }
 

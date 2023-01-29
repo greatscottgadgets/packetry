@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::cell::RefCell;
+use std::fmt::Debug;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Write};
 use std::mem::size_of;
@@ -256,13 +257,13 @@ pub fn activate(application: &Application) -> Result<(), PacketryError> {
     Ok(())
 }
 
-fn create_view<Item: 'static, Model, RowData>(
+fn create_view<Item, Model, RowData>(
         capture: &Arc<Mutex<Capture>>,
         #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
         recording_args: (&Rc<RefCell<Recording>>, &'static str))
     -> (Model, ListView)
     where
-        Item: Copy,
+        Item: Copy + PartialOrd + Debug + 'static,
         Model: GenericModel<Item> + IsA<ListModel> + IsA<Object>,
         RowData: GenericRowData<Item> + IsA<Object>,
         Capture: ItemSource<Item>,
