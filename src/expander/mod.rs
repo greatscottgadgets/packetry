@@ -55,7 +55,7 @@ impl ExpanderWrapper {
 
     pub fn set_connectors(&self, connectors: String) {
         self.imp().conn_label.borrow_mut().set_markup(
-                format!("<tt>{}</tt>", connectors).as_str());
+                format!("<tt>{connectors}</tt>").as_str());
     }
 }
 

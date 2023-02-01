@@ -138,8 +138,8 @@ pub enum EndpointType {
 impl std::fmt::Display for EndpointType {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            EndpointType::Normal(usb_type) => write!(f, "{:?}", usb_type),
-            special_type => write!(f, "{:?}", special_type),
+            EndpointType::Normal(usb_type) => write!(f, "{usb_type:?}"),
+            special_type => write!(f, "{special_type:?}"),
         }
     }
 }
@@ -213,7 +213,7 @@ impl Configuration {
         match self.interfaces.get(*number) {
             Some(iface) => Ok(iface),
             _ => Err(IndexError(format!(
-                "Configuration has no interface {}", number)))
+                "Configuration has no interface {number}")))
         }
     }
 }
@@ -225,7 +225,7 @@ impl Interface {
         match self.endpoint_descriptors.get(*number) {
             Some(desc) => Ok(desc),
             _ => Err(IndexError(format!(
-                "Interface has no endpoint descriptor {}", number)))
+                "Interface has no endpoint descriptor {number}")))
         }
     }
 }
@@ -269,11 +269,11 @@ pub fn fmt_size(size: u64) -> String {
     if size == 1 {
         "1 byte".to_string()
     } else if size < 1024 {
-        format!("{} bytes", size)
+        format!("{size} bytes")
     } else {
         match size.file_size(options::BINARY) {
             Ok(string) => string,
-            Err(e) => format!("<Error: {}>", e)
+            Err(e) => format!("<Error: {e}>")
         }
     }
 }
@@ -458,7 +458,7 @@ impl Capture {
         -> Result<&mut EndpointTraffic, CaptureError>
     {
         self.endpoint_traffic.get_mut(endpoint_id).ok_or_else(||
-            IndexError(format!("Capture has no endpoint ID {}", endpoint_id)))
+            IndexError(format!("Capture has no endpoint ID {endpoint_id}")))
     }
 
     fn transfer_range(&mut self, entry: &TransferIndexEntry)
@@ -632,14 +632,14 @@ impl Capture {
         -> Result<&DeviceData, CaptureError>
     {
         self.device_data.get(*id).ok_or_else(||
-            IndexError(format!("Capture has no device with ID {}", id)))
+            IndexError(format!("Capture has no device with ID {id}")))
     }
 
     pub fn device_data_mut(&mut self, id: &DeviceId)
         -> Result<&mut DeviceData, CaptureError>
     {
         self.device_data.get_mut(*id).ok_or_else(||
-            IndexError(format!("Capture has no device with ID {}", id)))
+            IndexError(format!("Capture has no device with ID {id}")))
     }
 
     pub fn try_configuration(&self, dev: &DeviceId, conf: &ConfigNum)
@@ -794,11 +794,9 @@ impl ItemSource<TrafficItem> for Capture {
                 let packet = self.packet(*packet_id)?;
                 let first_byte = *packet.first().ok_or_else(||
                     IndexError(format!(
-                        "Packet {} is empty, cannot retrieve PID",
-                        packet_id)))?;
+                        "Packet {packet_id} is empty, cannot retrieve PID")))?;
                 let pid = PID::from(first_byte);
-                format!("{} packet{}",
-                    pid,
+                format!("{pid} packet{}",
                     match PacketFields::from_packet(&packet) {
                         PacketFields::SOF(sof) => format!(
                             " with frame number {}, CRC {:02X}",
@@ -818,7 +816,7 @@ impl ItemSource<TrafficItem> for Capture {
                             packet.len() - 3,
                             Bytes::first(100, &packet[1 .. packet.len() - 2])),
                         PacketFields::None => match pid {
-                            PID::Malformed => format!(": {:02X?}", packet),
+                            PID::Malformed => format!(": {packet:02X?}"),
                             _ => "".to_string()
                         }
                     })
@@ -831,13 +829,13 @@ impl ItemSource<TrafficItem> for Capture {
                     (PID::Malformed, _) => format!(
                         "{} malformed packets", transaction.packet_count()),
                     (pid, None) => format!(
-                        "{} transaction, {}", pid, transaction.end_pid),
+                        "{pid} transaction, {}", transaction.end_pid),
                     (pid, Some(size)) if size == 0 => format!(
-                        "{} transaction with no data, {}",
-                        pid, transaction.end_pid),
+                        "{pid} transaction with no data, {}",
+                        transaction.end_pid),
                     (pid, Some(size)) => format!(
-                        "{} transaction with {} data bytes, {}: {}",
-                        pid, size, transaction.end_pid,
+                        "{pid} transaction with {size} data bytes, {}: {}",
+                        transaction.end_pid,
                         Bytes::first(100, &self.transaction_bytes(&transaction)?))
                 }
             },
@@ -855,11 +853,11 @@ impl ItemSource<TrafficItem> for Capture {
                 let count = range.len();
                 match (ep_type, entry.is_start()) {
                     (Invalid, true) => format!(
-                        "{} invalid groups", count),
+                        "{count} invalid groups"),
                     (Invalid, false) =>
                         "End of invalid groups".to_string(),
                     (Framing, true) => format!(
-                        "{} SOF groups", count),
+                        "{count} SOF groups"),
                     (Framing, false) =>
                         "End of SOF groups".to_string(),
                     (Normal(Control), true) => {
@@ -875,7 +873,7 @@ impl ItemSource<TrafficItem> for Capture {
                         let transaction_id =
                             ep_traf.transaction_ids.get(ep_transaction_id)?;
                         let transaction = self.transaction(transaction_id)?;
-                        let ep_type_string = format!("{}", endpoint_type);
+                        let ep_type_string = format!("{endpoint_type}");
                         let ep_type_lower = ep_type_string.to_lowercase();
                         match (transaction.successful(), starting) {
                             (true, true) => {
@@ -883,6 +881,7 @@ impl ItemSource<TrafficItem> for Capture {
                                     self.transfer_byte_range(endpoint_id,
                                                              &range)?;
                                 let length = byte_range.len();
+                                let length_string = fmt_size(length);
                                 let bytes = self.transfer_bytes(endpoint_id,
                                                                 &range, 100)?;
                                 let display_bytes = Bytes {
@@ -890,19 +889,14 @@ impl ItemSource<TrafficItem> for Capture {
                                     bytes: &bytes,
                                 };
                                 format!(
-                                    "{} transfer of {} on endpoint {}: {}",
-                                    ep_type_string, fmt_size(length), endpoint,
-                                    display_bytes)
+                                    "{ep_type_string} transfer of {length_string} on endpoint {endpoint}: {display_bytes}")
                             },
                             (true, false) => format!(
-                                "End of {} transfer on endpoint {}",
-                                ep_type_lower, endpoint),
+                                "End of {ep_type_lower} transfer on endpoint {endpoint}"),
                             (false, true) => format!(
-                                "Polling {} times for {} transfer on endpoint {}",
-                                count, ep_type_lower, endpoint),
+                                "Polling {count} times for {ep_type_lower} transfer on endpoint {endpoint}"),
                             (false, false) => format!(
-                                "End polling for {} transfer on endpoint {}",
-                                ep_type_lower, endpoint)
+                                "End polling for {ep_type_lower} transfer on endpoint {endpoint}"),
                         }
                     }
                 }
@@ -1142,7 +1136,7 @@ impl ItemSource<DeviceItem> for Capture {
                 }
             },
             Configuration(_, conf) => format!(
-                "Configuration {}", conf),
+                "Configuration {conf}"),
             ConfigurationDescriptor(..) =>
                 "Configuration descriptor".to_string(),
             ConfigurationDescriptorField(dev, conf, field) => {
@@ -1152,7 +1146,7 @@ impl ItemSource<DeviceItem> for Capture {
                     .field_text(*field, &data.strings)
             },
             Interface(_, _, iface) => format!(
-                "Interface {}", iface),
+                "Interface {iface}"),
             InterfaceDescriptor(..) =>
                 "Interface descriptor".to_string(),
             InterfaceDescriptorField(dev, conf, iface, field) => {

@@ -103,7 +103,7 @@ impl<Item> TreeNode<Item> where Item: Copy {
                 Ok(mut guard) => {
                     let cap = guard.deref_mut();
                     match func(cap, &item) {
-                        Err(e) => format!("Error: {:?}", e),
+                        Err(e) => format!("Error: {e:?}"),
                         Ok(string) => string
                     }
                 }
@@ -262,7 +262,7 @@ where Item: Copy,
         if position >= self.root.borrow().total_child_count {
             return None
         }
-        let node_or_err_msg = self.fetch(position).map_err(|e| format!("{:?}", e));
+        let node_or_err_msg = self.fetch(position).map_err(|e| format!("{e:?}"));
         let row_data = RowData::new(node_or_err_msg);
         Some(row_data.upcast::<Object>())
     }

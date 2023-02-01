@@ -39,7 +39,7 @@ impl Default for PID {
 
 impl std::fmt::Display for PID {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 
@@ -316,7 +316,7 @@ impl StandardRequest {
                     fields.value & 0xFF,
                     match (descriptor_type, fields.index) {
                         (DescriptorType::String, language) if language > 0 =>
-                            format!(", language 0x{:04x}", language),
+                            format!(", language 0x{language:04x}"),
                         (..) => format!(""),
                     }
                 )
@@ -451,7 +451,7 @@ impl DeviceDescriptor {
                       fmt_str_id(strings, self.product_str_id)),
         12 => format!("Serial string: {}",
                       fmt_str_id(strings, self.serial_str_id)),
-        i  => format!("Error: Invalid field ID {}", i)
+        i  => format!("Error: Invalid field ID {i}")
         }
     }
 
@@ -488,7 +488,7 @@ impl ConfigDescriptor {
                       fmt_str_id(strings, self.config_str_id)),
         6 => format!("Attributes: 0x{:02X}", self.attributes),
         7 => format!("Max power: {}mA", self.max_power as u16 * 2),
-        i => format!("Error: Invalid field ID {}", i)
+        i => format!("Error: Invalid field ID {i}")
         }
     }
 
@@ -526,7 +526,7 @@ impl InterfaceDescriptor {
         7 => format!("Protocol: 0x{:02X}", self.interface_protocol),
         8 => format!("Interface string: {}",
                       fmt_str_id(strings, self.interface_str_id)),
-        i => format!("Error: Invalid field ID {}", i)
+        i => format!("Error: Invalid field ID {i}")
         }
     }
 
@@ -555,7 +555,7 @@ impl EndpointDescriptor {
         4 => format!("Max packet size: {} bytes", {
             let size: u16 = self.max_packet_size; size }),
         5 => format!("Interval: 0x{:02X}", self.interval),
-        i => format!("Error: Invalid field ID {}", i)
+        i => format!("Error: Invalid field ID {i}")
         }
     }
 
@@ -720,11 +720,11 @@ impl ControlTransfer {
         match (self.fields.length, size) {
             (0, 0) => {}
             (len, _) if size == len as usize => {
-                parts.push(format!(", {} {} bytes", action, len));
+                parts.push(format!(", {action} {len} bytes"));
             },
             (len, _) => {
-                parts.push(format!(", {} {} of {} requested bytes",
-                                   action, size, len));
+                parts.push(
+                    format!(", {action} {size} of {len} requested bytes"));
             }
         };
         match (request_type, std_req, descriptor_type) {
@@ -749,8 +749,8 @@ fn fmt_str_id(strings: &VecMap<StringId, UTF16ByteVec>, id: StringId)
     match id.0 {
         0 => "(none)".to_string(),
         _ => match &strings.get(id) {
-            Some(utf16) => format!("#{} {}", id, utf16),
-            None => format!("#{} (not seen)", id)
+            Some(utf16) => format!("#{id} {utf16}"),
+            None => format!("#{id} (not seen)")
         }
     }
 }
