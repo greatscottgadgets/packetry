@@ -202,7 +202,7 @@ impl Decoder {
             (_, PID::OUT)  => Direction::Out,
             (_, PID::PING) => Direction::Out,
             _ => return Err(IndexError(format!(
-                "PID {} does not indicate a direction", pid)))
+                "PID {pid} does not indicate a direction")))
         };
         let key = EndpointKey {
             dev_addr,
@@ -365,8 +365,7 @@ impl Decoder {
         let endpoint_id = self.current_endpoint_id()?;
         self.endpoint_data.get(endpoint_id).ok_or_else(||
             IndexError(format!(
-                "Decoder has no data for current endpoint ID {}",
-                endpoint_id)))
+                "Decoder has no data for current endpoint ID {endpoint_id}")))
     }
 
     fn current_endpoint_data_mut(&mut self)
@@ -375,8 +374,7 @@ impl Decoder {
         let endpoint_id = self.current_endpoint_id()?;
         self.endpoint_data.get_mut(endpoint_id).ok_or_else(||
             IndexError(format!(
-                "Decoder has no data for current endpoint ID {}",
-                endpoint_id)))
+                "Decoder has no data for current endpoint ID {endpoint_id}")))
     }
 
     fn current_device_data<'a>(&self, capture: &'a mut Capture)
@@ -734,7 +732,7 @@ impl Decoder {
         let ep_data = self.current_endpoint_data()?;
         let ep_transfer_id = ep_data.active.ok_or_else(||
             IndexError(format!(
-                "No active transfer on endpoint {}", endpoint_id)))?;
+                "No active transfer on endpoint {endpoint_id}")))?;
         self.add_endpoint_state(capture, endpoint_id, start)?;
         let mut entry = TransferIndexEntry::default();
         entry.set_endpoint_id(endpoint_id);
@@ -783,7 +781,7 @@ impl Decoder {
             let ep_data = self.endpoint_data
                 .get_mut(endpoint_id)
                 .ok_or_else(|| IndexError(
-                    format!("Endpoint {} has no associated data", i)))?;
+                    format!("Endpoint {i} has no associated data")))?;
             if let Some(ep_transfer_id) = ep_data.ended.take() {
                 // This transfer has ended and is not yet linked to an item.
                 let ep_traf = capture.endpoint_traffic(endpoint_id)?;

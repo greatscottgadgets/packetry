@@ -110,7 +110,7 @@ fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
             },
             Err(msg) => {
                 expander_wrapper.set_connectors("".to_string());
-                expander_wrapper.set_text(format!("Error: {}", msg));
+                expander_wrapper.set_text(format!("Error: {msg}"));
                 expander.set_visible(false);
             }
         };
@@ -286,10 +286,10 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
 
 fn display_error(result: Result<(), PacketryError>) {
     if let Err(e) = result {
-        let message = format!("{}", e);
+        let message = format!("{e}");
         WINDOW.with(|win_opt| {
             match win_opt.borrow().as_ref() {
-                None => println!("{}", message),
+                None => println!("{message}"),
                 Some(window) => {
                     let dialog = MessageDialog::new(
                         Some(window),
