@@ -1390,7 +1390,9 @@ impl ItemSource<TrafficItem, TrafficCursor> for Capture {
                 AtItem(span_index) => {
                     if cursor.index == 0 {
                         // Index falls on a top level item, return it.
-                        return self.next_child(cursor);
+                        let search_result =
+                            cursor.top_level_item(self, span_index)?;
+                        return Ok((search_result, cursor));
                     } else {
                         // Skip over this item and continue.
                         cursor.index -= 1;
@@ -1402,14 +1404,14 @@ impl ItemSource<TrafficItem, TrafficCursor> for Capture {
 
         // Now we have identified the correct span. Find the transaction with
         // the remaining index from among the active transfers.
-        loop {
+        let search_result = loop {
             // Exclude transfers with no remaining transactions.
             cursor.transfers
                 .retain(|(_transfer, search_range)| !search_range.is_empty());
 
             // If only one remains, look up directly.
             if cursor.transfers.len() == 1 {
-                return self.next_child(cursor);
+                break cursor.next_from_transfer(self, span_index, 0)?;
             }
 
             // Exclude transactions that cannot possibly match the index.
@@ -1431,7 +1433,7 @@ impl ItemSource<TrafficItem, TrafficCursor> for Capture {
             // If there are no transfers with more than 1 transaction,
             // proceed to selecting from the remaining candidates.
             if longest_length < 2 {
-                break
+                break cursor.next_from_all_transfers(self, span_index)?;
             }
 
             // Identify the midpoint of the longest transfer.
@@ -1474,9 +1476,8 @@ impl ItemSource<TrafficItem, TrafficCursor> for Capture {
                     let item = Transaction(
                         longest_transfer.transfer_id,
                         pivot_transaction_id);
-                    let search_result = NextLevelItem(
+                    break NextLevelItem(
                         span_index, parent_index, child_index, item);
-                    return Ok((search_result, cursor))
                 },
                 Less => {
                     // If the index is less than the count, split the ranges
@@ -1499,11 +1500,9 @@ impl ItemSource<TrafficItem, TrafficCursor> for Capture {
                     cursor.index -= count;
                 }
             }
-        }
+        };
 
-        // If we broke out of the loop, the cursor is now set up to retrieve
-        // the correct transaction.
-        self.next_child(cursor)
+        Ok((search_result, cursor))
     }
 
     fn next_child(&mut self, mut cursor: TrafficCursor)
