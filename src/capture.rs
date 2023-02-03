@@ -1184,6 +1184,42 @@ impl TrafficCursor {
         let item = Transaction(transfer.transfer_id, transaction_id);
         Ok(NextLevelItem(span_index, parent_index, child_index, item))
     }
+
+    fn next_from_all_transfers(&mut self,
+                               capture: &mut Capture,
+                               span_index: u64)
+        -> Result<SearchResult<TrafficItem>, CaptureError>
+    {
+        // There is at most one transaction in each transfer's search
+        // range. Retrieve each and find the one with the lowest
+        // transaction ID.
+        use SearchResult::*;
+        use TrafficItem::*;
+        let mut results = Vec::with_capacity(self.transfers.len());
+        for (i, (transfer, search_range)) in
+            self.transfers.iter_mut().enumerate()
+        {
+            if !search_range.is_empty() {
+                let ep_traf =
+                    capture.endpoint_traffic(transfer.endpoint_id)?;
+                let transaction_id =
+                    ep_traf.transaction_ids.get(search_range.start)?;
+                results.push((i, transaction_id));
+            }
+        }
+        results.sort_by_key(|(_, id)| id.value);
+        let (transfer_index, transaction_id) = results
+            .get(self.index as usize)
+            .ok_or_else(||
+                IndexError(String::from("Index not found")))?;
+        let (transfer, search_range) =
+            &mut self.transfers[*transfer_index];
+        let parent_index = transfer.start_item_id.value;
+        let child_index =
+            search_range.start - transfer.transaction_range.start;
+        let item = Transaction(transfer.transfer_id, *transaction_id);
+        Ok(NextLevelItem(span_index, parent_index, child_index, item))
+    }
 }
 
 impl ItemSource<TrafficItem, TrafficCursor> for Capture {
@@ -1474,9 +1510,6 @@ impl ItemSource<TrafficItem, TrafficCursor> for Capture {
         -> Result<(SearchResult<TrafficItem>, TrafficCursor), CaptureError>
     {
         use CursorState::*;
-        use SearchResult::*;
-        use TrafficItem::*;
-
         let search_result = match cursor.state {
             Invalid => {
                 return Err(IndexError(String::from("Cursor is invalid")));
@@ -1493,33 +1526,7 @@ impl ItemSource<TrafficItem, TrafficCursor> for Capture {
             }
             // Otherwise, choose the next transaction from all transfers.
             BetweenItems(span_index, _) => {
-                // There is at most one transaction in each transfer's search
-                // range. Retrieve each and find the one with the lowest
-                // transaction ID.
-                let mut results = Vec::with_capacity(cursor.transfers.len());
-                for (i, (transfer, search_range)) in
-                    cursor.transfers.iter_mut().enumerate()
-                {
-                    if !search_range.is_empty() {
-                        let ep_traf =
-                            self.endpoint_traffic(transfer.endpoint_id)?;
-                        let transaction_id =
-                            ep_traf.transaction_ids.get(search_range.start)?;
-                        results.push((i, transaction_id));
-                    }
-                }
-                results.sort_by_key(|(_, id)| id.value);
-                let (transfer_index, transaction_id) = results
-                    .get(cursor.index as usize)
-                    .ok_or_else(||
-                        IndexError(String::from("Index not found")))?;
-                let (transfer, search_range) =
-                    &mut cursor.transfers[*transfer_index];
-                let parent_index = transfer.start_item_id.value;
-                let child_index =
-                    search_range.start - transfer.transaction_range.start;
-                let item = Transaction(transfer.transfer_id, *transaction_id);
-                NextLevelItem(span_index, parent_index, child_index, item)
+                cursor.next_from_all_transfers(self, span_index)?
             }
         };
         Ok((search_result, cursor))
