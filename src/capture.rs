@@ -1514,19 +1514,16 @@ impl ItemSource<TrafficItem, TrafficCursor> for Capture {
                 return Err(IndexError(String::from("Cursor is invalid")));
             },
             // If at a top level item, return it.
-            AtItem(span_index) => {
-                cursor.top_level_item(self, span_index)?
-            },
+            AtItem(span_index) =>
+                cursor.top_level_item(self, span_index)?,
             // If there is only a single transfer, look up transaction directly.
-            BetweenItems(span_index, _)
-                if cursor.transfers.len() == 1 =>
-            {
-                cursor.next_from_transfer(self, span_index, 0)?
-            }
             // Otherwise, choose the next transaction from all transfers.
-            BetweenItems(span_index, _) => {
-                cursor.next_from_all_transfers(self, span_index)?
-            }
+            BetweenItems(span_index, _) =>
+                if cursor.transfers.len() == 1 {
+                    cursor.next_from_transfer(self, span_index, 0)?
+                } else {
+                    cursor.next_from_all_transfers(self, span_index)?
+                }
         };
         Ok((search_result, cursor))
     }
