@@ -1155,6 +1155,17 @@ impl TrafficCursor {
         };
         Ok(())
     }
+
+    fn top_level_item(&mut self, capture: &mut Capture, span_index: u64)
+        -> Result<SearchResult<TrafficItem>, CaptureError>
+    {
+        use SearchResult::*;
+        use TrafficItem::*;
+        let item_id = TrafficItemId::from_u64(span_index);
+        let transfer_id = capture.item_index.get(item_id)?;
+        let item = Transfer(transfer_id);
+        Ok(TopLevelItem(item_id.value, item))
+    }
 }
 
 impl ItemSource<TrafficItem, TrafficCursor> for Capture {
@@ -1454,11 +1465,7 @@ impl ItemSource<TrafficItem, TrafficCursor> for Capture {
             },
             // If at a top level item, return it.
             AtItem(span_index) => {
-                assert!(cursor.index == 0);
-                let item_id = TrafficItemId::from_u64(span_index);
-                let transfer_id = self.item_index.get(item_id)?;
-                let item = Transfer(transfer_id);
-                TopLevelItem(item_id.value, item)
+                cursor.top_level_item(self, span_index)?
             },
             // If there is only a single transfer, look up transaction directly.
             BetweenItems(span_index, _)
