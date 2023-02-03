@@ -1166,6 +1166,24 @@ impl TrafficCursor {
         let item = Transfer(transfer_id);
         Ok(TopLevelItem(item_id.value, item))
     }
+
+    fn next_from_transfer(&mut self,
+                          capture: &mut Capture,
+                          span_index: u64,
+                          transfer_index: usize)
+        -> Result<SearchResult<TrafficItem>, CaptureError>
+    {
+        use SearchResult::*;
+        use TrafficItem::*;
+        let (transfer, search_range) = &mut self.transfers[transfer_index];
+        let ep_traf = capture.endpoint_traffic(transfer.endpoint_id)?;
+        let ep_transaction_id = search_range.start + self.index;
+        let transaction_id = ep_traf.transaction_ids.get(ep_transaction_id)?;
+        let parent_index = transfer.start_item_id.value;
+        let child_index = ep_transaction_id - transfer.transaction_range.start;
+        let item = Transaction(transfer.transfer_id, transaction_id);
+        Ok(NextLevelItem(span_index, parent_index, child_index, item))
+    }
 }
 
 impl ItemSource<TrafficItem, TrafficCursor> for Capture {
@@ -1471,18 +1489,8 @@ impl ItemSource<TrafficItem, TrafficCursor> for Capture {
             BetweenItems(span_index, _)
                 if cursor.transfers.len() == 1 =>
             {
-                let (transfer, search_range) = &cursor.transfers[0];
-                let ep_traf = self.endpoint_traffic(transfer.endpoint_id)?;
-                let ep_transaction_id = search_range.start + cursor.index;
-                let transaction_id =
-                    ep_traf.transaction_ids.get(ep_transaction_id)?;
-                let parent_index = transfer.start_item_id.value;
-                let child_index =
-                    ep_transaction_id - transfer.transaction_range.start;
-                let item = Transaction(
-                    transfer.transfer_id, transaction_id);
-                NextLevelItem(span_index, parent_index, child_index, item)
-            },
+                cursor.next_from_transfer(self, span_index, 0)?
+            }
             // Otherwise, choose the next transaction from all transfers.
             BetweenItems(span_index, _) => {
                 // There is at most one transaction in each transfer's search
