@@ -757,13 +757,18 @@ fn fmt_str_id(strings: &VecMap<StringId, UTF16ByteVec>, id: StringId)
 
 pub struct UTF16Bytes<'b>(&'b [u8]);
 
+impl<'b> UTF16Bytes<'b> {
+    fn chars(&self) -> Vec<u16> {
+        self.0.chunks_exact(2)
+              .into_iter()
+              .map(|a| u16::from_le_bytes([a[0], a[1]]))
+              .collect()
+    }
+}
+
 impl std::fmt::Display for UTF16Bytes<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let chars: Vec<u16> =
-            self.0.chunks_exact(2)
-                  .into_iter()
-                  .map(|a| u16::from_le_bytes([a[0], a[1]]))
-                  .collect();
+        let chars = self.chars();
         match String::from_utf16(&chars) {
             Ok(string) => write!(f, "'{}'", string.escape_default()),
             Err(_) => write!(f,
@@ -774,6 +779,12 @@ impl std::fmt::Display for UTF16Bytes<'_> {
 }
 
 pub struct UTF16ByteVec(pub Vec<u8>);
+
+impl UTF16ByteVec {
+    pub fn chars(&self) -> Vec<u16> {
+        UTF16Bytes(self.0.as_slice()).chars()
+    }
+}
 
 impl std::fmt::Display for UTF16ByteVec {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

@@ -11,7 +11,13 @@ mod tree_list_model;
 use std::cell::RefCell;
 use std::fs::File;
 use std::io::BufReader;
-use std::sync::{Arc, Mutex};
+use std::mem::size_of;
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex, atomic::{AtomicBool, AtomicU64, Ordering}};
+use std::time::Duration;
+
+#[cfg(feature="step-decoder")]
+use std::{io::Read, net::TcpListener};
 
 use gtk::gio::ListModel;
 use gtk::glib::Object;
@@ -19,26 +25,37 @@ use gtk::{
     prelude::*,
     Application,
     ApplicationWindow,
+    Button,
     MessageDialog,
     DialogFlags,
     MessageType,
     ButtonsType,
     ListItem,
     ListView,
+    ProgressBar,
+    ScrolledWindow,
     SignalListItemFactory,
     SingleSelection,
     Orientation,
 };
 
-use pcap_file::{PcapError, pcap::PcapReader};
+use pcap_file::{PcapError, pcap::{PcapReader, PcapHeader, PacketHeader}};
 
+use backend::luna::{LunaDevice, LunaStop};
 use model::{GenericModel, TrafficModel, DeviceModel};
-use row_data::GenericRowData;
+use row_data::{GenericRowData, TrafficRowData, DeviceRowData};
 use expander::ExpanderWrapper;
 use tree_list_model::ModelError;
 
 mod capture;
-use capture::{Capture, CaptureError, ItemSource};
+use capture::{
+    Capture,
+    CaptureError,
+    ItemSource,
+    TrafficItem,
+    DeviceItem,
+    fmt_size,
+};
 
 mod decoder;
 use decoder::Decoder;
@@ -49,14 +66,34 @@ mod hybrid_index;
 mod usb;
 mod vec_map;
 
+static PCAP_SIZE: AtomicU64 = AtomicU64::new(0);
+static PCAP_READ: AtomicU64 = AtomicU64::new(0);
+static PCAP_STOP: AtomicBool = AtomicBool::new(false);
+
+static UPDATE_INTERVAL: Duration = Duration::from_millis(10);
+
+struct UserInterface {
+    capture: Arc<Mutex<Capture>>,
+    stop_handle: Option<LunaStop>,
+    traffic_window: ScrolledWindow,
+    device_window: ScrolledWindow,
+    traffic_model: Option<TrafficModel>,
+    device_model: Option<DeviceModel>,
+    show_progress: bool,
+    progress_bar: ProgressBar,
+    vbox: gtk::Box,
+    open_button: Button,
+    capture_button: Button,
+    stop_button: Button,
+}
+
 thread_local!(
-    static MODELS: RefCell<Vec<Object>>  = RefCell::new(Vec::new());
-    static LUNA: RefCell<Option<backend::luna::LunaCapture>> = RefCell::new(None);
     static WINDOW: RefCell<Option<ApplicationWindow>> = RefCell::new(None);
+    static UI: RefCell<Option<UserInterface>> = RefCell::new(None);
 );
 
 fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
-        -> ListView
+    -> (Model, ListView)
     where
         Item: Copy,
         Model: GenericModel<Item> + IsA<ListModel> + IsA<Object>,
@@ -65,8 +102,7 @@ fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
 {
     let model = Model::new(capture.clone())
                       .expect("Failed to create model");
-
-    MODELS.with(|models| models.borrow_mut().push(model.clone().upcast()));
+    let bind_model = model.clone();
     let cap_arc = capture.clone();
     let selection_model = SingleSelection::new(Some(&model));
     let factory = SignalListItemFactory::new();
@@ -99,7 +135,7 @@ fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
                 expander_wrapper.set_connectors(connectors);
                 expander.set_visible(node.expandable());
                 expander.set_expanded(node.expanded());
-                let model = model.clone();
+                let model = bind_model.clone();
                 let node_ref = node_ref.clone();
                 let handler = expander.connect_expanded_notify(move |expander| {
                     display_error(
@@ -131,7 +167,10 @@ fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
     };
     factory.connect_bind(move |_, item| display_error(bind(item)));
     factory.connect_unbind(move |_, item| display_error(unbind(item)));
-    ListView::new(Some(&selection_model), Some(&factory))
+
+    let view = ListView::new(Some(&selection_model), Some(&factory));
+
+    (model, view)
 }
 
 #[derive(Error, Debug)]
@@ -160,150 +199,325 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
         .title("Packetry")
         .build();
 
+    let header_bar = gtk::HeaderBar::new();
+
+    let open_button = gtk::Button::from_icon_name("document-open");
+    let save_button = gtk::Button::from_icon_name("document-save");
+    let capture_button = gtk::Button::from_icon_name("media-record");
+    let stop_button = gtk::Button::from_icon_name("media-playback-stop");
+
+    open_button.set_sensitive(true);
+    save_button.set_sensitive(false);
+    capture_button.set_sensitive(true);
+    stop_button.set_sensitive(false);
+
+    header_bar.pack_start(&open_button);
+    header_bar.pack_start(&save_button);
+    header_bar.pack_start(&capture_button);
+    header_bar.pack_start(&stop_button);
+
+    window.set_titlebar(Some(&header_bar));
     window.show();
     WINDOW.with(|win_opt| win_opt.replace(Some(window.clone())));
 
     let args: Vec<_> = std::env::args().collect();
-    let mut cap = Capture::new()?;
-    let mut decoder = Decoder::new(&mut cap)?;
-    let capture = Arc::new(Mutex::new(cap));
-    let app_capture = capture.clone();
+    let capture = Arc::new(Mutex::new(Capture::new()?));
 
-    if args.len() > 1 {
-        let file = File::open(&args[1])?;
-        let reader = BufReader::new(file);
-        let pcap_reader = PcapReader::new(reader)?;
-        let mut cap = capture.lock().or(Err(PacketryError::Lock))?;
-        for result in pcap_reader {
-            match result {
-                Ok(packet) => {
-                    let decode_result =
-                        decoder.handle_raw_packet(&mut cap, &packet.data);
-                    if let Err(e) = decode_result {
-                        display_error(Err(PacketryError::Capture(e)));
-                        break;
-                    }
-                },
-                Err(e) => {
-                    display_error(Err(PacketryError::Pcap(e)));
-                    break;
-                }
-            }
-        }
-        cap.print_storage_summary();
-    } else {
-        LUNA.with::<_, Result<(), PacketryError>>(|cell| {
-            cell.borrow_mut().replace(
-                backend::luna::LunaDevice::open()?.start()?
-            );
-            Ok(())
-        })?;
-        let update_capture = capture.clone();
-
-        let mut update_routine = move || -> Result<(), PacketryError> {
-            use PacketryError::*;
-
-            let mut cap = update_capture.lock().or(Err(Lock))?;
-
-            LUNA.with::<_, Result<(), PacketryError>>(|cell| {
-                let mut borrow = cell.borrow_mut();
-                let luna = borrow.as_mut().or_bug("LUNA not set")?;
-                while let Some(packet) = luna.next() {
-                    decoder.handle_raw_packet(&mut cap, &packet?)?;
-                }
-                Ok(())
-            })?;
-
-            drop(cap);
-
-            MODELS.with::<_, Result<(), PacketryError>>(|models| {
-                for model in models.borrow().iter() {
-                    if let Ok(tree_model) = model
-                        .clone()
-                        .downcast::<TrafficModel>()
-                    {
-                        tree_model.update()?;
-                    }
-                    else if let Ok(tree_model) = model
-                        .clone()
-                        .downcast::<DeviceModel>()
-                    {
-                        tree_model.update()?;
-                    }
-                }
-                Ok(())
-            })?;
-            Ok(())
-        };
-
-        gtk::glib::timeout_add_local(
-            std::time::Duration::from_millis(1),
-            move || {
-                let result = update_routine();
-                if result.is_ok() {
-                    Continue(true)
-                } else {
-                    display_error(result);
-                    Continue(false)
-                }
-            }
-        );
-    }
-
-    let listview = create_view::<capture::TrafficItem,
-                                 model::TrafficModel,
-                                 row_data::TrafficRowData>(&app_capture);
-
-    let scrolled_window = gtk::ScrolledWindow::builder()
+    let traffic_window = gtk::ScrolledWindow::builder()
         .hscrollbar_policy(gtk::PolicyType::Automatic)
         .min_content_height(480)
         .min_content_width(640)
         .build();
 
-    scrolled_window.set_child(Some(&listview));
-
-    let device_tree = create_view::<capture::DeviceItem,
-                                    model::DeviceModel,
-                                    row_data::DeviceRowData>(&app_capture);
     let device_window = gtk::ScrolledWindow::builder()
         .hscrollbar_policy(gtk::PolicyType::Automatic)
         .min_content_height(480)
         .min_content_width(240)
-        .child(&device_tree)
         .build();
 
     let paned = gtk::Paned::builder()
         .orientation(Orientation::Horizontal)
         .wide_handle(true)
-        .start_child(&scrolled_window)
+        .start_child(&traffic_window)
         .end_child(&device_window)
+        .vexpand(true)
         .build();
 
-    window.set_child(Some(&paned));
+    let separator = gtk::Separator::new(Orientation::Horizontal);
+
+    let progress_bar = gtk::ProgressBar::builder()
+        .show_text(true)
+        .text("")
+        .hexpand(true)
+        .build();
+
+    let vbox = gtk::Box::builder()
+        .orientation(Orientation::Vertical)
+        .build();
+
+    vbox.append(&paned);
+    vbox.append(&separator);
+
+    window.set_child(Some(&vbox));
+
+    capture_button.connect_clicked(|_| display_error(start_luna()));
+    open_button.connect_clicked(|_| display_error(open_file()));
+
+    UI.with(|cell|
+        cell.borrow_mut().replace(
+            UserInterface {
+                capture,
+                stop_handle: None,
+                traffic_window,
+                device_window,
+                traffic_model: None,
+                device_model: None,
+                show_progress: false,
+                progress_bar,
+                vbox,
+                open_button,
+                capture_button,
+                stop_button,
+            }
+        )
+    );
+
+    reset_capture()?;
+
+    if args.len() > 1 {
+        let filename = args[1].clone();
+        let path = PathBuf::from(filename);
+        start_pcap(path)?;
+    }
+
+    gtk::glib::timeout_add_once(
+        UPDATE_INTERVAL,
+        || display_error(update_view()));
 
     Ok(())
+}
+
+fn with_ui<F>(f: F) -> Result<(), PacketryError>
+    where F: FnOnce(&mut UserInterface) -> Result<(), PacketryError>
+{
+    UI.with(|cell| {
+        if let Some(ui) = cell.borrow_mut().as_mut() {
+            f(ui)
+        } else {
+            Err(PacketryError::Bug("UI not set up"))
+        }
+    })
+}
+
+fn reset_capture() -> Result<(), PacketryError> {
+    let capture = Arc::new(Mutex::new(Capture::new()?));
+    with_ui(|ui| {
+        let (traffic_model, traffic_view) =
+            create_view::<TrafficItem, TrafficModel, TrafficRowData>(&capture);
+        let (device_model, device_view) =
+            create_view::<DeviceItem, DeviceModel, DeviceRowData>(&capture);
+        ui.capture = capture;
+        ui.traffic_model = Some(traffic_model);
+        ui.device_model = Some(device_model);
+        ui.traffic_window.set_child(Some(&traffic_view));
+        ui.device_window.set_child(Some(&device_view));
+        Ok(())
+    })
+}
+
+fn update_view() -> Result<(), PacketryError> {
+    with_ui(|ui| {
+        if let Some(model) = &ui.traffic_model {
+            model.update()?;
+        }
+        if let Some(model) = &ui.device_model {
+            model.update()?;
+        }
+        if ui.show_progress {
+            let bytes_total = PCAP_SIZE.load(Ordering::Relaxed);
+            let bytes_read = PCAP_READ.load(Ordering::Relaxed);
+            let text = format!(
+                "Loaded {} / {}",
+                fmt_size(bytes_read),
+                fmt_size(bytes_total));
+            let fraction = (bytes_read as f64) / (bytes_total as f64);
+            ui.progress_bar.set_text(Some(&text));
+            ui.progress_bar.set_fraction(fraction);
+        }
+        gtk::glib::timeout_add_once(
+            UPDATE_INTERVAL,
+            || display_error(update_view())
+        );
+        Ok(())
+    })
+}
+
+fn open_file() -> Result<(), PacketryError> {
+    let chooser = WINDOW.with(|cell| {
+        let borrow = cell.borrow();
+        let window = borrow.as_ref();
+        gtk::FileChooserDialog::new(
+            Some("Open pcap file"),
+            window,
+            gtk::FileChooserAction::Open,
+            &[("Open", gtk::ResponseType::Accept)]
+        )
+    });
+    chooser.connect_response(move |dialog, response| {
+        if response == gtk::ResponseType::Accept {
+            if let Some(file) = dialog.file() {
+                if let Some(path) = file.path() {
+                    display_error(start_pcap(path));
+                }
+            }
+            dialog.destroy();
+        }
+    });
+    chooser.show();
+    Ok(())
+}
+
+fn start_pcap(path: PathBuf) -> Result<(), PacketryError> {
+    reset_capture()?;
+    with_ui(|ui| {
+        ui.open_button.set_sensitive(false);
+        ui.capture_button.set_sensitive(false);
+        ui.stop_button.set_sensitive(true);
+        let signal_id = ui.stop_button.connect_clicked(|_|
+            display_error(stop_pcap()));
+        ui.vbox.append(&ui.progress_bar);
+        ui.show_progress = true;
+        let capture = ui.capture.clone();
+        let read_pcap = move || {
+            let file = File::open(path)?;
+            let file_size = file.metadata()?.len();
+            PCAP_SIZE.store(file_size, Ordering::Relaxed);
+            let reader = BufReader::new(file);
+            let pcap = PcapReader::new(reader)?;
+            let mut bytes_read = size_of::<PcapHeader>() as u64;
+            let mut decoder = Decoder::default();
+            use PacketryError::Lock;
+            #[cfg(feature="step-decoder")]
+            let (mut client, _addr) =
+                TcpListener::bind("127.0.0.1:46563")?.accept()?;
+            for result in pcap {
+                #[cfg(feature="step-decoder")] {
+                    let mut buf = [0; 1];
+                    client.read(&mut buf).unwrap();
+                };
+                let packet = result?;
+                let mut cap = capture.lock().or(Err(Lock))?;
+                decoder.handle_raw_packet(&mut cap, &packet.data)?;
+                let size = size_of::<PacketHeader>() + packet.data.len();
+                bytes_read += size as u64;
+                PCAP_READ.store(bytes_read, Ordering::Relaxed);
+                if PCAP_STOP.load(Ordering::Relaxed) {
+                    break;
+                }
+            }
+            let cap = capture.lock().or(Err(Lock))?;
+            cap.print_storage_summary();
+            Ok(())
+        };
+        std::thread::spawn(move || {
+            display_error(read_pcap());
+            gtk::glib::idle_add_once(|| {
+                PCAP_STOP.store(false, Ordering::Relaxed);
+                display_error(
+                    with_ui(|ui| {
+                        ui.show_progress = false;
+                        ui.vbox.remove(&ui.progress_bar);
+                        ui.stop_button.disconnect(signal_id);
+                        ui.stop_button.set_sensitive(false);
+                        ui.open_button.set_sensitive(true);
+                        ui.capture_button.set_sensitive(true);
+                        Ok(())
+                    })
+                );
+            });
+        });
+        Ok(())
+    })
+}
+
+fn stop_pcap() -> Result<(), PacketryError> {
+    PCAP_STOP.store(true, Ordering::Relaxed);
+    with_ui(|ui| {
+        ui.stop_button.set_sensitive(false);
+        Ok(())
+    })
+}
+
+fn start_luna() -> Result<(), PacketryError> { 
+    reset_capture()?;
+    with_ui(|ui| {
+        let (mut stream_handle, stop_handle) = LunaDevice::open()?.start()?;
+        ui.stop_handle.replace(stop_handle);
+        ui.open_button.set_sensitive(false);
+        ui.capture_button.set_sensitive(false);
+        ui.stop_button.set_sensitive(true);
+        let signal_id = ui.stop_button.connect_clicked(|_|
+            display_error(stop_luna()));
+        let capture = ui.capture.clone();
+        let mut read_luna = move || {
+            use PacketryError::Lock;
+            let mut decoder = Decoder::default();
+            while let Some(packet) = stream_handle.next() {
+                let mut cap = capture.lock().or(Err(Lock))?;
+                decoder.handle_raw_packet(&mut cap, &packet?)?;
+            }
+            Ok(())
+        };
+        std::thread::spawn(move || {
+            display_error(read_luna());
+            gtk::glib::idle_add_once(|| {
+                display_error(
+                    with_ui(|ui| {
+                        ui.stop_button.disconnect(signal_id);
+                        ui.stop_button.set_sensitive(false);
+                        ui.open_button.set_sensitive(true);
+                        ui.capture_button.set_sensitive(true);
+                        Ok(())
+                    })
+                );
+            });
+        });
+        Ok(())
+    })
+}
+
+fn stop_luna() -> Result<(), PacketryError> {
+    with_ui(|ui| {
+        if let Some(stop_handle) = ui.stop_handle.take() {
+            stop_handle.stop()?;
+        }
+        Ok(())
+    })
 }
 
 fn display_error(result: Result<(), PacketryError>) {
     if let Err(e) = result {
         let message = format!("{e}");
-        WINDOW.with(|win_opt| {
-            match win_opt.borrow().as_ref() {
-                None => println!("{message}"),
-                Some(window) => {
-                    let dialog = MessageDialog::new(
-                        Some(window),
-                        DialogFlags::MODAL,
-                        MessageType::Error,
-                        ButtonsType::Close,
-                        &message
-                    );
-                    dialog.set_transient_for(Some(window));
-                    dialog.set_modal(true);
-                    dialog.connect_response(move |dialog, _| dialog.destroy());
-                    dialog.show();
+        gtk::glib::idle_add_once(move || {
+            WINDOW.with(|win_opt| {
+                match win_opt.borrow().as_ref() {
+                    None => println!("{message}"),
+                    Some(window) => {
+                        let dialog = MessageDialog::new(
+                            Some(window),
+                            DialogFlags::MODAL,
+                            MessageType::Error,
+                            ButtonsType::Close,
+                            &message
+                        );
+                        dialog.set_transient_for(Some(window));
+                        dialog.set_modal(true);
+                        dialog.connect_response(
+                            move |dialog, _| dialog.destroy());
+                        dialog.show();
+                    }
                 }
-            }
+            });
         });
     }
 }
@@ -331,13 +545,5 @@ fn main() {
     );
     application.connect_activate(|app| display_error(activate(app)));
     application.run_with_args::<&str>(&[]);
-    display_error(
-        LUNA.with(|cell|
-            if let Some(luna) = cell.take() {
-                luna.stop().map_err(PacketryError::Luna)
-            } else {
-                Ok(())
-            }
-        )
-    );
+    display_error(stop_luna());
 }

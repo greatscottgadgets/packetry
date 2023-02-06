@@ -124,8 +124,11 @@ pub enum EndpointState {
     Ending = 3,
 }
 
-pub const INVALID_EP_NUM: u8 = 0x10;
-pub const FRAMING_EP_NUM: u8 = 0x11;
+pub const CONTROL_EP_NUM: EndpointNum = EndpointNum(0);
+pub const INVALID_EP_NUM: EndpointNum = EndpointNum(0x10);
+pub const FRAMING_EP_NUM: EndpointNum = EndpointNum(0x11);
+pub const INVALID_EP_ID: EndpointId = EndpointId::constant(0);
+pub const FRAMING_EP_ID: EndpointId = EndpointId::constant(1);
 
 #[derive(Copy, Clone, Debug)]
 pub enum EndpointType {
@@ -152,6 +155,19 @@ pub struct EndpointTraffic {
     pub end_index: HybridIndex<EndpointTransferId, TrafficItemId>,
 }
 
+impl EndpointTraffic {
+    pub fn new() -> Result<Self, CaptureError> {
+        Ok(EndpointTraffic {
+            transaction_ids: HybridIndex::new(1)?,
+            transfer_index: HybridIndex::new(1)?,
+            data_index: HybridIndex::new(1)?,
+            total_data: 0,
+            end_index: HybridIndex::new(1)?,
+        })
+    }
+}
+
+#[derive(Default)]
 pub struct DeviceData {
     pub device_descriptor: Option<DeviceDescriptor>,
     pub configurations: VecMap<ConfigNum, Configuration>,
@@ -161,6 +177,25 @@ pub struct DeviceData {
 }
 
 impl DeviceData {
+    fn description(&self) -> String {
+        match self.device_descriptor {
+            None => "Unknown".to_string(),
+            Some(descriptor) => {
+                let str_id = descriptor.product_str_id;
+                if let Some(utf16) = self.strings.get(str_id) {
+                    let chars = utf16.chars();
+                    if let Ok(string) = String::from_utf16(&chars) {
+                        return format!("{}", string.escape_default());
+                    }
+                }
+                format!(
+                    "{:04X}:{:04X}",
+                    descriptor.vendor_id,
+                    descriptor.product_id)
+            }
+        }
+    }
+
     pub fn configuration(&self, number: &ConfigNum)
         -> Result<&Configuration, CaptureError>
     {
@@ -174,10 +209,10 @@ impl DeviceData {
         -> (EndpointType, Option<usize>)
     {
         use EndpointType::*;
-        match addr.0 {
+        match addr.number() {
             INVALID_EP_NUM => (Invalid, None),
             FRAMING_EP_NUM => (Framing, None),
-            0 => (
+            CONTROL_EP_NUM => (
                 Normal(usb::EndpointType::Control),
                 self.device_descriptor.map(|desc| {
                     desc.max_packet_size_0 as usize
@@ -391,7 +426,7 @@ pub struct Capture {
 
 impl Capture {
     pub fn new() -> Result<Self, CaptureError> {
-        Ok(Capture {
+        let mut capture = Capture {
             packet_data: FileVec::new()?,
             packet_index: HybridIndex::new(2)?,
             transaction_index: HybridIndex::new(1)?,
@@ -404,7 +439,21 @@ impl Capture {
             endpoint_states: FileVec::new()?,
             endpoint_state_index: HybridIndex::new(1)?,
             end_index: HybridIndex::new(1)?,
-        })
+        };
+        let default_addr = DeviceAddr(0);
+        let default_device = Device { address: default_addr };
+        let default_id = capture.devices.push(&default_device)?;
+        capture.device_data.set(default_id, DeviceData::default());
+        for number in [INVALID_EP_NUM, FRAMING_EP_NUM] {
+            let mut endpoint = Endpoint::default();
+            endpoint.set_device_id(default_id);
+            endpoint.set_device_address(default_addr);
+            endpoint.set_number(number);
+            endpoint.set_direction(Direction::Out);
+            let endpoint_id = capture.endpoints.push(&endpoint)?;
+            capture.endpoint_traffic.set(endpoint_id, EndpointTraffic::new()?);
+        }
+        Ok(capture)
     }
 
     pub fn print_storage_summary(&self) {
@@ -1111,16 +1160,7 @@ impl ItemSource<DeviceItem> for Capture {
             Device(dev) => {
                 let device = self.devices.get(*dev)?;
                 let data = self.device_data(dev)?;
-                format!("Device {}: {}", device.address,
-                    match data.device_descriptor {
-                        Some(descriptor) => format!(
-                            "{:04X}:{:04X}",
-                            descriptor.vendor_id,
-                            descriptor.product_id
-                        ),
-                        None => "Unknown".to_string(),
-                    }
-                )
+                format!("Device {}: {}", device.address, data.description())
             },
             DeviceDescriptor(dev) => {
                 match self.device_data(dev)?.device_descriptor {
@@ -1234,7 +1274,7 @@ mod tests {
                     let pcap_file = File::open(cap_path).unwrap();
                     let pcap_reader = PcapReader::new(pcap_file).unwrap();
                     let mut cap = Capture::new().unwrap();
-                    let mut decoder = Decoder::new(&mut cap).unwrap();
+                    let mut decoder = Decoder::default();
                     for result in pcap_reader {
                         let packet = result.unwrap().data;
                         decoder.handle_raw_packet(&mut cap, &packet).unwrap();
@@ -1281,5 +1321,9 @@ pub mod prelude {
         TransactionId,
         TransferId,
         TransferIndexEntry,
+        INVALID_EP_NUM,
+        FRAMING_EP_NUM,
+        INVALID_EP_ID,
+        FRAMING_EP_ID,
     };
 }

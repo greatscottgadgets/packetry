@@ -29,8 +29,11 @@ pub struct LunaDevice {
     handle: DeviceHandle<GlobalContext>,
 }
 
-pub struct LunaCapture {
+pub struct LunaStream {
     receiver: Receiver<Result<Vec<u8>, Error>>,
+}
+
+pub struct LunaStop {
     stop_request: Sender<()>,
     worker: JoinHandle::<Result<(), Error>>,
 }
@@ -43,7 +46,7 @@ impl LunaDevice {
         })
     }
 
-    pub fn start(mut self) -> Result<LunaCapture, Error> {
+    pub fn start(mut self) -> Result<(LunaStream, LunaStop), Error> {
         self.handle.claim_interface(0)?;
         let (tx, rx) = channel();
         let (stop_tx, stop_rx) = channel();
@@ -75,11 +78,15 @@ impl LunaDevice {
             println!("Capture disabled");
             Ok(())
         });
-        Ok(LunaCapture {
-            stop_request: stop_tx,
-            receiver: rx,
-            worker,
-        })
+        Ok((
+            LunaStream {
+                receiver: rx,
+            },
+            LunaStop {
+                stop_request: stop_tx,
+                worker,
+            }
+        ))
     }
 
     fn enable_capture(&mut self, enable: bool) -> Result<(), Error> {
@@ -96,11 +103,13 @@ impl LunaDevice {
     }
 }
 
-impl LunaCapture {
+impl LunaStream {
     pub fn next(&mut self) -> Option<Result<Vec<u8>, Error>> {
-        self.receiver.try_recv().ok()
+        self.receiver.recv().ok()
     }
+}
 
+impl LunaStop {
     pub fn stop(self) -> Result<(), Error> {
         use Error::*;
         println!("Requesting capture stop");

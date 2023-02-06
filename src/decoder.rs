@@ -1,8 +1,8 @@
 use std::mem::size_of;
 
 use crate::usb::{self, prelude::*};
-use crate::capture::{prelude::*, INVALID_EP_NUM, FRAMING_EP_NUM};
-use crate::hybrid_index::{HybridIndex, Number};
+use crate::capture::prelude::*;
+use crate::hybrid_index::Number;
 use crate::vec_map::{VecMap, Key};
 
 use CaptureError::IndexError;
@@ -38,6 +38,22 @@ struct EndpointData {
     last_success: bool,
     setup: Option<SetupFields>,
     payload: Vec<u8>,
+}
+
+impl EndpointData {
+    fn new(device_id: DeviceId, address: EndpointAddr) -> EndpointData {
+        EndpointData {
+            address,
+            device_id,
+            active: None,
+            ended: None,
+            transaction_count: 0,
+            last: None,
+            last_success: false,
+            setup: None,
+            payload: Vec::new(),
+        }
+    }
 }
 
 #[derive(Default)]
@@ -160,8 +176,8 @@ pub struct Decoder {
     transaction_state: TransactionState,
 }
 
-impl Decoder {
-    pub fn new(capture: &mut Capture) -> Result<Self, CaptureError> {
+impl Default for Decoder {
+    fn default() -> Decoder {
         let mut decoder = Decoder {
             device_index: VecMap::new(),
             endpoint_index: VecMap::new(),
@@ -170,18 +186,28 @@ impl Decoder {
             last_item_endpoint: None,
             transaction_state: TransactionState::default(),
         };
-        let invalid_id = decoder.add_endpoint(
-            capture, DeviceAddr(0), EndpointNum(INVALID_EP_NUM), Direction::Out)?;
-        let framing_id = decoder.add_endpoint(
-            capture, DeviceAddr(0), EndpointNum(FRAMING_EP_NUM), Direction::Out)?;
-        assert!(invalid_id == Decoder::INVALID_EP_ID);
-        assert!(framing_id == Decoder::FRAMING_EP_ID);
-        Ok(decoder)
+        let default_addr = DeviceAddr(0);
+        let default_id = DeviceId::from(0);
+        decoder.device_index.set(default_addr, default_id);
+        for (ep_id, ep_num) in [
+            (INVALID_EP_ID, INVALID_EP_NUM),
+            (FRAMING_EP_ID, FRAMING_EP_NUM)]
+        {
+            decoder.endpoint_data.set(
+                ep_id,
+                EndpointData::new(
+                    default_id,
+                    EndpointAddr::from_parts(ep_num, Direction::Out)
+                )
+            );
+            let ep_state = EndpointState::Idle as u8;
+            decoder.last_endpoint_state.push(ep_state);
+        }
+        decoder
     }
+}
 
-    const INVALID_EP_ID: EndpointId = EndpointId::constant(0);
-    const FRAMING_EP_ID: EndpointId = EndpointId::constant(1);
-
+impl Decoder {
     pub fn handle_raw_packet(&mut self, capture: &mut Capture, packet: &[u8])
         -> Result<(), CaptureError>
     {
@@ -261,10 +287,10 @@ impl Decoder {
         state.last = state.first;
         self.transaction_state.endpoint_id = Some(
             match PacketFields::from_packet(packet) {
-                PacketFields::SOF(_) => Decoder::FRAMING_EP_ID,
+                PacketFields::SOF(_) => FRAMING_EP_ID,
                 PacketFields::Token(token) =>
                     self.token_endpoint(capture, pid, &token)?,
-                _ => Decoder::INVALID_EP_ID,
+                _ => INVALID_EP_ID,
             }
         );
         Ok(())
@@ -304,13 +330,7 @@ impl Decoder {
         let device = Device { address };
         let device_id = capture.devices.push(&device)?;
         self.device_index.set(address, device_id);
-        capture.device_data.set(device_id, DeviceData {
-            device_descriptor: None,
-            configurations: VecMap::new(),
-            config_number: None,
-            endpoint_details: VecMap::new(),
-            strings: VecMap::new(),
-        });
+        capture.device_data.set(device_id, DeviceData::default());
         Ok(device_id)
     }
 
@@ -332,24 +352,10 @@ impl Decoder {
         endpoint.set_direction(direction);
         let endpoint_id = capture.endpoints.push(&endpoint)?;
         let address = EndpointAddr::from_parts(number, direction);
-        self.endpoint_data.set(endpoint_id, EndpointData {
-            address,
-            device_id,
-            active: None,
-            ended: None,
-            transaction_count: 0,
-            last: None,
-            last_success: false,
-            setup: None,
-            payload: Vec::new(),
-        });
-        capture.endpoint_traffic.set(endpoint_id, EndpointTraffic {
-            transaction_ids: HybridIndex::new(1)?,
-            transfer_index: HybridIndex::new(1)?,
-            data_index: HybridIndex::new(1)?,
-            total_data: 0,
-            end_index: HybridIndex::new(1)?,
-        });
+        self.endpoint_data.set(
+            endpoint_id,
+            EndpointData::new(device_id, address));
+        capture.endpoint_traffic.set(endpoint_id, EndpointTraffic::new()?);
         let ep_state = EndpointState::Idle as u8;
         self.last_endpoint_state.push(ep_state);
         Ok(endpoint_id)
