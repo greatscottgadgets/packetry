@@ -576,7 +576,7 @@ impl Capture {
         Ok(self.endpoint_states.get_range(range)?)
     }
 
-    fn packet(&mut self, id: PacketId)
+    pub fn packet(&mut self, id: PacketId)
         -> Result<Vec<u8>, CaptureError>
     {
         let range = self.packet_index.target_range(
