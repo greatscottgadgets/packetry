@@ -66,9 +66,9 @@ mod hybrid_index;
 mod usb;
 mod vec_map;
 
-static PCAP_SIZE: AtomicU64 = AtomicU64::new(0);
-static PCAP_READ: AtomicU64 = AtomicU64::new(0);
-static PCAP_STOP: AtomicBool = AtomicBool::new(false);
+static TOTAL: AtomicU64 = AtomicU64::new(0);
+static CURRENT: AtomicU64 = AtomicU64::new(0);
+static STOP: AtomicBool = AtomicBool::new(false);
 
 static UPDATE_INTERVAL: Duration = Duration::from_millis(10);
 
@@ -368,8 +368,8 @@ fn update_view() -> Result<(), PacketryError> {
             more_updates |= model.update()?;
         }
         if ui.show_progress {
-            let bytes_total = PCAP_SIZE.load(Ordering::Relaxed);
-            let bytes_read = PCAP_READ.load(Ordering::Relaxed);
+            let bytes_total = TOTAL.load(Ordering::Relaxed);
+            let bytes_read = CURRENT.load(Ordering::Relaxed);
             let text = format!(
                 "Loaded {} / {}",
                 fmt_size(bytes_read),
@@ -427,7 +427,7 @@ fn start_pcap(path: PathBuf) -> Result<(), PacketryError> {
         let read_pcap = move || {
             let file = File::open(path)?;
             let file_size = file.metadata()?.len();
-            PCAP_SIZE.store(file_size, Ordering::Relaxed);
+            TOTAL.store(file_size, Ordering::Relaxed);
             let reader = BufReader::new(file);
             let pcap = PcapReader::new(reader)?;
             let mut bytes_read = size_of::<PcapHeader>() as u64;
@@ -446,8 +446,8 @@ fn start_pcap(path: PathBuf) -> Result<(), PacketryError> {
                 decoder.handle_raw_packet(&mut cap, &packet.data)?;
                 let size = size_of::<PacketHeader>() + packet.data.len();
                 bytes_read += size as u64;
-                PCAP_READ.store(bytes_read, Ordering::Relaxed);
-                if PCAP_STOP.load(Ordering::Relaxed) {
+                CURRENT.store(bytes_read, Ordering::Relaxed);
+                if STOP.load(Ordering::Relaxed) {
                     break;
                 }
             }
@@ -459,7 +459,7 @@ fn start_pcap(path: PathBuf) -> Result<(), PacketryError> {
         std::thread::spawn(move || {
             display_error(read_pcap());
             gtk::glib::idle_add_once(|| {
-                PCAP_STOP.store(false, Ordering::Relaxed);
+                STOP.store(false, Ordering::Relaxed);
                 display_error(
                     with_ui(|ui| {
                         ui.show_progress = false;
@@ -478,7 +478,7 @@ fn start_pcap(path: PathBuf) -> Result<(), PacketryError> {
 }
 
 fn stop_pcap() -> Result<(), PacketryError> {
-    PCAP_STOP.store(true, Ordering::Relaxed);
+    STOP.store(true, Ordering::Relaxed);
     with_ui(|ui| {
         ui.stop_button.set_sensitive(false);
         Ok(())
