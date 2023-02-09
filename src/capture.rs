@@ -1284,10 +1284,10 @@ mod tests {
                 out_path.push("output.txt");
                 {
                     let pcap_file = File::open(cap_path).unwrap();
-                    let pcap_reader = PcapReader::new(pcap_file).unwrap();
+                    let mut pcap_reader = PcapReader::new(pcap_file).unwrap();
                     let mut cap = Capture::new().unwrap();
                     let mut decoder = Decoder::default();
-                    for result in pcap_reader {
+                    while let Some(result) = pcap_reader.next_raw_packet() {
                         let packet = result.unwrap().data;
                         decoder.handle_raw_packet(&mut cap, &packet).unwrap();
                     }

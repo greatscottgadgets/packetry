@@ -39,7 +39,7 @@ use gtk::{
     Orientation,
 };
 
-use pcap_file::{PcapError, pcap::{PcapReader, PcapHeader, PacketHeader}};
+use pcap_file::{PcapError, pcap::{PcapReader, PcapHeader}};
 
 use backend::luna::{LunaDevice, LunaStop};
 use model::{GenericModel, TrafficModel, DeviceModel};
@@ -429,14 +429,14 @@ fn start_pcap(path: PathBuf) -> Result<(), PacketryError> {
             let file_size = file.metadata()?.len();
             TOTAL.store(file_size, Ordering::Relaxed);
             let reader = BufReader::new(file);
-            let pcap = PcapReader::new(reader)?;
+            let mut pcap = PcapReader::new(reader)?;
             let mut bytes_read = size_of::<PcapHeader>() as u64;
             let mut decoder = Decoder::default();
             use PacketryError::Lock;
             #[cfg(feature="step-decoder")]
             let (mut client, _addr) =
                 TcpListener::bind("127.0.0.1:46563")?.accept()?;
-            for result in pcap {
+            while let Some(result) = pcap.next_raw_packet() {
                 #[cfg(feature="step-decoder")] {
                     let mut buf = [0; 1];
                     client.read(&mut buf).unwrap();
@@ -444,7 +444,7 @@ fn start_pcap(path: PathBuf) -> Result<(), PacketryError> {
                 let packet = result?;
                 let mut cap = capture.lock().or(Err(Lock))?;
                 decoder.handle_raw_packet(&mut cap, &packet.data)?;
-                let size = size_of::<PacketHeader>() + packet.data.len();
+                let size = 16 + packet.data.len();
                 bytes_read += size as u64;
                 CURRENT.store(bytes_read, Ordering::Relaxed);
                 if STOP.load(Ordering::Relaxed) {
