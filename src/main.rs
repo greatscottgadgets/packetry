@@ -79,6 +79,7 @@ struct UserInterface {
     device_window: ScrolledWindow,
     traffic_model: Option<TrafficModel>,
     device_model: Option<DeviceModel>,
+    endpoint_count: u16,
     show_progress: bool,
     progress_bar: ProgressBar,
     vbox: gtk::Box,
@@ -137,12 +138,16 @@ fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
                 expander.set_expanded(node.expanded());
                 let model = bind_model.clone();
                 let node_ref = node_ref.clone();
+                let list_item = list_item.clone();
                 let handler = expander.connect_expanded_notify(move |expander| {
+                    let position = list_item.position();
+                    let expanded = expander.is_expanded();
                     display_error(
-                        model.set_expanded(&node_ref, expander.is_expanded())
-                            .map_err(PacketryError::Model));
+                        model.set_expanded(&node_ref, position, expanded)
+                            .map_err(PacketryError::Model))
                 });
                 expander_wrapper.set_handler(handler);
+                node.attach_widget(&expander_wrapper);
             },
             Err(msg) => {
                 expander_wrapper.set_connectors("".to_string());
@@ -153,16 +158,27 @@ fn create_view<Item: 'static, Model, RowData>(capture: &Arc<Mutex<Capture>>)
         Ok(())
     };
     let unbind = move |list_item: &ListItem| {
+        let row = list_item
+            .item()
+            .or_bug("ListItem has no item")?
+            .downcast::<RowData>()
+            .or_bug("Item is not RowData")?;
+
         let expander_wrapper = list_item
             .child()
             .or_bug("ListItem has no child widget")?
             .downcast::<ExpanderWrapper>()
             .or_bug("Child widget is not an ExpanderWrapper")?;
+
+        if let Ok(node_ref) = row.node() {
+            node_ref.borrow().remove_widget(&expander_wrapper);
+        }
+
         let expander = expander_wrapper.expander();
-        let handler = expander_wrapper
-            .take_handler()
-            .or_bug("ExpanderWrapper handler was not set")?;
-        expander.disconnect(handler);
+        if let Some(handler) = expander_wrapper.take_handler() {
+            expander.disconnect(handler);
+        }
+
         Ok(())
     };
     factory.connect_bind(move |_, item| display_error(bind(item)));
@@ -272,6 +288,7 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
                 device_window,
                 traffic_model: None,
                 device_model: None,
+                endpoint_count: 2,
                 show_progress: false,
                 progress_bar,
                 vbox,
@@ -319,6 +336,7 @@ fn reset_capture() -> Result<(), PacketryError> {
         ui.capture = capture;
         ui.traffic_model = Some(traffic_model);
         ui.device_model = Some(device_model);
+        ui.endpoint_count = 2;
         ui.traffic_window.set_child(Some(&traffic_view));
         ui.device_window.set_child(Some(&device_view));
         Ok(())
@@ -327,11 +345,27 @@ fn reset_capture() -> Result<(), PacketryError> {
 
 fn update_view() -> Result<(), PacketryError> {
     with_ui(|ui| {
+        use PacketryError::Lock;
+        let mut more_updates = false;
         if let Some(model) = &ui.traffic_model {
-            model.update()?;
+            let old_count = model.n_items();
+            more_updates |= model.update()?;
+            let new_count = model.n_items();
+            // If any endpoints were added, we need to redraw the rows above
+            // to add the additional columns of the connecting lines.
+            if new_count > old_count {
+                let new_ep_count = ui.capture
+                    .lock()
+                    .or(Err(Lock))?
+                    .endpoints.len() as u16;
+                if new_ep_count > ui.endpoint_count {
+                    model.items_changed(0, old_count, old_count);
+                    ui.endpoint_count = new_ep_count;
+                }
+            }
         }
         if let Some(model) = &ui.device_model {
-            model.update()?;
+            more_updates |= model.update()?;
         }
         if ui.show_progress {
             let bytes_total = PCAP_SIZE.load(Ordering::Relaxed);
@@ -344,10 +378,12 @@ fn update_view() -> Result<(), PacketryError> {
             ui.progress_bar.set_text(Some(&text));
             ui.progress_bar.set_fraction(fraction);
         }
-        gtk::glib::timeout_add_once(
-            UPDATE_INTERVAL,
-            || display_error(update_view())
-        );
+        if more_updates {
+            gtk::glib::timeout_add_once(
+                UPDATE_INTERVAL,
+                || display_error(update_view())
+            );
+        }
         Ok(())
     })
 }
@@ -415,7 +451,8 @@ fn start_pcap(path: PathBuf) -> Result<(), PacketryError> {
                     break;
                 }
             }
-            let cap = capture.lock().or(Err(Lock))?;
+            let mut cap = capture.lock().or(Err(Lock))?;
+            cap.finish();
             cap.print_storage_summary();
             Ok(())
         };
@@ -466,6 +503,8 @@ fn start_luna() -> Result<(), PacketryError> {
                 let mut cap = capture.lock().or(Err(Lock))?;
                 decoder.handle_raw_packet(&mut cap, &packet?)?;
             }
+            let mut cap = capture.lock().or(Err(Lock))?;
+            cap.finish();
             Ok(())
         };
         std::thread::spawn(move || {

@@ -39,6 +39,7 @@ pub type TrafficItemId = Id<TransferId>;
 pub type DeviceId = Id<Device>;
 pub type EndpointId = Id<Endpoint>;
 pub type EndpointByteCount = u64;
+pub type DeviceVersion = u32;
 
 #[derive(Copy, Clone)]
 pub enum TrafficItem {
@@ -49,19 +50,20 @@ pub enum TrafficItem {
 
 #[derive(Copy, Clone)]
 pub enum DeviceItem {
-    Device(DeviceId),
+    Device(DeviceId, DeviceVersion),
     DeviceDescriptor(DeviceId),
-    DeviceDescriptorField(DeviceId, DeviceField),
+    DeviceDescriptorField(DeviceId, DeviceField, DeviceVersion),
     Configuration(DeviceId, ConfigNum),
     ConfigurationDescriptor(DeviceId, ConfigNum),
-    ConfigurationDescriptorField(DeviceId, ConfigNum, ConfigField),
+    ConfigurationDescriptorField(DeviceId, ConfigNum,
+                                 ConfigField, DeviceVersion),
     Interface(DeviceId, ConfigNum, InterfaceNum),
     InterfaceDescriptor(DeviceId, ConfigNum, InterfaceNum),
     InterfaceDescriptorField(DeviceId, ConfigNum,
-                             InterfaceNum, InterfaceField),
+                             InterfaceNum, InterfaceField, DeviceVersion),
     EndpointDescriptor(DeviceId, ConfigNum, InterfaceNum, InterfaceEpNum),
     EndpointDescriptorField(DeviceId, ConfigNum, InterfaceNum,
-                            InterfaceEpNum, EndpointField),
+                            InterfaceEpNum, EndpointField, DeviceVersion),
 }
 
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
@@ -174,6 +176,7 @@ pub struct DeviceData {
     pub config_number: Option<ConfigNum>,
     pub endpoint_details: VecMap<EndpointAddr, (usb::EndpointType, usize)>,
     pub strings: VecMap<StringId, UTF16ByteVec>,
+    pub version: DeviceVersion,
 }
 
 impl DeviceData {
@@ -287,12 +290,6 @@ impl Transaction {
             (3, ACK | NYET) => true,
             (..)            => false
         }
-    }
-
-    fn complete(&self) -> bool {
-        use PID::*;
-        // TODO: iso transactions end on a DATAx
-        matches!(self.end_pid, ACK | NAK | NYET | STALL | ERR)
     }
 }
 
@@ -422,6 +419,7 @@ pub struct Capture {
     pub endpoint_states: FileVec<u8>,
     pub endpoint_state_index: HybridIndex<TransferId, Id<u8>>,
     pub end_index: HybridIndex<TransferId, TrafficItemId>,
+    pub completion: CompletionStatus,
 }
 
 impl Capture {
@@ -439,6 +437,7 @@ impl Capture {
             endpoint_states: FileVec::new()?,
             endpoint_state_index: HybridIndex::new(1)?,
             end_index: HybridIndex::new(1)?,
+            completion: CompletionStatus::Ongoing,
         };
         let default_addr = DeviceAddr(0);
         let default_device = Device { address: default_addr };
@@ -684,6 +683,10 @@ impl Capture {
             IndexError(format!("Capture has no device with ID {id}")))
     }
 
+    fn device_version(&self, id: &DeviceId) -> Result<u32, CaptureError> {
+        Ok(self.device_data(id)?.version)
+    }
+
     pub fn device_data_mut(&mut self, id: &DeviceId)
         -> Result<&mut DeviceData, CaptureError>
     {
@@ -713,25 +716,33 @@ impl Capture {
             None => false
         })
     }
+
+    pub fn finish(&mut self) {
+        self.completion = CompletionStatus::Complete;
+    }
+}
+
+#[derive(Copy, Clone)]
+pub enum CompletionStatus {
+    Complete,
+    Ongoing
 }
 
 pub trait ItemSource<Item> {
-    type ItemId;
-    fn item(&mut self, parent: &Option<Item>, index: u64) -> Result<Item, CaptureError>;
-    fn child_item(&mut self, parent: &Item, index: u64) -> Result<Item, CaptureError>;
-    fn item_count(&mut self, parent: &Option<Item>) -> Result<u64, CaptureError>;
-    fn child_count(&mut self, parent: &Item) -> Result<u64, CaptureError>;
-    fn item_end(&mut self, item_id: Self::ItemId)
-        -> Result<Option<Self::ItemId>, CaptureError>;
-    fn complete(&mut self, item: &Item) -> Result<bool, CaptureError>;
+    fn item(&mut self, parent: Option<&Item>, index: u64)
+        -> Result<Item, CaptureError>;
+    fn item_update(&mut self, item: &Item)
+        -> Result<Option<Item>, CaptureError>;
+    fn child_item(&mut self, parent: &Item, index: u64)
+        -> Result<Item, CaptureError>;
+    fn item_children(&mut self, parent: Option<&Item>)
+        -> Result<(CompletionStatus, u64), CaptureError>;
     fn summary(&mut self, item: &Item) -> Result<String, CaptureError>;
     fn connectors(&mut self, item: &Item) -> Result<String, CaptureError>;
 }
 
 impl ItemSource<TrafficItem> for Capture {
-    type ItemId = TrafficItemId;
-
-    fn item(&mut self, parent: &Option<TrafficItem>, index: u64)
+    fn item(&mut self, parent: Option<&TrafficItem>, index: u64)
         -> Result<TrafficItem, CaptureError>
     {
         match parent {
@@ -742,6 +753,12 @@ impl ItemSource<TrafficItem> for Capture {
             },
             Some(item) => self.child_item(item, index)
         }
+    }
+
+    fn item_update(&mut self, _item: &TrafficItem)
+        -> Result<Option<TrafficItem>, CaptureError>
+    {
+        Ok(None)
     }
 
     fn child_item(&mut self, parent: &TrafficItem, index: u64)
@@ -766,71 +783,38 @@ impl ItemSource<TrafficItem> for Capture {
         })
     }
 
-    fn item_count(&mut self, parent: &Option<TrafficItem>)
-        -> Result<u64, CaptureError>
-    {
-        match parent {
-            None => Ok(self.item_index.len()),
-            Some(item) => self.child_count(item)
-        }
-    }
-
-    fn child_count(&mut self, parent: &TrafficItem)
-        -> Result<u64, CaptureError>
+    fn item_children(&mut self, parent: Option<&TrafficItem>)
+        -> Result<(CompletionStatus, u64), CaptureError>
     {
         use TrafficItem::*;
+        use CompletionStatus::*;
         Ok(match parent {
-            Transfer(transfer_id) => {
+            None => {
+                (self.completion, self.item_index.len())
+            },
+            Some(Transfer(transfer_id)) => {
                 let entry = self.transfer_index.get(*transfer_id)?;
-                if entry.is_start() {
-                    self.transfer_range(&entry)?.len()
+                if !entry.is_start() {
+                    return Ok((Complete, 0));
+                }
+                let transaction_count = self.transfer_range(&entry)?.len();
+                let ep_traf = self.endpoint_traffic(entry.endpoint_id())?;
+                if entry.transfer_id().value >= ep_traf.end_index.len() {
+                    (Ongoing, transaction_count)
                 } else {
-                    0
+                    (Complete, transaction_count)
                 }
             },
-            Transaction(_, transaction_id) => {
-                self.transaction_index.target_range(
-                    *transaction_id, self.packet_index.len())?.len()
+            Some(Transaction(_, transaction_id)) => {
+                let packet_count = self.transaction_index.target_range(
+                    *transaction_id, self.packet_index.len())?.len();
+                if transaction_id.value < self.transaction_index.len() - 1 {
+                    (Complete, packet_count)
+                } else {
+                    (Ongoing, packet_count)
+                }
             },
-            Packet(..) => 0,
-        })
-    }
-
-    fn item_end(&mut self, item_id: TrafficItemId)
-        -> Result<Option<TrafficItemId>, CaptureError>
-    {
-        let transfer_id = self.item_index.get(item_id)?;
-        let entry = self.transfer_index.get(transfer_id)?;
-        let ep_transfer_id = entry.transfer_id();
-        if !entry.is_start() {
-            return Err(IndexError(
-                String::from("Transfer entry for item_end is an end")))
-        }
-        let ep_traf = self.endpoint_traffic(entry.endpoint_id())?;
-        if ep_transfer_id.value >= ep_traf.end_index.len() {
-            return Ok(None)
-        }
-        let end_item_id = ep_traf.end_index.get(ep_transfer_id)?;
-        Ok(Some(end_item_id))
-    }
-
-    fn complete(&mut self, item: &TrafficItem)
-        -> Result<bool, CaptureError>
-    {
-        use TrafficItem::*;
-        Ok(match item {
-            Packet(..) => {
-                true
-            },
-            // TODO: switch to using `item_end` after interleaving merge.
-            Transaction(_, transaction_id) => {
-                let transaction = self.transaction(*transaction_id)?;
-                transaction.complete()
-            },
-            // TODO: switch to using `item_end` after interleaving merge.
-            Transfer(..) => {
-                false
-            }
+            Some(Packet(..)) => (Complete, 0),
         })
     }
 
@@ -1049,15 +1033,50 @@ impl ItemSource<TrafficItem> for Capture {
 }
 
 impl ItemSource<DeviceItem> for Capture {
-    type ItemId = DeviceId;
-
-    fn item(&mut self, parent: &Option<DeviceItem>, index: u64)
+    fn item(&mut self, parent: Option<&DeviceItem>, index: u64)
         -> Result<DeviceItem, CaptureError>
     {
         match parent {
-            None => Ok(DeviceItem::Device(DeviceId::from(index + 1))),
+            None => {
+                let device_id = DeviceId::from(index + 1);
+                let data = self.device_data(&device_id)?;
+                Ok(DeviceItem::Device(device_id, data.version))
+            },
             Some(item) => self.child_item(item, index)
         }
+    }
+
+    fn item_update(&mut self, item: &DeviceItem)
+        -> Result<Option<DeviceItem>, CaptureError>
+    {
+        use DeviceItem::*;
+        Ok(match item {
+            Device(dev, version) |
+            DeviceDescriptorField(dev, .., version) |
+            ConfigurationDescriptorField(dev, .., version) |
+            InterfaceDescriptorField(dev, .., version) |
+            EndpointDescriptorField(dev, .., version) => {
+                let new = self.device_version(dev)?;
+                if *version != new {
+                    Some(match *item {
+                        Device(dev, _) =>
+                            Device(dev, new),
+                        DeviceDescriptorField(dev, field, _) =>
+                            DeviceDescriptorField(dev, field, new),
+                        ConfigurationDescriptorField(dev, conf, field, _) =>
+                            ConfigurationDescriptorField(dev, conf, field, new),
+                        InterfaceDescriptorField(dev, conf, iface, field, _) =>
+                            InterfaceDescriptorField(dev, conf, iface, field, new),
+                        EndpointDescriptorField(dev, conf, iface, ep, field, _) =>
+                            EndpointDescriptorField(dev, conf, iface, ep, field, new),
+                        _ => unreachable!()
+                    })
+                } else {
+                    None
+                }
+            },
+            _ => None
+        })
     }
 
     fn child_item(&mut self, parent: &DeviceItem, index: u64)
@@ -1065,14 +1084,15 @@ impl ItemSource<DeviceItem> for Capture {
     {
         use DeviceItem::*;
         Ok(match parent {
-            Device(dev) => match index {
+            Device(dev, _version) => match index {
                 0 => DeviceDescriptor(*dev),
                 conf => Configuration(*dev,
                     ConfigNum(conf.try_into()?)),
             },
             DeviceDescriptor(dev) =>
                 DeviceDescriptorField(*dev,
-                    DeviceField(index.try_into()?)),
+                    DeviceField(index.try_into()?),
+                    self.device_version(dev)?),
             Configuration(dev, conf) => match index {
                 0 => ConfigurationDescriptor(*dev, *conf),
                 n => Interface(*dev, *conf,
@@ -1080,7 +1100,8 @@ impl ItemSource<DeviceItem> for Capture {
             },
             ConfigurationDescriptor(dev, conf) =>
                 ConfigurationDescriptorField(*dev, *conf,
-                    ConfigField(index.try_into()?)),
+                    ConfigField(index.try_into()?),
+                    self.device_version(dev)?),
             Interface(dev, conf, iface) => match index {
                 0 => InterfaceDescriptor(*dev, *conf, *iface),
                 n => EndpointDescriptor(*dev, *conf, *iface,
@@ -1088,68 +1109,59 @@ impl ItemSource<DeviceItem> for Capture {
             },
             InterfaceDescriptor(dev, conf, iface) =>
                 InterfaceDescriptorField(*dev, *conf, *iface,
-                    InterfaceField(index.try_into()?)),
+                    InterfaceField(index.try_into()?),
+                    self.device_version(dev)?),
             EndpointDescriptor(dev, conf, iface, ep) =>
                 EndpointDescriptorField(*dev, *conf, *iface, *ep,
-                    EndpointField(index.try_into()?)),
+                    EndpointField(index.try_into()?),
+                    self.device_version(dev)?),
             _ => return Err(IndexError(String::from(
                 "This device item type cannot have children")))
         })
     }
 
-    fn item_count(&mut self, parent: &Option<DeviceItem>)
-        -> Result<u64, CaptureError>
-    {
-        Ok(match parent {
-            None => (self.device_data.len() - 1) as u64,
-            Some(item) => self.child_count(item)?,
-        })
-    }
-
-    fn child_count(&mut self, parent: &DeviceItem)
-        -> Result<u64, CaptureError>
+    fn item_children(&mut self, parent: Option<&DeviceItem>)
+        -> Result<(CompletionStatus, u64), CaptureError>
     {
         use DeviceItem::*;
-        Ok((match parent {
-            Device(dev) =>
-                self.device_data(dev)?.configurations.len(),
-            DeviceDescriptor(dev) =>
+        use CompletionStatus::*;
+        let (completion, children) = match parent {
+            None =>
+                (self.completion, self.device_data.len() - 1),
+            Some(Device(dev, _version)) =>
+                (Ongoing, {
+                    let configs = self.device_data(dev)?.configurations.len();
+                    if configs == 0 { 1 } else { configs }
+                }),
+            Some(DeviceDescriptor(dev)) =>
                 match self.device_data(dev)?.device_descriptor {
-                    Some(_) => usb::DeviceDescriptor::NUM_FIELDS,
-                    None => 0,
+                    Some(_) => (Ongoing, usb::DeviceDescriptor::NUM_FIELDS),
+                    None => (Ongoing, 0),
                 },
-            Configuration(dev, conf) =>
+            Some(Configuration(dev, conf)) =>
                 match self.try_configuration(dev, conf) {
-                    Some(conf) => 1 + conf.interfaces.len(),
-                    None => 0
+                    Some(conf) => (Ongoing, 1 + conf.interfaces.len()),
+                    None => (Ongoing, 0)
                 },
-            ConfigurationDescriptor(dev, conf) =>
+            Some(ConfigurationDescriptor(dev, conf)) =>
                 match self.try_configuration(dev, conf) {
-                    Some(_) => usb::ConfigDescriptor::NUM_FIELDS,
-                    None => 0
+                    Some(_) => (Ongoing, usb::ConfigDescriptor::NUM_FIELDS),
+                    None => (Ongoing, 0)
                 },
-            Interface(dev, conf, iface) =>
+            Some(Interface(dev, conf, iface)) =>
                 match self.try_configuration(dev, conf) {
                     Some(conf) =>
-                        1 + conf.interface(iface)?.endpoint_descriptors.len(),
-                    None => 0
+                        (Ongoing,
+                         1 + conf.interface(iface)?.endpoint_descriptors.len()),
+                    None => (Ongoing, 0)
                 },
-            InterfaceDescriptor(..) => usb::InterfaceDescriptor::NUM_FIELDS,
-            EndpointDescriptor(..) => usb::EndpointDescriptor::NUM_FIELDS,
-            _ => 0
-        }) as u64)
-    }
-
-    fn item_end(&mut self, _item_id: DeviceId)
-        -> Result<Option<DeviceId>, CaptureError>
-    {
-        Ok(None)
-    }
-
-    fn complete(&mut self, _item: &DeviceItem)
-        -> Result<bool, CaptureError>
-    {
-        Ok(false)
+            Some(InterfaceDescriptor(..)) =>
+                (Ongoing, usb::InterfaceDescriptor::NUM_FIELDS),
+            Some(EndpointDescriptor(..)) =>
+                (Complete, usb::EndpointDescriptor::NUM_FIELDS),
+            _ => (Ongoing, 0)
+        };
+        Ok((completion, children as u64))
     }
 
     fn summary(&mut self, item: &DeviceItem)
@@ -1157,7 +1169,7 @@ impl ItemSource<DeviceItem> for Capture {
     {
         use DeviceItem::*;
         Ok(match item {
-            Device(dev) => {
+            Device(dev, _version) => {
                 let device = self.devices.get(*dev)?;
                 let data = self.device_data(dev)?;
                 format!("Device {}: {}", device.address, data.description())
@@ -1168,7 +1180,7 @@ impl ItemSource<DeviceItem> for Capture {
                     None => "No device descriptor"
                 }.to_string()
             },
-            DeviceDescriptorField(dev, field) => {
+            DeviceDescriptorField(dev, field, _ver) => {
                 let data = self.device_data(dev)?;
                 match data.device_descriptor {
                     Some(desc) => desc.field_text(*field, &data.strings),
@@ -1179,7 +1191,7 @@ impl ItemSource<DeviceItem> for Capture {
                 "Configuration {conf}"),
             ConfigurationDescriptor(..) =>
                 "Configuration descriptor".to_string(),
-            ConfigurationDescriptorField(dev, conf, field) => {
+            ConfigurationDescriptorField(dev, conf, field, _ver) => {
                 let data = self.device_data(dev)?;
                 data.configuration(conf)?
                     .descriptor
@@ -1189,7 +1201,7 @@ impl ItemSource<DeviceItem> for Capture {
                 "Interface {iface}"),
             InterfaceDescriptor(..) =>
                 "Interface descriptor".to_string(),
-            InterfaceDescriptorField(dev, conf, iface, field) => {
+            InterfaceDescriptorField(dev, conf, iface, field, _ver) => {
                 let data = self.device_data(dev)?;
                 data.configuration(conf)?
                     .interface(iface)?
@@ -1204,7 +1216,7 @@ impl ItemSource<DeviceItem> for Capture {
                                .endpoint_address;
                 format!("Endpoint {} {}", addr.number(), addr.direction())
             },
-            EndpointDescriptorField(dev, conf, iface, ep, field) => {
+            EndpointDescriptorField(dev, conf, iface, ep, field, _ver) => {
                 self.device_data(dev)?
                     .configuration(conf)?
                     .interface(iface)?
@@ -1250,7 +1262,7 @@ mod tests {
         }
         writer.write(summary.as_bytes()).unwrap();
         writer.write(b"\n").unwrap();
-        let num_children = cap.child_count(item).unwrap();
+        let (_completion, num_children) = cap.item_children(Some(item)).unwrap();
         for child_id in 0..num_children {
             let child = cap.child_item(item, child_id).unwrap();
             write_item(cap, &child, depth + 1, writer);
@@ -1283,7 +1295,7 @@ mod tests {
                     let mut out_writer = BufWriter::new(out_file);
                     let num_items = cap.item_index.len();
                     for item_id in 0 .. num_items {
-                        let item = cap.item(&None, item_id).unwrap();
+                        let item = cap.item(None, item_id).unwrap();
                         write_item(&mut cap, &item, 0, &mut out_writer);
                     }
                 }

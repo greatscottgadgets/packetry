@@ -1,4 +1,4 @@
-6 SOF groups
+7 SOF groups
  13 SOF packets
   SOF packet with frame number 228, CRC 09
   SOF packet with frame number 228, CRC 09
@@ -801,6 +801,16 @@
   SOF packet with frame number 382, CRC 1F
   SOF packet with frame number 382, CRC 1F
   SOF packet with frame number 382, CRC 1F
+ 9 SOF packets
+  SOF packet with frame number 382, CRC 1F
+  SOF packet with frame number 382, CRC 1F
+  SOF packet with frame number 382, CRC 1F
+  SOF packet with frame number 383, CRC 00
+  SOF packet with frame number 383, CRC 00
+  SOF packet with frame number 383, CRC 00
+  SOF packet with frame number 383, CRC 00
+  SOF packet with frame number 383, CRC 00
+  SOF packet with frame number 383, CRC 00
 Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
  SETUP transaction, ACK
   SETUP packet on 0.0, CRC 02
@@ -948,16 +958,7 @@ Getting string descriptor #3, language 0x0409 for device 29, reading 24 of 255 r
   IN packet on 29.0, CRC 08
   DATA1 packet with CRC CE28 and 24 data bytes: [18, 03, 54, 00, 72, 00, 61, 00, 6E, 00, 73, 00, 63, 00, 65, 00, 69, 00, 76, 00, 65, 00, 72, 00]
   ACK packet
- OUT transaction with no data, SOF
+ OUT transaction with no data, ACK
   OUT packet on 29.0, CRC 08
   DATA1 packet with CRC 0000 and no data
   ACK packet
-  SOF packet with frame number 382, CRC 1F
-  SOF packet with frame number 382, CRC 1F
-  SOF packet with frame number 382, CRC 1F
-  SOF packet with frame number 383, CRC 00
-  SOF packet with frame number 383, CRC 00
-  SOF packet with frame number 383, CRC 00
-  SOF packet with frame number 383, CRC 00
-  SOF packet with frame number 383, CRC 00
-  SOF packet with frame number 383, CRC 00
