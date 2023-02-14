@@ -8,9 +8,10 @@ mod row_data;
 mod expander;
 mod tree_list_model;
 
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufReader, BufWriter, Write};
 use std::mem::size_of;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, atomic::{AtomicBool, AtomicU64, Ordering}};
@@ -39,7 +40,11 @@ use gtk::{
     Orientation,
 };
 
-use pcap_file::{PcapError, pcap::{PcapReader, PcapHeader, PacketHeader}};
+use pcap_file::{
+    PcapError,
+    DataLink,
+    pcap::{PcapReader, PcapWriter, PcapHeader, RawPcapPacket},
+};
 
 use backend::luna::{LunaDevice, LunaStop};
 use model::{GenericModel, TrafficModel, DeviceModel};
@@ -54,7 +59,9 @@ use capture::{
     ItemSource,
     TrafficItem,
     DeviceItem,
+    PacketId,
     fmt_size,
+    fmt_count,
 };
 
 mod decoder;
@@ -66,11 +73,17 @@ mod hybrid_index;
 mod usb;
 mod vec_map;
 
-static PCAP_SIZE: AtomicU64 = AtomicU64::new(0);
-static PCAP_READ: AtomicU64 = AtomicU64::new(0);
-static PCAP_STOP: AtomicBool = AtomicBool::new(false);
+static TOTAL: AtomicU64 = AtomicU64::new(0);
+static CURRENT: AtomicU64 = AtomicU64::new(0);
+static STOP: AtomicBool = AtomicBool::new(false);
 
 static UPDATE_INTERVAL: Duration = Duration::from_millis(10);
+
+#[derive(Copy, Clone, PartialEq)]
+enum FileAction {
+    Load,
+    Save,
+}
 
 struct UserInterface {
     capture: Arc<Mutex<Capture>>,
@@ -80,10 +93,11 @@ struct UserInterface {
     traffic_model: Option<TrafficModel>,
     device_model: Option<DeviceModel>,
     endpoint_count: u16,
-    show_progress: bool,
+    show_progress: Option<FileAction>,
     progress_bar: ProgressBar,
     vbox: gtk::Box,
     open_button: Button,
+    save_button: Button,
     capture_button: Button,
     stop_button: Button,
 }
@@ -208,6 +222,8 @@ pub enum PacketryError {
 }
 
 fn activate(application: &Application) -> Result<(), PacketryError> {
+    use FileAction::*;
+
     let window = gtk::ApplicationWindow::builder()
         .default_width(320)
         .default_height(480)
@@ -225,7 +241,6 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
     open_button.set_sensitive(true);
     save_button.set_sensitive(false);
     capture_button.set_sensitive(true);
-    stop_button.set_sensitive(false);
 
     header_bar.pack_start(&open_button);
     header_bar.pack_start(&save_button);
@@ -277,7 +292,8 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
     window.set_child(Some(&vbox));
 
     capture_button.connect_clicked(|_| display_error(start_luna()));
-    open_button.connect_clicked(|_| display_error(open_file()));
+    open_button.connect_clicked(|_| display_error(choose_file(Load)));
+    save_button.connect_clicked(|_| display_error(choose_file(Save)));
 
     UI.with(|cell|
         cell.borrow_mut().replace(
@@ -289,10 +305,11 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
                 traffic_model: None,
                 device_model: None,
                 endpoint_count: 2,
-                show_progress: false,
+                show_progress: None,
                 progress_bar,
                 vbox,
                 open_button,
+                save_button,
                 capture_button,
                 stop_button,
             }
@@ -304,7 +321,7 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
     if args.len() > 1 {
         let filename = args[1].clone();
         let path = PathBuf::from(filename);
-        start_pcap(path)?;
+        start_pcap(Load, path)?;
     }
 
     gtk::glib::timeout_add_once(
@@ -339,42 +356,48 @@ fn reset_capture() -> Result<(), PacketryError> {
         ui.endpoint_count = 2;
         ui.traffic_window.set_child(Some(&traffic_view));
         ui.device_window.set_child(Some(&device_view));
+        ui.stop_button.set_sensitive(false);
         Ok(())
     })
 }
 
 fn update_view() -> Result<(), PacketryError> {
+    use FileAction::*;
     with_ui(|ui| {
         use PacketryError::Lock;
         let mut more_updates = false;
-        if let Some(model) = &ui.traffic_model {
-            let old_count = model.n_items();
-            more_updates |= model.update()?;
-            let new_count = model.n_items();
-            // If any endpoints were added, we need to redraw the rows above
-            // to add the additional columns of the connecting lines.
-            if new_count > old_count {
-                let new_ep_count = ui.capture
-                    .lock()
-                    .or(Err(Lock))?
-                    .endpoints.len() as u16;
-                if new_ep_count > ui.endpoint_count {
-                    model.items_changed(0, old_count, old_count);
-                    ui.endpoint_count = new_ep_count;
+        if ui.show_progress != Some(Save) {
+            if let Some(model) = &ui.traffic_model {
+                let old_count = model.n_items();
+                more_updates |= model.update()?;
+                let new_count = model.n_items();
+                // If any endpoints were added, we need to redraw the rows above
+                // to add the additional columns of the connecting lines.
+                if new_count > old_count {
+                    let new_ep_count = ui.capture
+                        .lock()
+                        .or(Err(Lock))?
+                        .endpoints.len() as u16;
+                    if new_ep_count > ui.endpoint_count {
+                        model.items_changed(0, old_count, old_count);
+                        ui.endpoint_count = new_ep_count;
+                    }
                 }
             }
+            if let Some(model) = &ui.device_model {
+                more_updates |= model.update()?;
+            }
         }
-        if let Some(model) = &ui.device_model {
-            more_updates |= model.update()?;
-        }
-        if ui.show_progress {
-            let bytes_total = PCAP_SIZE.load(Ordering::Relaxed);
-            let bytes_read = PCAP_READ.load(Ordering::Relaxed);
-            let text = format!(
-                "Loaded {} / {}",
-                fmt_size(bytes_read),
-                fmt_size(bytes_total));
-            let fraction = (bytes_read as f64) / (bytes_total as f64);
+        if let Some(action) = &ui.show_progress {
+            let total = TOTAL.load(Ordering::Relaxed);
+            let current = CURRENT.load(Ordering::Relaxed);
+            let fraction = (current as f64) / (total as f64);
+            let text = match action {
+                Load => format!("Loaded {} / {}",
+                                fmt_size(current), fmt_size(total)),
+                Save => format!("Saved {} / {} packets",
+                                fmt_count(current), fmt_count(total)),
+            };
             ui.progress_bar.set_text(Some(&text));
             ui.progress_bar.set_fraction(fraction);
         }
@@ -388,22 +411,31 @@ fn update_view() -> Result<(), PacketryError> {
     })
 }
 
-fn open_file() -> Result<(), PacketryError> {
+fn choose_file(action: FileAction) -> Result<(), PacketryError> {
+    use FileAction::*;
     let chooser = WINDOW.with(|cell| {
         let borrow = cell.borrow();
         let window = borrow.as_ref();
-        gtk::FileChooserDialog::new(
-            Some("Open pcap file"),
-            window,
-            gtk::FileChooserAction::Open,
-            &[("Open", gtk::ResponseType::Accept)]
-        )
+        match action {
+            Load => gtk::FileChooserDialog::new(
+                Some("Open pcap file"),
+                window,
+                gtk::FileChooserAction::Open,
+                &[("Open", gtk::ResponseType::Accept)]
+            ),
+            Save => gtk::FileChooserDialog::new(
+                Some("Save pcap file"),
+                window,
+                gtk::FileChooserAction::Save,
+                &[("Save", gtk::ResponseType::Accept)]
+            ),
+        }
     });
     chooser.connect_response(move |dialog, response| {
         if response == gtk::ResponseType::Accept {
             if let Some(file) = dialog.file() {
                 if let Some(path) = file.path() {
-                    display_error(start_pcap(path));
+                    display_error(start_pcap(action, path));
                 }
             }
             dialog.destroy();
@@ -413,60 +445,105 @@ fn open_file() -> Result<(), PacketryError> {
     Ok(())
 }
 
-fn start_pcap(path: PathBuf) -> Result<(), PacketryError> {
-    reset_capture()?;
+fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), PacketryError> {
+    use FileAction::*;
+    if action == Load {
+        reset_capture()?;
+    }
     with_ui(|ui| {
         ui.open_button.set_sensitive(false);
+        ui.save_button.set_sensitive(false);
         ui.capture_button.set_sensitive(false);
         ui.stop_button.set_sensitive(true);
         let signal_id = ui.stop_button.connect_clicked(|_|
             display_error(stop_pcap()));
         ui.vbox.append(&ui.progress_bar);
-        ui.show_progress = true;
+        ui.show_progress = Some(action);
         let capture = ui.capture.clone();
-        let read_pcap = move || {
-            let file = File::open(path)?;
-            let file_size = file.metadata()?.len();
-            PCAP_SIZE.store(file_size, Ordering::Relaxed);
-            let reader = BufReader::new(file);
-            let pcap = PcapReader::new(reader)?;
-            let mut bytes_read = size_of::<PcapHeader>() as u64;
-            let mut decoder = Decoder::default();
-            use PacketryError::Lock;
-            #[cfg(feature="step-decoder")]
-            let (mut client, _addr) =
-                TcpListener::bind("127.0.0.1:46563")?.accept()?;
-            for result in pcap {
-                #[cfg(feature="step-decoder")] {
-                    let mut buf = [0; 1];
-                    client.read(&mut buf).unwrap();
-                };
-                let packet = result?;
-                let mut cap = capture.lock().or(Err(Lock))?;
-                decoder.handle_raw_packet(&mut cap, &packet.data)?;
-                let size = size_of::<PacketHeader>() + packet.data.len();
-                bytes_read += size as u64;
-                PCAP_READ.store(bytes_read, Ordering::Relaxed);
-                if PCAP_STOP.load(Ordering::Relaxed) {
-                    break;
+        use PacketryError::Lock;
+        let worker = move || match action {
+            Load => {
+                let file = File::open(path)?;
+                let file_size = file.metadata()?.len();
+                TOTAL.store(file_size, Ordering::Relaxed);
+                let reader = BufReader::new(file);
+                let mut pcap = PcapReader::new(reader)?;
+                let mut bytes_read = size_of::<PcapHeader>() as u64;
+                let mut decoder = Decoder::default();
+                #[cfg(feature="step-decoder")]
+                let (mut client, _addr) =
+                    TcpListener::bind("127.0.0.1:46563")?.accept()?;
+                while let Some(result) = pcap.next_raw_packet() {
+                    #[cfg(feature="step-decoder")] {
+                        let mut buf = [0; 1];
+                        client.read(&mut buf).unwrap();
+                    };
+                    let packet = result?;
+                    let mut cap = capture.lock().or(Err(Lock))?;
+                    decoder.handle_raw_packet(&mut cap, &packet.data)?;
+                    let size = 16 + packet.data.len();
+                    bytes_read += size as u64;
+                    CURRENT.store(bytes_read, Ordering::Relaxed);
+                    if STOP.load(Ordering::Relaxed) {
+                        break;
+                    }
                 }
-            }
-            let mut cap = capture.lock().or(Err(Lock))?;
-            cap.finish();
-            cap.print_storage_summary();
-            Ok(())
+                let mut cap = capture.lock().or(Err(Lock))?;
+                cap.finish();
+                cap.print_storage_summary();
+                Ok(())
+            },
+            Save => {
+                let packet_count = capture
+                    .lock()
+                    .or(Err(Lock))?
+                    .packet_index.len();
+                TOTAL.store(packet_count, Ordering::Relaxed);
+                CURRENT.store(0, Ordering::Relaxed);
+                let file = File::create(path)?;
+                let writer = BufWriter::new(file);
+                let header = PcapHeader {
+                    datalink: DataLink::USB_2_0,
+                    .. PcapHeader::default()
+                };
+                let mut pcap = PcapWriter::with_header(writer, header)?;
+                for i in 0..packet_count {
+                    let mut cap = capture.lock().or(Err(Lock))?;
+                    let packet_id = PacketId::from(i);
+                    let bytes = cap.packet(packet_id)?;
+                    let length: u32 = bytes
+                        .len()
+                        .try_into()
+                        .or_bug("Packet too large for pcap file")?;
+                    let packet = RawPcapPacket {
+                        ts_sec: 0,
+                        ts_frac: 0,
+                        incl_len: length,
+                        orig_len: length,
+                        data: Cow::from(bytes)
+                    };
+                    pcap.write_raw_packet(&packet)?;
+                    CURRENT.store(i + 1, Ordering::Relaxed);
+                    if STOP.load(Ordering::Relaxed) {
+                        break;
+                    }
+                }
+                pcap.into_writer().flush()?;
+                Ok(())
+            },
         };
         std::thread::spawn(move || {
-            display_error(read_pcap());
+            display_error(worker());
             gtk::glib::idle_add_once(|| {
-                PCAP_STOP.store(false, Ordering::Relaxed);
+                STOP.store(false, Ordering::Relaxed);
                 display_error(
                     with_ui(|ui| {
-                        ui.show_progress = false;
+                        ui.show_progress = None;
                         ui.vbox.remove(&ui.progress_bar);
                         ui.stop_button.disconnect(signal_id);
                         ui.stop_button.set_sensitive(false);
                         ui.open_button.set_sensitive(true);
+                        ui.save_button.set_sensitive(true);
                         ui.capture_button.set_sensitive(true);
                         Ok(())
                     })
@@ -478,7 +555,7 @@ fn start_pcap(path: PathBuf) -> Result<(), PacketryError> {
 }
 
 fn stop_pcap() -> Result<(), PacketryError> {
-    PCAP_STOP.store(true, Ordering::Relaxed);
+    STOP.store(true, Ordering::Relaxed);
     with_ui(|ui| {
         ui.stop_button.set_sensitive(false);
         Ok(())
@@ -530,6 +607,7 @@ fn stop_luna() -> Result<(), PacketryError> {
         if let Some(stop_handle) = ui.stop_handle.take() {
             stop_handle.stop()?;
         }
+        ui.save_button.set_sensitive(true);
         Ok(())
     })
 }
