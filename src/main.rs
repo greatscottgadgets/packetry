@@ -324,10 +324,6 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
         start_pcap(Load, path)?;
     }
 
-    gtk::glib::timeout_add_once(
-        UPDATE_INTERVAL,
-        || display_error(update_view()));
-
     Ok(())
 }
 
@@ -366,7 +362,9 @@ fn update_view() -> Result<(), PacketryError> {
     with_ui(|ui| {
         use PacketryError::Lock;
         let mut more_updates = false;
-        if ui.show_progress != Some(Save) {
+        if ui.show_progress == Some(Save) {
+            more_updates = true;
+        } else {
             if let Some(model) = &ui.traffic_model {
                 let old_count = model.n_items();
                 more_updates |= model.update()?;
@@ -550,6 +548,9 @@ fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), PacketryError> {
                 );
             });
         });
+        gtk::glib::timeout_add_once(
+            UPDATE_INTERVAL,
+            || display_error(update_view()));
         Ok(())
     })
 }
@@ -598,6 +599,9 @@ fn start_luna() -> Result<(), PacketryError> {
                 );
             });
         });
+        gtk::glib::timeout_add_once(
+            UPDATE_INTERVAL,
+            || display_error(update_view()));
         Ok(())
     })
 }
