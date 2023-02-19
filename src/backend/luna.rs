@@ -1,5 +1,5 @@
 use rusb::{
-    GlobalContext, DeviceHandle,
+    GlobalContext, DeviceHandle, Version
 };
 use std::collections::VecDeque;
 use std::thread::{spawn, JoinHandle};
@@ -8,6 +8,9 @@ use std::time::Duration;
 
 const VID: u16 = 0x1d50;
 const PID: u16 = 0x615b;
+
+const MIN_SUPPORTED: Version = Version(0, 0, 0);
+const NOT_SUPPORTED: Version = Version(0, 0, 1);
 
 const ENDPOINT: u8 = 0x81;
 
@@ -23,6 +26,10 @@ pub enum Error {
     ThreadPanic,
     #[error("device not found")]
     NotFound,
+    #[error("unsupported analyzer version: Gateware version is {0}. \
+             Supported range is {MIN_SUPPORTED} or higher, \
+             but not {NOT_SUPPORTED} or higher")]
+    WrongVersion(Version),
 }
 
 pub struct LunaDevice {
@@ -40,10 +47,18 @@ pub struct LunaStop {
 
 impl LunaDevice {
     pub fn open() -> Result<Self, Error> {
-        let handle = rusb::open_device_with_vid_pid(VID, PID).ok_or(Error::NotFound)?;
-        Ok(LunaDevice {
-            handle,
-        })
+        let handle = rusb::open_device_with_vid_pid(VID, PID)
+            .ok_or(Error::NotFound)?;
+        let version = handle
+            .device()
+            .device_descriptor()
+            .map_err(Error::Usb)?
+            .device_version();
+        if version >= MIN_SUPPORTED && version < NOT_SUPPORTED {
+            Ok(LunaDevice { handle })
+        } else {
+            Err(Error::WrongVersion(version))
+        }
     }
 
     pub fn start(mut self) -> Result<(LunaStream, LunaStop), Error> {
