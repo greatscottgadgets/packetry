@@ -16,6 +16,20 @@ const ENDPOINT: u8 = 0x81;
 
 const READ_LEN: usize = 0x4000;
 
+bitfield! {
+    #[derive(Copy, Clone)]
+    struct State(u8);
+    bool, enable, set_enable: 0;
+}
+
+impl State {
+    fn new(enable: bool) -> State {
+        let mut state = State(0);
+        state.set_enable(enable);
+        state
+    }
+}
+
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error(transparent)]
@@ -68,7 +82,8 @@ impl LunaDevice {
         let worker = spawn(move || {
             let mut buffer = [0u8; READ_LEN];
             let mut packet_queue = PacketQueue::new();
-            self.enable_capture(true)?;
+            let mut state = State::new(true);
+            self.write_state(state)?;
             println!("Capture enabled");
             while stop_rx.try_recv().is_err() {
                 let result = self.handle.read_bulk(
@@ -89,7 +104,8 @@ impl LunaDevice {
                     }
                 }
             }
-            self.enable_capture(false)?;
+            state.set_enable(false);
+            self.write_state(state)?;
             println!("Capture disabled");
             Ok(())
         });
@@ -104,12 +120,12 @@ impl LunaDevice {
         ))
     }
 
-    fn enable_capture(&mut self, enable: bool) -> Result<(), Error> {
+    fn write_state(&mut self, state: State) -> Result<(), Error> {
         use rusb::{Direction, RequestType, Recipient, request_type};
         self.handle.write_control(
             request_type(Direction::Out, RequestType::Vendor, Recipient::Device),
             1,
-            u16::from(enable),
+            u16::from(state.0),
             0,
             &[],
             Duration::from_secs(5),
