@@ -6,26 +6,39 @@ use std::thread::{spawn, JoinHandle};
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::time::Duration;
 
+use num_enum::{FromPrimitive, IntoPrimitive};
+
 const VID: u16 = 0x1d50;
 const PID: u16 = 0x615b;
 
-const MIN_SUPPORTED: Version = Version(0, 0, 0);
-const NOT_SUPPORTED: Version = Version(0, 0, 1);
+const MIN_SUPPORTED: Version = Version(0, 0, 1);
+const NOT_SUPPORTED: Version = Version(0, 0, 2);
 
 const ENDPOINT: u8 = 0x81;
 
 const READ_LEN: usize = 0x4000;
 
+#[derive(Copy, Clone, FromPrimitive, IntoPrimitive)]
+#[repr(u8)]
+pub enum Speed {
+    #[default]
+    High = 0,
+    Full = 1,
+    Low  = 2,
+}
+
 bitfield! {
     #[derive(Copy, Clone)]
     struct State(u8);
     bool, enable, set_enable: 0;
+    u8, from into Speed, speed, set_speed: 2, 1;
 }
 
 impl State {
-    fn new(enable: bool) -> State {
+    fn new(enable: bool, speed: Speed) -> State {
         let mut state = State(0);
         state.set_enable(enable);
+        state.set_speed(speed);
         state
     }
 }
@@ -75,14 +88,16 @@ impl LunaDevice {
         }
     }
 
-    pub fn start(mut self) -> Result<(LunaStream, LunaStop), Error> {
+    pub fn start(mut self, speed: Speed)
+        -> Result<(LunaStream, LunaStop), Error>
+    {
         self.handle.claim_interface(0)?;
         let (tx, rx) = channel();
         let (stop_tx, stop_rx) = channel();
         let worker = spawn(move || {
             let mut buffer = [0u8; READ_LEN];
             let mut packet_queue = PacketQueue::new();
-            let mut state = State::new(true);
+            let mut state = State::new(true, speed);
             self.write_state(state)?;
             println!("Capture enabled");
             while stop_rx.try_recv().is_err() {
