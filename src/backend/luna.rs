@@ -1,12 +1,10 @@
-use rusb::{
-    GlobalContext, DeviceHandle, Version
-};
 use std::collections::VecDeque;
 use std::thread::{spawn, JoinHandle};
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::time::Duration;
 
 use num_enum::{FromPrimitive, IntoPrimitive};
+use rusb::{Context, DeviceHandle, UsbContext, Version};
 
 const VID: u16 = 0x1d50;
 const PID: u16 = 0x615b;
@@ -60,7 +58,7 @@ pub enum Error {
 }
 
 pub struct LunaDevice {
-    handle: DeviceHandle<GlobalContext>,
+    handle: DeviceHandle<Context>,
 }
 
 pub struct LunaStream {
@@ -74,7 +72,8 @@ pub struct LunaStop {
 
 impl LunaDevice {
     pub fn open() -> Result<Self, Error> {
-        let handle = rusb::open_device_with_vid_pid(VID, PID)
+        let context = Context::new()?;
+        let handle = context.open_device_with_vid_pid(VID, PID)
             .ok_or(Error::NotFound)?;
         let version = handle
             .device()
