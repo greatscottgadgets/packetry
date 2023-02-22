@@ -1,17 +1,47 @@
 use rusb::{
-    GlobalContext, DeviceHandle,
+    GlobalContext, DeviceHandle, Version
 };
 use std::collections::VecDeque;
 use std::thread::{spawn, JoinHandle};
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::time::Duration;
 
+use num_enum::{FromPrimitive, IntoPrimitive};
+
 const VID: u16 = 0x1d50;
 const PID: u16 = 0x615b;
+
+const MIN_SUPPORTED: Version = Version(0, 0, 1);
+const NOT_SUPPORTED: Version = Version(0, 0, 2);
 
 const ENDPOINT: u8 = 0x81;
 
 const READ_LEN: usize = 0x4000;
+
+#[derive(Copy, Clone, FromPrimitive, IntoPrimitive)]
+#[repr(u8)]
+pub enum Speed {
+    #[default]
+    High = 0,
+    Full = 1,
+    Low  = 2,
+}
+
+bitfield! {
+    #[derive(Copy, Clone)]
+    struct State(u8);
+    bool, enable, set_enable: 0;
+    u8, from into Speed, speed, set_speed: 2, 1;
+}
+
+impl State {
+    fn new(enable: bool, speed: Speed) -> State {
+        let mut state = State(0);
+        state.set_enable(enable);
+        state.set_speed(speed);
+        state
+    }
+}
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -23,6 +53,10 @@ pub enum Error {
     ThreadPanic,
     #[error("device not found")]
     NotFound,
+    #[error("unsupported analyzer version: Gateware version is {0}. \
+             Supported range is {MIN_SUPPORTED} or higher, \
+             but not {NOT_SUPPORTED} or higher")]
+    WrongVersion(Version),
 }
 
 pub struct LunaDevice {
@@ -40,20 +74,31 @@ pub struct LunaStop {
 
 impl LunaDevice {
     pub fn open() -> Result<Self, Error> {
-        let handle = rusb::open_device_with_vid_pid(VID, PID).ok_or(Error::NotFound)?;
-        Ok(LunaDevice {
-            handle,
-        })
+        let handle = rusb::open_device_with_vid_pid(VID, PID)
+            .ok_or(Error::NotFound)?;
+        let version = handle
+            .device()
+            .device_descriptor()
+            .map_err(Error::Usb)?
+            .device_version();
+        if version >= MIN_SUPPORTED && version < NOT_SUPPORTED {
+            Ok(LunaDevice { handle })
+        } else {
+            Err(Error::WrongVersion(version))
+        }
     }
 
-    pub fn start(mut self) -> Result<(LunaStream, LunaStop), Error> {
+    pub fn start(mut self, speed: Speed)
+        -> Result<(LunaStream, LunaStop), Error>
+    {
         self.handle.claim_interface(0)?;
         let (tx, rx) = channel();
         let (stop_tx, stop_rx) = channel();
         let worker = spawn(move || {
             let mut buffer = [0u8; READ_LEN];
             let mut packet_queue = PacketQueue::new();
-            self.enable_capture(true)?;
+            let mut state = State::new(true, speed);
+            self.write_state(state)?;
             println!("Capture enabled");
             while stop_rx.try_recv().is_err() {
                 let result = self.handle.read_bulk(
@@ -74,7 +119,8 @@ impl LunaDevice {
                     }
                 }
             }
-            self.enable_capture(false)?;
+            state.set_enable(false);
+            self.write_state(state)?;
             println!("Capture disabled");
             Ok(())
         });
@@ -89,12 +135,12 @@ impl LunaDevice {
         ))
     }
 
-    fn enable_capture(&mut self, enable: bool) -> Result<(), Error> {
+    fn write_state(&mut self, state: State) -> Result<(), Error> {
         use rusb::{Direction, RequestType, Recipient, request_type};
         self.handle.write_control(
             request_type(Direction::Out, RequestType::Vendor, Recipient::Device),
             1,
-            u16::from(enable),
+            u16::from(state.0),
             0,
             &[],
             Duration::from_secs(5),

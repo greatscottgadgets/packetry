@@ -27,6 +27,7 @@ use gtk::{
     Application,
     ApplicationWindow,
     Button,
+    DropDown,
     MessageDialog,
     DialogFlags,
     MessageType,
@@ -46,7 +47,7 @@ use pcap_file::{
     pcap::{PcapReader, PcapWriter, PcapHeader, RawPcapPacket},
 };
 
-use backend::luna::{LunaDevice, LunaStop};
+use backend::luna::{LunaDevice, LunaStop, Speed};
 use model::{GenericModel, TrafficModel, DeviceModel};
 use row_data::{GenericRowData, TrafficRowData, DeviceRowData};
 use expander::ExpanderWrapper;
@@ -100,6 +101,7 @@ struct UserInterface {
     save_button: Button,
     capture_button: Button,
     stop_button: Button,
+    speed_dropdown: DropDown,
 }
 
 thread_local!(
@@ -237,6 +239,11 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
     let save_button = gtk::Button::from_icon_name("document-save");
     let capture_button = gtk::Button::from_icon_name("media-record");
     let stop_button = gtk::Button::from_icon_name("media-playback-stop");
+    let speed_dropdown = gtk::DropDown::from_strings(&[
+        "High (480Mbps)",
+        "Full (12Mbps)",
+        "Low (1.5Mbps)"
+    ]);
 
     open_button.set_sensitive(true);
     save_button.set_sensitive(false);
@@ -246,6 +253,7 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
     header_bar.pack_start(&save_button);
     header_bar.pack_start(&capture_button);
     header_bar.pack_start(&stop_button);
+    header_bar.pack_start(&speed_dropdown);
 
     window.set_titlebar(Some(&header_bar));
     window.show();
@@ -312,6 +320,7 @@ fn activate(application: &Application) -> Result<(), PacketryError> {
                 save_button,
                 capture_button,
                 stop_button,
+                speed_dropdown,
             }
         )
     );
@@ -453,6 +462,7 @@ fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), PacketryError> {
         ui.save_button.set_sensitive(false);
         ui.capture_button.set_sensitive(false);
         ui.stop_button.set_sensitive(true);
+        ui.speed_dropdown.set_sensitive(false);
         let signal_id = ui.stop_button.connect_clicked(|_|
             display_error(stop_pcap()));
         ui.vbox.append(&ui.progress_bar);
@@ -543,6 +553,7 @@ fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), PacketryError> {
                         ui.open_button.set_sensitive(true);
                         ui.save_button.set_sensitive(true);
                         ui.capture_button.set_sensitive(true);
+                        ui.speed_dropdown.set_sensitive(true);
                         Ok(())
                     })
                 );
@@ -566,11 +577,15 @@ fn stop_pcap() -> Result<(), PacketryError> {
 fn start_luna() -> Result<(), PacketryError> { 
     reset_capture()?;
     with_ui(|ui| {
-        let (mut stream_handle, stop_handle) = LunaDevice::open()?.start()?;
+        let speed_id: u8 = ui.speed_dropdown.selected().try_into().unwrap();
+        let speed = Speed::from(speed_id);
+        let luna = LunaDevice::open()?;
+        let (mut stream_handle, stop_handle) = luna.start(speed)?;
         ui.stop_handle.replace(stop_handle);
         ui.open_button.set_sensitive(false);
         ui.capture_button.set_sensitive(false);
         ui.stop_button.set_sensitive(true);
+        ui.speed_dropdown.set_sensitive(false);
         let signal_id = ui.stop_button.connect_clicked(|_|
             display_error(stop_luna()));
         let capture = ui.capture.clone();
@@ -594,6 +609,7 @@ fn start_luna() -> Result<(), PacketryError> {
                         ui.stop_button.set_sensitive(false);
                         ui.open_button.set_sensitive(true);
                         ui.capture_button.set_sensitive(true);
+                        ui.speed_dropdown.set_sensitive(true);
                         Ok(())
                     })
                 );
