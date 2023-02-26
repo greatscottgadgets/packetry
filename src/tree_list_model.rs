@@ -6,8 +6,7 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::num::TryFromIntError;
 use std::rc::{Rc, Weak};
-use std::sync::{Arc, Mutex};
-use std::ops::{DerefMut, Range};
+use std::ops::Range;
 
 use gtk::prelude::{IsA, Cast, WidgetExt};
 use gtk::glib::Object;
@@ -18,7 +17,7 @@ use itertools::Itertools;
 use thiserror::Error;
 
 use crate::capture::{
-    Capture,
+    CaptureReader,
     CaptureError,
     ItemSource,
     CompletionStatus,
@@ -34,8 +33,6 @@ pub enum ModelError {
     CaptureError(#[from] CaptureError),
     #[error(transparent)]
     RangeError(#[from] TryFromIntError),
-    #[error("Locking capture failed")]
-    LockError,
     #[error("Node references a dropped parent")]
     ParentDropped,
     #[error("Internal error: {0}")]
@@ -297,26 +294,6 @@ impl<Item> ItemNode<Item> where Item: Copy {
         self.children.total_count != 0
     }
 
-    #[allow(clippy::type_complexity)]
-    pub fn field(&self,
-             capture: &Arc<Mutex<Capture>>,
-             func: Box<dyn
-                Fn(&mut Capture, &Item)
-                    -> Result<String, CaptureError>>)
-        -> String
-    {
-        match capture.lock() {
-            Err(_) => "Error: failed to lock capture".to_string(),
-            Ok(mut guard) => {
-                let cap = guard.deref_mut();
-                match func(cap, &self.item) {
-                    Err(e) => format!("Error: {e:?}"),
-                    Ok(string) => string
-                }
-            }
-        }
-    }
-
     pub fn attach_widget(&self, widget: &ExpanderWrapper) {
         self.widgets.borrow_mut().insert(widget.clone());
     }
@@ -500,7 +477,7 @@ enum UpdateState<Item> {
 
 pub struct TreeListModel<Item, Model, RowData, Cursor> {
     _marker: PhantomData<(Model, RowData, Cursor)>,
-    capture: Arc<Mutex<Capture>>,
+    capture: RefCell<CaptureReader>,
     root: RootNodeRc<Item>,
     regions: RefCell<BTreeMap<u64, Region<Item>>>,
     last_fetch: RefCell<Option<(u64, Cursor)>>,
@@ -512,20 +489,19 @@ impl<Item, Model, RowData, Cursor> TreeListModel<Item, Model, RowData, Cursor>
 where Item: 'static + Copy + Debug,
       Model: GenericModel<Item> + ListModelExt,
       RowData: GenericRowData<Item> + IsA<Object> + Cast,
-      Capture: ItemSource<Item, Cursor>,
+      CaptureReader: ItemSource<Item, Cursor>,
       SearchResult<Item>: Debug + PartialEq,
       Cursor: Debug + PartialEq
 {
-    pub fn new(capture: Arc<Mutex<Capture>>,
+    pub fn new(mut capture: CaptureReader,
                #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
                on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>)
         -> Result<Self, ModelError>
     {
-        let mut cap = capture.lock().or(Err(ModelError::LockError))?;
-        let (completion, item_count) = cap.item_children(None)?;
+        let (completion, item_count) = capture.item_children(None)?;
         Ok(TreeListModel {
             _marker: PhantomData,
-            capture: capture.clone(),
+            capture: RefCell::new(capture.clone()),
             root: Rc::new(RefCell::new(RootNode {
                 children: Children::new(item_count),
                 complete: completion.is_complete(),
@@ -1657,7 +1633,7 @@ where Item: 'static + Copy + Debug,
         let item_index = node.item_index;
         let item = &node.item;
         let mut expanded = expanded.iter_items();
-        let mut cap = self.capture.lock().or(Err(ModelError::LockError))?;
+        let mut cap = self.capture.borrow_mut();
         let search_result = cap.find_child(&mut expanded, range, to_index)?;
         Ok(match search_result {
             (TopLevelItem(found_index, _), _cursor) => {
@@ -1677,8 +1653,8 @@ where Item: 'static + Copy + Debug,
                       node_ref: &ItemNodeRc<Item>)
         -> Result<u64, ModelError>
     {
-        let mut cap = self.capture.lock().or(Err(ModelError::LockError))?;
         let node = node_ref.borrow();
+        let mut cap = self.capture.borrow_mut();
         Ok(cap.count_within(node.item_index, &node.item, range)?)
     }
 
@@ -1711,10 +1687,11 @@ where Item: 'static + Copy + Debug,
                     range: &Range<u64>)
         -> Result<u64, ModelError>
     {
-        let mut cap = self.capture.lock().or(Err(ModelError::LockError))?;
+        let mut cap = self.capture.borrow_mut();
         Ok(expanded
             .iter_items()
-            .map(|(index, item)| cap.count_within(index, &item, range))
+            .map(|(index, item)|
+                cap.count_within(index, &item, range))
             .collect::<Result<Vec<u64>, CaptureError>>()?
             .iter()
             .sum())
@@ -1764,8 +1741,7 @@ where Item: 'static + Copy + Debug,
 
         // Check if this node had children added and/or was completed.
         let (completion, new_direct_count) = self.capture
-            .lock()
-            .or(Err(ModelError::LockError))?
+            .borrow_mut()
             .item_children(node.item())?;
         let new_direct_count = new_direct_count;
         let children_added = new_direct_count - old_direct_count;
@@ -1774,10 +1750,7 @@ where Item: 'static + Copy + Debug,
         let mut state = if let Some(item_node_rc) = node_rc.item_node_rc() {
             // This is an item node.
             let mut item_node = item_node_rc.borrow_mut();
-
-            let mut cap = self.capture
-                .lock()
-                .or(Err(ModelError::LockError))?;
+            let mut cap = self.capture.borrow_mut();
 
             // Check whether this item itself should be updated.
             let item_updated = if children_added > 0 {
@@ -2194,7 +2167,7 @@ where Item: 'static + Copy + Debug,
         let row_index = region.offset + (position - start);
 
         // Get the parent for this row, according to the type of region.
-        let mut cap = self.capture.lock().or(Err(ModelError::LockError))?;
+        let mut cap = self.capture.borrow_mut();
         let (parent_ref, item_index, item):
             (AnyNodeRc<Item>, u64, Item) =
             match region.source
@@ -2334,6 +2307,22 @@ where Item: 'static + Copy + Debug,
                 update.rows_added + update.rows_changed,
                 rows_addressable);
             model.items_changed(position, rows_removed, rows_added);
+        }
+    }
+
+    pub fn summary(&self, item: &Item) -> String {
+        let mut cap = self.capture.borrow_mut();
+        match cap.summary(item) {
+            Ok(string) => string,
+            Err(e) => format!("Error: {e:?}")
+        }
+    }
+
+    pub fn connectors(&self, item: &Item) -> String {
+        let mut cap = self.capture.borrow_mut();
+        match cap.connectors(item) {
+            Ok(string) => string,
+            Err(e) => format!("Error: {e:?}")
         }
     }
 

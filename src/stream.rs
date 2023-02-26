@@ -265,7 +265,7 @@ impl<const BLOCK_SIZE: usize> StreamReader<BLOCK_SIZE> {
     /// Returns a reference to a slice of data, which may have less than the
     /// requested length. The method may be called again to access further data.
     ///
-    pub fn access(&mut self, range: Range<u64>)
+    pub fn access(&mut self, range: &Range<u64>)
         -> Result<impl Deref<Target=[u8]>, StreamError>
     {
         use Data::*;
@@ -460,9 +460,10 @@ mod tests {
                     if limit < 2 { continue }
                     let req_start = prng.gen_range(0..(limit - 1));
                     let req_end = prng.gen_range((req_start + 1)..limit);
+                    let req_range = req_start..req_end;
 
                     // Access the generated range.
-                    let data = reader.access(req_start..req_end).unwrap();
+                    let data = reader.access(&req_range).unwrap();
 
                     // Check against the reference.
                     let ref_start = req_start as usize;

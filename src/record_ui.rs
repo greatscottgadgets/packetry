@@ -3,14 +3,13 @@ use std::fmt::Debug;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
 
 use gtk::glib::Object;
 use gtk::gio::prelude::ListModelExt;
 use itertools::Itertools;
 use serde::{Serialize, Deserialize};
 
-use crate::capture::{Capture, ItemSource};
+use crate::capture::{CaptureReader, ItemSource};
 use crate::model::GenericModel;
 use crate::row_data::ToGenericRowData;
 
@@ -38,7 +37,7 @@ impl std::fmt::Display for UiAction {
 }
 
 pub struct Recording {
-    capture: Arc<Mutex<Capture>>,
+    capture: CaptureReader,
     packet_count: u64,
     #[cfg(feature="record-ui-test")]
     action_log: File,
@@ -50,7 +49,7 @@ pub struct Recording {
 }
 
 impl Recording {
-    pub fn new(capture: Arc<Mutex<Capture>>) -> Recording {
+    pub fn new(capture: CaptureReader) -> Recording {
         Recording {
             capture,
             packet_count: 0,
@@ -112,7 +111,7 @@ impl Recording {
 
     pub fn log_open_file(&mut self,
                          path: &PathBuf, 
-                         capture: &Arc<Mutex<Capture>>)
+                         capture: &CaptureReader)
     {
         self.log_action(UiAction::Open(path.clone()));
         self.capture = capture.clone();
@@ -160,7 +159,7 @@ impl Recording {
         added: u32)
     where
         Model: ListModelExt + GenericModel<Item>,
-        Capture: ItemSource<Item, Cursor>,
+        CaptureReader: ItemSource<Item, Cursor>,
         Object: ToGenericRowData<Item>,
         Item: Copy + PartialOrd + Debug
     {
@@ -216,7 +215,7 @@ impl Recording {
 
     fn item<Model, Item, Cursor>(&self, model: &Model, position: u32) -> Item
         where Model: ListModelExt + GenericModel<Item>,
-              Capture: ItemSource<Item, Cursor>,
+              CaptureReader: ItemSource<Item, Cursor>,
               Object: ToGenericRowData<Item>,
               Item: Copy
     {
@@ -230,12 +229,10 @@ impl Recording {
             .item
     }
 
-    fn item_text<Item, Cursor>(&self, item: &Item) -> String
-        where Capture: ItemSource<Item, Cursor>, Item: Copy
+    fn item_text<Item, Cursor>(&mut self, item: &Item) -> String
+        where CaptureReader: ItemSource<Item, Cursor>, Item: Copy
     {
         self.capture
-            .lock()
-            .expect("Failed to lock capture")
             .summary(item)
             .expect("Failed to generate item summary")
     }

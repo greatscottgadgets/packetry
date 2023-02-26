@@ -835,6 +835,7 @@ impl std::fmt::Display for UTF16Bytes<'_> {
     }
 }
 
+#[derive(Clone)]
 pub struct UTF16ByteVec(pub Vec<u8>);
 
 impl UTF16ByteVec {

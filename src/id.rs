@@ -1,5 +1,6 @@
 use std::fmt::{Debug, Display};
 use std::marker::PhantomData;
+use std::mem::size_of;
 use std::ops::{Add, AddAssign, Sub};
 use std::ops::Range;
 
@@ -112,5 +113,23 @@ impl<T> Id<T> {
          _marker: PhantomData,
          value: i
       }
+   }
+
+   pub fn from_offset(offset: u64) -> Id<T> {
+      Id {
+         _marker: PhantomData,
+         value: offset / size_of::<T>() as u64,
+      }
+   }
+
+   pub fn offset(&self) -> u64 {
+      self.value * size_of::<T>() as u64
+   }
+
+   pub fn offset_range(&self) -> Range<u64> {
+      let size = size_of::<T>() as u64;
+      let start = self.value * size;
+      let end = start + size;
+      start..end
    }
 }

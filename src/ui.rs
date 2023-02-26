@@ -5,7 +5,7 @@ use std::fs::File;
 use std::io::{BufReader, BufWriter, Write};
 use std::mem::size_of;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, atomic::{AtomicBool, AtomicU64, Ordering}};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::Duration;
 
 #[cfg(feature="step-decoder")]
@@ -46,15 +46,15 @@ use thiserror::Error;
 
 use crate::backend::luna::{LunaDevice, LunaStop, Speed};
 use crate::capture::{
-    Capture,
+    create_capture,
+    CaptureReader,
+    CaptureWriter,
     CaptureError,
     ItemSource,
     TrafficItem,
     TrafficCursor,
     DeviceItem,
     PacketId,
-    fmt_size,
-    fmt_count,
 };
 use crate::decoder::Decoder;
 use crate::expander::ExpanderWrapper;
@@ -65,6 +65,7 @@ use crate::row_data::{
     TrafficRowData,
     DeviceRowData};
 use crate::tree_list_model::ModelError;
+use crate::util::{fmt_count, fmt_size};
 
 #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
 use {
@@ -110,7 +111,7 @@ pub enum PacketryError {
 }
 
 pub struct UserInterface {
-    pub capture: Arc<Mutex<Capture>>,
+    pub capture: CaptureReader,
     stop_handle: Option<LunaStop>,
     traffic_window: ScrolledWindow,
     device_window: ScrolledWindow,
@@ -179,7 +180,7 @@ pub fn activate(application: &Application) -> Result<(), PacketryError> {
     WINDOW.with(|win_opt| win_opt.replace(Some(window.clone())));
 
     let args: Vec<_> = std::env::args().collect();
-    let capture = Arc::new(Mutex::new(Capture::new()?));
+    let (_, capture) = create_capture()?;
 
     let traffic_window = gtk::ScrolledWindow::builder()
         .hscrollbar_policy(gtk::PolicyType::Automatic)
@@ -259,7 +260,7 @@ pub fn activate(application: &Application) -> Result<(), PacketryError> {
 }
 
 fn create_view<Item, Model, RowData, Cursor>(
-        capture: &Arc<Mutex<Capture>>,
+        capture: &CaptureReader,
         #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
         recording_args: (&Rc<RefCell<Recording>>, &'static str))
     -> (Model, ListView)
@@ -268,7 +269,7 @@ fn create_view<Item, Model, RowData, Cursor>(
         Model: GenericModel<Item> + IsA<ListModel> + IsA<Object>,
         RowData: GenericRowData<Item> + IsA<Object>,
         Cursor: 'static,
-        Capture: ItemSource<Item, Cursor>,
+        CaptureReader: ItemSource<Item, Cursor>,
         Object: ToGenericRowData<Item>
 {
     #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
@@ -288,7 +289,6 @@ fn create_view<Item, Model, RowData, Cursor>(
             )
         )).expect("Failed to create model");
     let bind_model = model.clone();
-    let cap_arc = capture.clone();
     let selection_model = SingleSelection::new(Some(&model));
     let factory = SignalListItemFactory::new();
     factory.connect_setup(move |_, list_item| {
@@ -312,11 +312,9 @@ fn create_view<Item, Model, RowData, Cursor>(
         match row.node() {
             Ok(node_ref) => {
                 let node = node_ref.borrow();
-                let summary = node.field(
-                    &cap_arc, Box::new(Capture::summary));
+                let summary = bind_model.summary(&node.item);
+                let connectors = bind_model.connectors(&node.item);
                 expander_wrapper.set_text(summary);
-                let connectors = node.field(
-                    &cap_arc, Box::new(Capture::connectors));
                 expander_wrapper.set_connectors(connectors);
                 expander.set_visible(node.expandable());
                 expander.set_expanded(node.expanded());
@@ -385,22 +383,22 @@ fn create_view<Item, Model, RowData, Cursor>(
     (model, view)
 }
 
-pub fn reset_capture() -> Result<(), PacketryError> {
-    let capture = Arc::new(Mutex::new(Capture::new()?));
+pub fn reset_capture() -> Result<CaptureWriter, PacketryError> {
+    let (writer, reader) = create_capture()?;
     with_ui(|ui| {
         let (traffic_model, traffic_view) = create_view::<
             TrafficItem, TrafficModel, TrafficRowData, TrafficCursor>(
-                &capture,
+                &reader,
                 #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
                 (&ui.recording, "traffic")
             );
         let (device_model, device_view) = create_view::<
             DeviceItem, DeviceModel, DeviceRowData, ()>(
-                &capture,
+                &reader,
                 #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
                 (&ui.recording, "devices")
             );
-        ui.capture = capture;
+        ui.capture = reader;
         ui.traffic_model = Some(traffic_model);
         ui.device_model = Some(device_model);
         ui.endpoint_count = 2;
@@ -408,20 +406,17 @@ pub fn reset_capture() -> Result<(), PacketryError> {
         ui.device_window.set_child(Some(&device_view));
         ui.stop_button.set_sensitive(false);
         Ok(())
-    })
+    })?;
+    Ok(writer)
 }
 
 pub fn update_view() -> Result<(), PacketryError> {
     with_ui(|ui| {
         use FileAction::*;
-        use PacketryError::Lock;
         #[cfg(feature="record-ui-test")]
         let guard = {
             let guard = UPDATE_LOCK.lock();
-            let packet_count = ui.capture
-                .lock()
-                .or(Err(Lock))?
-                .packet_index.len();
+            let packet_count = ui.capture.packet_index.len();
             ui.recording
                 .borrow_mut()
                 .log_update(packet_count);
@@ -438,10 +433,7 @@ pub fn update_view() -> Result<(), PacketryError> {
                 // If any endpoints were added, we need to redraw the rows above
                 // to add the additional columns of the connecting lines.
                 if new_count > old_count {
-                    let new_ep_count = ui.capture
-                        .lock()
-                        .or(Err(Lock))?
-                        .endpoints.len() as u16;
+                    let new_ep_count = ui.capture.endpoints.len() as u16;
                     if new_ep_count > ui.endpoint_count {
                         model.items_changed(0, old_count, old_count);
                         ui.endpoint_count = new_ep_count;
@@ -513,9 +505,11 @@ fn choose_file(action: FileAction) -> Result<(), PacketryError> {
 
 fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), PacketryError> {
     use FileAction::*;
-    if action == Load {
-        reset_capture()?;
-    }
+    let writer = if action == Load {
+        Some(reset_capture()?)
+    } else {
+        None
+    };
     with_ui(|ui| {
         #[cfg(feature="record-ui-test")]
         ui.recording.borrow_mut().log_open_file(&path, &ui.capture);
@@ -528,8 +522,7 @@ fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), PacketryError> {
             display_error(stop_pcap()));
         ui.vbox.append(&ui.progress_bar);
         ui.show_progress = Some(action);
-        let capture = ui.capture.clone();
-        use PacketryError::Lock;
+        let mut capture = ui.capture.clone();
         let worker = move || match action {
             Load => {
                 let file = File::open(path)?;
@@ -538,7 +531,7 @@ fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), PacketryError> {
                 let reader = BufReader::new(file);
                 let mut pcap = PcapReader::new(reader)?;
                 let mut bytes_read = size_of::<PcapHeader>() as u64;
-                let mut decoder = Decoder::default();
+                let mut decoder = Decoder::new(writer.unwrap())?;
                 #[cfg(feature="step-decoder")]
                 let (mut client, _addr) =
                     TcpListener::bind("127.0.0.1:46563")?.accept()?;
@@ -550,8 +543,7 @@ fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), PacketryError> {
                     let packet = result?;
                     #[cfg(feature="record-ui-test")]
                     let guard = UPDATE_LOCK.lock();
-                    let mut cap = capture.lock().or(Err(Lock))?;
-                    decoder.handle_raw_packet(&mut cap, &packet.data)?;
+                    decoder.handle_raw_packet(&packet.data)?;
                     #[cfg(feature="record-ui-test")]
                     drop(guard);
                     let size = 16 + packet.data.len();
@@ -561,16 +553,12 @@ fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), PacketryError> {
                         break;
                     }
                 }
-                let mut cap = capture.lock().or(Err(Lock))?;
-                decoder.finish(&mut cap)?;
-                cap.print_storage_summary();
+                let writer = decoder.finish()?;
+                writer.print_storage_summary();
                 Ok(())
             },
             Save => {
-                let packet_count = capture
-                    .lock()
-                    .or(Err(Lock))?
-                    .packet_index.len();
+                let packet_count = capture.packet_index.len();
                 TOTAL.store(packet_count, Ordering::Relaxed);
                 CURRENT.store(0, Ordering::Relaxed);
                 let file = File::create(path)?;
@@ -581,9 +569,8 @@ fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), PacketryError> {
                 };
                 let mut pcap = PcapWriter::with_header(writer, header)?;
                 for i in 0..packet_count {
-                    let mut cap = capture.lock().or(Err(Lock))?;
                     let packet_id = PacketId::from(i);
-                    let bytes = cap.packet(packet_id)?;
+                    let bytes = capture.packet(packet_id)?;
                     let length: u32 = bytes
                         .len()
                         .try_into()
@@ -640,7 +627,7 @@ pub fn stop_pcap() -> Result<(), PacketryError> {
 }
 
 pub fn start_luna() -> Result<(), PacketryError> { 
-    reset_capture()?;
+    let writer = reset_capture()?;
     with_ui(|ui| {
         let speed_id: u8 = ui.speed_dropdown.selected().try_into().unwrap();
         let speed = Speed::from(speed_id);
@@ -653,16 +640,12 @@ pub fn start_luna() -> Result<(), PacketryError> {
         ui.speed_dropdown.set_sensitive(false);
         let signal_id = ui.stop_button.connect_clicked(|_|
             display_error(stop_luna()));
-        let capture = ui.capture.clone();
-        let mut read_luna = move || {
-            use PacketryError::Lock;
-            let mut decoder = Decoder::default();
+        let read_luna = move || {
+            let mut decoder = Decoder::new(writer)?;
             while let Some(packet) = stream_handle.next() {
-                let mut cap = capture.lock().or(Err(Lock))?;
-                decoder.handle_raw_packet(&mut cap, &packet?)?;
+                decoder.handle_raw_packet(&packet?)?;
             }
-            let mut cap = capture.lock().or(Err(Lock))?;
-            decoder.finish(&mut cap)?;
+            decoder.finish()?;
             Ok(())
         };
         std::thread::spawn(move || {
