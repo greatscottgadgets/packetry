@@ -3,6 +3,7 @@ extern crate bitfield;
 
 mod backend;
 mod capture;
+mod compact_index;
 mod data_stream;
 pub mod decoder;
 mod expander;
