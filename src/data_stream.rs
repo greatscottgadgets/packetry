@@ -1,9 +1,8 @@
-use std::cmp::min;
 use std::marker::PhantomData;
 use std::mem::size_of;
-use std::ops::{IndexMut, Range};
+use std::ops::Range;
 
-use bytemuck::{bytes_of, bytes_of_mut, Pod};
+use bytemuck::{bytes_of, cast_slice, from_bytes, Pod};
 
 use crate::id::Id;
 use crate::stream::{stream, StreamReader, StreamWriter, StreamError, MIN_BLOCK};
@@ -81,9 +80,7 @@ where Value: Pod + Default
     {
         let mut size = self.size();
         let start = Id::<Value>::from_offset(size);
-        for item in items {
-            size = self.stream_writer.append(bytes_of(item))?;
-        }
+        size = self.stream_writer.append(cast_slice(items))?;
         let end = Id::<Value>::from_offset(size);
         Ok(start..end)
     }
@@ -104,46 +101,24 @@ where Value: Pod + Default
 
     /// Get a single item from the stream.
     pub fn get(&mut self, id: Id<Value>) -> Result<Value, StreamError> {
-        let mut range = id.offset_range();
-        let mut result = Default::default();
-        let bytes = bytes_of_mut(&mut result);
-        let mut copied = 0;
-        while copied < size_of::<Value>() {
-            let slice = self.stream_reader.access(&range)?;
-            let length = slice.len();
-            let dest = &mut bytes[copied..(copied + length)];
-            dest.copy_from_slice(&slice);
-            copied += length;
-            range.start += length as u64;
-        }
-        Ok(result)
+        let byte_range = id.offset_range();
+        let bytes = self.stream_reader.access(&byte_range)?;
+        let value = from_bytes(&bytes);
+        Ok(*value)
     }
 
     /// Get multiple items from the stream.
     pub fn get_range(&mut self, range: &Range<Id<Value>>)
         -> Result<Vec<Value>, StreamError>
     {
-        let item_size = size_of::<Value>();
-        let total_count = (range.end - range.start).try_into().unwrap();
-        let total_size = total_count * item_size;
-        let mut result = vec![Default::default(); total_count];
-        let mut total_copied = 0;
-        let mut range = range.start.offset()..range.end.offset();
-        while total_copied < total_size {
-            let data = self.stream_reader.access(&range)?;
-            let mut slice = &data[..];
-            while !slice.is_empty() {
-                let index = total_copied / item_size;
-                let copied = total_copied % item_size;
-                let slot = result.index_mut(index);
-                let bytes = bytes_of_mut(slot);
-                let length = min(item_size - copied, slice.len());
-                let dest = &mut bytes[copied..(copied + length)];
-                dest.copy_from_slice(&slice[..length]);
-                slice = &slice[length..];
-                total_copied += length;
-                range.start += length as u64;
-            }
+        let count = (range.end - range.start).try_into().unwrap();
+        let mut result = Vec::with_capacity(count);
+        let mut byte_range = range.start.offset()..range.end.offset();
+        while result.len() < count {
+            let bytes = self.stream_reader.access(&byte_range)?;
+            let values = cast_slice(&bytes);
+            result.extend_from_slice(values);
+            byte_range.start += bytes.len() as u64;
         }
         Ok(result)
     }
