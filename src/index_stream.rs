@@ -1,3 +1,4 @@
+use std::cmp::min;
 use std::marker::PhantomData;
 use std::ops::Range;
 
@@ -65,7 +66,7 @@ where Position: From<u64>, Value: Into<u64>
 
 impl<Position, Value> IndexReader<Position, Value>
 where Position: Copy + From<u64> + Into<u64>,
-      Value: Copy + From<u64> + Ord
+      Value: Copy + From<u64> + Into<u64> + Ord
 {
     /// Current number of indices in the index.
     pub fn len(&self) -> u64 {
@@ -139,17 +140,81 @@ where Position: Copy + From<u64> + Into<u64>,
     pub fn bisect_range_left(&mut self, range: &Range<Position>, value: &Value)
         -> Result<Position, StreamError>
     {
-        let values = self.get_range(range)?;
-        let position = range.start.into() + bisect_left(&values, value) as u64;
+        let search_start = range.start.into();
+        let search_end = range.end.into();
+        let search_length = search_end - search_start;
+        if search_length == 0 {
+            return Ok(Position::from(search_start));
+        }
+        let value = (*value).into();
+        let block_length = self.data_reader.block_length() as u64;
+        let block_mask = !(block_length - 1);
+        let mut midpoint = (search_start + search_end) / 2;
+        let position = loop {
+            let block_start = midpoint & block_mask;
+            let block_end = min(block_start + block_length, search_end);
+            let block_range = block_start.into()..block_end.into();
+            let block_values = self.data_reader.access(&block_range)?;
+            let first = 0;
+            let last = ((block_end - block_start) as usize) - 1;
+            if block_values[first] >= value {
+                if block_start == search_start {
+                    break search_start;
+                } else {
+                    midpoint = (search_start + block_start) / 2
+                }
+            } else if block_values[last] < value {
+                if block_end == search_end {
+                    break search_end;
+                } else {
+                    midpoint = (block_end + search_end) / 2
+                }
+            } else {
+                break block_start + bisect_left(&block_values, &value) as u64;
+            };
+        };
         Ok(Position::from(position))
     }
 
     /// Rightmost position where a value would be ordered within this range.
-    pub fn bisect_range_right(&mut self, range: &Range<Position>,value: &Value)
+    pub fn bisect_range_right(&mut self, range: &Range<Position>, value: &Value)
         -> Result<Position, StreamError>
     {
-        let values = self.get_range(range)?;
-        let position = range.start.into() + bisect_right(&values, value) as u64;
+        let search_start = range.start.into();
+        let search_end = range.end.into();
+        let search_length = search_end - search_start;
+        if search_length == 0 {
+            return Ok(Position::from(search_start));
+        }
+        let value = (*value).into();
+        let block_length = self.data_reader.block_length() as u64;
+        let block_mask = !(block_length - 1);
+        let mut midpoint = search_start + search_length / 2;
+        let position = loop {
+            let block_start = midpoint & block_mask;
+            let block_end = min(block_start + block_length, search_end);
+            let block_range = block_start.into()..block_end.into();
+            let block_values = self.data_reader.access(&block_range)?;
+            let first = 0;
+            let last = ((block_end - block_start) as usize) - 1;
+            if block_values[first] > value {
+                if block_start == search_start {
+                    break search_start;
+                } else {
+                    let length_before = block_start - search_start;
+                    midpoint = block_start - length_before / 2;
+                }
+            } else if block_values[last] <= value {
+                if block_end == search_end {
+                    break search_end;
+                } else {
+                    let length_after = search_end - block_end;
+                    midpoint = block_end + length_after / 2;
+                }
+            } else {
+                break block_start + bisect_right(&block_values, &value) as u64;
+            };
+        };
         Ok(Position::from(position))
     }
 }
