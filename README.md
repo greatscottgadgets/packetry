@@ -22,17 +22,23 @@ If you pass a capture filename as an argument, Packetry will attempt to load it.
 
 If no filename is provided, Packetry will attempt to start live capture from an attached device running the [LUNA](https://github.com/greatscottgadgets/luna) USB analyzer applet.
 
-### Installing prerequisites.
+### Installing prerequisites
 
 #### Linux
 
-Install the Rust build tools, other essential build tools, and GTK 4 headers. On Debian based systems it should be sufficient to use the command:
+Install the Rust build tools, other essential build tools, and GTK 4 headers.
+
+On Debian based systems it should be sufficient to use the command:
 
 `apt install rustc cargo build-essential libgtk-4-dev`
 
-Alternatively, you can omit `rustc` and `cargo` and use [rustup](https://rustup.rs/) to get the latest Rust toolchain and manage your Rust installation.
+For Fedora systems:
+
+`yum install rust cargo make gcc gcc-c++ gtk4-devel pango-devel`
 
 For other distributions, a similar set of packages should be required.
+
+You can also omit Rust and Cargo and use [rustup](https://rustup.rs/) to get the latest Rust toolchain and manage your Rust installation.
 
 #### macOS
 
