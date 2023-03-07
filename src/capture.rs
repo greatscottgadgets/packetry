@@ -669,6 +669,35 @@ impl Capture {
         Ok(start .. end)
     }
 
+    fn transaction_fields(&mut self, transaction: &Transaction)
+        -> Result<SetupFields, CaptureError>
+    {
+        match transaction.data_packet_id {
+            None => Err(IndexError(String::from(
+                "Transaction has no data packet"))),
+            Some(data_packet_id) => {
+                let data_packet = self.packet(data_packet_id)?;
+                match data_packet.first() {
+                    None => Err(IndexError(String::from(
+                        "Found empty packet instead of setup data"))),
+                    Some(byte) => {
+                        let pid = PID::from(*byte);
+                        if pid != PID::DATA0 {
+                            Err(IndexError(format!(
+                                "Found {pid} packet instead of setup data")))
+                        } else if data_packet.len() != 11 {
+                            Err(IndexError(format!(
+                                "Found DATA0 with packet length {} \
+                                 instead of setup data", data_packet.len())))
+                        } else {
+                            Ok(SetupFields::from_data_packet(&data_packet))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     fn transaction_bytes(&mut self, transaction: &Transaction)
         -> Result<Vec<u8>, CaptureError>
     {
@@ -796,28 +825,11 @@ impl Capture {
                         range: Range<EndpointTransactionId>)
         -> Result<ControlTransfer, CaptureError>
     {
-        use PID::*;
         let transaction_ids = self.endpoint_traffic(endpoint_id)?
                                   .transaction_ids
                                   .get_range(&range)?;
         let setup_transaction = self.transaction(transaction_ids[0])?;
-        let data_packet_id = setup_transaction.data_packet_id
-            .ok_or_else(||IndexError(String::from(
-                "Transaction has no data packet")))?;
-        let data_packet = self.packet(data_packet_id)?;
-        let data_pid = PID::from(
-            *data_packet.first().ok_or_else(||
-                IndexError(String::from(
-                    "Found empty packet instead of setup data")))?);
-        if data_pid != DATA0 {
-            return Err(IndexError(format!(
-                "Found {data_pid} packet instead of setup data")));
-        } else if data_packet.len() != 11 {
-            return Err(IndexError(format!(
-                "Found DATA0 with packet length {} instead of setup data",
-                data_packet.len())));
-        }
-        let fields = SetupFields::from_data_packet(&data_packet);
+        let fields = self.transaction_fields(&setup_transaction)?;
         let direction = fields.type_fields.direction();
         let mut data: Vec<u8> = Vec::new();
         for transaction_id in &transaction_ids[1..] {
