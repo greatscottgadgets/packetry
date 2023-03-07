@@ -539,24 +539,6 @@ impl std::fmt::Display for Bytes<'_> {
     }
 }
 
-pub struct CompletedTransactions {
-    transaction_ids: Vec<TransactionId>,
-    index: usize,
-}
-
-impl CompletedTransactions {
-    fn next(&mut self, capture: &mut Capture) -> Option<Transaction> {
-        while self.index < self.transaction_ids.len() {
-            let transaction_id = self.transaction_ids[self.index];
-            let transaction = capture.transaction(transaction_id).ok()?;
-            self.index += 1;
-            if transaction.successful() {
-                return Some(transaction);
-            }
-        }
-        None
-    }
-}
 
 pub struct Capture {
     pub packet_data: FileVec<u8>,
@@ -709,9 +691,12 @@ impl Capture {
         let transaction_ids = self.endpoint_traffic(endpoint_id)?
                                   .transaction_ids
                                   .get_range(transaction_range)?;
-        let mut transactions = self.completed_transactions(transaction_ids);
         let mut result = Vec::new();
-        while let Some(transaction) = transactions.next(self) {
+        for transaction_id in transaction_ids {
+            let transaction = self.transaction(transaction_id)?;
+            if !transaction.successful() {
+                continue;
+            }
             match self.transaction_bytes(&transaction) {
                 Ok(data) => {
                     result.extend_from_slice(&data);
@@ -805,16 +790,6 @@ impl Capture {
         })
     }
 
-    fn completed_transactions(&mut self,
-                              transaction_ids: Vec<TransactionId>)
-        -> CompletedTransactions
-    {
-        CompletedTransactions {
-            transaction_ids,
-            index: 0
-        }
-    }
-
     fn control_transfer(&mut self,
                         address: DeviceAddr,
                         endpoint_id: EndpointId,
@@ -825,36 +800,31 @@ impl Capture {
         let transaction_ids = self.endpoint_traffic(endpoint_id)?
                                   .transaction_ids
                                   .get_range(&range)?;
-        let mut transactions = self.completed_transactions(transaction_ids);
-        let fields = match transactions.next(self) {
-            Some(transaction) => {
-                let data_packet_id = transaction.data_packet_id
-                    .ok_or_else(||IndexError(String::from(
-                        "Transaction has no data packet")))?;
-                let data_packet = self.packet(data_packet_id)?;
-                let data_pid = PID::from(
-                    *data_packet.first().ok_or_else(||
-                        IndexError(String::from(
-                            "Found empty packet instead of setup data")))?);
-                if data_pid != DATA0 {
-                    return Err(IndexError(format!(
-                        "Found {data_pid} packet instead of setup data")));
-                } else if data_packet.len() != 11 {
-                    return Err(IndexError(format!(
-                        "Found DATA0 with packet length {} instead of setup data",
-                        data_packet.len())));
-                } else {
-                    SetupFields::from_data_packet(&data_packet)
-                }
-            },
-            _ => {
-                return Err(IndexError(String::from(
-                    "Control transfer has no completed transactions")))
-            }
-        };
+        let setup_transaction = self.transaction(transaction_ids[0])?;
+        let data_packet_id = setup_transaction.data_packet_id
+            .ok_or_else(||IndexError(String::from(
+                "Transaction has no data packet")))?;
+        let data_packet = self.packet(data_packet_id)?;
+        let data_pid = PID::from(
+            *data_packet.first().ok_or_else(||
+                IndexError(String::from(
+                    "Found empty packet instead of setup data")))?);
+        if data_pid != DATA0 {
+            return Err(IndexError(format!(
+                "Found {data_pid} packet instead of setup data")));
+        } else if data_packet.len() != 11 {
+            return Err(IndexError(format!(
+                "Found DATA0 with packet length {} instead of setup data",
+                data_packet.len())));
+        }
+        let fields = SetupFields::from_data_packet(&data_packet);
         let direction = fields.type_fields.direction();
         let mut data: Vec<u8> = Vec::new();
-        while let Some(transaction) = transactions.next(self) {
+        for transaction_id in &transaction_ids[1..] {
+            let transaction = self.transaction(*transaction_id)?;
+            if !transaction.successful() {
+                continue;
+            }
             use PID::*;
             use Direction::*;
             match (direction,
