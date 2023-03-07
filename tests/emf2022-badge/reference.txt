@@ -3814,7 +3814,7 @@ Getting device descriptor #0 for device 1, reading 18 bytes
   OUT packet on 1.0, CRC 1D
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Getting device qualifier descriptor #0 for device 1, reading 0 of 10 requested bytes
+Getting device qualifier descriptor #0 for device 1, reading 0 of 10 requested bytes, stalled
  SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 00, 06, 00, 00, 0A, 00]
   SETUP packet on 1.0, CRC 1D
   DATA0 packet with CRC 345F and 8 data bytes: [80, 06, 00, 06, 00, 00, 0A, 00]
@@ -3822,7 +3822,7 @@ Getting device qualifier descriptor #0 for device 1, reading 0 of 10 requested b
  IN transaction on 1.0, STALL
   IN packet on 1.0, CRC 1D
   STALL packet
-Getting device qualifier descriptor #0 for device 1, reading 0 of 10 requested bytes
+Getting device qualifier descriptor #0 for device 1, reading 0 of 10 requested bytes, stalled
  SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 00, 06, 00, 00, 0A, 00]
   SETUP packet on 1.0, CRC 1D
   DATA0 packet with CRC 345F and 8 data bytes: [80, 06, 00, 06, 00, 00, 0A, 00]
@@ -3830,7 +3830,7 @@ Getting device qualifier descriptor #0 for device 1, reading 0 of 10 requested b
  IN transaction on 1.0, STALL
   IN packet on 1.0, CRC 1D
   STALL packet
-Getting device qualifier descriptor #0 for device 1, reading 0 of 10 requested bytes
+Getting device qualifier descriptor #0 for device 1, reading 0 of 10 requested bytes, stalled
  SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 00, 06, 00, 00, 0A, 00]
   SETUP packet on 1.0, CRC 1D
   DATA0 packet with CRC 345F and 8 data bytes: [80, 06, 00, 06, 00, 00, 0A, 00]
@@ -4003,7 +4003,7 @@ Getting device descriptor #0 for device 2, reading 18 bytes
   OUT packet on 2.0, CRC 15
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Getting device qualifier descriptor #0 for device 2, reading 0 of 10 requested bytes
+Getting device qualifier descriptor #0 for device 2, reading 0 of 10 requested bytes, stalled
  SETUP transaction on 2.0 with 8 data bytes, ACK: [80, 06, 00, 06, 00, 00, 0A, 00]
   SETUP packet on 2.0, CRC 15
   DATA0 packet with CRC 345F and 8 data bytes: [80, 06, 00, 06, 00, 00, 0A, 00]
@@ -4017,7 +4017,7 @@ Getting device qualifier descriptor #0 for device 2, reading 0 of 10 requested b
  IN transaction on 2.0, STALL
   IN packet on 2.0, CRC 15
   STALL packet
-Getting device qualifier descriptor #0 for device 2, reading 0 of 10 requested bytes
+Getting device qualifier descriptor #0 for device 2, reading 0 of 10 requested bytes, stalled
  SETUP transaction on 2.0 with 8 data bytes, ACK: [80, 06, 00, 06, 00, 00, 0A, 00]
   SETUP packet on 2.0, CRC 15
   DATA0 packet with CRC 345F and 8 data bytes: [80, 06, 00, 06, 00, 00, 0A, 00]
@@ -4028,7 +4028,7 @@ Getting device qualifier descriptor #0 for device 2, reading 0 of 10 requested b
  IN transaction on 2.0, STALL
   IN packet on 2.0, CRC 15
   STALL packet
-Getting device qualifier descriptor #0 for device 2, reading 0 of 10 requested bytes
+Getting device qualifier descriptor #0 for device 2, reading 0 of 10 requested bytes, stalled
  SETUP transaction on 2.0 with 8 data bytes, ACK: [80, 06, 00, 06, 00, 00, 0A, 00]
   SETUP packet on 2.0, CRC 15
   DATA0 packet with CRC 345F and 8 data bytes: [80, 06, 00, 06, 00, 00, 0A, 00]

@@ -716,10 +716,17 @@ impl Configuration {
     }
 }
 
+pub enum ControlResult {
+    Completed,
+    Incomplete,
+    Stalled,
+}
+
 pub struct ControlTransfer {
     pub address: DeviceAddr,
     pub fields: SetupFields,
     pub data: Vec<u8>,
+    pub result: ControlResult,
 }
 
 impl ControlTransfer {
@@ -785,7 +792,12 @@ impl ControlTransfer {
             },
             (..) => {}
         };
-        parts.concat()
+        let summary = parts.concat();
+        match self.result {
+            ControlResult::Completed => summary,
+            ControlResult::Incomplete => format!("{}, incomplete", summary),
+            ControlResult::Stalled => format!("{}, stalled", summary),
+        }
     }
 }
 
@@ -912,6 +924,7 @@ pub mod prelude {
         Configuration,
         Interface,
         ControlTransfer,
+        ControlResult,
         DeviceAddr,
         DeviceField,
         StringId,

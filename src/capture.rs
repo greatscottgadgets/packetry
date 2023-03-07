@@ -381,6 +381,34 @@ impl Transaction {
         }
     }
 
+    fn control_result(&self, direction: Direction) -> ControlResult {
+        use ControlResult::*;
+        use StartComplete::*;
+        use Direction::*;
+        use PID::*;
+        let end_pid = match (direction, self.start_pid, self.split.as_ref()) {
+            (In,  OUT,   None) |
+            (Out, IN,    None) =>
+                self.end_pid,
+            (In,  SPLIT, Some((split_fields, OUT))) |
+            (Out, SPLIT, Some((split_fields, IN ))) => {
+                if split_fields.sc() == Complete {
+                    self.end_pid
+                } else {
+                    return Incomplete
+                }
+            },
+            _ => return if self.end_pid == STALL { Stalled } else { Incomplete }
+        };
+        if end_pid == STALL {
+            Stalled
+        } else if self.successful() {
+            Completed
+        } else {
+            Incomplete
+        }
+    }
+
     fn outcome(&self) -> Option<PID> {
         use PID::*;
         match self.end_pid {
@@ -825,6 +853,8 @@ impl Capture {
                         range: Range<EndpointTransactionId>)
         -> Result<ControlTransfer, CaptureError>
     {
+        use PID::*;
+        use Direction::*;
         let transaction_ids = self.endpoint_traffic(endpoint_id)?
                                   .transaction_ids
                                   .get_range(&range)?;
@@ -832,13 +862,14 @@ impl Capture {
         let fields = self.transaction_fields(&setup_transaction)?;
         let direction = fields.type_fields.direction();
         let mut data: Vec<u8> = Vec::new();
+        let last = transaction_ids.len() - 1;
+        let last_transaction = self.transaction(transaction_ids[last])?;
+        let result = last_transaction.control_result(direction);
         for transaction_id in &transaction_ids[1..] {
             let transaction = self.transaction(*transaction_id)?;
             if !transaction.successful() {
                 continue;
             }
-            use PID::*;
-            use Direction::*;
             match (direction,
                    transaction.start_pid,
                    transaction.split,
@@ -858,6 +889,7 @@ impl Capture {
             address,
             fields,
             data,
+            result,
         })
     }
 
