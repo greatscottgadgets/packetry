@@ -14,6 +14,9 @@ use memmap2::{Mmap, MmapOptions};
 use tempfile::tempfile;
 use thiserror::Error;
 
+/// Minimum block size, defined by largest minimum page size on target systems.
+pub const MIN_BLOCK: usize = 0x4000; // 16KB (Apple M1/M2)
+
 /// Private data shared by the writer and multiple readers.
 struct Shared<const S: usize> {
     /// Available length of the stream, including data in both file and buffer.
@@ -25,7 +28,7 @@ struct Shared<const S: usize> {
 }
 
 /// Unique handle for append-only write access to a stream.
-pub struct StreamWriter<const S: usize> {
+pub struct StreamWriter<const S: usize = MIN_BLOCK> {
     /// Shared data.
     shared: Arc<Shared<S>>,
     /// Total length of the stream.
@@ -41,7 +44,7 @@ pub struct StreamWriter<const S: usize> {
 }
 
 /// Cloneable handle for read-only random access to a stream.
-pub struct StreamReader<const S: usize> {
+pub struct StreamReader<const S: usize = MIN_BLOCK> {
     /// Shared data.
     shared: Arc<Shared<S>>,
     /// Cache of existing mappings into the file.
