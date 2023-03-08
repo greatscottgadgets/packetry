@@ -6,7 +6,8 @@ use std::num::TryFromIntError;
 use std::mem::size_of;
 
 use crate::id::{Id, HasLength};
-use crate::data_stream::{data_stream, DataWriter, DataReader};
+use crate::data_stream::{
+    data_stream, data_stream_with_block_size, DataWriter, DataReader};
 use crate::index_stream::{index_stream, IndexWriter, IndexReader};
 use crate::rcu::SingleWriterRcu;
 use crate::stream::StreamError;
@@ -19,6 +20,9 @@ use bytemuck_derive::{Pod, Zeroable};
 use num_enum::{IntoPrimitive, FromPrimitive};
 use thiserror::Error;
 
+// Use 2MB block size for packet data, which is a large page size on x86_64.
+const PACKET_DATA_BLOCK_SIZE: usize = 0x200000;
+
 /// Capture state shared between readers and writers.
 pub struct CaptureShared {
     pub device_data: ArcSwap<VecMap<DeviceId, Arc<DeviceData>>>,
@@ -29,7 +33,7 @@ pub struct CaptureShared {
 /// Unique handle for write access to a capture.
 pub struct CaptureWriter {
     pub shared: Arc<CaptureShared>,
-    pub packet_data: DataWriter<u8>,
+    pub packet_data: DataWriter<u8, PACKET_DATA_BLOCK_SIZE>,
     pub packet_index: IndexWriter<PacketId, PacketByteId>,
     pub transaction_index: IndexWriter<TransactionId, PacketId>,
     pub transfer_index: DataWriter<TransferIndexEntry>,
@@ -46,7 +50,7 @@ pub struct CaptureWriter {
 pub struct CaptureReader {
     pub shared: Arc<CaptureShared>,
     endpoint_readers: VecMap<EndpointId, EndpointReader>,
-    pub packet_data: DataReader<u8>,
+    pub packet_data: DataReader<u8, PACKET_DATA_BLOCK_SIZE>,
     pub packet_index: IndexReader<PacketId, PacketByteId>,
     pub transaction_index: IndexReader<TransactionId, PacketId>,
     pub transfer_index: DataReader<TransferIndexEntry>,
@@ -63,7 +67,8 @@ pub fn create_capture()
     -> Result<(CaptureWriter, CaptureReader), CaptureError>
 {
     // Create all the required streams.
-    let (data_writer, data_reader) = data_stream()?;
+    let (data_writer, data_reader) =
+        data_stream_with_block_size::<_, PACKET_DATA_BLOCK_SIZE>()?;
     let (packets_writer, packets_reader) = index_stream()?;
     let (transactions_writer, transactions_reader) = index_stream()?;
     let (transfers_writer, transfers_reader) = data_stream()?;

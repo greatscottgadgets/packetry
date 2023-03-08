@@ -27,12 +27,22 @@ struct Values<Data, Value> where Data: Deref<Target=[u8]> {
     data: Data,
 }
 
-/// Construct a new data stream.
+/// Construct a new data stream with the default block size.
 ///
 /// Returns a unique writer and a cloneable reader.
 ///
 pub fn data_stream<Value>()
     -> Result<(DataWriter<Value>, DataReader<Value>), StreamError>
+{
+    data_stream_with_block_size::<Value, MIN_BLOCK>()
+}
+
+/// Construct a new data stream with a specific block size.
+///
+/// Returns a unique writer and a cloneable reader.
+///
+pub fn data_stream_with_block_size<Value, const S: usize>()
+    -> Result<(DataWriter<Value, S>, DataReader<Value, S>), StreamError>
 {
     let (stream_writer, stream_reader) = stream()?;
     let data_writer = DataWriter {
