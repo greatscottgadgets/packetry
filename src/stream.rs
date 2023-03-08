@@ -15,19 +15,19 @@ use tempfile::tempfile;
 use thiserror::Error;
 
 /// Private data shared by the writer and multiple readers.
-struct Shared {
+struct Shared<const S: usize> {
     /// Available length of the stream, including data in both file and buffer.
     length: AtomicU64,
     /// File handle used by readers to create mappings.
     file: File,
     /// Buffer currently in use for newly appended data.
-    current_buffer: ArcSwap<Buffer>,
+    current_buffer: ArcSwap<Buffer<S>>,
 }
 
 /// Unique handle for append-only write access to a stream.
-pub struct StreamWriter {
+pub struct StreamWriter<const S: usize> {
     /// Shared data.
-    shared: Arc<Shared>,
+    shared: Arc<Shared<S>>,
     /// Total length of the stream.
     length: u64,
     /// Pointer to start of the buffer currently in use.
@@ -37,19 +37,19 @@ pub struct StreamWriter {
     /// File handle used to append to the stream.
     file: File,
     /// Spare buffer to be potentially used when current buffer is full.
-    spare_buffer: Option<Arc<Buffer>>,
+    spare_buffer: Option<Arc<Buffer<S>>>,
 }
 
 /// Cloneable handle for read-only random access to a stream.
-pub struct StreamReader {
+pub struct StreamReader<const S: usize> {
     /// Shared data.
-    shared: Arc<Shared>,
+    shared: Arc<Shared<S>>,
     /// Cache of existing mappings into the file.
     mappings: LruBTreeMap<u64, Arc<Mmap>>,
 }
 
 /// Data that is part of a stream and currently in memory.
-struct Buffer {
+struct Buffer<const S: usize> {
     /// Block to which this data belongs.
     block_base: u64,
     /// Raw pointer to space allocated to hold the data.
@@ -57,11 +57,11 @@ struct Buffer {
 }
 
 /// A read-only handle to any data that is part of a stream.
-enum Data {
+enum Data<const S: usize> {
     /// Data in the file, accessed through a mapping.
     Mapped(Arc<Mmap>, Range<usize>),
     /// Data in memory, accessed within a buffer.
-    Buffered(Arc<Buffer>, Range<usize>),
+    Buffered(Arc<Buffer<S>>, Range<usize>),
 }
 
 /// Error type returned by stream operations.
@@ -87,27 +87,16 @@ pub enum StreamError {
     ReadPastEnd(String),
 }
 
-// Use 2MB block size, which provides reasonable efficiency
-// tradeoffs and is a multiple of all relevant page sizes.
-const BLOCK_SIZE: usize = 0x200000;
-const BLOCK_MASK: usize = BLOCK_SIZE - 1;
-const BLOCK_SIZE_U64: u64 = BLOCK_SIZE as u64;
-const BLOCK_MASK_U64: u64 = BLOCK_MASK as u64;
-
-// Layout used to allocate block-sized, block-aligned chunks of memory.
-const BLOCK_LAYOUT: Layout = unsafe {
-    // Safety: align is non-zero, a power of 2, and does not overflow isize.
-    Layout::from_size_align_unchecked(BLOCK_SIZE, BLOCK_SIZE)
-};
-
 // Number of most recent file mappings retained by each reader.
 const MAP_CACHE_PER_READER: usize = 4;
+
+type StreamPair<const S: usize> = (StreamWriter<S>, StreamReader<S>);
 
 /// Construct a new stream.
 ///
 /// Returns a unique writer and a cloneable reader.
 ///
-pub fn stream() -> Result<(StreamWriter, StreamReader), StreamError> {
+pub fn stream<const S: usize>() -> Result<StreamPair<S>, StreamError> {
     let buffer = Arc::new(Buffer::new(0)?);
     let shared = Arc::new(Shared {
         length: AtomicU64::from(0),
@@ -129,7 +118,7 @@ pub fn stream() -> Result<(StreamWriter, StreamReader), StreamError> {
     Ok((writer, reader))
 }
 
-impl StreamWriter {
+impl<const BLOCK_SIZE: usize> StreamWriter<BLOCK_SIZE> {
     /// Get the current length of the stream, in bytes.
     pub fn len(&self) -> u64 {
         self.length
@@ -141,11 +130,11 @@ impl StreamWriter {
     ///
     pub fn append(&mut self, mut data: &[u8]) -> Result<u64, StreamError> {
         let length = data.len();
-        let buffered = (self.length & BLOCK_MASK_U64) as usize;
-        if buffered + length <= BLOCK_SIZE {
+        let buffered = self.length as usize & Self::block_mask();
+        if buffered + length <= Self::block_size() {
             // All the data will fit in the existing buffer.
             unsafe { self.write_to_buffer(data, length) };
-            if self.length & BLOCK_MASK_U64 == 0 {
+            if self.length as usize & Self::block_mask() == 0 {
                 // Buffer is now full, and can be written to file.
                 unsafe { self.write_buffer_to_file()? };
             }
@@ -153,7 +142,7 @@ impl StreamWriter {
             // The data will fill the existing buffer.
             if buffered > 0 {
                 // The buffer is partly used. Fill it and write it out.
-                let length = BLOCK_SIZE - buffered;
+                let length = Self::block_size() - buffered;
                 unsafe { self.write_to_buffer(data, length) };
                 // Buffer is now full, and can be written to file.
                 unsafe { self.write_buffer_to_file()? };
@@ -161,7 +150,7 @@ impl StreamWriter {
             }
             // The buffer is curently empty, so we are free to write whole
             // blocks of data directly to the file, bypassing the buffer.
-            let direct = data.len() & !BLOCK_MASK;
+            let direct = data.len() & !Self::block_mask();
             if direct > 0 {
                 unsafe { self.write_to_file(&data[..direct])? };
                 data = &data[direct..];
@@ -194,7 +183,7 @@ impl StreamWriter {
     /// The buffer must be guaranteed to be full.
     #[inline(always)]
     unsafe fn write_buffer_to_file(&mut self) -> Result<(), StreamError> {
-        let buf = slice::from_raw_parts(self.buf, BLOCK_SIZE);
+        let buf = slice::from_raw_parts(self.buf, Self::block_size());
         self.write_to_file(buf)
     }
 
@@ -239,9 +228,19 @@ impl StreamWriter {
 
         Ok(())
     }
+
+    /// Block size in bytes.
+    pub const fn block_size() -> usize {
+        BLOCK_SIZE
+    }
+
+    /// Bitmask for bits defining an offset within a block.
+    pub const fn block_mask() -> usize {
+        BLOCK_SIZE - 1
+    }
 }
 
-impl StreamReader {
+impl<const BLOCK_SIZE: usize> StreamReader<BLOCK_SIZE> {
     /// Get the current length of the stream, in bytes.
     pub fn len(&self) -> u64 {
         self.shared.length.load(Acquire)
@@ -266,10 +265,10 @@ impl StreamReader {
         }
 
         // Identify the block and the range required from within it.
-        let block_base = range.start & !BLOCK_MASK_U64;
+        let block_base = range.start & !(Self::block_mask() as u64);
         let length = range.end - range.start;
-        let start = range.start & BLOCK_MASK_U64;
-        let end = min(start + length, BLOCK_SIZE_U64);
+        let start = range.start & (Self::block_mask() as u64);
+        let end = min(start + length, Self::block_size() as u64);
         let range_in_block = (start as usize)..(end as usize);
 
         // Take our own reference to the current buffer.
@@ -293,7 +292,7 @@ impl StreamReader {
                     let mmap_result = unsafe {
                         MmapOptions::new()
                             .offset(block_base)
-                            .len(BLOCK_SIZE)
+                            .len(Self::block_size())
                             .map(&self.shared.file)
                     };
                     let new_mmap =
@@ -307,18 +306,28 @@ impl StreamReader {
             Ok(Mapped(mmap, range_in_block))
         }
     }
+
+    /// Block size in bytes.
+    pub const fn block_size() -> usize {
+        BLOCK_SIZE
+    }
+
+    /// Bitmask for bits defining an offset within a block.
+    pub const fn block_mask() -> usize {
+        BLOCK_SIZE - 1
+    }
 }
 
-impl Buffer {
+impl<const BLOCK_SIZE: usize> Buffer<BLOCK_SIZE> {
     /// Create a new buffer for the specified block.
-    fn new(block_base: u64) -> Result<Buffer, StreamError> {
+    fn new(block_base: u64) -> Result<Self, StreamError>{
         Ok(Buffer {
             block_base,
             // Calling System.alloc safely requires the layout to be known to
             // have non-zero size. If the allocation fails we return an error.
             // Otherwise, our Drop impl guarantees the allocation is freed.
             ptr: unsafe {
-                let ptr = System.alloc(BLOCK_LAYOUT);
+                let ptr = System.alloc(Self::block_layout());
                 if ptr.is_null() {
                     return Err(StreamError::Alloc());
                 }
@@ -326,28 +335,39 @@ impl Buffer {
             }
         })
     }
+
+    /// Layout for allocating block-sized, block-aligned chunks of memory.
+    const fn block_layout() -> Layout {
+        assert!(BLOCK_SIZE != 0);
+        assert!(BLOCK_SIZE.is_power_of_two());
+        assert!(BLOCK_SIZE < (isize::MAX as usize));
+        // Safety: Align is non-zero, a power of 2, and does not overflow isize.
+        unsafe {
+            Layout::from_size_align_unchecked(BLOCK_SIZE, BLOCK_SIZE)
+        }
+    }
 }
 
 // Dropping a Buffer must free the allocated block.
-impl Drop for Buffer {
+impl<const S: usize> Drop for Buffer<S> {
     fn drop(&mut self) {
         unsafe {
             // This pointer was created in Buffer::new() and is known to point
             // to an allocation made by this allocator with the same layout.
-            System.dealloc(self.ptr, BLOCK_LAYOUT)
+            System.dealloc(self.ptr, Self::block_layout())
         }
     }
 }
 
 // Tell the compiler that it's safe to send and share our types between
 // threads despite the *mut u8 fields, due to the way we manage the data.
-unsafe impl Send for StreamWriter {}
-unsafe impl Sync for StreamWriter {}
-unsafe impl Send for Buffer {}
-unsafe impl Sync for Buffer {}
+unsafe impl<const S: usize> Send for StreamWriter<S> {}
+unsafe impl<const S: usize> Sync for StreamWriter<S> {}
+unsafe impl<const S: usize> Send for Buffer<S> {}
+unsafe impl<const S: usize> Sync for Buffer<S> {}
 
 // Data can be dereferenced by readers to access the stream data.
-impl Deref for Data {
+impl<const S: usize> Deref for Data<S> {
     type Target = [u8];
 
     fn deref(&self) -> &[u8] {
@@ -366,8 +386,8 @@ impl Deref for Data {
 }
 
 // StreamReader can be cloned to set up multiple readers.
-impl Clone for StreamReader {
-    fn clone(&self) -> StreamReader {
+impl<const S: usize> Clone for StreamReader<S> {
+    fn clone(&self) -> StreamReader<S> {
         StreamReader {
             shared: self.shared.clone(),
             mappings: LruBTreeMap::new(MAP_CACHE_PER_READER),
@@ -386,8 +406,10 @@ mod tests {
 
     #[test]
     fn test_stream() {
+        const BLOCK_SIZE: usize = 0x4000;
+
         // Create a reader-writer pair.
-        let (mut writer, reader) = stream().unwrap();
+        let (mut writer, reader) = stream::<BLOCK_SIZE>().unwrap();
 
         // Build a reference array with ~8MB of random data.
         let mut prng = XorShiftRng::seed_from_u64(42);
