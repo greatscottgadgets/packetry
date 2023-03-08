@@ -8,7 +8,7 @@ use std::slice;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering::{Acquire, Release}};
 
-use arc_swap::ArcSwap;
+use arc_swap::{ArcSwap, ArcSwapOption};
 use lrumap::LruBTreeMap;
 use memmap2::{Mmap, MmapOptions};
 use tempfile::tempfile;
@@ -22,7 +22,7 @@ struct Shared<const S: usize> {
     /// Available length of the stream, including data in both file and buffer.
     length: AtomicU64,
     /// File handle used by readers to create mappings.
-    file: File,
+    file: ArcSwapOption<File>,
     /// Buffer currently in use for newly appended data.
     current_buffer: ArcSwap<Buffer<S>>,
 }
@@ -38,7 +38,7 @@ pub struct StreamWriter<const S: usize = MIN_BLOCK> {
     /// Pointer to current position in the current buffer.
     ptr: *mut u8,
     /// File handle used to append to the stream.
-    file: File,
+    file: Option<File>,
     /// Spare buffer to be potentially used when current buffer is full.
     spare_buffer: Option<Arc<Buffer<S>>>,
 }
@@ -103,7 +103,7 @@ pub fn stream<const S: usize>() -> Result<StreamPair<S>, StreamError> {
     let buffer = Arc::new(Buffer::new(0)?);
     let shared = Arc::new(Shared {
         length: AtomicU64::from(0),
-        file: tempfile().map_err(StreamError::TempFile)?,
+        file: ArcSwapOption::empty(),
         current_buffer: ArcSwap::new(buffer.clone()),
     });
     let writer = StreamWriter {
@@ -111,7 +111,7 @@ pub fn stream<const S: usize>() -> Result<StreamPair<S>, StreamError> {
         length: 0,
         buf: buffer.ptr,
         ptr: buffer.ptr,
-        file: shared.file.try_clone().map_err(StreamError::CloneFile)?,
+        file: None,
         spare_buffer: None,
     };
     let reader = StreamReader {
@@ -196,8 +196,19 @@ impl<const BLOCK_SIZE: usize> StreamWriter<BLOCK_SIZE> {
     ///
     unsafe fn write_to_file(&mut self, data: &[u8]) -> Result<(), StreamError> {
 
+        // Create the file if it does not exist yet.
+        let file = match &mut self.file {
+            None => {
+                let file = tempfile().map_err(StreamError::TempFile)?;
+                self.shared.file.store(Some(Arc::new(
+                    file.try_clone().map_err(StreamError::CloneFile)?)));
+                self.file.insert(file)
+            },
+            Some(file) => file
+        };
+
         // Write the data to file.
-        self.file.write(data).map_err(StreamError::WriteFile)?;
+        file.write(data).map_err(StreamError::WriteFile)?;
 
         // We must change the stream's current buffer to one for the new block.
         let block_base = self.length;
@@ -290,13 +301,19 @@ impl<const BLOCK_SIZE: usize> StreamReader<BLOCK_SIZE> {
             let mmap = match existing_mmap {
                 Some(mmap) => Arc::clone(mmap),
                 None => {
+                    // Get the file handle to be used for mapping.
+                    // The writer sets this before writing the first block.
+                    let file_guard = self.shared.file.load();
+                    let file_option = file_guard.deref().as_ref();
+                    let file_arc = file_option.unwrap();
+                    let file = file_arc.deref();
                     // The block was already written to the file and will not
                     // be modified by the writer, so it is safe to map it.
                     let mmap_result = unsafe {
                         MmapOptions::new()
                             .offset(block_base)
                             .len(Self::block_size())
-                            .map(&self.shared.file)
+                            .map(file)
                     };
                     let new_mmap =
                         Arc::new(mmap_result.map_err(StreamError::MapFile)?);
