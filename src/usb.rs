@@ -8,7 +8,7 @@ use derive_more::{From, Into, Display};
 use crate::vec_map::VecMap;
 
 #[allow(clippy::upper_case_acronyms)]
-#[derive(Copy, Clone, Debug, IntoPrimitive, FromPrimitive, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Default, IntoPrimitive, FromPrimitive, PartialEq, Eq)]
 #[repr(u8)]
 pub enum PID {
     RSVD  = 0xF0,
@@ -29,12 +29,6 @@ pub enum PID {
     MDATA = 0x0F,
     #[default]
     Malformed = 0,
-}
-
-impl Default for PID {
-    fn default() -> Self {
-        PID::Malformed
-    }
 }
 
 impl std::fmt::Display for PID {
@@ -760,7 +754,6 @@ pub struct UTF16Bytes<'b>(&'b [u8]);
 impl<'b> UTF16Bytes<'b> {
     fn chars(&self) -> Vec<u16> {
         self.0.chunks_exact(2)
-              .into_iter()
               .map(|a| u16::from_le_bytes([a[0], a[1]]))
               .collect()
     }
