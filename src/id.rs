@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Display};
 use std::marker::PhantomData;
 use std::mem::size_of;
-use std::ops::{Add, AddAssign, Sub};
+use std::ops::{Add, AddAssign, Sub, SubAssign};
 use std::ops::Range;
 
 #[derive(Copy, Clone)]
@@ -81,6 +81,12 @@ impl<T> Sub<u64> for Id<T> {
 
    fn sub(self, other: u64) -> Self {
       Id::<T>::from(self.value - other)
+   }
+}
+
+impl<T> SubAssign<u64> for Id<T> {
+   fn sub_assign(&mut self, other: u64) {
+      self.value -= other
    }
 }
 
