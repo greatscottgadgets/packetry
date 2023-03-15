@@ -1,7 +1,7 @@
 use std::cmp::max;
 use std::iter::once;
 use std::marker::PhantomData;
-use std::ops::{Add, Range, Sub};
+use std::ops::{Add, AddAssign, Range, Sub, SubAssign};
 use std::sync::atomic::{AtomicU64, Ordering::{Acquire, Release}};
 use std::sync::Arc;
 
@@ -165,10 +165,12 @@ where Position: Copy + From<u64> + Into<u64>,
 
 impl<Position, Value> CompactReader<Position, Value>
 where
-    Position: Copy + From<u64> + Into<u64> + Ord + Sub<Output=u64>
-        + Add<u64, Output=Position> + Sub<u64, Output=Position>,
-    Value: Copy + From<u64> + Into<u64> + Ord + Sub<Output=u64>
+    Position: Copy + From<u64> + Into<u64> + Ord
+        + Add<u64, Output=Position> + AddAssign<u64>
+        + Sub<u64, Output=Position> + SubAssign<u64> + Sub<Output=u64>,
+    Value: Copy + From<u64> + Into<u64> + Ord
         + Add<u64, Output=Value>
+        + Sub<Output=u64> + SubAssign<u64>
 {
     /// Number of entries in the index.
     pub fn len(&self) -> u64 {
@@ -311,7 +313,7 @@ where
     }
 
     /// Leftmost position where a value would be ordered within this range.
-    pub fn bisect_range_left(&mut self, _range: &Range<Position>, value: &Value)
+    pub fn bisect_range_left(&mut self, range: &Range<Position>, value: &Value)
         -> Result<Position, StreamError>
     {
         // Find the segment required.
@@ -330,11 +332,26 @@ where
             return Ok(delta_start)
         }
         // Otherwise, get the delta width and delta byte range for the segment.
+        let delta_start = segment_start + 1;
         let width = self.segment_width_reader.get(segment_id)? as usize;
-        let byte_range = self.segment_offset_reader
+        let mut byte_range = self.segment_offset_reader
             .target_range(segment_id, self.data_reader.len())?;
-        // Fetch all the delta bytes for the segment.
-        let num_deltas = (byte_range.end - byte_range.start) / width as u64;
+        let mut num_deltas = (byte_range.end - byte_range.start) / width as u64;
+        let mut delta_range = delta_start..(delta_start + num_deltas);
+        // Limit the range to fetch if possible.
+        if range.start > delta_range.start {
+            let skip = range.start - delta_range.start;
+            byte_range.start += skip * width as u64;
+            delta_range.start += skip;
+            num_deltas -= skip;
+        }
+        if range.end < delta_range.end {
+            let skip = delta_range.end - range.end;
+            byte_range.end -= skip * width as u64;
+            delta_range.end -= skip;
+            num_deltas -= skip;
+        }
+        // Fetch all the delta bytes needed.
         let all_delta_bytes = self.data_reader.get_range(&byte_range)?;
         // Reconstruct deltas and values.
         let mut values = Vec::with_capacity(num_deltas as usize);
@@ -345,7 +362,8 @@ where
             values.push(base_value + delta);
         }
         // Bisect the values to find the position.
-        let position = segment_start + 1 + bisect_left(&values, value) as u64;
+        let offset = bisect_left(&values, value) as u64;
+        let position = delta_range.start + offset;
         Ok(position)
     }
 }
