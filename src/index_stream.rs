@@ -140,8 +140,8 @@ where Position: Copy + From<u64> + Into<u64>,
     pub fn bisect_range_left(&mut self, range: &Range<Position>, value: &Value)
         -> Result<Position, StreamError>
     {
-        let search_start = range.start.into();
-        let search_end = range.end.into();
+        let mut search_start = range.start.into();
+        let mut search_end = range.end.into();
         let search_length = search_end - search_start;
         if search_length == 0 {
             return Ok(Position::from(search_start));
@@ -161,12 +161,14 @@ where Position: Copy + From<u64> + Into<u64>,
                 if block_start == search_start {
                     break search_start;
                 } else {
+                    search_end = block_start;
                     midpoint = (search_start + block_start) / 2
                 }
             } else if block_values[last] < value {
                 if block_end == search_end {
                     break search_end;
                 } else {
+                    search_start = block_end;
                     midpoint = (block_end + search_end) / 2
                 }
             } else {
@@ -180,8 +182,8 @@ where Position: Copy + From<u64> + Into<u64>,
     pub fn bisect_range_right(&mut self, range: &Range<Position>, value: &Value)
         -> Result<Position, StreamError>
     {
-        let search_start = range.start.into();
-        let search_end = range.end.into();
+        let mut search_start = range.start.into();
+        let mut search_end = range.end.into();
         let search_length = search_end - search_start;
         if search_length == 0 {
             return Ok(Position::from(search_start));
@@ -202,6 +204,7 @@ where Position: Copy + From<u64> + Into<u64>,
                     break search_start;
                 } else {
                     let length_before = block_start - search_start;
+                    search_end = block_start;
                     midpoint = block_start - length_before / 2;
                 }
             } else if block_values[last] <= value {
@@ -209,6 +212,7 @@ where Position: Copy + From<u64> + Into<u64>,
                     break search_end;
                 } else {
                     let length_after = search_end - block_end;
+                    search_start = block_end;
                     midpoint = block_end + length_after / 2;
                 }
             } else {

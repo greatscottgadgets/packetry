@@ -311,11 +311,41 @@ where
     }
 
     /// Leftmost position where a value would be ordered within this range.
-    pub fn bisect_range_left(&mut self, range: &Range<Position>, value: &Value)
+    pub fn bisect_range_left(&mut self, _range: &Range<Position>, value: &Value)
         -> Result<Position, StreamError>
     {
-        let values = self.get_range(range)?;
-        let position = range.start + bisect_left(&values, value) as u64;
+        // Find the segment required.
+        let segment_id = match self.segment_base_reader.bisect_right(value)? {
+            id if id.value == 0 => return Ok(Position::from(0)),
+            id => id - 1,
+        };
+        let segment_start = self.segment_start_reader.get(segment_id)?;
+        let base_value = self.segment_base_reader.get(segment_id)?;
+        let delta_start = segment_start + 1;
+        // If the value equals the base value, position is the segment start.
+        if base_value == *value {
+            return Ok(segment_start)
+        // If there is no delta width yet, position follows the base value.
+        } else if segment_id.value >= self.segment_width_reader.len() {
+            return Ok(delta_start)
+        }
+        // Otherwise, get the delta width and delta byte range for the segment.
+        let width = self.segment_width_reader.get(segment_id)? as usize;
+        let byte_range = self.segment_offset_reader
+            .target_range(segment_id, self.data_reader.len())?;
+        // Fetch all the delta bytes for the segment.
+        let num_deltas = (byte_range.end - byte_range.start) / width as u64;
+        let all_delta_bytes = self.data_reader.get_range(&byte_range)?;
+        // Reconstruct deltas and values.
+        let mut values = Vec::with_capacity(num_deltas as usize);
+        let mut delta_bytes = [0; 8];
+        for low_bytes in all_delta_bytes.chunks_exact(width) {
+            delta_bytes[..width].copy_from_slice(low_bytes);
+            let delta = u64::from_le_bytes(delta_bytes);
+            values.push(base_value + delta);
+        }
+        // Bisect the values to find the position.
+        let position = segment_start + 1 + bisect_left(&values, value) as u64;
         Ok(position)
     }
 }
