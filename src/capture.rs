@@ -1,5 +1,6 @@
 use std::ops::Range;
 use std::num::TryFromIntError;
+use std::mem::size_of;
 
 use crate::id::{Id, HasLength};
 use crate::file_vec::{FileVec, FileVecError};
@@ -174,7 +175,8 @@ pub struct DeviceData {
     pub device_descriptor: Option<DeviceDescriptor>,
     pub configurations: VecMap<ConfigNum, Configuration>,
     pub config_number: Option<ConfigNum>,
-    pub endpoint_details: VecMap<EndpointAddr, (usb::EndpointType, usize)>,
+    pub endpoint_details:
+        VecMap<EndpointAddr, (usb::EndpointType, Option<usize>)>,
     pub strings: VecMap<StringId, UTF16ByteVec>,
     pub version: DeviceVersion,
 }
@@ -222,7 +224,7 @@ impl DeviceData {
                 })
             ),
             _ => match self.endpoint_details.get(addr) {
-                Some((ep_type, ep_max)) => (Normal(*ep_type), Some(*ep_max)),
+                Some((ep_type, ep_max)) => (Normal(*ep_type), *ep_max),
                 None => (Unidentified, None)
             }
         }
@@ -236,11 +238,90 @@ impl DeviceData {
                         let ep_addr = ep_desc.endpoint_address;
                         let ep_type = ep_desc.attributes.endpoint_type();
                         let ep_max = ep_desc.max_packet_size as usize;
-                        self.endpoint_details.set(ep_addr, (ep_type, ep_max));
+                        self.endpoint_details.set(ep_addr,
+                            (ep_type, Some(ep_max))
+                        );
                     }
                 }
             }
         }
+    }
+
+    pub fn set_endpoint_type(&mut self,
+                             addr: EndpointAddr,
+                             ep_type: usb::EndpointType)
+    {
+        if self.endpoint_details.get(addr).is_none() {
+            self.endpoint_details.set(addr, (ep_type, None));
+        }
+    }
+
+    pub fn decode_request(&mut self, fields: &SetupFields, payload: &[u8])
+        -> Result<(), CaptureError>
+    {
+        let req_type = fields.type_fields.request_type();
+        let request = StandardRequest::from(fields.request);
+        match (req_type, request) {
+            (RequestType::Standard, StandardRequest::GetDescriptor)
+                => self.decode_descriptor_read(fields, payload)?,
+            (RequestType::Standard, StandardRequest::SetConfiguration)
+                => self.decode_configuration_set(fields)?,
+            _ => ()
+        }
+        Ok(())
+    }
+
+    pub fn decode_descriptor_read(&mut self,
+                                  fields: &SetupFields,
+                                  payload: &[u8])
+        -> Result<(), CaptureError>
+    {
+        let recipient = fields.type_fields.recipient();
+        let desc_type = DescriptorType::from((fields.value >> 8) as u8);
+        let length = payload.len();
+        match (recipient, desc_type) {
+            (Recipient::Device, DescriptorType::Device) => {
+                if length == size_of::<DeviceDescriptor>() {
+                    let descriptor = DeviceDescriptor::from_bytes(payload);
+                    self.device_descriptor = Some(descriptor);
+                    self.version += 1;
+                }
+            },
+            (Recipient::Device, DescriptorType::Configuration) => {
+                let size = size_of::<ConfigDescriptor>();
+                if length >= size {
+                    let configuration = Configuration::from_bytes(payload);
+                    if let Some(config) = configuration {
+                        let configurations = &mut self.configurations;
+                        let config_num = ConfigNum::from(
+                            config.descriptor.config_value);
+                        configurations.set(config_num, config);
+                        self.update_endpoint_details();
+                        self.version += 1;
+                    }
+                }
+            },
+            (Recipient::Device, DescriptorType::String) => {
+                if length >= 2 {
+                    let string = UTF16ByteVec(payload[2..length].to_vec());
+                    let string_id =
+                        StringId::from((fields.value & 0xFF) as u8);
+                    self.strings.set(string_id, string);
+                    self.version += 1;
+                }
+            },
+            _ => {}
+        };
+        Ok(())
+    }
+
+    fn decode_configuration_set(&mut self, fields: &SetupFields)
+        -> Result<(), CaptureError>
+    {
+        self.config_number = Some(ConfigNum(fields.value.try_into()?));
+        self.update_endpoint_details();
+        self.version += 1;
+        Ok(())
     }
 }
 
@@ -271,7 +352,9 @@ impl Interface {
 pub struct Transaction {
     start_pid: PID,
     end_pid: PID,
+    split: Option<(SplitFields, PID)>,
     packet_id_range: Range<PacketId>,
+    data_packet_id: Option<PacketId>,
     payload_byte_range: Option<Range<Id<u8>>>,
 }
 
@@ -286,10 +369,107 @@ impl Transaction {
 
     fn successful(&self) -> bool {
         use PID::*;
-        match (self.packet_count(), self.end_pid) {
-            (3, ACK | NYET) => true,
-            (..)            => false
+        match (self.start_pid, self.end_pid) {
+
+            // SPLIT is successful if it ends with DATA0/DATA1/ACK/NYET.
+            (SPLIT, DATA0 | DATA1 | ACK | NYET) => true,
+
+            // SETUP/IN/OUT is successful if it ends with ACK/NYET.
+            (SETUP | IN | OUT, ACK | NYET) => true,
+
+            (..) => false
         }
+    }
+
+    fn control_result(&self, direction: Direction) -> ControlResult {
+        use ControlResult::*;
+        use StartComplete::*;
+        use Direction::*;
+        use PID::*;
+        let end_pid = match (direction, self.start_pid, self.split.as_ref()) {
+            (In,  OUT,   None) |
+            (Out, IN,    None) =>
+                self.end_pid,
+            (In,  SPLIT, Some((split_fields, OUT))) |
+            (Out, SPLIT, Some((split_fields, IN ))) => {
+                if split_fields.sc() == Complete {
+                    self.end_pid
+                } else {
+                    return Incomplete
+                }
+            },
+            _ => return if self.end_pid == STALL { Stalled } else { Incomplete }
+        };
+        if end_pid == STALL {
+            Stalled
+        } else if self.successful() {
+            Completed
+        } else {
+            Incomplete
+        }
+    }
+
+    fn outcome(&self) -> Option<PID> {
+        use PID::*;
+        match self.end_pid {
+            // Any handshake response should be displayed as an outcome.
+            ACK | NAK | NYET | STALL | ERR => Some(self.end_pid),
+            _ => None
+        }
+    }
+
+    fn description(&self,
+                   capture: &mut Capture,
+                   endpoint: &Endpoint)
+        -> Result<String, CaptureError>
+    {
+        use PID::*;
+        use StartComplete::*;
+        Ok(match (self.start_pid, &self.split) {
+            (SOF, _) => format!(
+                "{} SOF packets", self.packet_count()),
+            (Malformed, _) => format!(
+                "{} malformed packets", self.packet_count()),
+            (SPLIT, Some((split_fields, token_pid))) => format!(
+                "{} {}",
+                match split_fields.sc() {
+                    Start => "Starting",
+                    Complete => "Completing",
+                },
+                self.inner_description(capture, endpoint, *token_pid)?
+            ),
+            (pid, _) => self.inner_description(capture, endpoint, pid)?
+        })
+    }
+
+    fn inner_description(&self,
+                         capture: &mut Capture,
+                         endpoint: &Endpoint,
+                         pid: PID)
+        -> Result<String, CaptureError>
+    {
+        Ok(format!(
+            "{} transaction on {}.{}{}",
+            pid,
+            endpoint.device_address(),
+            endpoint.number(),
+            match (self.payload_size(), self.outcome()) {
+                (None, None) =>
+                    String::from(""),
+                (None, Some(outcome)) =>
+                    format!(", {outcome}"),
+                (Some(size), None) if size == 0 =>
+                    String::from(" with no data"),
+                (Some(size), Some(outcome)) if size == 0 =>
+                    format!(" with no data, {outcome}"),
+                (Some(size), None) => format!(
+                    " with {size} data bytes: {}",
+                    Bytes::first(100, &capture.transaction_bytes(self)?)),
+                (Some(size), Some(outcome)) => format!(
+                    " with {size} data bytes, {outcome}: {}",
+                    Bytes::first(100, &capture.transaction_bytes(self)?)),
+            }
+        ))
     }
 }
 
@@ -387,24 +567,6 @@ impl std::fmt::Display for Bytes<'_> {
     }
 }
 
-pub struct CompletedTransactions {
-    transaction_ids: Vec<TransactionId>,
-    index: usize,
-}
-
-impl CompletedTransactions {
-    fn next(&mut self, capture: &mut Capture) -> Option<Transaction> {
-        while self.index < self.transaction_ids.len() {
-            let transaction_id = self.transaction_ids[self.index];
-            let transaction = capture.transaction(transaction_id).ok()?;
-            self.index += 1;
-            if transaction.successful() {
-                return Some(transaction);
-            }
-        }
-        None
-    }
-}
 
 pub struct Capture {
     pub packet_data: FileVec<u8>,
@@ -535,10 +697,41 @@ impl Capture {
         Ok(start .. end)
     }
 
+    fn transaction_fields(&mut self, transaction: &Transaction)
+        -> Result<SetupFields, CaptureError>
+    {
+        match transaction.data_packet_id {
+            None => Err(IndexError(String::from(
+                "Transaction has no data packet"))),
+            Some(data_packet_id) => {
+                let data_packet = self.packet(data_packet_id)?;
+                match data_packet.first() {
+                    None => Err(IndexError(String::from(
+                        "Found empty packet instead of setup data"))),
+                    Some(byte) => {
+                        let pid = PID::from(*byte);
+                        if pid != PID::DATA0 {
+                            Err(IndexError(format!(
+                                "Found {pid} packet instead of setup data")))
+                        } else if data_packet.len() != 11 {
+                            Err(IndexError(format!(
+                                "Found DATA0 with packet length {} \
+                                 instead of setup data", data_packet.len())))
+                        } else {
+                            Ok(SetupFields::from_data_packet(&data_packet))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     fn transaction_bytes(&mut self, transaction: &Transaction)
         -> Result<Vec<u8>, CaptureError>
     {
-        let data_packet_id = transaction.packet_id_range.start + 1;
+        let data_packet_id = transaction.data_packet_id
+            .ok_or_else(||IndexError(String::from(
+                "Transaction has no data packet")))?;
         let packet_byte_range = self.packet_index.target_range(
             data_packet_id, self.packet_data.len())?;
         let data_byte_range =
@@ -555,14 +748,21 @@ impl Capture {
         let transaction_ids = self.endpoint_traffic(endpoint_id)?
                                   .transaction_ids
                                   .get_range(transaction_range)?;
-        let mut transactions = self.completed_transactions(transaction_ids);
         let mut result = Vec::new();
-        while let Some(transaction) = transactions.next(self) {
-            let data = self.transaction_bytes(&transaction)?;
-            result.extend_from_slice(&data);
-            if result.len() >= max_length {
-                result.truncate(max_length);
-                break
+        for transaction_id in transaction_ids {
+            let transaction = self.transaction(transaction_id)?;
+            if !transaction.successful() {
+                continue;
+            }
+            match self.transaction_bytes(&transaction) {
+                Ok(data) => {
+                    result.extend_from_slice(&data);
+                    if result.len() >= max_length {
+                        result.truncate(max_length);
+                        break
+                    }
+                },
+                Err(_) => break
             }
         }
         Ok(result)
@@ -597,40 +797,54 @@ impl Capture {
         let packet_id_range = self.transaction_index.target_range(
             id, self.packet_index.len())?;
         let packet_count = packet_id_range.len();
-        let start_pid = self.packet_pid(packet_id_range.start)?;
+        let start_packet_id = packet_id_range.start;
+        let start_pid = self.packet_pid(start_packet_id)?;
         let end_pid = self.packet_pid(packet_id_range.end - 1)?;
         use PID::*;
-        let payload_byte_range = match start_pid {
-            IN | OUT if packet_count >= 2 => {
-                let data_packet_id = packet_id_range.start + 1;
-                let packet_byte_range = self.packet_index.target_range(
-                    data_packet_id, self.packet_data.len())?;
-                let pid = self.packet_data.get(packet_byte_range.start)?;
-                match PID::from(pid) {
-                    DATA0 | DATA1 => Some({
-                        packet_byte_range.start + 1 .. packet_byte_range.end - 2
-                    }),
-                    _ => None
-                }
+        use StartComplete::*;
+        let (split, data_packet_id) = match start_pid {
+            SETUP | IN | OUT if packet_count >= 2 =>
+                (None, Some(start_packet_id + 1)),
+            SPLIT => {
+                let token_packet_id = start_packet_id + 1;
+                let split_packet = self.packet(start_packet_id)?;
+                let token_pid = self.packet_pid(token_packet_id)?;
+                let split_fields = SplitFields::from_packet(&split_packet);
+                let data_packet_id = match (split_fields.sc(), token_pid) {
+                    (Start, SETUP | OUT) | (Complete, IN) => {
+                        if packet_count >= 3 {
+                            Some(start_packet_id + 2)
+                        } else {
+                            None
+                        }
+                    },
+                    (..) => None
+                };
+                (Some((split_fields, token_pid)), data_packet_id)
             },
-            _ => None
+            _ => (None, None)
+        };
+        let payload_byte_range = if let Some(packet_id) = data_packet_id {
+            let packet_byte_range = self.packet_index.target_range(
+                packet_id, self.packet_data.len())?;
+            let pid = self.packet_data.get(packet_byte_range.start)?;
+            match PID::from(pid) {
+                DATA0 | DATA1 => Some({
+                    packet_byte_range.start + 1 .. packet_byte_range.end - 2
+                }),
+                _ => None
+            }
+        } else {
+            None
         };
         Ok(Transaction {
             start_pid,
             end_pid,
+            split,
+            data_packet_id,
             packet_id_range,
             payload_byte_range,
         })
-    }
-
-    fn completed_transactions(&mut self,
-                              transaction_ids: Vec<TransactionId>)
-        -> CompletedTransactions
-    {
-        CompletedTransactions {
-            transaction_ids,
-            index: 0
-        }
     }
 
     fn control_transfer(&mut self,
@@ -639,30 +853,32 @@ impl Capture {
                         range: Range<EndpointTransactionId>)
         -> Result<ControlTransfer, CaptureError>
     {
+        use PID::*;
+        use Direction::*;
         let transaction_ids = self.endpoint_traffic(endpoint_id)?
                                   .transaction_ids
                                   .get_range(&range)?;
-        let mut transactions = self.completed_transactions(transaction_ids);
-        let fields = match transactions.next(self) {
-            Some(transaction) if transaction.start_pid == PID::SETUP => {
-                let data_packet_id = transaction.packet_id_range.start + 1;
-                let data_packet = self.packet(data_packet_id)?;
-                SetupFields::from_data_packet(&data_packet)
-            },
-            _ => {
-                return Err(IndexError(String::from(
-                    "Control transfer did not start with SETUP packet")))
-            }
-        };
+        let setup_transaction = self.transaction(transaction_ids[0])?;
+        let fields = self.transaction_fields(&setup_transaction)?;
         let direction = fields.type_fields.direction();
         let mut data: Vec<u8> = Vec::new();
-        while let Some(transaction) = transactions.next(self) {
+        let last = transaction_ids.len() - 1;
+        let last_transaction = self.transaction(transaction_ids[last])?;
+        let result = last_transaction.control_result(direction);
+        for transaction_id in &transaction_ids[1..] {
+            let transaction = self.transaction(*transaction_id)?;
+            if !transaction.successful() {
+                continue;
+            }
             match (direction,
                    transaction.start_pid,
+                   transaction.split,
                    transaction.payload_byte_range)
             {
-                (Direction::In,  PID::IN,  Some(range)) |
-                (Direction::Out, PID::OUT, Some(range)) => {
+                (In,  IN,    None,           Some(range)) |
+                (Out, OUT,   None,           Some(range)) |
+                (In,  SPLIT, Some((_, IN)),  Some(range)) |
+                (Out, SPLIT, Some((_, OUT)), Some(range)) => {
                     data.extend_from_slice(
                         &self.packet_data.get_range(range)?);
                 },
@@ -673,6 +889,7 @@ impl Capture {
             address,
             fields,
             data,
+            result,
         })
     }
 
@@ -822,6 +1039,7 @@ impl ItemSource<TrafficItem> for Capture {
         -> Result<String, CaptureError>
     {
         use TrafficItem::*;
+        use usb::StartComplete::*;
         Ok(match item {
             Packet(.., packet_id) => {
                 let packet = self.packet(*packet_id)?;
@@ -848,29 +1066,28 @@ impl ItemSource<TrafficItem> for Capture {
                             data.crc,
                             packet.len() - 3,
                             Bytes::first(100, &packet[1 .. packet.len() - 2])),
+                        PacketFields::Split(split) => format!(
+                            " {} {} speed {} transaction on hub {} port {}",
+                            match split.sc() {
+                                Start => "starting",
+                                Complete => "completing",
+                            },
+                            format!("{:?}", split.speed()).to_lowercase(),
+                            format!("{:?}", split.endpoint_type()).to_lowercase(),
+                            split.hub_address(),
+                            split.port()),
                         PacketFields::None => match pid {
                             PID::Malformed => format!(": {packet:02X?}"),
                             _ => "".to_string()
                         }
                     })
             },
-            Transaction(_, transaction_id) => {
+            Transaction(transfer_id, transaction_id) => {
+                let entry = self.transfer_index.get(*transfer_id)?;
+                let endpoint_id = entry.endpoint_id();
+                let endpoint = self.endpoints.get(endpoint_id)?;
                 let transaction = self.transaction(*transaction_id)?;
-                match (transaction.start_pid, transaction.payload_size()) {
-                    (PID::SOF, _) => format!(
-                        "{} SOF packets", transaction.packet_count()),
-                    (PID::Malformed, _) => format!(
-                        "{} malformed packets", transaction.packet_count()),
-                    (pid, None) => format!(
-                        "{pid} transaction, {}", transaction.end_pid),
-                    (pid, Some(size)) if size == 0 => format!(
-                        "{pid} transaction with no data, {}",
-                        transaction.end_pid),
-                    (pid, Some(size)) => format!(
-                        "{pid} transaction with {size} data bytes, {}: {}",
-                        transaction.end_pid,
-                        Bytes::first(100, &self.transaction_bytes(&transaction)?))
-                }
+                transaction.description(self, &endpoint)?
             },
             Transfer(transfer_id) => {
                 use EndpointType::*;
@@ -894,9 +1111,12 @@ impl ItemSource<TrafficItem> for Capture {
                     (Framing, false) =>
                         "End of SOF groups".to_string(),
                     (Normal(Control), true) => {
-                        let transfer = self.control_transfer(
-                            endpoint.device_address(), endpoint_id, range)?;
-                        transfer.summary()
+                        let addr = endpoint.device_address();
+                        match self.control_transfer(addr, endpoint_id, range) {
+                            Ok(transfer) => transfer.summary(),
+                            Err(_) => format!(
+                                "Incomplete control transfer on device {addr}")
+                        }
                     },
                     (endpoint_type, starting) => {
                         let ep_transfer_id = entry.transfer_id();
@@ -908,6 +1128,11 @@ impl ItemSource<TrafficItem> for Capture {
                         let transaction = self.transaction(transaction_id)?;
                         let ep_type_string = format!("{endpoint_type}");
                         let ep_type_lower = ep_type_string.to_lowercase();
+                        let count = if transaction.split.is_some() {
+                            (count + 1) / 2
+                        } else {
+                            count
+                        };
                         match (transaction.successful(), starting) {
                             (true, true) => {
                                 let byte_range =
@@ -1291,6 +1516,7 @@ mod tests {
                         let packet = result.unwrap().data;
                         decoder.handle_raw_packet(&mut cap, &packet).unwrap();
                     }
+                    decoder.finish(&mut cap).unwrap();
                     let out_file = File::create(out_path.clone()).unwrap();
                     let mut out_writer = BufWriter::new(out_file);
                     let num_items = cap.item_index.len();

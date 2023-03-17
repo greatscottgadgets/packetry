@@ -1,0 +1,58 @@
+Polling 4 times for interrupt transfer on endpoint 14.1 IN
+ Starting IN transaction on 14.1
+  SPLIT packet starting low speed interrupt transaction on hub 12 port 2
+  IN packet on 14.1, CRC 0A
+ Completing IN transaction on 14.1, NAK
+  SPLIT packet completing low speed interrupt transaction on hub 12 port 2
+  IN packet on 14.1, CRC 0A
+  NAK packet
+ Starting IN transaction on 14.1
+  SPLIT packet starting low speed interrupt transaction on hub 12 port 2
+  IN packet on 14.1, CRC 0A
+ Completing IN transaction on 14.1, NAK
+  SPLIT packet completing low speed interrupt transaction on hub 12 port 2
+  IN packet on 14.1, CRC 0A
+  NAK packet
+ Starting IN transaction on 14.1
+  SPLIT packet starting low speed interrupt transaction on hub 12 port 2
+  IN packet on 14.1, CRC 0A
+ Completing IN transaction on 14.1, NAK
+  SPLIT packet completing low speed interrupt transaction on hub 12 port 2
+  IN packet on 14.1, CRC 0A
+  NAK packet
+ Starting IN transaction on 14.1
+  SPLIT packet starting low speed interrupt transaction on hub 12 port 2
+  IN packet on 14.1, CRC 0A
+ Completing IN transaction on 14.1, NAK
+  SPLIT packet completing low speed interrupt transaction on hub 12 port 2
+  IN packet on 14.1, CRC 0A
+  NAK packet
+Polling 4 times for interrupt transfer on endpoint 14.2 IN
+ Starting IN transaction on 14.2
+  SPLIT packet starting low speed interrupt transaction on hub 12 port 2
+  IN packet on 14.2, CRC 19
+ Completing IN transaction on 14.2, NAK
+  SPLIT packet completing low speed interrupt transaction on hub 12 port 2
+  IN packet on 14.2, CRC 19
+  NAK packet
+ Starting IN transaction on 14.2
+  SPLIT packet starting low speed interrupt transaction on hub 12 port 2
+  IN packet on 14.2, CRC 19
+ Completing IN transaction on 14.2, NAK
+  SPLIT packet completing low speed interrupt transaction on hub 12 port 2
+  IN packet on 14.2, CRC 19
+  NAK packet
+ Starting IN transaction on 14.2
+  SPLIT packet starting low speed interrupt transaction on hub 12 port 2
+  IN packet on 14.2, CRC 19
+ Completing IN transaction on 14.2, NAK
+  SPLIT packet completing low speed interrupt transaction on hub 12 port 2
+  IN packet on 14.2, CRC 19
+  NAK packet
+ Starting IN transaction on 14.2
+  SPLIT packet starting low speed interrupt transaction on hub 12 port 2
+  IN packet on 14.2, CRC 19
+ Completing IN transaction on 14.2, NAK
+  SPLIT packet completing low speed interrupt transaction on hub 12 port 2
+  IN packet on 14.2, CRC 19
+  NAK packet

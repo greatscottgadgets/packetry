@@ -121,7 +121,7 @@ impl EndpointAttr {
     }
 }
 
-#[derive(Copy, Clone, Debug, FromPrimitive)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
 #[repr(u8)]
 pub enum EndpointType {
     #[default]
@@ -144,6 +144,20 @@ impl std::fmt::Display for BCDVersion {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
+#[repr(u8)]
+pub enum StartComplete {
+    #[default]
+    Start = 0,
+    Complete = 1,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum Speed {
+    Low,
+    Full,
+}
+
 bitfield! {
     #[derive(Debug)]
     pub struct SOFFields(u16);
@@ -164,12 +178,44 @@ pub struct DataFields {
     pub crc: u16,
 }
 
+bitfield! {
+    #[derive(Debug)]
+    pub struct SplitFields(u32);
+    pub u8, into DeviceAddr, hub_address, _: 6, 0;
+    pub u8, into StartComplete, sc, _: 7, 7;
+    pub u8, port, _: 14, 8;
+    pub bool, start, _: 15;
+    pub bool, end, _: 16;
+    pub u8, into EndpointType, endpoint_type, _: 18, 17;
+    pub u8, crc, _: 23, 19;
+}
+
+impl SplitFields {
+    pub fn from_packet(packet: &[u8]) -> SplitFields {
+        SplitFields(
+            u32::from_le_bytes(
+                [packet[1], packet[2], packet[3], 0]))
+    }
+
+    pub fn speed(&self) -> Speed {
+        use Speed::*;
+        if self.endpoint_type() == EndpointType::Isochronous {
+            Full
+        } else if self.start() {
+            Low
+        } else {
+            Full
+        }
+    }
+}
+
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Debug)]
 pub enum PacketFields {
     SOF(SOFFields),
     Token(TokenFields),
     Data(DataFields),
+    Split(SplitFields),
     None
 }
 
@@ -188,6 +234,7 @@ impl PacketFields {
                 DataFields{
                     crc: u16::from_le_bytes(
                         [packet[end - 2], packet[end - 1]])}),
+            SPLIT => PacketFields::Split(SplitFields::from_packet(packet)),
             _ => PacketFields::None
         }
     }
@@ -669,10 +716,17 @@ impl Configuration {
     }
 }
 
+pub enum ControlResult {
+    Completed,
+    Incomplete,
+    Stalled,
+}
+
 pub struct ControlTransfer {
     pub address: DeviceAddr,
     pub fields: SetupFields,
     pub data: Vec<u8>,
+    pub result: ControlResult,
 }
 
 impl ControlTransfer {
@@ -695,13 +749,18 @@ impl ControlTransfer {
                 _ => format!(
                     "{:?} request #{}, index {}, value {}",
                     request_type, request,
-                    self.fields.index, self.fields.value)
+                    match self.fields.type_fields.recipient() {
+                        Recipient::Interface | Recipient::Endpoint =>
+                            self.fields.index >> 8,
+                        _ => self.fields.index
+                    },
+                    self.fields.value)
             },
             match self.fields.type_fields.recipient() {
                 Recipient::Device => format!(
                     "device {}", self.address),
                 Recipient::Interface => format!(
-                    "interface {}.{}", self.address, self.fields.index),
+                    "interface {}.{}", self.address, self.fields.index as u8),
                 Recipient::Endpoint => {
                     let ep_addr = EndpointAddr(self.fields.index as u8);
                     format!("endpoint {}.{} {}",
@@ -733,7 +792,12 @@ impl ControlTransfer {
             },
             (..) => {}
         };
-        parts.concat()
+        let summary = parts.concat();
+        match self.result {
+            ControlResult::Completed => summary,
+            ControlResult::Incomplete => format!("{}, incomplete", summary),
+            ControlResult::Stalled => format!("{}, stalled", summary),
+        }
     }
 }
 
@@ -844,6 +908,9 @@ pub mod prelude {
         PacketFields,
         TokenFields,
         SetupFields,
+        SplitFields,
+        StartComplete,
+        Speed,
         Direction,
         EndpointAddr,
         StandardRequest,
@@ -857,6 +924,7 @@ pub mod prelude {
         Configuration,
         Interface,
         ControlTransfer,
+        ControlResult,
         DeviceAddr,
         DeviceField,
         StringId,

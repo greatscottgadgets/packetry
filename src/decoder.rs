@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use crate::usb::{self, prelude::*};
 use crate::capture::prelude::*;
 use crate::hybrid_index::Number;
@@ -18,8 +16,26 @@ impl PID {
     }
 }
 
+struct EndpointData {
+    device_id: DeviceId,
+    address: EndpointAddr,
+    early_start: Option<EndpointTransferId>,
+    active: Option<TransferState>,
+    ended: Option<EndpointTransferId>,
+    last_success: bool,
+    setup: Option<SetupFields>,
+    payload: Vec<u8>,
+    pending_payload: Option<Vec<u8>>,
+}
+
+struct TransferState {
+    id: EndpointTransferId,
+    first: PID,
+    last: Option<PID>,
+}
+
 #[derive(PartialEq, Eq)]
-enum DecodeStatus {
+enum TransferStatus {
     Single,
     New,
     Continue,
@@ -28,16 +44,13 @@ enum DecodeStatus {
     Invalid
 }
 
-struct EndpointData {
-    device_id: DeviceId,
-    address: EndpointAddr,
-    active: Option<EndpointTransferId>,
-    ended: Option<EndpointTransferId>,
-    transaction_count: u64,
-    last: Option<PID>,
-    last_success: bool,
-    setup: Option<SetupFields>,
-    payload: Vec<u8>,
+#[derive(PartialEq, Eq)]
+enum TransactionStatus {
+    New,
+    Continue,
+    Done,
+    Fail,
+    Invalid
 }
 
 impl EndpointData {
@@ -45,102 +58,381 @@ impl EndpointData {
         EndpointData {
             address,
             device_id,
+            early_start: None,
             active: None,
             ended: None,
-            transaction_count: 0,
-            last: None,
             last_success: false,
             setup: None,
             payload: Vec::new(),
+            pending_payload: None,
         }
     }
 }
 
-#[derive(Default)]
+enum TransactionStyle {
+    Simple(PID),
+    Split(StartComplete, usb::EndpointType, Option<PID>),
+}
+
 struct TransactionState {
-    id: Option<TransactionId>,
-    first: Option<PID>,
-    last: Option<PID>,
-    count: u64,
+    style: TransactionStyle,
+    id: TransactionId,
+    last: PID,
     endpoint_id: Option<EndpointId>,
+    ep_transaction_id: Option<EndpointTransactionId>,
     setup: Option<SetupFields>,
-    payload: Vec<u8>,
+    payload: Option<Vec<u8>>,
+}
+
+fn transaction_status(state: &Option<TransactionState>, packet: &[u8])
+    -> Result<TransactionStatus, CaptureError>
+{
+    let next = PID::from_packet(packet)?;
+    use PID::*;
+    use TransactionStatus::*;
+    use TransactionStyle::*;
+    use StartComplete::*;
+    use usb::EndpointType::*;
+    Ok(match state {
+        None => match next {
+            // Tokens may start a new transaction.
+            SOF | SETUP | IN | OUT | PING | SPLIT => New,
+            // Malformed packets start a group.
+            Malformed => New,
+            // Others are not valid as the start of a transaction.
+            _ => Invalid,
+        },
+        Some(TransactionState {
+            style: Simple(first),
+            last, ..}) =>
+        {
+            match (first, last, next) {
+                // These tokens always start a new transaction.
+                (.., SETUP | IN | OUT | PING | SPLIT) => New,
+
+                // SOFs and malformed packets attach to existing groups.
+                (_, SOF, SOF) => Continue,
+                (_, Malformed, Malformed) => Continue,
+
+                // If not after an existing group they start a new group.
+                (.., SOF | Malformed) => New,
+
+                // SETUP must be followed by DATA0 with setup data.
+                (_, SETUP, DATA0) if packet.len() == 11 => Continue,
+
+                // ACK then completes the transaction.
+                (SETUP, DATA0, ACK) => Done,
+
+                // IN may be followed by NAK or STALL, failing transaction.
+                (_, IN, NAK | STALL) => Fail,
+                // IN or OUT may be followed by DATA0 or DATA1.
+                (_, IN | OUT, DATA0 | DATA1) if packet.len() >= 3 => Continue,
+                // An ACK or NYET then completes the transaction.
+                (IN | OUT, DATA0 | DATA1, ACK | NYET) => Done,
+                // OUT may also be completed by NAK or STALL.
+                (OUT, DATA0 | DATA1, NAK | STALL) => Fail,
+
+                // PING may be followed by ACK, NAK or STALL.
+                (_, PING, ACK) => Done,
+                (_, PING, NAK | STALL) => Fail,
+
+                // Any other case is not a valid part of a transaction.
+                _ => Invalid,
+            }
+        },
+        Some(TransactionState {
+            style: Split(sc, ep_type, ..),
+            last, .. }) =>
+        {
+            match (ep_type, sc, last, next) {
+                // Valid split transactions for control/bulk endpoints:
+
+                // SSPLIT->SETUP/OUT->DATA0/1->ACK/NAK.
+                (Bulk,    Start, SPLIT, OUT      ) => Continue,
+                (Control, Start, SPLIT, SETUP|OUT) => Continue,
+                (Control, Start, SETUP, DATA0    )
+                    if packet.len() == 11 => Continue,
+                (Bulk|Control, Start, OUT, DATA0|DATA1) => Continue,
+                (Bulk|Control, Start, DATA0|DATA1, ACK) => Done,
+                (Bulk|Control, Start, DATA0|DATA1, NAK) => Fail,
+                // CSPLIT->SETUP/OUT->ACK/NAK/NYET/STALL.
+                (Bulk,    Complete, SPLIT,     OUT      ) => Continue,
+                (Bulk,    Complete, SETUP,     ACK|NYET ) => Done,
+                (Bulk,    Complete, OUT,       NAK|STALL) => Fail,
+                (Control, Complete, SPLIT,     SETUP|OUT) => Continue,
+                (Control, Complete, SETUP|OUT, ACK|NYET ) => Done,
+                (Control, Complete, SETUP|OUT, NAK|STALL) => Fail,
+                // SSPLIT->IN->ACK/NAK.
+                (Control|Bulk, Start, SPLIT, IN ) => Continue,
+                (Control|Bulk, Start, IN,    ACK) => Done,
+                (Control|Bulk, Start, IN,    NAK) => Fail,
+                // CSPLIT->IN->DATA0/DATA1/NAK/NYET/STALL.
+                (Control|Bulk, Complete, SPLIT, IN) => Continue,
+                (Control|Bulk, Complete, IN,    DATA0|DATA1|NYET) => Done,
+                (Control|Bulk, Complete, IN,    NAK|STALL       ) => Fail,
+
+                // Valid split transactions for interrupt endpoints:
+
+                // SSPLIT->OUT->DATA0/1
+                (Interrupt, Start, SPLIT, OUT        ) => Continue,
+                (Interrupt, Start, OUT,   DATA0|DATA1) => Done,
+                // CSPLIT->OUT->ACK/NAK/NYET/STALL/ERR.
+                (Interrupt, Complete, SPLIT, OUT          ) => Continue,
+                (Interrupt, Complete, OUT,   ACK|NYET     ) => Done,
+                (Interrupt, Complete, OUT,   NAK|STALL|ERR) => Fail,
+                // SSPLIT->IN.
+                (Interrupt, Start, SPLIT, IN) => Done,
+                // CSPLIT->IN->DATA0/DATA1/MDATA/NAK/NYET/STALL/ERR.
+                (Interrupt, Complete, SPLIT, IN) => Continue,
+                (Interrupt, Complete, IN, DATA0|DATA1|MDATA|NYET) => Done,
+                (Interrupt, Complete, IN, NAK|STALL|ERR) => Fail,
+
+                // Valid split transactions for isochronous endpoints:
+
+                // SSPLIT->OUT->DATA0
+                (Isochronous, Start, SPLIT, OUT) => Continue,
+                (Isochronous, Start, OUT, DATA0) => Done,
+                // SSPLIT->IN.
+                (Isochronous, Start, SPLIT, IN) => Done,
+                // CSPLIT->IN->DATA0/MDATA/NYET/ERR.
+                (Isochronous, Complete, SPLIT, IN) => Continue,
+                (Isochronous, Complete, IN, DATA0|MDATA|NYET|ERR) => Done,
+
+                // Any other combination is invalid.
+                (..) => Invalid,
+            }
+        },
+    })
 }
 
 impl TransactionState {
-    pub fn status(&mut self, packet: &[u8])
-        -> Result<DecodeStatus, CaptureError>
-    {
-        let next = PID::from_packet(packet)?;
-        use PID::*;
-        use DecodeStatus::*;
-        Ok(match (self.first, self.last, next) {
-
-            // SETUP, IN, OUT and PING always start a new transaction.
-            (_, _, SETUP | IN | OUT | PING) => New,
-
-            // SOF when there is no existing transaction starts a new
-            // "transaction" representing an idle period on the bus.
-            (_, None, SOF) => New,
-            // Additional SOFs extend this "transaction", more may follow.
-            (_, Some(SOF), SOF) => Continue,
-
-            // A malformed packet is grouped with previous malformed packets.
-            (_, Some(Malformed), Malformed) => Continue,
-            // If preceded by any other packet, it starts a new transaction.
-            (_, _, Malformed) => New,
-
-            // SETUP must be followed by DATA0.
-            (_, Some(SETUP), DATA0) => {
-                // The packet must have the correct size.
-                match packet.len() {
-                    11 => {
-                        self.setup = Some(
-                            SetupFields::from_data_packet(packet));
-                        // Wait for ACK.
-                        Continue
-                    },
-                    _ => Invalid
-                }
-            }
-            // ACK then completes the transaction.
-            (Some(SETUP), Some(DATA0), ACK) => Done,
-
-            // IN may be followed by NAK or STALL, completing transaction.
-            (_, Some(IN), NAK | STALL) => Done,
-            // IN or OUT may be followed by DATA0 or DATA1, wait for status.
-            (_, Some(IN | OUT), DATA0 | DATA1) => {
-                if packet.len() >= 3 {
-                    let range = 1 .. (packet.len() - 2);
-                    self.payload = packet[range].to_vec();
-                    Continue
-                } else {
-                    Invalid
-                }
-            },
-            // An ACK or NYET then completes the transaction.
-            (Some(IN | OUT), Some(DATA0 | DATA1), ACK | NYET) => Done,
-            // OUT may also be completed by NAK or STALL.
-            (Some(OUT), Some(DATA0 | DATA1), NAK | STALL) => Done,
-
-            // PING may be followed by ACK, NAK or STALL.
-            (Some(PING), Some(PING), ACK | NAK | STALL) => Done,
-
-            // Any other case is not a valid part of a transaction.
-            _ => Invalid,
-        })
+    fn start_pid(&self) -> Result<PID, CaptureError> {
+        use TransactionStyle::*;
+        match self.style {
+            Simple(pid) | Split(.., Some(pid)) => Ok(pid),
+            _ => Err(IndexError(String::from(
+                "Transaction state has no token PID")))
+        }
     }
 
-    fn completed(&self) -> bool {
+    fn endpoint_id(&self) -> Result<EndpointId, CaptureError> {
+        self.endpoint_id.ok_or_else(|| IndexError(String::from(
+            "Transaction state has no endpoint ID")))
+    }
+
+    fn extract_payload(&mut self, packet: &[u8]) {
         use PID::*;
-        // A transaction is completed if it has 3 valid packets and is
-        // acknowledged with an ACK or NYET handshake, except for PING
-        // transactions which complete after 2 with an ACK.
-        match (self.first, self.count, self.last) {
-            (Some(PING), 2, Some(ACK)       ) => true,
-            (_         , 3, Some(ACK | NYET)) => true,
-            (..)                              => false
+        use TransactionStyle::*;
+        use usb::EndpointType::*;
+        use StartComplete::*;
+        match (&self.style, PID::from(packet[0])) {
+            (Simple(SETUP), DATA0) |
+            (Split(Start, Control, Some(SETUP)), DATA0) => {
+                self.setup = Some(SetupFields::from_data_packet(packet));
+            },
+            (_, DATA0 | DATA1) => {
+                let range = 1 .. (packet.len() - 2);
+                self.payload = Some(packet[range].to_vec());
+            }
+            (..) => {},
         }
+    }
+}
+
+impl EndpointData {
+    fn transfer_status(&mut self,
+                       capture: &mut Capture,
+                       transaction: &mut TransactionState,
+                       success: bool,
+                       complete: bool)
+        -> Result<TransferStatus, CaptureError>
+    {
+        use TransactionStyle::*;
+        let dev_data = capture.device_data_mut(&self.device_id)?;
+        let (ep_type, ep_max) = dev_data.endpoint_details(self.address);
+        let split_sc = match transaction.style {
+            Simple(..) => None,
+            Split(sc, ..) => Some(sc),
+        };
+        let next = transaction.start_pid()?;
+        let pending_payload = self.pending_payload.take();
+        let payload = transaction.payload.take().or(pending_payload);
+        let length = payload.as_ref().map_or(0, |vec| vec.len()) as u64;
+        let short = match (&payload, ep_max) {
+            (Some(payload), Some(max)) => payload.len() < max,
+            (..) => false,
+        };
+        use PID::*;
+        use EndpointType::{Normal, Framing};
+        use usb::EndpointType::*;
+        use Direction::*;
+        use TransferStatus::*;
+        use StartComplete::*;
+        Ok(match (ep_type, &self.active, next) {
+
+            // A SETUP transaction starts a new control transfer.
+            // Store the setup fields to interpret the request.
+            (Normal(Control), _, SETUP) => {
+                match split_sc {
+                    None | Some(Start) => {
+                        self.setup = transaction.setup;
+                        New
+                    },
+                    Some(Complete) => Continue,
+                }
+            },
+
+            (Normal(Control),
+             Some(TransferState {
+                last: Some(last), ..}), _) => match &self.setup
+            {
+                // No control transaction is valid unless setup was done.
+                None => Invalid,
+                // If setup was done then valid transactions depend on the
+                // contents of the setup data packet.
+                Some(fields) => {
+                    let with_data = fields.length != 0;
+                    let direction = fields.type_fields.direction();
+                    match (direction, with_data, last, next) {
+
+                        // If there is data to transfer, setup stage is
+                        // followed by IN/OUT at data stage in the direction
+                        // of the request. IN/OUT may then be repeated.
+                        (In,  true, SETUP, IN ) |
+                        (Out, true, SETUP, OUT) |
+                        (In,  true, IN,    IN ) |
+                        (Out, true, OUT,   OUT) => {
+                            if success {
+                                if (split_sc, next) == (Some(Complete), OUT) {
+                                    self.pending_payload = payload;
+                                } else if let Some(data) = payload {
+                                    self.payload.extend(data);
+                                }
+                                // Await status stage.
+                                Continue
+                            } else {
+                                // Retry data stage.
+                                Retry
+                            }
+                        },
+
+                        // If there is no data to transfer, setup stage is
+                        // followed by IN/OUT at status stage in the opposite
+                        // direction to the request. If there is data, then
+                        // the status stage follows the data stage.
+                        (In,  false, SETUP, OUT) |
+                        (Out, false, SETUP, IN ) |
+                        (In,  true,  IN,    OUT) |
+                        (Out, true,  OUT,   IN ) => {
+                            if success && complete {
+                                dev_data.decode_request(
+                                    fields, &self.payload)?;
+                                // Status stage complete.
+                                Done
+                            } else {
+                                // Retry status stage, or await completion.
+                                Retry
+                            }
+                        },
+
+                        // PING is valid at any time that OUT would be.
+                        (Out, true,  SETUP, PING) |
+                        (Out, true,  OUT,   PING) |
+                        (In,  false, SETUP, PING) |
+                        (In,  true,  IN,    PING) => Retry,
+
+                        // Any other sequence is invalid.
+                        (..) => Invalid
+                    }
+                }
+            },
+
+            // An IN or OUT transaction on a non-control endpoint,
+            // with no transfer in progress, starts a new transfer.
+            // This can be either an actual transfer, or a polling
+            // group used to collect NAKed transactions.
+            (_, None, IN | OUT) => {
+                let endpoint_id = transaction.endpoint_id()?;
+                let ep_traf = capture.endpoint_traffic(endpoint_id)?;
+                ep_traf.data_index.push(ep_traf.total_data)?;
+                if success {
+                    if split_sc == Some(Complete) && next == OUT {
+                        self.pending_payload = payload;
+                    } else {
+                        ep_traf.total_data += length;
+                    }
+                }
+                if complete {
+                    self.last_success = success;
+                    if success && short {
+                        // New transfer, ended immediately by a short packet.
+                        Single
+                    } else {
+                        // Either a new transfer or a new polling group.
+                        New
+                    }
+                } else {
+                    // Wait for split completion.
+                    New
+                }
+            },
+
+            // IN or OUT may then be repeated.
+            (_, Some(TransferState { first: IN,  ..}), IN) |
+            (_, Some(TransferState { first: OUT, ..}), OUT) => {
+                let endpoint_id = transaction.endpoint_id()?;
+                let ep_traf = capture.endpoint_traffic(endpoint_id)?;
+                ep_traf.data_index.push(ep_traf.total_data)?;
+                if success {
+                    if split_sc == Some(Complete) && next == OUT {
+                        self.pending_payload = payload;
+                    } else if complete {
+                        ep_traf.total_data += length;
+                    }
+                }
+                if complete {
+                    let success_changed = success != self.last_success;
+                    self.last_success = success;
+                    if success_changed {
+                        if success && short {
+                            // New transfer, ended immediately by a short packet.
+                            Single
+                        } else {
+                            // Either a new transfer or a new polling group.
+                            New
+                        }
+                    } else if success {
+                        // Continuing an ongoing transfer.
+                        if short {
+                            // A short packet ends the transfer.
+                            Done
+                        } else {
+                            // A full-length packet continues the transfer.
+                            Continue
+                        }
+                    } else {
+                        // Continuing a polling group.
+                        Retry
+                    }
+                } else {
+                    // Wait for split completion.
+                    Retry
+                }
+            },
+
+            // OUT may also be followed by PING.
+            (_, Some(TransferState { first: OUT, .. }), PING) => Retry,
+
+            // A SOF group starts a special transfer, unless
+            // one is already in progress.
+            (Framing, None, SOF) => New,
+
+            // Further SOF groups continue this transfer.
+            (Framing, _, SOF) => Continue,
+
+            // Any other case is not a valid part of a transfer.
+            _ => Invalid
+        })
     }
 }
 
@@ -173,7 +465,7 @@ pub struct Decoder {
     endpoint_data: VecMap<EndpointId, EndpointData>,
     last_endpoint_state: Vec<u8>,
     last_item_endpoint: Option<EndpointId>,
-    transaction_state: TransactionState,
+    transaction_state: Option<TransactionState>,
 }
 
 impl Default for Decoder {
@@ -184,7 +476,7 @@ impl Default for Decoder {
             endpoint_data: VecMap::new(),
             last_endpoint_state: Vec::new(),
             last_item_endpoint: None,
-            transaction_state: TransactionState::default(),
+            transaction_state: None,
         };
         let default_addr = DeviceAddr(0);
         let default_id = DeviceId::from(0);
@@ -217,6 +509,14 @@ impl Decoder {
         Ok(())
     }
 
+    pub fn finish(&mut self, capture: &mut Capture)
+        -> Result<(), CaptureError>
+    {
+        self.transaction_end(capture, false, false)?;
+        capture.finish();
+        Ok(())
+    }
+
     pub fn token_endpoint(&mut self, capture: &mut Capture, pid: PID, token: &TokenFields)
         -> Result<EndpointId, CaptureError>
     {
@@ -246,29 +546,54 @@ impl Decoder {
         })
     }
 
+    fn packet_endpoint(&mut self, capture: &mut Capture, packet: &[u8])
+        -> Result<EndpointId, CaptureError>
+    {
+        let pid = PID::from_packet(packet)?;
+        Ok(match PacketFields::from_packet(packet) {
+            PacketFields::SOF(_) => FRAMING_EP_ID,
+            PacketFields::Token(token) =>
+                self.token_endpoint(capture, pid, &token)?,
+            _ => INVALID_EP_ID,
+        })
+    }
+
     fn transaction_update(&mut self, capture: &mut Capture, packet_id: PacketId, packet: &[u8])
         -> Result<(), CaptureError>
     {
-        let pid = PID::from_packet(packet)?;
-        use DecodeStatus::*;
-        match self.transaction_state.status(packet)? {
-            Single => {
-                self.transaction_start(capture, packet_id, packet)?;
-                self.transaction_end(capture)?;
-            },
+        use TransactionStatus::*;
+        use TransactionStyle::*;
+        use StartComplete::*;
+        let status = transaction_status(&self.transaction_state, packet)?;
+        let success = status != Fail;
+        let complete = match &self.transaction_state {
+            None => false,
+            Some(TransactionState { style: Simple(..), .. }) => true,
+            Some(TransactionState { style: Split(Start, ..), .. }) => false,
+            Some(TransactionState { style: Split(Complete, ..), .. }) => true,
+        };
+        if status != Invalid {
+            if let Some(state) = &mut self.transaction_state {
+                state.extract_payload(packet);
+            }
+        }
+        match status {
             New => {
+                self.transaction_end(capture, false, false)?;
                 self.transaction_start(capture, packet_id, packet)?;
+                self.transfer_early_append(capture)?;
             },
-            Continue | Retry => {
-                self.transaction_append(pid);
+            Continue => {
+                self.transaction_append(capture, packet)?;
+                self.transfer_early_append(capture)?;
             },
-            Done => {
-                self.transaction_append(pid);
-                self.transaction_end(capture)?;
+            Done | Fail => {
+                self.transaction_append(capture, packet)?;
+                self.transaction_end(capture, success, complete)?;
             },
             Invalid => {
                 self.transaction_start(capture, packet_id, packet)?;
-                self.transaction_end(capture)?;
+                self.transaction_end(capture, false, false)?;
             },
         };
         Ok(())
@@ -277,36 +602,71 @@ impl Decoder {
     fn transaction_start(&mut self, capture: &mut Capture, packet_id: PacketId, packet: &[u8])
         -> Result<(), CaptureError>
     {
-        self.transaction_end(capture)?;
-        self.transaction_state = TransactionState::default();
+        use PID::*;
+        use TransactionStyle::*;
         let pid = PID::from_packet(packet)?;
-        let state = &mut self.transaction_state;
-        state.id = Some(capture.transaction_index.push(packet_id)?);
-        state.count = 1;
-        state.first = Some(pid);
-        state.last = state.first;
-        self.transaction_state.endpoint_id = Some(
-            match PacketFields::from_packet(packet) {
-                PacketFields::SOF(_) => FRAMING_EP_ID,
-                PacketFields::Token(token) =>
-                    self.token_endpoint(capture, pid, &token)?,
-                _ => INVALID_EP_ID,
-            }
-        );
+        let transaction_id = capture.transaction_index.push(packet_id)?;
+        let (style, endpoint_id) = if pid == SPLIT {
+            let split = SplitFields::from_packet(packet);
+            (Split(split.sc(), split.endpoint_type(), None), None)
+        } else {
+            (Simple(pid), Some(self.packet_endpoint(capture, packet)?))
+        };
+        let mut state = TransactionState {
+            style,
+            id: transaction_id,
+            last: pid,
+            endpoint_id,
+            ep_transaction_id: None,
+            setup: None,
+            payload: None,
+        };
+        // Some packets start a new transfer immediately.
+        self.transfer_early_start(capture, &mut state, pid)?;
+        self.transaction_state = Some(state);
         Ok(())
     }
 
-    fn transaction_append(&mut self, pid: PID) {
-        let state = &mut self.transaction_state;
-        state.count += 1;
-        state.last = Some(pid);
-    }
-
-    fn transaction_end(&mut self, capture: &mut Capture)
+    fn transaction_append(&mut self, capture: &mut Capture, packet: &[u8])
         -> Result<(), CaptureError>
     {
-        if let Some(transaction_id) = self.transaction_state.id.take() {
-            self.transfer_update(capture, transaction_id)?;
+        use TransactionStyle::*;
+        let pid = PID::from_packet(packet)?;
+        let update = match &self.transaction_state {
+            Some(TransactionState { style: Split(sc, ep_type, None), ..}) => {
+                let (sc, ep_type) = (*sc, *ep_type);
+                let endpoint_id = self.packet_endpoint(capture, packet)?;
+                let ep_data = self.endpoint_data(endpoint_id)?;
+                let ep_addr = ep_data.address;
+                let dev_data = capture.device_data_mut(&ep_data.device_id)?;
+                dev_data.set_endpoint_type(ep_addr, ep_type);
+                Some((sc, ep_type, endpoint_id))
+            },
+            _ => None,
+        };
+        if let Some(state) = &mut self.transaction_state {
+            state.last = pid;
+            if let Some((sc, ep_type, endpoint_id)) = update {
+                state.style = Split(sc, ep_type, Some(pid));
+                state.endpoint_id = Some(endpoint_id);
+            }
+            Ok(())
+        } else {
+            Err(IndexError(String::from(
+                "No current transaction to append to")))
+        }
+    }
+
+    fn transaction_end(&mut self,
+                       capture: &mut Capture,
+                       success: bool,
+                       complete: bool)
+        -> Result<(), CaptureError>
+    {
+        if let Some(mut state) = self.transaction_state.take() {
+            if state.endpoint_id.is_some() {
+                self.transfer_update(capture, &mut state, success, complete)?;
+            }
         }
         Ok(())
     }
@@ -348,303 +708,129 @@ impl Decoder {
         Ok(endpoint_id)
     }
 
-    fn current_endpoint_id(&self) -> Result<EndpointId, CaptureError> {
-        self.transaction_state.endpoint_id.ok_or_else(||
-            IndexError(String::from(
-                "Transaction state has no endpoint ID set")))
-    }
-
-    fn current_endpoint_data(&self) -> Result<&EndpointData, CaptureError> {
-        let endpoint_id = self.current_endpoint_id()?;
+    fn endpoint_data(&self, endpoint_id: EndpointId)
+        -> Result<&EndpointData, CaptureError> {
         self.endpoint_data.get(endpoint_id).ok_or_else(||
             IndexError(format!(
                 "Decoder has no data for current endpoint ID {endpoint_id}")))
     }
 
-    fn current_endpoint_data_mut(&mut self)
+    fn endpoint_data_mut(&mut self, endpoint_id: EndpointId)
         -> Result<&mut EndpointData, CaptureError>
     {
-        let endpoint_id = self.current_endpoint_id()?;
         self.endpoint_data.get_mut(endpoint_id).ok_or_else(||
             IndexError(format!(
                 "Decoder has no data for current endpoint ID {endpoint_id}")))
     }
 
-    fn current_device_data<'a>(&self, capture: &'a mut Capture)
-        -> Result<&'a DeviceData, CaptureError>
-    {
-        let ep_data = self.current_endpoint_data()?;
-        capture.device_data(&ep_data.device_id)
-    }
-
-    fn current_device_data_mut<'a>(&mut self, capture: &'a mut Capture)
-        -> Result<&'a mut DeviceData, CaptureError>
-    {
-        let ep_data = self.current_endpoint_data()?;
-        let device_id = ep_data.device_id;
-        capture.device_data_mut(&device_id)
-    }
-
-    fn decode_request(&mut self, capture: &mut Capture, fields: SetupFields)
+    fn transfer_early_start(&mut self,
+                            capture: &mut Capture,
+                            transaction: &mut TransactionState,
+                            start: PID)
         -> Result<(), CaptureError>
     {
-        let req_type = fields.type_fields.request_type();
-        let request = StandardRequest::from(fields.request);
-        match (req_type, request) {
-            (RequestType::Standard, StandardRequest::GetDescriptor)
-                => self.decode_descriptor_read(capture, &fields)?,
-            (RequestType::Standard, StandardRequest::SetConfiguration)
-                => self.decode_configuration_set(capture, &fields)?,
-            _ => ()
-        }
-        Ok(())
-    }
-
-    fn decode_descriptor_read(&mut self, capture: &mut Capture, fields: &SetupFields)
-        -> Result<(), CaptureError>
-    {
-        let recipient = fields.type_fields.recipient();
-        let desc_type = DescriptorType::from((fields.value >> 8) as u8);
-        let payload = &self.current_endpoint_data()?.payload;
-        let length = payload.len();
-        match (recipient, desc_type) {
-            (Recipient::Device, DescriptorType::Device) => {
-                if length == size_of::<DeviceDescriptor>() {
-                    let descriptor = DeviceDescriptor::from_bytes(payload);
-                    let dev_data = self.current_device_data_mut(capture)?;
-                    dev_data.device_descriptor = Some(descriptor);
-                    dev_data.version += 1;
-                }
-            },
-            (Recipient::Device, DescriptorType::Configuration) => {
-                let size = size_of::<ConfigDescriptor>();
-                if length >= size {
-                    let configuration = Configuration::from_bytes(payload);
-                    let dev_data = self.current_device_data_mut(capture)?;
-                    if let Some(config) = configuration {
-                        let configurations = &mut dev_data.configurations;
-                        let config_num = ConfigNum::from(
-                            config.descriptor.config_value);
-                        configurations.set(config_num, config);
-                        dev_data.update_endpoint_details();
-                        dev_data.version += 1;
-                    }
-                }
-            },
-            (Recipient::Device, DescriptorType::String) => {
-                if length >= 2 {
-                    let string = UTF16ByteVec(payload[2..length].to_vec());
-                    let dev_data = self.current_device_data_mut(capture)?;
-                    let strings = &mut dev_data.strings;
-                    let string_id =
-                        StringId::from((fields.value & 0xFF) as u8);
-                    strings.set(string_id, string);
-                    dev_data.version += 1;
-                }
-            },
-            _ => {}
-        };
-        Ok(())
-    }
-
-    fn decode_configuration_set(&mut self, capture: &mut Capture, fields: &SetupFields)
-        -> Result<(), CaptureError>
-    {
-        let dev_data = self.current_device_data_mut(capture)?;
-        dev_data.config_number = Some(ConfigNum(fields.value.try_into()?));
-        dev_data.update_endpoint_details();
-        dev_data.version += 1;
-        Ok(())
-    }
-
-    fn transfer_status(&mut self, capture: &mut Capture)
-        -> Result<DecodeStatus, CaptureError>
-    {
-        let next = self.transaction_state.first.ok_or_else(||
-            IndexError(String::from(
-                "Transaction state has no first PID set")))?;
-        let endpoint_id = self.current_endpoint_id()?;
-        let ep_data = self.current_endpoint_data()?;
-        let dev_data = self.current_device_data(capture)?;
-        let (ep_type, ep_max) = dev_data.endpoint_details(ep_data.address);
-        let success = self.transaction_state.completed();
-        let length = self.transaction_state.payload.len() as u64;
-        let short = match ep_max {
-            Some(max) => length < max as u64,
-            None      => false
-        };
         use PID::*;
-        use EndpointType::{Normal, Framing};
-        use usb::EndpointType::*;
-        use Direction::*;
-        use DecodeStatus::*;
-        Ok(match (ep_type, ep_data.last, next) {
-
-            // A SETUP transaction starts a new control transfer.
-            // Store the setup fields to interpret the request.
-            (Normal(Control), _, SETUP) => {
-                let setup = self.transaction_state.setup.take();
-                let ep_data = self.current_endpoint_data_mut()?;
-                ep_data.setup = setup;
-                New
-            },
-
-            (Normal(Control), _, _) => match &ep_data.setup {
-                // No control transaction is valid unless setup was done.
-                None => Invalid,
-                // If setup was done then valid transactions depend on the
-                // contents of the setup data packet.
-                Some(fields) => {
-                    let with_data = fields.length != 0;
-                    let direction = fields.type_fields.direction();
-                    match (direction, with_data, ep_data.last, next) {
-
-                        // If there is data to transfer, setup stage is
-                        // followed by IN/OUT at data stage in the direction
-                        // of the request. IN/OUT may then be repeated.
-                        (In,  true, Some(SETUP), IN ) |
-                        (Out, true, Some(SETUP), OUT) |
-                        (In,  true, Some(IN),    IN ) |
-                        (Out, true, Some(OUT),   OUT) => {
-                            if success {
-                                let payload =
-                                    self.transaction_state.payload.clone();
-                                let ep_data = self.current_endpoint_data_mut()?;
-                                ep_data.payload.extend(payload);
-                                // Await status stage.
-                                Continue
-                            } else {
-                                // Retry data stage.
-                                Retry
-                            }
-                        },
-
-                        // If there is no data to transfer, setup stage is
-                        // followed by IN/OUT at status stage in the opposite
-                        // direction to the request. If there is data, then
-                        // the status stage follows the data stage.
-                        (In,  false, Some(SETUP), OUT) |
-                        (Out, false, Some(SETUP), IN ) |
-                        (In,  true,  Some(IN),    OUT) |
-                        (Out, true,  Some(OUT),   IN ) => {
-                            if success {
-                                let fields_copy = *fields;
-                                self.decode_request(capture, fields_copy)?;
-                                // Status stage complete.
-                                Done
-                            } else {
-                                // Retry status stage.
-                                Retry
-                            }
-                        },
-
-                        // PING is valid at any time that OUT would be.
-                        (Out, true,  Some(SETUP), PING) |
-                        (Out, true,  Some(OUT),   PING) |
-                        (In,  false, Some(SETUP), PING) |
-                        (In,  true,  Some(IN),    PING) => Retry,
-
-                        // Any other sequence is invalid.
-                        (..) => Invalid
-                    }
-                }
-            },
-
-            // An IN or OUT transaction on a non-control endpoint,
-            // with no transfer in progress, starts a new transfer.
-            // This can be either an actual transfer, or a polling
-            // group used to collect NAKed transactions.
-            (_, None, IN | OUT) => {
-                let ep_traf = capture.endpoint_traffic(endpoint_id)?;
-                ep_traf.data_index.push(ep_traf.total_data)?;
-                if success {
-                    ep_traf.total_data += length;
-                }
-                let ep_data = self.current_endpoint_data_mut()?;
-                ep_data.last_success = success;
-                if success && short {
-                    // New transfer, ended immediately by a short packet.
-                    Single
+        let start_early = match (start, transaction.endpoint_id) {
+            // SETUP always starts a new transfer.
+            (SETUP, Some(endpoint_id)) => Some(endpoint_id),
+            // Other PIDs always start a new transfer if there
+            // is no existing one on their endpoint.
+            (IN | OUT | SOF | Malformed, Some(endpoint_id)) => {
+                let ep_data = self.endpoint_data(endpoint_id)?;
+                if ep_data.active.is_none() {
+                    Some(endpoint_id)
                 } else {
-                    // Either a new transfer or a new polling group.
-                    New
+                    None
                 }
-            },
+            }
+            // For all other cases, wait for transaction progress.
+            _ => None,
+        };
 
-            // IN or OUT may then be repeated.
-            (_, Some(IN),  IN ) |
-            (_, Some(OUT), OUT) => {
-                let success_changed = success != ep_data.last_success;
-                let ep_traf = capture.endpoint_traffic(endpoint_id)?;
-                ep_traf.data_index.push(ep_traf.total_data)?;
-                if success {
-                    ep_traf.total_data += length;
-                }
-                if success_changed {
-                    let ep_data = self.current_endpoint_data_mut()?;
-                    ep_data.last_success = success;
-                    if success && short {
-                        // New transfer, ended immediately by a short packet.
-                        Single
-                    } else {
-                        // Either a new transfer or a new polling group.
-                        New
-                    }
-                } else if success {
-                    // Continuing an ongoing transfer.
-                    if short {
-                        // A short packet ends the transfer.
-                        Done
-                    } else {
-                        // A full-length packet continues the transfer.
-                        Continue
-                    }
-                } else {
-                    // Continuing a polling group.
-                    Retry
-                }
-            },
+        if let Some(endpoint_id) = start_early {
+            let ep_transfer_id =
+                self.add_transfer(capture, endpoint_id, transaction)?;
+            let ep_data = self.endpoint_data_mut(endpoint_id)?;
+            ep_data.early_start = Some(ep_transfer_id);
+        }
 
-            // OUT may be followed by PING.
-            (_, Some(OUT), PING) => Retry,
-
-            // A SOF group starts a special transfer, unless
-            // one is already in progress.
-            (Framing, None, SOF) => New,
-
-            // Further SOF groups continue this transfer.
-            (Framing, Some(SOF), SOF) => Continue,
-
-            // Any other case is not a valid part of a transfer.
-            _ => Invalid
-        })
+        Ok(())
     }
 
-    fn transfer_update(&mut self, capture: &mut Capture, transaction_id: TransactionId)
+    fn transfer_early_append(&mut self, capture: &mut Capture)
         -> Result<(), CaptureError>
     {
-        use DecodeStatus::*;
-        match self.transfer_status(capture)? {
+        use PID::*;
+        use TransactionStyle::*;
+        // Decide whether to index this transaction now.
+        // If this transaction might change the transfer sequence
+        // and we can't tell yet, we can't index it yet.
+        let to_index = if let
+            Some(TransactionState {
+                 style: Simple(_pid) | Split(.., Some(_pid)),
+                 id: transaction_id,
+                 endpoint_id: Some(endpoint_id),
+                 ep_transaction_id: None,
+                 ..
+            }) = &self.transaction_state
+        {
+            let ep_data = self.endpoint_data(*endpoint_id)?;
+            match ep_data.active {
+                // IN and OUT transfers may start and end depending on
+                // transaction success and whether a packet is short.
+                Some(TransferState { first: IN | OUT, .. }) => None,
+                // In all other transfer states, it should be safe to index
+                // the current transaction immediately.
+                _ => Some((*endpoint_id, *transaction_id))
+            }
+        } else {
+            // We can't index this transaction yet as we don't know
+            // what endpoint it needs to be attached to.
+            None
+        };
+        if let (Some(state), Some((endpoint_id, transaction_id))) =
+            (&mut self.transaction_state, to_index)
+        {
+            let ep_traf = capture.endpoint_traffic(endpoint_id)?;
+            let ep_transaction_id =
+                ep_traf.transaction_ids.push(transaction_id)?;
+            state.ep_transaction_id = Some(ep_transaction_id);
+        };
+        Ok(())
+    }
+
+    fn transfer_update(&mut self,
+                       capture: &mut Capture,
+                       transaction: &mut TransactionState,
+                       success: bool,
+                       complete: bool)
+        -> Result<(), CaptureError>
+    {
+        use TransferStatus::*;
+        let endpoint_id = transaction.endpoint_id()?;
+        let ep_data = self.endpoint_data_mut(endpoint_id)?;
+        match ep_data.transfer_status(capture, transaction, success, complete)?
+        {
             Single => {
-                self.transfer_start(capture, transaction_id, true)?;
-                self.transfer_end(capture)?;
+                self.transfer_start(capture, transaction, true)?;
+                self.transfer_end(capture, transaction)?;
             },
             New => {
-                self.transfer_start(capture, transaction_id, true)?;
+                self.transfer_start(capture, transaction, true)?;
             },
             Continue => {
-                self.transfer_append(capture, transaction_id, true)?;
+                self.transfer_append(capture, transaction, true)?;
             },
             Retry => {
-                self.transfer_append(capture, transaction_id, false)?;
+                self.transfer_append(capture, transaction, false)?;
             },
             Done => {
-                self.transfer_append(capture, transaction_id, true)?;
-                self.transfer_end(capture)?;
+                self.transfer_append(capture, transaction, true)?;
+                self.transfer_end(capture, transaction)?;
             },
             Invalid => {
-                self.transfer_start(capture, transaction_id, false)?;
-                self.transfer_end(capture)?;
+                self.transfer_start(capture, transaction, false)?;
+                self.transfer_end(capture, transaction)?;
             }
         }
         Ok(())
@@ -652,84 +838,111 @@ impl Decoder {
 
     fn transfer_start(&mut self,
                       capture: &mut Capture,
-                      transaction_id: TransactionId,
-                      success: bool)
+                      transaction: &mut TransactionState,
+                      done: bool)
         -> Result<(), CaptureError>
     {
-        let endpoint_id = self.current_endpoint_id()?;
-        let ep_data = self.current_endpoint_data()?;
-        if ep_data.transaction_count > 0 {
-            self.add_transfer_entry(capture, endpoint_id, false)?;
-            let ep_data = self.current_endpoint_data_mut()?;
-            ep_data.ended = ep_data.active.take();
-        }
-        let transaction_type = self.transaction_state.first;
-        let ep_traf = capture.endpoint_traffic(endpoint_id)?;
-        let ep_transaction_id = ep_traf.transaction_ids.push(transaction_id)?;
-        let ep_transfer_id = ep_traf.transfer_index.push(ep_transaction_id)?;
-        let ep_data = self.current_endpoint_data_mut()?;
-        ep_data.active = Some(ep_transfer_id);
-        ep_data.transaction_count = 1;
-        if success {
-            ep_data.last = transaction_type;
-        } else {
-            ep_data.last = None
-        }
+        let endpoint_id = transaction.endpoint_id()?;
+        let ep_data = self.endpoint_data_mut(endpoint_id)?;
+        let ep_transfer_id =
+            if let Some(ep_transfer_id) = ep_data.early_start.take() {
+                ep_transfer_id
+            } else {
+                self.add_transfer(capture, endpoint_id, transaction)?
+            };
+        let ep_data = self.endpoint_data_mut(endpoint_id)?;
+        let transaction_type = transaction.start_pid()?;
+        ep_data.active = Some(
+            TransferState {
+                id: ep_transfer_id,
+                first: transaction_type,
+                last: if done { Some(transaction_type) } else { None },
+            }
+        );
         ep_data.payload.clear();
-        let transfer_start_id = self.add_transfer_entry(capture, endpoint_id, true)?;
-        self.add_item(capture, endpoint_id, transfer_start_id)?;
         Ok(())
     }
 
     fn transfer_append(&mut self,
                        capture: &mut Capture,
-                       transaction_id: TransactionId,
-                       success: bool)
+                       transaction: &mut TransactionState,
+                       done: bool)
         -> Result<(), CaptureError>
     {
-        let transaction_type = self.transaction_state.first;
-        let endpoint_id = self.current_endpoint_id()?;
-        let ep_traf = capture.endpoint_traffic(endpoint_id)?;
-        ep_traf.transaction_ids.push(transaction_id)?;
-        let ep_data = self.current_endpoint_data_mut()?;
-        ep_data.transaction_count += 1;
-        if success {
-            ep_data.last = transaction_type;
+        let endpoint_id = transaction.endpoint_id()?;
+        let ep_data = self.endpoint_data_mut(endpoint_id)?;
+        if let Some(transfer) = &mut ep_data.active {
+            let ep_traf = capture.endpoint_traffic(endpoint_id)?;
+            if transaction.ep_transaction_id.is_none() {
+                let ep_transaction_id =
+                    ep_traf.transaction_ids.push(transaction.id)?;
+                transaction.ep_transaction_id = Some(ep_transaction_id);
+            }
+            if done {
+                transfer.last = Some(transaction.start_pid()?);
+            }
+        } else {
+            self.transfer_start(capture, transaction, done)?;
         }
         Ok(())
     }
 
-    fn transfer_end(&mut self, capture: &mut Capture)
+    fn transfer_end(&mut self,
+                    capture: &mut Capture,
+                    transaction: &TransactionState)
         -> Result<(), CaptureError>
     {
-        let endpoint_id = self.current_endpoint_id()?;
-        let ep_data = self.current_endpoint_data()?;
-        if ep_data.transaction_count > 0 {
+        let endpoint_id = transaction.endpoint_id()?;
+        let ep_data = self.endpoint_data_mut(endpoint_id)?;
+        ep_data.payload.clear();
+        if let Some(transfer) = ep_data.active.take() {
+            let ep_transfer_id = transfer.id;
+            ep_data.ended = Some(ep_transfer_id);
             let transfer_end_id =
-                self.add_transfer_entry(capture, endpoint_id, false)?;
+                self.add_transfer_entry(capture, endpoint_id,
+                                        ep_transfer_id, false)?;
             if self.last_item_endpoint != Some(endpoint_id) {
                 self.add_item(capture, endpoint_id, transfer_end_id)?;
             }
-            let ep_data = self.current_endpoint_data_mut()?;
-            ep_data.ended = ep_data.active.take();
         }
-        let ep_data = self.current_endpoint_data_mut()?;
-        ep_data.transaction_count = 0;
-        ep_data.last = None;
-        ep_data.payload.clear();
         Ok(())
+    }
+
+    fn add_transfer(&mut self,
+                    capture: &mut Capture,
+                    endpoint_id: EndpointId,
+                    transaction: &mut TransactionState)
+        -> Result<EndpointTransferId, CaptureError>
+    {
+        let ep_data = self.endpoint_data_mut(endpoint_id)?;
+        if let Some(transfer) = ep_data.active.take() {
+            ep_data.ended = Some(transfer.id);
+            self.add_transfer_entry(capture, endpoint_id, transfer.id, false)?;
+        }
+        let ep_traf = capture.endpoint_traffic(endpoint_id)?;
+        let ep_transaction_id =
+            if let Some(ep_transaction_id) = transaction.ep_transaction_id {
+                ep_transaction_id
+            } else {
+                let ep_transaction_id =
+                    ep_traf.transaction_ids.push(transaction.id)?;
+                transaction.ep_transaction_id = Some(ep_transaction_id);
+                ep_transaction_id
+            };
+        let ep_transfer_id = ep_traf.transfer_index.push(ep_transaction_id)?;
+        let transfer_start_id = self.add_transfer_entry(capture, endpoint_id,
+                                                        ep_transfer_id, true)?;
+        self.add_item(capture, endpoint_id, transfer_start_id)?;
+        Ok(ep_transfer_id)
     }
 
     fn add_transfer_entry(&mut self,
                           capture: &mut Capture,
                           endpoint_id: EndpointId,
+                          ep_transfer_id: EndpointTransferId,
                           start: bool)
         -> Result<TransferId, CaptureError>
     {
-        let ep_data = self.current_endpoint_data()?;
-        let ep_transfer_id = ep_data.active.ok_or_else(||
-            IndexError(format!(
-                "No active transfer on endpoint {endpoint_id}")))?;
         self.add_endpoint_state(capture, endpoint_id, start)?;
         let mut entry = TransferIndexEntry::default();
         entry.set_endpoint_id(endpoint_id);
