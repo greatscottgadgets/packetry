@@ -69,6 +69,11 @@ where Value: Pod + Default
         self.stream_writer.len()
     }
 
+    /// Number of items in one block of the stream.
+    pub const fn block_length(&self) -> usize {
+        StreamReader::<S>::block_size() / size_of::<Value>()
+    }
+
     /// Add a single item to the end of the stream.
     ///
     /// Returns the position of the added item.

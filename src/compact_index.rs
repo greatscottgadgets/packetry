@@ -127,6 +127,10 @@ where Position: Copy + From<u64> + Into<u64>,
             Some(current_base_value) => {
                 let delta = value - current_base_value;
                 let delta_width = max(byte_width(delta), MIN_WIDTH);
+                let block_length = self.data_writer.block_length();
+                let data_length = self.data_writer.size() as usize;
+                let bytes_in_block = data_length % block_length;
+                let space_in_block = block_length - bytes_in_block;
                 match self.current_delta_width {
                     None => {
                         let delta_bytes = delta.to_le_bytes();
@@ -136,6 +140,11 @@ where Position: Copy + From<u64> + Into<u64>,
                         self.current_delta_width = Some(delta_width);
                     },
                     Some(current_width) if delta_width > current_width => {
+                        self.start_segment(value)?;
+                    },
+                    Some(current_width) if current_width > space_in_block => {
+                        self.data_writer.append(&vec![0; space_in_block])?;
+                        self.data_offset += space_in_block as u64;
                         self.start_segment(value)?;
                     },
                     Some(current_width) => {
