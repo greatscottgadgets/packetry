@@ -347,7 +347,7 @@ where
             .target_range(segment_id, self.data_reader.len())?;
         let mut num_deltas = (byte_range.end - byte_range.start) / width as u64;
         let mut delta_range = delta_start..(delta_start + num_deltas);
-        // Limit the range to fetch if possible.
+        // Limit the range to access if possible.
         if range.start > delta_range.start {
             let skip = range.start - delta_range.start;
             byte_range.start += skip * width as u64;
@@ -361,7 +361,7 @@ where
             num_deltas -= skip;
         }
         // Fetch all the delta bytes needed.
-        let all_delta_bytes = self.data_reader.get_range(&byte_range)?;
+        let all_delta_bytes = self.data_reader.access(&byte_range)?;
         // Reconstruct deltas and values.
         let mut values = Vec::with_capacity(num_deltas as usize);
         let mut delta_bytes = [0; 8];
