@@ -1,4 +1,5 @@
 use std::cmp::max;
+use std::fmt::Debug;
 use std::iter::once;
 use std::marker::PhantomData;
 use std::ops::{Add, AddAssign, Range, Sub, SubAssign};
@@ -176,7 +177,8 @@ impl<Position, Value> CompactReader<Position, Value>
 where
     Position: Copy + From<u64> + Into<u64> + Ord
         + Add<u64, Output=Position> + AddAssign<u64>
-        + Sub<u64, Output=Position> + SubAssign<u64> + Sub<Output=u64>,
+        + Sub<u64, Output=Position> + SubAssign<u64> + Sub<Output=u64>
+        + Debug,
     Value: Copy + From<u64> + Into<u64> + Ord
         + Add<u64, Output=Value>
         + Sub<Output=u64> + SubAssign<u64>
@@ -197,6 +199,13 @@ where
 
     /// Get a single value from the index, by position.
     pub fn get(&mut self, position: Position) -> Result<Value, StreamError> {
+        // Check position is valid.
+        let length = self.len();
+        if position.into() >= length {
+            return Err(StreamError::ReadPastEnd(format!(
+                "requested position {:?} but index length is {}",
+                position, length)))
+        }
         // Find the segment required.
         let segment_id = self.segment_start_reader.bisect_right(&position)? - 1;
         let segment_start = self.segment_start_reader.get(segment_id)?;
@@ -224,6 +233,13 @@ where
     pub fn get_range(&mut self, range: &Range<Position>)
         -> Result<Vec<Value>, StreamError>
     {
+        // Check range is valid.
+        let length = self.len();
+        if range.end.into() > length {
+            return Err(StreamError::ReadPastEnd(format!(
+                "requested range {:?} but index length is {}",
+                range, length)))
+        }
         // Allocate space for the result.
         let total_count: usize = (range.end - range.start).try_into().unwrap();
         let mut values = Vec::with_capacity(total_count);
