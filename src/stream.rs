@@ -88,6 +88,9 @@ pub enum StreamError {
     /// Attempted to read past the end of the stream.
     #[error("attemped to read past end of stream: {0}")]
     ReadPastEnd(String),
+    /// Block size is not a multiple of the system page size.
+    #[error("block size {0:x} is not a multiple of the system page size {1:x}")]
+    PageSize(usize, usize),
 }
 
 // Number of most recent file mappings retained by each reader.
@@ -99,7 +102,13 @@ type StreamPair<const S: usize> = (StreamWriter<S>, StreamReader<S>);
 ///
 /// Returns a unique writer and a cloneable reader.
 ///
-pub fn stream<const S: usize>() -> Result<StreamPair<S>, StreamError> {
+pub fn stream<const BLOCK_SIZE: usize>()
+    -> Result<StreamPair<BLOCK_SIZE>, StreamError>
+{
+    let page_size = page_size::get();
+    if BLOCK_SIZE < page_size {
+        return Err(StreamError::PageSize(BLOCK_SIZE, page_size))
+    }
     let buffer = Arc::new(Buffer::new(0)?);
     let shared = Arc::new(Shared {
         length: AtomicU64::from(0),
