@@ -48,6 +48,7 @@ enum TransferStatus {
 enum TransactionStatus {
     New,
     Continue,
+    Retry,
     Done,
     Fail,
     Invalid
@@ -157,10 +158,12 @@ fn transaction_status(state: &Option<TransactionState>, packet: &[u8])
                 (Bulk|Control, Start, DATA0|DATA1, NAK) => Fail,
                 // CSPLIT->SETUP/OUT->ACK/NAK/NYET/STALL.
                 (Bulk,    Complete, SPLIT,     OUT      ) => Continue,
-                (Bulk,    Complete, SETUP,     ACK|NYET ) => Done,
+                (Bulk,    Complete, SETUP,     ACK      ) => Done,
+                (Bulk,    Complete, SETUP,     NYET     ) => Retry,
                 (Bulk,    Complete, OUT,       NAK|STALL) => Fail,
                 (Control, Complete, SPLIT,     SETUP|OUT) => Continue,
-                (Control, Complete, SETUP|OUT, ACK|NYET ) => Done,
+                (Control, Complete, SETUP|OUT, ACK      ) => Done,
+                (Control, Complete, SETUP|OUT, NYET     ) => Retry,
                 (Control, Complete, SETUP|OUT, NAK|STALL) => Fail,
                 // SSPLIT->IN->ACK/NAK.
                 (Control|Bulk, Start, SPLIT, IN ) => Continue,
@@ -168,8 +171,9 @@ fn transaction_status(state: &Option<TransactionState>, packet: &[u8])
                 (Control|Bulk, Start, IN,    NAK) => Fail,
                 // CSPLIT->IN->DATA0/DATA1/NAK/NYET/STALL.
                 (Control|Bulk, Complete, SPLIT, IN) => Continue,
-                (Control|Bulk, Complete, IN,    DATA0|DATA1|NYET) => Done,
-                (Control|Bulk, Complete, IN,    NAK|STALL       ) => Fail,
+                (Control|Bulk, Complete, IN,    DATA0|DATA1) => Done,
+                (Control|Bulk, Complete, IN,    NYET       ) => Retry,
+                (Control|Bulk, Complete, IN,    NAK|STALL  ) => Fail,
 
                 // Valid split transactions for interrupt endpoints:
 
@@ -178,14 +182,16 @@ fn transaction_status(state: &Option<TransactionState>, packet: &[u8])
                 (Interrupt, Start, OUT,   DATA0|DATA1) => Done,
                 // CSPLIT->OUT->ACK/NAK/NYET/STALL/ERR.
                 (Interrupt, Complete, SPLIT, OUT          ) => Continue,
-                (Interrupt, Complete, OUT,   ACK|NYET     ) => Done,
+                (Interrupt, Complete, OUT,   ACK          ) => Done,
+                (Interrupt, Complete, OUT,   NYET         ) => Retry,
                 (Interrupt, Complete, OUT,   NAK|STALL|ERR) => Fail,
                 // SSPLIT->IN.
                 (Interrupt, Start, SPLIT, IN) => Done,
                 // CSPLIT->IN->DATA0/DATA1/MDATA/NAK/NYET/STALL/ERR.
                 (Interrupt, Complete, SPLIT, IN) => Continue,
-                (Interrupt, Complete, IN, DATA0|DATA1|MDATA|NYET) => Done,
-                (Interrupt, Complete, IN, NAK|STALL|ERR) => Fail,
+                (Interrupt, Complete, IN, DATA0|DATA1|MDATA) => Done,
+                (Interrupt, Complete, IN, NYET             ) => Retry,
+                (Interrupt, Complete, IN, NAK|STALL|ERR    ) => Fail,
 
                 // Valid split transactions for isochronous endpoints:
 
@@ -196,7 +202,9 @@ fn transaction_status(state: &Option<TransactionState>, packet: &[u8])
                 (Isochronous, Start, SPLIT, IN) => Done,
                 // CSPLIT->IN->DATA0/MDATA/NYET/ERR.
                 (Isochronous, Complete, SPLIT, IN) => Continue,
-                (Isochronous, Complete, IN, DATA0|MDATA|NYET|ERR) => Done,
+                (Isochronous, Complete, IN, DATA0|MDATA) => Done,
+                (Isochronous, Complete, IN, NYET       ) => Retry,
+                (Isochronous, Complete, IN, ERR        ) => Fail,
 
                 // Any other combination is invalid.
                 (..) => Invalid,
@@ -570,7 +578,8 @@ impl Decoder {
             None => false,
             Some(TransactionState { style: Simple(..), .. }) => true,
             Some(TransactionState { style: Split(Start, ..), .. }) => false,
-            Some(TransactionState { style: Split(Complete, ..), .. }) => true,
+            Some(TransactionState { style: Split(Complete, ..), .. }) =>
+                status != Retry,
         };
         if status != Invalid {
             if let Some(state) = &mut self.transaction_state {
@@ -587,7 +596,7 @@ impl Decoder {
                 self.transaction_append(capture, packet)?;
                 self.transfer_early_append(capture)?;
             },
-            Done | Fail => {
+            Done | Retry | Fail => {
                 self.transaction_append(capture, packet)?;
                 self.transaction_end(capture, success, complete)?;
             },
