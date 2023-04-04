@@ -1,3 +1,5 @@
+use std::cmp::min;
+use std::fmt::Debug;
 use std::ops::Range;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64};
 use std::sync::atomic::Ordering::{Acquire, Release};
@@ -132,7 +134,8 @@ pub struct EndpointWriter {
     pub shared: Arc<EndpointShared>,
     pub transaction_ids: CompactWriter<EndpointTransactionId, TransactionId>,
     pub transfer_index: CompactWriter<EndpointTransferId, EndpointTransactionId>,
-    pub data_index: CompactWriter<EndpointTransactionId, EndpointByteCount>,
+    pub data_transactions: CompactWriter<EndpointDataEvent, EndpointTransactionId>,
+    pub data_byte_counts: CompactWriter<EndpointDataEvent, EndpointByteCount>,
     pub end_index: CompactWriter<EndpointTransferId, TrafficItemId>,
 }
 
@@ -142,7 +145,8 @@ pub struct EndpointReader {
     pub shared: Arc<EndpointShared>,
     pub transaction_ids: CompactReader<EndpointTransactionId, TransactionId>,
     pub transfer_index: CompactReader<EndpointTransferId, EndpointTransactionId>,
-    pub data_index: CompactReader<EndpointTransactionId, EndpointByteCount>,
+    pub data_transactions: CompactReader<EndpointDataEvent, EndpointTransactionId>,
+    pub data_byte_counts: CompactReader<EndpointDataEvent, EndpointByteCount>,
     pub end_index: CompactReader<EndpointTransferId, TrafficItemId>,
 }
 
@@ -153,7 +157,8 @@ pub fn create_endpoint()
     // Create all the required streams.
     let (transactions_writer, transactions_reader) = compact_index()?;
     let (transfers_writer, transfers_reader) = compact_index()?;
-    let (data_writer, data_reader) = compact_index()?;
+    let (data_transaction_writer, data_transaction_reader) = compact_index()?;
+    let (data_byte_count_writer, data_byte_count_reader) = compact_index()?;
     let (end_writer, end_reader) = compact_index()?;
 
     // Create the shared state.
@@ -167,7 +172,8 @@ pub fn create_endpoint()
         shared: shared.clone(),
         transaction_ids: transactions_writer,
         transfer_index: transfers_writer,
-        data_index: data_writer,
+        data_transactions: data_transaction_writer,
+        data_byte_counts: data_byte_count_writer,
         end_index: end_writer,
     };
 
@@ -176,7 +182,8 @@ pub fn create_endpoint()
         shared,
         transaction_ids: transactions_reader,
         transfer_index: transfers_reader,
-        data_index: data_reader,
+        data_transactions: data_transaction_reader,
+        data_byte_counts: data_byte_count_reader,
         end_index: end_reader,
     };
 
@@ -208,6 +215,7 @@ pub type EndpointTransferId = Id<EndpointTransactionId>;
 pub type TrafficItemId = Id<TransferId>;
 pub type DeviceId = Id<Device>;
 pub type EndpointId = Id<Endpoint>;
+pub type EndpointDataEvent = u64;
 pub type EndpointByteCount = u64;
 pub type DeviceVersion = u32;
 
@@ -793,22 +801,6 @@ impl CaptureReader {
             ep_transfer_id, ep_traf.transaction_ids.len())?)
     }
 
-    fn transfer_byte_range(&mut self,
-                           endpoint_id: EndpointId,
-                           range: &Range<EndpointTransactionId>)
-        -> Result<Range<u64>, CaptureError>
-    {
-        let ep_traf = self.endpoint_traffic(endpoint_id)?;
-        let index = &mut ep_traf.data_index;
-        let start = index.get(range.start)?;
-        let end = if range.end.value >= index.len() {
-            ep_traf.shared.total_data.load(Acquire)
-        } else {
-            index.get(range.end)?
-        };
-        Ok(start .. end)
-    }
-
     fn transaction_fields(&mut self, transaction: &Transaction)
         -> Result<SetupFields, CaptureError>
     {
@@ -853,31 +845,28 @@ impl CaptureReader {
 
     fn transfer_bytes(&mut self,
                       endpoint_id: EndpointId,
-                      transaction_range: &Range<EndpointTransactionId>,
-                      max_length: usize)
+                      data_range: &Range<EndpointDataEvent>,
+                      length: usize)
         -> Result<Vec<u8>, CaptureError>
     {
-        let transaction_ids = self.endpoint_traffic(endpoint_id)?
-                                  .transaction_ids
-                                  .get_range(transaction_range)?;
-        let mut result = Vec::new();
-        for transaction_id in transaction_ids {
+        let mut transfer_bytes = Vec::with_capacity(length);
+        let mut data_range = data_range.clone();
+        while transfer_bytes.len() < length {
+            let data_id = data_range.next().ok_or_else(|| IndexError(format!(
+                "Ran out of data events after fetching {}/{} requested bytes",
+                transfer_bytes.len(), length)))?;
+            let ep_traf = self.endpoint_traffic(endpoint_id)?;
+            let ep_transaction_id = ep_traf.data_transactions.get(data_id)?;
+            let transaction_id = ep_traf.transaction_ids.get(ep_transaction_id)?;
             let transaction = self.transaction(transaction_id)?;
-            if !transaction.successful() {
-                continue;
-            }
-            match self.transaction_bytes(&transaction) {
-                Ok(data) => {
-                    result.extend_from_slice(&data);
-                    if result.len() >= max_length {
-                        result.truncate(max_length);
-                        break
-                    }
-                },
-                Err(_) => break
-            }
+            let transaction_bytes = self.transaction_bytes(&transaction)?;
+            let required = min(
+                length - transfer_bytes.len(),
+                transaction_bytes.len()
+            );
+            transfer_bytes.extend(&transaction_bytes[..required]);
         }
-        Ok(result)
+        Ok(transfer_bytes)
     }
 
     fn endpoint_state(&mut self, transfer_id: TransferId)
@@ -1058,6 +1047,32 @@ impl CaptureReader {
             false => Ongoing,
             true => Complete,
         }
+    }
+}
+
+impl EndpointReader {
+    fn transfer_data_range(&mut self, range: &Range<EndpointTransactionId>)
+        -> Result<Range<EndpointDataEvent>, CaptureError>
+    {
+        let first_data_id = self.data_transactions.bisect_left(&range.start)?;
+        let last_data_id = self.data_transactions.bisect_left(&range.end)?;
+        Ok(first_data_id..last_data_id)
+    }
+
+    fn transfer_data_length(&mut self, range: &Range<EndpointDataEvent>)
+        -> Result<u64, CaptureError>
+    {
+        if range.start == range.end {
+            return Ok(0);
+        }
+        let num_data_events = self.data_byte_counts.len();
+        let first_byte_count = self.data_byte_counts.get(range.start)?;
+        let last_byte_count = if range.end >= num_data_events {
+            self.shared.as_ref().total_data.load(Acquire)
+        } else {
+            self.data_byte_counts.get(range.end)?
+        };
+        Ok(last_byte_count - first_byte_count)
     }
 }
 
@@ -1247,30 +1262,34 @@ impl ItemSource<TrafficItem> for CaptureReader {
                     (endpoint_type, starting) => {
                         let ep_transfer_id = entry.transfer_id();
                         let ep_traf = self.endpoint_traffic(endpoint_id)?;
-                        let ep_transaction_id =
-                            ep_traf.transfer_index.get(ep_transfer_id)?;
-                        let transaction_id =
-                            ep_traf.transaction_ids.get(ep_transaction_id)?;
-                        let transaction = self.transaction(transaction_id)?;
+                        let range = ep_traf.transfer_index.target_range(
+                            ep_transfer_id, ep_traf.transaction_ids.len())?;
+                        let first_transaction_id =
+                            ep_traf.transaction_ids.get(range.start)?;
+                        let first_transaction =
+                            self.transaction(first_transaction_id)?;
                         let ep_type_string = format!("{endpoint_type}");
                         let ep_type_lower = ep_type_string.to_lowercase();
-                        let count = if transaction.split.is_some() {
+                        let count = if first_transaction.split.is_some() {
                             (count + 1) / 2
                         } else {
                             count
                         };
-                        match (transaction.successful(), starting) {
+                        match (first_transaction.successful(), starting) {
                             (true, true) => {
-                                let byte_range =
-                                    self.transfer_byte_range(endpoint_id,
-                                                             &range)?;
-                                let length = byte_range.len();
+                                let ep_traf =
+                                    self.endpoint_traffic(endpoint_id)?;
+                                let data_range =
+                                    ep_traf.transfer_data_range(&range)?;
+                                let length =
+                                    ep_traf.transfer_data_length(&data_range)?;
                                 let length_string = fmt_size(length);
-                                let bytes = self.transfer_bytes(endpoint_id,
-                                                                &range, 100)?;
+                                let display_length = min(length, 100) as usize;
+                                let transfer_bytes = self.transfer_bytes(
+                                    endpoint_id, &data_range, display_length)?;
                                 let display_bytes = Bytes {
-                                    partial: length > 100,
-                                    bytes: &bytes,
+                                    partial: length > display_length as u64,
+                                    bytes: &transfer_bytes,
                                 };
                                 format!(
                                     "{ep_type_string} transfer of {length_string} on endpoint {endpoint}: {display_bytes}")
