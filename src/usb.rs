@@ -743,7 +743,7 @@ impl ControlTransfer {
         };
         let size = self.data.len();
         let mut parts = vec![format!(
-            "{} for {}",
+            "{} {}",
             match request_type {
                 RequestType::Standard => std_req.description(&self.fields),
                 _ => format!(
@@ -758,16 +758,16 @@ impl ControlTransfer {
             },
             match self.fields.type_fields.recipient() {
                 Recipient::Device => format!(
-                    "device {}", self.address),
+                    "for device {}", self.address),
                 Recipient::Interface => format!(
-                    "interface {}.{}", self.address, self.fields.index as u8),
+                    "for interface {}.{}",
+                    self.address, self.fields.index as u8),
                 Recipient::Endpoint => {
                     let ep_addr = EndpointAddr(self.fields.index as u8);
-                    format!("endpoint {}.{} {}",
+                    format!("for endpoint {}.{} {}",
                             self.address, ep_addr.number(), ep_addr.direction())
                 }
-                _ => format!(
-                    "device {}, index {}", self.address, self.fields.index)
+                _ => format!("on device {}", self.address)
             }
         )];
         match (self.fields.length, size) {
