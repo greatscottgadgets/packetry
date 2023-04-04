@@ -1118,6 +1118,10 @@ impl ItemSource<TrafficItem> for Capture {
                                 "Incomplete control transfer on device {addr}")
                         }
                     },
+                    (Normal(Control), false) => {
+                        let addr = endpoint.device_address();
+                        format!("End of control transfer on device {addr}")
+                    },
                     (endpoint_type, starting) => {
                         let ep_transfer_id = entry.transfer_id();
                         let ep_traf = self.endpoint_traffic(endpoint_id)?;

@@ -1790,7 +1790,7 @@ Polling 8 times for unidentified transfer on endpoint 12.1 IN
  IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
-End of control transfer on endpoint 0.0 OUT
+End of control transfer on device 0
 Class request #3, index 2, value 4 for device 12, index 2
  SETUP transaction on 12.0 with 8 data bytes, ACK: [23, 03, 04, 00, 02, 00, 00, 00]
   SETUP packet on 12.0, CRC 0B
