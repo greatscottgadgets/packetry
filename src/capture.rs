@@ -954,38 +954,19 @@ impl CaptureReader {
                         range: Range<EndpointTransactionId>)
         -> Result<ControlTransfer, CaptureError>
     {
-        use PID::*;
-        use Direction::*;
-        let transaction_ids = self.endpoint_traffic(endpoint_id)?
-                                  .transaction_ids
-                                  .get_range(&range)?;
+        let ep_traf = self.endpoint_traffic(endpoint_id)?;
+        let transaction_ids = ep_traf.transaction_ids.get_range(&range)?;
+        let data_range = ep_traf.transfer_data_range(&range)?;
+        let data_length = ep_traf
+            .transfer_data_length(&data_range)?
+            .try_into()?;
+        let data = self.transfer_bytes(endpoint_id, &data_range, data_length)?;
         let setup_transaction = self.transaction(transaction_ids[0])?;
         let fields = self.transaction_fields(&setup_transaction)?;
         let direction = fields.type_fields.direction();
-        let mut data: Vec<u8> = Vec::new();
         let last = transaction_ids.len() - 1;
         let last_transaction = self.transaction(transaction_ids[last])?;
         let result = last_transaction.control_result(direction);
-        for transaction_id in &transaction_ids[1..] {
-            let transaction = self.transaction(*transaction_id)?;
-            if !transaction.successful() {
-                continue;
-            }
-            match (direction,
-                   transaction.start_pid,
-                   transaction.split,
-                   transaction.payload_byte_range)
-            {
-                (In,  IN,    None,           Some(range)) |
-                (Out, OUT,   None,           Some(range)) |
-                (In,  SPLIT, Some((_, IN)),  Some(range)) |
-                (Out, SPLIT, Some((_, OUT)), Some(range)) => {
-                    data.extend_from_slice(
-                        &self.packet_data.get_range(&range)?);
-                },
-                (..) => {}
-            };
-        }
         Ok(ControlTransfer {
             address,
             fields,

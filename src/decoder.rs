@@ -342,6 +342,7 @@ impl EndpointData {
                                         effect = PendingData(data);
                                     } else {
                                         self.payload.extend(data);
+                                        effect = IndexData(length, id);
                                     }
                                 }
                                 // Await status stage.
