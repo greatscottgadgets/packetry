@@ -240,7 +240,7 @@ mod tests {
         let (mut writer, mut reader) = index_stream().unwrap();
         let mut expected = Vec::<Id<u8>>::new();
         let mut x = 10;
-        let n = 321;
+        let n = 4321;
         for i in 0..n {
             x += 1 + i % 3;
             let id = Id::<u8>::from(x);
@@ -280,5 +280,23 @@ mod tests {
             let xr = &expected[xrng];
             assert!(vr == xr);
         }
+        for i in 0..n {
+            let id = Id::<Id<u8>>::from(i);
+            let vi = expected[i as usize];
+            let bl = reader.bisect_left(&vi).unwrap();
+            assert!(bl == id);
+        }
+        for i in 0..n {
+            let id = Id::<Id<u8>>::from(i);
+            let vi = expected[i as usize];
+            let br = reader.bisect_right(&vi).unwrap();
+            assert!(br == id + 1);
+        }
+        let end = Id::<Id<u8>>::from(n);
+        let big = expected[(n - 1) as usize] + 1;
+        let bl = reader.bisect_left(&big).unwrap();
+        let br = reader.bisect_right(&big).unwrap();
+        assert!(bl == end);
+        assert!(br == end);
     }
 }
