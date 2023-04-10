@@ -1,0 +1,694 @@
+Opening file tests/mouse/capture.pcap
+Updating after 1 packets decoded
+At traffic row 0:
++ 1 invalid groups
+Expanding traffic view, row 0: 1 invalid groups
+At traffic row 1:
++ 1 malformed packets
+Expanding traffic view, row 1: 1 malformed packets
+At traffic row 2:
++ Malformed packet: [FF]
+Updating after 2 packets decoded
+At traffic row 3:
++ Incomplete control transfer on device 0
+At traffic row 0:
+- 1 invalid groups
+- 1 malformed packets
+- Malformed packet: [FF]
++ 1 invalid groups
++ 1 malformed packets
++ Malformed packet: [FF]
+Expanding traffic view, row 3: Incomplete control transfer on device 0
+At traffic row 4:
++ SETUP transaction on 0.0
+Expanding traffic view, row 4: SETUP transaction on 0.0
+At traffic row 5:
++ SETUP packet on 0.0, CRC 02
+Updating after 3 packets decoded
+At traffic row 4:
+- SETUP transaction on 0.0
++ SETUP transaction on 0.0 with 8 data bytes: [80, 06, 00, 01, 00, 00, 40, 00]
+At traffic row 6:
++ DATA0 packet with CRC 94DD and 8 data bytes: [80, 06, 00, 01, 00, 00, 40, 00]
+Updating after 4 packets decoded
+At traffic row 4:
+- SETUP transaction on 0.0
++ SETUP transaction on 0.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 40, 00]
+At traffic row 7:
++ ACK packet
+Updating after 5 packets decoded
+At traffic row 3:
+- Incomplete control transfer on device 0
++ Getting device descriptor #0 for device 0, reading 0 of 64 requested bytes, incomplete
+At traffic row 8:
++ IN transaction on 0.0
+Expanding traffic view, row 8: IN transaction on 0.0
+At traffic row 9:
++ IN packet on 0.0, CRC 02
+Updating after 6 packets decoded
+At traffic row 8:
+- IN transaction on 0.0
++ IN transaction on 0.0, NAK
+At traffic row 10:
++ NAK packet
+Updating after 7 packets decoded
+At traffic row 3:
+- Incomplete control transfer on device 0
++ Getting device descriptor #0 for device 0, reading 0 of 64 requested bytes, incomplete
+At traffic row 11:
++ IN transaction on 0.0
+Expanding traffic view, row 11: IN transaction on 0.0
+At traffic row 12:
++ IN packet on 0.0, CRC 02
+Updating after 8 packets decoded
+At traffic row 11:
+- IN transaction on 0.0
++ IN transaction on 0.0, NAK
+At traffic row 13:
++ NAK packet
+Updating after 9 packets decoded
+At traffic row 3:
+- Incomplete control transfer on device 0
++ Getting device descriptor #0 for device 0, reading 0 of 64 requested bytes, incomplete
+At traffic row 14:
++ IN transaction on 0.0
+Expanding traffic view, row 14: IN transaction on 0.0
+At traffic row 15:
++ IN packet on 0.0, CRC 02
+Updating after 10 packets decoded
+At traffic row 14:
+- IN transaction on 0.0
++ IN transaction on 0.0 with 8 data bytes: [12, 01, 00, 02, 00, 00, 00, 08]
+At traffic row 16:
++ DATA1 packet with CRC E757 and 8 data bytes: [12, 01, 00, 02, 00, 00, 00, 08]
+Updating after 11 packets decoded
+At traffic row 14:
+- IN transaction on 0.0
++ IN transaction on 0.0 with 8 data bytes, ACK: [12, 01, 00, 02, 00, 00, 00, 08]
+At traffic row 17:
++ ACK packet
+Updating after 12 packets decoded
+At traffic row 3:
+- Incomplete control transfer on device 0
++ Getting device descriptor #0 for device 0, reading 8 of 64 requested bytes, incomplete
+At traffic row 18:
++ IN transaction on 0.0
+Updating after 13 packets decoded
+At traffic row 18:
+- IN transaction on 0.0
++ IN transaction on 0.0, NAK
+Updating after 14 packets decoded
+At traffic row 3:
+- Incomplete control transfer on device 0
++ Getting device descriptor #0 for device 0, reading 8 of 64 requested bytes, incomplete
+At traffic row 19:
++ IN transaction on 0.0
+Updating after 15 packets decoded
+At traffic row 19:
+- IN transaction on 0.0
++ IN transaction on 0.0, NAK
+Updating after 16 packets decoded
+At traffic row 3:
+- Incomplete control transfer on device 0
++ Getting device descriptor #0 for device 0, reading 8 of 64 requested bytes, incomplete
+At traffic row 20:
++ IN transaction on 0.0
+Updating after 17 packets decoded
+At traffic row 20:
+- IN transaction on 0.0
++ IN transaction on 0.0 with 8 data bytes: [CF, 1B, 05, 00, 14, 00, 00, 02]
+Updating after 18 packets decoded
+At traffic row 20:
+- IN transaction on 0.0
++ IN transaction on 0.0 with 8 data bytes, ACK: [CF, 1B, 05, 00, 14, 00, 00, 02]
+Updating after 19 packets decoded
+At traffic row 3:
+- Incomplete control transfer on device 0
++ Getting device descriptor #0 for device 0, reading 16 of 64 requested bytes, incomplete
+At traffic row 21:
++ IN transaction on 0.0
+Updating after 20 packets decoded
+At traffic row 21:
+- IN transaction on 0.0
++ IN transaction on 0.0, NAK
+Updating after 21 packets decoded
+At traffic row 3:
+- Incomplete control transfer on device 0
++ Getting device descriptor #0 for device 0, reading 16 of 64 requested bytes, incomplete
+At traffic row 22:
++ IN transaction on 0.0
+Updating after 22 packets decoded
+At traffic row 22:
+- IN transaction on 0.0
++ IN transaction on 0.0 with 2 data bytes: [00, 01]
+Updating after 23 packets decoded
+At traffic row 22:
+- IN transaction on 0.0
++ IN transaction on 0.0 with 2 data bytes, ACK: [00, 01]
+Updating after 24 packets decoded
+At traffic row 3:
+- Incomplete control transfer on device 0
++ Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes, incomplete
+At traffic row 23:
++ OUT transaction on 0.0
+Updating after 25 packets decoded
+At traffic row 23:
+- OUT transaction on 0.0
++ OUT transaction on 0.0 with no data
+Updating after 26 packets decoded
+At traffic row 23:
+- OUT transaction on 0.0
++ OUT transaction on 0.0 with no data, ACK
+Updating after 27 packets decoded
+At traffic row 24:
++ Incomplete control transfer on device 0
+Updating after 28 packets decoded
+Updating after 29 packets decoded
+Updating after 30 packets decoded
+At traffic row 24:
+- Incomplete control transfer on device 0
++ Setting address to 4 for device 0, incomplete
+Updating after 31 packets decoded
+Updating after 32 packets decoded
+At traffic row 24:
+- Incomplete control transfer on device 0
++ Setting address to 4 for device 0, incomplete
+Updating after 33 packets decoded
+Updating after 34 packets decoded
+Updating after 35 packets decoded
+At traffic row 25:
++ Incomplete control transfer on device 4
+At traffic row 0:
+- 1 invalid groups
+- 1 malformed packets
+- Malformed packet: [FF]
+- Incomplete control transfer on device 0
+- SETUP transaction on 0.0
+- SETUP packet on 0.0, CRC 02
+- DATA0 packet with CRC 94DD and 8 data bytes: [80, 06, 00, 01, 00, 00, 40, 00]
+- ACK packet
+- IN transaction on 0.0
+- IN packet on 0.0, CRC 02
+- NAK packet
+- IN transaction on 0.0
+- IN packet on 0.0, CRC 02
+- NAK packet
+- IN transaction on 0.0
+- IN packet on 0.0, CRC 02
+- DATA1 packet with CRC E757 and 8 data bytes: [12, 01, 00, 02, 00, 00, 00, 08]
+- ACK packet
+- 5 times: IN transaction on 0.0
+- OUT transaction on 0.0
+- Incomplete control transfer on device 0
++ 1 invalid groups
++ 1 malformed packets
++ Malformed packet: [FF]
++ Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
++ SETUP transaction on 0.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 40, 00]
++ SETUP packet on 0.0, CRC 02
++ DATA0 packet with CRC 94DD and 8 data bytes: [80, 06, 00, 01, 00, 00, 40, 00]
++ ACK packet
++ IN transaction on 0.0, NAK
++ IN packet on 0.0, CRC 02
++ NAK packet
++ IN transaction on 0.0, NAK
++ IN packet on 0.0, CRC 02
++ NAK packet
++ IN transaction on 0.0 with 8 data bytes, ACK: [12, 01, 00, 02, 00, 00, 00, 08]
++ IN packet on 0.0, CRC 02
++ DATA1 packet with CRC E757 and 8 data bytes: [12, 01, 00, 02, 00, 00, 00, 08]
++ ACK packet
++ 2 times: IN transaction on 0.0, NAK
++ IN transaction on 0.0 with 8 data bytes, ACK: [CF, 1B, 05, 00, 14, 00, 00, 02]
++ IN transaction on 0.0, NAK
++ IN transaction on 0.0 with 2 data bytes, ACK: [00, 01]
++ OUT transaction on 0.0 with no data, ACK
++ Setting address to 4 for device 0
+At devices row 0:
++ Device 4: Unknown
+Expanding devices view, row 0: Device 4: Unknown
+At devices row 1:
++ No device descriptor
+Updating after 36 packets decoded
+Updating after 37 packets decoded
+Updating after 38 packets decoded
+At traffic row 25:
+- Incomplete control transfer on device 4
++ Getting device descriptor #0 for device 4, reading 0 of 18 requested bytes, incomplete
+Updating after 39 packets decoded
+Updating after 40 packets decoded
+At traffic row 25:
+- Incomplete control transfer on device 4
++ Getting device descriptor #0 for device 4, reading 0 of 18 requested bytes, incomplete
+Updating after 41 packets decoded
+Updating after 42 packets decoded
+At traffic row 25:
+- Incomplete control transfer on device 4
++ Getting device descriptor #0 for device 4, reading 0 of 18 requested bytes, incomplete
+Updating after 43 packets decoded
+Updating after 44 packets decoded
+Updating after 45 packets decoded
+At traffic row 25:
+- Incomplete control transfer on device 4
++ Getting device descriptor #0 for device 4, reading 8 of 18 requested bytes, incomplete
+Updating after 46 packets decoded
+Updating after 47 packets decoded
+At traffic row 25:
+- Incomplete control transfer on device 4
++ Getting device descriptor #0 for device 4, reading 8 of 18 requested bytes, incomplete
+Updating after 48 packets decoded
+Updating after 49 packets decoded
+At traffic row 25:
+- Incomplete control transfer on device 4
++ Getting device descriptor #0 for device 4, reading 8 of 18 requested bytes, incomplete
+Updating after 50 packets decoded
+Updating after 51 packets decoded
+Updating after 52 packets decoded
+At traffic row 25:
+- Incomplete control transfer on device 4
++ Getting device descriptor #0 for device 4, reading 16 of 18 requested bytes, incomplete
+Updating after 53 packets decoded
+Updating after 54 packets decoded
+At traffic row 25:
+- Incomplete control transfer on device 4
++ Getting device descriptor #0 for device 4, reading 16 of 18 requested bytes, incomplete
+Updating after 55 packets decoded
+Updating after 56 packets decoded
+Updating after 57 packets decoded
+At traffic row 25:
+- Incomplete control transfer on device 4
++ Getting device descriptor #0 for device 4, reading 18 bytes, incomplete
+Updating after 58 packets decoded
+Updating after 59 packets decoded
+At devices row 0:
+- Device 4: Unknown
++ Device 4: 1BCF:0005
+At devices row 1:
+- No device descriptor
++ Device descriptor
+Expanding devices view, row 1: No device descriptor
+At devices row 2:
++ Length: 18 bytes
++ Type: 0x01
++ USB Version: 2.00
++ Class: 0x00
++ Subclass: 0x00
++ Protocol: 0x00
++ Max EP0 packet size: 8 bytes
++ Vendor ID: 0x1BCF
++ Product ID: 0x0005
++ Version: 0.14
++ Manufacturer string: (none)
++ Product string: #2 (not seen)
++ Serial string: (none)
+Updating after 60 packets decoded
+At traffic row 26:
++ Incomplete control transfer on device 4
+Updating after 61 packets decoded
+Updating after 62 packets decoded
+Updating after 63 packets decoded
+At traffic row 26:
+- Incomplete control transfer on device 4
++ Getting configuration descriptor #0 for device 4, reading 0 of 9 requested bytes, incomplete
+Updating after 64 packets decoded
+Updating after 65 packets decoded
+At traffic row 26:
+- Incomplete control transfer on device 4
++ Getting configuration descriptor #0 for device 4, reading 0 of 9 requested bytes, incomplete
+Updating after 66 packets decoded
+Updating after 67 packets decoded
+At traffic row 26:
+- Incomplete control transfer on device 4
++ Getting configuration descriptor #0 for device 4, reading 0 of 9 requested bytes, incomplete
+Updating after 68 packets decoded
+Updating after 69 packets decoded
+Updating after 70 packets decoded
+At traffic row 26:
+- Incomplete control transfer on device 4
++ Getting configuration descriptor #0 for device 4, reading 8 of 9 requested bytes, incomplete
+Updating after 71 packets decoded
+Updating after 72 packets decoded
+At traffic row 26:
+- Incomplete control transfer on device 4
++ Getting configuration descriptor #0 for device 4, reading 8 of 9 requested bytes, incomplete
+Updating after 73 packets decoded
+Updating after 74 packets decoded
+Updating after 75 packets decoded
+At traffic row 26:
+- Incomplete control transfer on device 4
++ Getting configuration descriptor #0 for device 4, reading 9 bytes, incomplete
+Updating after 76 packets decoded
+Updating after 77 packets decoded
+At devices row 0:
+- Device 4: Unknown
++ Device 4: 1BCF:0005
+At devices row 15:
++ Configuration 1
+Expanding devices view, row 15: Configuration 1
+At devices row 16:
++ Configuration descriptor
+Expanding devices view, row 16: Configuration descriptor
+At devices row 17:
++ Length: 9 bytes
++ Type: 0x02
++ Total length: 34 bytes
++ Number of interfaces: 1
++ Configuration number: 1
++ Configuration string: (none)
++ Attributes: 0xA0
++ Max power: 98mA
+Updating after 78 packets decoded
+At traffic row 27:
++ Incomplete control transfer on device 4
+At devices row 0:
+- Device 4: Unknown
++ Device 4: 1BCF:0005
+Updating after 79 packets decoded
+Updating after 80 packets decoded
+Updating after 81 packets decoded
+At traffic row 27:
+- Incomplete control transfer on device 4
++ Getting configuration descriptor #0 for device 4, reading 0 of 34 requested bytes, incomplete
+Updating after 82 packets decoded
+Updating after 83 packets decoded
+At traffic row 27:
+- Incomplete control transfer on device 4
++ Getting configuration descriptor #0 for device 4, reading 0 of 34 requested bytes, incomplete
+Updating after 84 packets decoded
+Updating after 85 packets decoded
+At traffic row 27:
+- Incomplete control transfer on device 4
++ Getting configuration descriptor #0 for device 4, reading 0 of 34 requested bytes, incomplete
+Updating after 86 packets decoded
+Updating after 87 packets decoded
+Updating after 88 packets decoded
+At traffic row 27:
+- Incomplete control transfer on device 4
++ Getting configuration descriptor #0 for device 4, reading 8 of 34 requested bytes, incomplete
+Updating after 89 packets decoded
+Updating after 90 packets decoded
+At traffic row 27:
+- Incomplete control transfer on device 4
++ Getting configuration descriptor #0 for device 4, reading 8 of 34 requested bytes, incomplete
+Updating after 91 packets decoded
+Updating after 92 packets decoded
+At traffic row 27:
+- Incomplete control transfer on device 4
++ Getting configuration descriptor #0 for device 4, reading 8 of 34 requested bytes, incomplete
+Updating after 93 packets decoded
+Updating after 94 packets decoded
+Updating after 95 packets decoded
+At traffic row 27:
+- Incomplete control transfer on device 4
++ Getting configuration descriptor #0 for device 4, reading 16 of 34 requested bytes, incomplete
+Updating after 96 packets decoded
+Updating after 97 packets decoded
+At traffic row 27:
+- Incomplete control transfer on device 4
++ Getting configuration descriptor #0 for device 4, reading 16 of 34 requested bytes, incomplete
+Updating after 98 packets decoded
+Updating after 99 packets decoded
+At traffic row 27:
+- Incomplete control transfer on device 4
++ Getting configuration descriptor #0 for device 4, reading 16 of 34 requested bytes, incomplete
+Updating after 100 packets decoded
+Updating after 101 packets decoded
+Updating after 102 packets decoded
+At traffic row 27:
+- Incomplete control transfer on device 4
++ Getting configuration descriptor #0 for device 4, reading 24 of 34 requested bytes, incomplete
+Updating after 103 packets decoded
+Updating after 104 packets decoded
+At traffic row 27:
+- Incomplete control transfer on device 4
++ Getting configuration descriptor #0 for device 4, reading 24 of 34 requested bytes, incomplete
+Updating after 105 packets decoded
+Updating after 106 packets decoded
+At traffic row 27:
+- Incomplete control transfer on device 4
++ Getting configuration descriptor #0 for device 4, reading 24 of 34 requested bytes, incomplete
+Updating after 107 packets decoded
+Updating after 108 packets decoded
+Updating after 109 packets decoded
+At traffic row 27:
+- Incomplete control transfer on device 4
++ Getting configuration descriptor #0 for device 4, reading 32 of 34 requested bytes, incomplete
+Updating after 110 packets decoded
+Updating after 111 packets decoded
+At traffic row 27:
+- Incomplete control transfer on device 4
++ Getting configuration descriptor #0 for device 4, reading 32 of 34 requested bytes, incomplete
+Updating after 112 packets decoded
+Updating after 113 packets decoded
+Updating after 114 packets decoded
+At traffic row 27:
+- Incomplete control transfer on device 4
++ Getting configuration descriptor #0 for device 4, reading 34 bytes, incomplete
+Updating after 115 packets decoded
+Updating after 116 packets decoded
+At devices row 0:
+- Device 4: Unknown
++ Device 4: 1BCF:0005
+At devices row 25:
++ Interface 0
+Expanding devices view, row 25: Interface 0
+At devices row 26:
++ Interface descriptor
++ Endpoint 1 IN
+Expanding devices view, row 26: Interface descriptor
+At devices row 27:
++ Length: 9 bytes
++ Type: 0x04
++ Interface number: 0
++ Alternate setting: 0
++ Number of endpoints: 1
++ Class: 0x03
++ Subclass: 0x01
++ Protocol: 0x02
++ Interface string: (none)
+Expanding devices view, row 36: Endpoint 1 IN
+At devices row 37:
++ Length: 7 bytes
++ Type: 0x05
++ Endpoint address: 0x81
++ Attributes: 0x03
++ Max packet size: 7 bytes
++ Interval: 0x0A
+Updating after 117 packets decoded
+At traffic row 28:
++ Incomplete control transfer on device 4
+Updating after 118 packets decoded
+Updating after 119 packets decoded
+Updating after 120 packets decoded
+At traffic row 28:
+- Incomplete control transfer on device 4
++ Getting string descriptor #0 for device 4, reading 0 of 255 requested bytes, incomplete
+Updating after 121 packets decoded
+Updating after 122 packets decoded
+At traffic row 28:
+- Incomplete control transfer on device 4
++ Getting string descriptor #0 for device 4, reading 0 of 255 requested bytes, incomplete
+Updating after 123 packets decoded
+Updating after 124 packets decoded
+At traffic row 28:
+- Incomplete control transfer on device 4
++ Getting string descriptor #0 for device 4, reading 0 of 255 requested bytes, incomplete
+Updating after 125 packets decoded
+Updating after 126 packets decoded
+Updating after 127 packets decoded
+At traffic row 28:
+- Incomplete control transfer on device 4
++ Getting string descriptor #0 for device 4, reading 4 of 255 requested bytes, incomplete
+Updating after 128 packets decoded
+Updating after 129 packets decoded
+At devices row 0:
+- Device 4: Unknown
++ Device 4: 1BCF:0005
+Updating after 130 packets decoded
+At traffic row 29:
++ Incomplete control transfer on device 4
+Updating after 131 packets decoded
+Updating after 132 packets decoded
+Updating after 133 packets decoded
+At traffic row 29:
+- Incomplete control transfer on device 4
++ Getting string descriptor #2, language 0x0409 for device 4, reading 0 of 255 requested bytes, incomplete
+Updating after 134 packets decoded
+Updating after 135 packets decoded
+At traffic row 29:
+- Incomplete control transfer on device 4
++ Getting string descriptor #2, language 0x0409 for device 4, reading 0 of 255 requested bytes, incomplete
+Updating after 136 packets decoded
+Updating after 137 packets decoded
+At traffic row 29:
+- Incomplete control transfer on device 4
++ Getting string descriptor #2, language 0x0409 for device 4, reading 0 of 255 requested bytes, incomplete
+Updating after 138 packets decoded
+Updating after 139 packets decoded
+Updating after 140 packets decoded
+At traffic row 29:
+- Incomplete control transfer on device 4
++ Getting string descriptor #2, language 0x0409 for device 4, reading 8 of 255 requested bytes: 'USB', incomplete
+Updating after 141 packets decoded
+Updating after 142 packets decoded
+Updating after 143 packets decoded
+At traffic row 29:
+- Incomplete control transfer on device 4
++ Getting string descriptor #2, language 0x0409 for device 4, reading 16 of 255 requested bytes: 'USB Opt', incomplete
+Updating after 144 packets decoded
+Updating after 145 packets decoded
+At traffic row 29:
+- Incomplete control transfer on device 4
++ Getting string descriptor #2, language 0x0409 for device 4, reading 16 of 255 requested bytes: 'USB Opt', incomplete
+Updating after 146 packets decoded
+Updating after 147 packets decoded
+At traffic row 29:
+- Incomplete control transfer on device 4
++ Getting string descriptor #2, language 0x0409 for device 4, reading 16 of 255 requested bytes: 'USB Opt', incomplete
+Updating after 148 packets decoded
+Updating after 149 packets decoded
+Updating after 150 packets decoded
+At traffic row 29:
+- Incomplete control transfer on device 4
++ Getting string descriptor #2, language 0x0409 for device 4, reading 24 of 255 requested bytes: 'USB Optical', incomplete
+Updating after 151 packets decoded
+Updating after 152 packets decoded
+At traffic row 29:
+- Incomplete control transfer on device 4
++ Getting string descriptor #2, language 0x0409 for device 4, reading 24 of 255 requested bytes: 'USB Optical', incomplete
+Updating after 153 packets decoded
+Updating after 154 packets decoded
+At traffic row 29:
+- Incomplete control transfer on device 4
++ Getting string descriptor #2, language 0x0409 for device 4, reading 24 of 255 requested bytes: 'USB Optical', incomplete
+Updating after 155 packets decoded
+Updating after 156 packets decoded
+Updating after 157 packets decoded
+At traffic row 29:
+- Incomplete control transfer on device 4
++ Getting string descriptor #2, language 0x0409 for device 4, reading 32 of 255 requested bytes: 'USB Optical Mou', incomplete
+Updating after 158 packets decoded
+Updating after 159 packets decoded
+At traffic row 29:
+- Incomplete control transfer on device 4
++ Getting string descriptor #2, language 0x0409 for device 4, reading 32 of 255 requested bytes: 'USB Optical Mou', incomplete
+Updating after 160 packets decoded
+Updating after 161 packets decoded
+Updating after 162 packets decoded
+At traffic row 29:
+- Incomplete control transfer on device 4
++ Getting string descriptor #2, language 0x0409 for device 4, reading 36 of 255 requested bytes: 'USB Optical Mouse', incomplete
+Updating after 163 packets decoded
+Updating after 164 packets decoded
+At devices row 0:
+- Device 4: Unknown
++ Device 4: USB Optical Mouse
+At devices row 13:
+- Product string: #2 (not seen)
++ Product string: #2 'USB Optical Mouse'
+Expanding traffic view, row 29: Incomplete control transfer on device 4
+At traffic row 30:
++ SETUP transaction on 4.0 with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, FF, 00]
++ 2 times: IN transaction on 4.0, NAK
++ IN transaction on 4.0 with 8 data bytes, ACK: [24, 03, 55, 00, 53, 00, 42, 00]
++ IN transaction on 4.0 with 8 data bytes, ACK: [20, 00, 4F, 00, 70, 00, 74, 00]
++ 2 times: IN transaction on 4.0, NAK
++ IN transaction on 4.0 with 8 data bytes, ACK: [69, 00, 63, 00, 61, 00, 6C, 00]
++ 2 times: IN transaction on 4.0, NAK
++ IN transaction on 4.0 with 8 data bytes, ACK: [20, 00, 4D, 00, 6F, 00, 75, 00]
++ IN transaction on 4.0, NAK
++ IN transaction on 4.0 with 4 data bytes, ACK: [73, 00, 65, 00]
++ OUT transaction on 4.0 with no data, ACK
+Collapsing devices view, row 15: Configuration 1
+At devices row 17:
+- Length: 9 bytes
+- Type: 0x02
+- Total length: 34 bytes
+- Number of interfaces: 1
+- Configuration number: 1
+- Configuration string: (none)
+- Attributes: 0xA0
+- Max power: 98mA
+At devices row 19:
+- Length: 9 bytes
+- Type: 0x04
+- Interface number: 0
+- Alternate setting: 0
+- Number of endpoints: 1
+- Class: 0x03
+- Subclass: 0x01
+- Protocol: 0x02
+- Interface string: (none)
+At devices row 20:
+- Length: 7 bytes
+- Type: 0x05
+- Endpoint address: 0x81
+- Attributes: 0x03
+- Max packet size: 7 bytes
+- Interval: 0x0A
+At devices row 18:
+- Interface descriptor
+- Endpoint 1 IN
+At devices row 16:
+- Configuration descriptor
+- Interface 0
+Collapsing devices view, row 0: Device 4: Unknown
+At devices row 2:
+- Length: 18 bytes
+- Type: 0x01
+- USB Version: 2.00
+- Class: 0x00
+- Subclass: 0x00
+- Protocol: 0x00
+- Max EP0 packet size: 8 bytes
+- Vendor ID: 0x1BCF
+- Product ID: 0x0005
+- Version: 0.14
+- Manufacturer string: (none)
+- Product string: #2 (not seen)
+- Serial string: (none)
+At devices row 1:
+- No device descriptor
+- Configuration 1
+Collapsing traffic view, row 29: Incomplete control transfer on device 4
+At traffic row 30:
+- SETUP transaction on 4.0 with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, FF, 00]
+- 2 times: IN transaction on 4.0, NAK
+- IN transaction on 4.0 with 8 data bytes, ACK: [24, 03, 55, 00, 53, 00, 42, 00]
+- IN transaction on 4.0 with 8 data bytes, ACK: [20, 00, 4F, 00, 70, 00, 74, 00]
+- 2 times: IN transaction on 4.0, NAK
+- IN transaction on 4.0 with 8 data bytes, ACK: [69, 00, 63, 00, 61, 00, 6C, 00]
+- 2 times: IN transaction on 4.0, NAK
+- IN transaction on 4.0 with 8 data bytes, ACK: [20, 00, 4D, 00, 6F, 00, 75, 00]
+- IN transaction on 4.0, NAK
+- IN transaction on 4.0 with 4 data bytes, ACK: [73, 00, 65, 00]
+- OUT transaction on 4.0 with no data, ACK
+Collapsing traffic view, row 3: Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
+At traffic row 5:
+- SETUP packet on 0.0, CRC 02
+- DATA0 packet with CRC 94DD and 8 data bytes: [80, 06, 00, 01, 00, 00, 40, 00]
+- ACK packet
+At traffic row 6:
+- IN packet on 0.0, CRC 02
+- NAK packet
+At traffic row 7:
+- IN packet on 0.0, CRC 02
+- NAK packet
+At traffic row 8:
+- IN packet on 0.0, CRC 02
+- DATA1 packet with CRC E757 and 8 data bytes: [12, 01, 00, 02, 00, 00, 00, 08]
+- ACK packet
+At traffic row 4:
+- SETUP transaction on 0.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 40, 00]
+- 2 times: IN transaction on 0.0, NAK
+- IN transaction on 0.0 with 8 data bytes, ACK: [12, 01, 00, 02, 00, 00, 00, 08]
+- 2 times: IN transaction on 0.0, NAK
+- IN transaction on 0.0 with 8 data bytes, ACK: [CF, 1B, 05, 00, 14, 00, 00, 02]
+- IN transaction on 0.0, NAK
+- IN transaction on 0.0 with 2 data bytes, ACK: [00, 01]
+- OUT transaction on 0.0 with no data, ACK
+Collapsing traffic view, row 0: 1 invalid groups
+At traffic row 2:
+- Malformed packet: [FF]
+At traffic row 1:
+- 1 malformed packets

@@ -1,66 +1,22 @@
 12 SOF groups
  8 SOF packets
-  SOF packet with frame number 186, CRC 00
-  SOF packet with frame number 186, CRC 00
+  2 times: SOF packet with frame number 186, CRC 00
+  6 times: SOF packet with frame number 187, CRC 1F
+ 2 times: 1 SOF packets
   SOF packet with frame number 187, CRC 1F
-  SOF packet with frame number 187, CRC 1F
-  SOF packet with frame number 187, CRC 1F
-  SOF packet with frame number 187, CRC 1F
-  SOF packet with frame number 187, CRC 1F
-  SOF packet with frame number 187, CRC 1F
- 1 SOF packets
-  SOF packet with frame number 187, CRC 1F
- 1 SOF packets
-  SOF packet with frame number 187, CRC 1F
- 1 SOF packets
-  SOF packet with frame number 188, CRC 10
- 1 SOF packets
-  SOF packet with frame number 188, CRC 10
- 1 SOF packets
-  SOF packet with frame number 188, CRC 10
- 1 SOF packets
-  SOF packet with frame number 188, CRC 10
- 1 SOF packets
+ 5 times: 1 SOF packets
   SOF packet with frame number 188, CRC 10
  2 SOF packets
-  SOF packet with frame number 188, CRC 10
-  SOF packet with frame number 188, CRC 10
+  2 times: SOF packet with frame number 188, CRC 10
  1 SOF packets
   SOF packet with frame number 188, CRC 10
  1 SOF packets
   SOF packet with frame number 189, CRC 0F
  31 SOF packets
-  SOF packet with frame number 189, CRC 0F
-  SOF packet with frame number 189, CRC 0F
-  SOF packet with frame number 189, CRC 0F
-  SOF packet with frame number 189, CRC 0F
-  SOF packet with frame number 189, CRC 0F
-  SOF packet with frame number 189, CRC 0F
-  SOF packet with frame number 189, CRC 0F
-  SOF packet with frame number 190, CRC 07
-  SOF packet with frame number 190, CRC 07
-  SOF packet with frame number 190, CRC 07
-  SOF packet with frame number 190, CRC 07
-  SOF packet with frame number 190, CRC 07
-  SOF packet with frame number 190, CRC 07
-  SOF packet with frame number 190, CRC 07
-  SOF packet with frame number 190, CRC 07
-  SOF packet with frame number 191, CRC 18
-  SOF packet with frame number 191, CRC 18
-  SOF packet with frame number 191, CRC 18
-  SOF packet with frame number 191, CRC 18
-  SOF packet with frame number 191, CRC 18
-  SOF packet with frame number 191, CRC 18
-  SOF packet with frame number 191, CRC 18
-  SOF packet with frame number 191, CRC 18
-  SOF packet with frame number 192, CRC 1F
-  SOF packet with frame number 192, CRC 1F
-  SOF packet with frame number 192, CRC 1F
-  SOF packet with frame number 192, CRC 1F
-  SOF packet with frame number 192, CRC 1F
-  SOF packet with frame number 192, CRC 1F
-  SOF packet with frame number 192, CRC 1F
-  SOF packet with frame number 192, CRC 1F
+  7 times: SOF packet with frame number 189, CRC 0F
+  8 times: SOF packet with frame number 190, CRC 07
+  8 times: SOF packet with frame number 191, CRC 18
+  8 times: SOF packet with frame number 192, CRC 1F
 Getting device descriptor #0 for device 11, reading 18 bytes
  SETUP transaction on 11.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 12, 00]
   SETUP packet on 11.0, CRC 04

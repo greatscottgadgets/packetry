@@ -1,0 +1,245 @@
+Opening file tests/emf2022-badge/capture.pcap
+Updating after 3710 packets decoded
+At traffic row 0:
++ 209 SOF groups
++ Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
++ Setting address to 1 for device 0
++ Getting device descriptor #0 for device 1, reading 18 bytes
++ 3 times: Getting device qualifier descriptor #0 for device 1, reading 0 of 10 requested bytes, stalled
++ Getting configuration descriptor #0 for device 1, reading 9 bytes
++ Getting configuration descriptor #0 for device 1, reading 98 bytes
++ Getting string descriptor #0 for device 1, reading 4 of 255 requested bytes
++ Getting string descriptor #2, language 0x0409 for device 1, reading 56 of 255 requested bytes: 'USB JTAG/serial debug unit\u{0}'
++ Getting string descriptor #1, language 0x0409 for device 1, reading 22 of 255 requested bytes: 'Espressif\u{0}'
++ Getting string descriptor #3, language 0x0409 for device 1, reading 36 of 255 requested bytes: 'F4:12:FA:4D:F1:7C'
++ Setting configuration 1 for device 1
++ Class request #32, index 0, value 0 for interface 1.0, writing 7 bytes
++ Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
++ Setting address to 2 for device 0
++ Getting device descriptor #0 for device 2, reading 18 bytes
++ 3 times: Getting device qualifier descriptor #0 for device 2, reading 0 of 10 requested bytes, stalled
++ Getting configuration descriptor #0 for device 2, reading 9 bytes
++ Getting configuration descriptor #0 for device 2, reading 100 bytes
++ Getting string descriptor #0 for device 2, reading 4 of 255 requested bytes
++ Getting string descriptor #2, language 0x0409 for device 2, reading 12 of 255 requested bytes: 'TiDAL'
++ Getting string descriptor #1, language 0x0409 for device 2, reading 44 of 255 requested bytes: 'Electromagnetic Field'
++ Getting string descriptor #3, language 0x0409 for device 2, reading 14 of 255 requested bytes: '123456'
++ Setting configuration 1 for device 2
++ Getting string descriptor #4, language 0x0409 for device 2, reading 42 of 255 requested bytes: 'Espressif CDC Device'
++ Class request #32, index 0, value 0 for interface 2.0, writing 7 bytes
++ Getting string descriptor #5, language 0x0409 for device 2, reading 24 of 255 requested bytes: 'TiDAL badge'
++ Getting string descriptor #3, language 0x0409 for device 2, reading 14 of 255 requested bytes: '123456'
++ Class request #10, index 0, value 0 for interface 2.2
++ Getting unknown descriptor #0 for interface 2.2, reading 144 bytes
++ Class request #9, index 0, value 513 for interface 2.2, writing 2 bytes
++ Polling 194 times for interrupt transfer on endpoint 2.3 IN
+At devices row 0:
++ Device 1: USB JTAG/serial debug unit\u{0}
++ Device 2: TiDAL
+Updating after 4406 packets decoded
+At traffic row 0:
+- 209 SOF groups
++ 278 SOF groups
+At traffic row 35:
+- Polling 194 times for interrupt transfer on endpoint 2.3 IN
++ Polling 263 times for interrupt transfer on endpoint 2.3 IN
+Expanding devices view, row 0: Device 1: USB JTAG/serial debug unit\u{0}
+At devices row 1:
++ Device descriptor
++ Configuration 1
+Expanding devices view, row 1: Device descriptor
+At devices row 2:
++ Length: 18 bytes
++ Type: 0x01
++ USB Version: 2.00
++ Class: 0xEF
++ Subclass: 0x02
++ Protocol: 0x01
++ Max EP0 packet size: 64 bytes
++ Vendor ID: 0x303A
++ Product ID: 0x1001
++ Version: 1.01
++ Manufacturer string: #1 'Espressif\u{0}'
++ Product string: #2 'USB JTAG/serial debug unit\u{0}'
++ Serial string: #3 'F4:12:FA:4D:F1:7C'
+Expanding devices view, row 15: Configuration 1
+At devices row 16:
++ Configuration descriptor
++ Interface 0
++ Interface 1
++ Interface 2
+Expanding devices view, row 17: Interface 0
+At devices row 18:
++ Interface descriptor
++ Endpoint 2 IN
+Expanding devices view, row 20: Interface 1
+At devices row 21:
++ Interface descriptor
++ Endpoint 1 OUT
++ Endpoint 1 IN
+Expanding devices view, row 24: Interface 2
+At devices row 25:
++ Interface descriptor
++ Endpoint 2 OUT
++ Endpoint 3 IN
+Expanding devices view, row 28: Device 2: TiDAL
+At devices row 29:
++ Device descriptor
++ Configuration 1
+Expanding devices view, row 30: Configuration 1
+At devices row 31:
++ Configuration descriptor
++ Interface 0
++ Interface 1
++ Interface 2
+Expanding devices view, row 34: Interface 2
+At devices row 35:
++ Interface descriptor
++ Endpoint 3 IN
+Expanding devices view, row 33: Interface 1
+At devices row 34:
++ Interface descriptor
++ Endpoint 2 OUT
++ Endpoint 2 IN
+Expanding devices view, row 35: Endpoint 2 OUT
+At devices row 36:
++ Length: 7 bytes
++ Type: 0x05
++ Endpoint address: 0x02
++ Attributes: 0x02
++ Max packet size: 64 bytes
++ Interval: 0x00
+Expanding devices view, row 42: Endpoint 2 IN
+At devices row 43:
++ Length: 7 bytes
++ Type: 0x05
++ Endpoint address: 0x82
++ Attributes: 0x02
++ Max packet size: 64 bytes
++ Interval: 0x00
+Collapsing devices view, row 15: Configuration 1
+At devices row 18:
+- Interface descriptor
+- Endpoint 2 IN
+At devices row 19:
+- Interface descriptor
+- Endpoint 1 OUT
+- Endpoint 1 IN
+At devices row 20:
+- Interface descriptor
+- Endpoint 2 OUT
+- Endpoint 3 IN
+At devices row 16:
+- Configuration descriptor
+- Interface 0
+- Interface 1
+- Interface 2
+Collapsing devices view, row 0: Device 1: USB JTAG/serial debug unit\u{0}
+At devices row 2:
+- Length: 18 bytes
+- Type: 0x01
+- USB Version: 2.00
+- Class: 0xEF
+- Subclass: 0x02
+- Protocol: 0x01
+- Max EP0 packet size: 64 bytes
+- Vendor ID: 0x303A
+- Product ID: 0x1001
+- Version: 1.01
+- Manufacturer string: #1 'Espressif\u{0}'
+- Product string: #2 'USB JTAG/serial debug unit\u{0}'
+- Serial string: #3 'F4:12:FA:4D:F1:7C'
+At devices row 1:
+- Device descriptor
+- Configuration 1
+Expanding traffic view, row 10: Getting string descriptor #2, language 0x0409 for device 1, reading 56 of 255 requested bytes: 'USB JTAG/serial debug unit\u{0}'
+At traffic row 11:
++ SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, FF, 00]
++ IN transaction on 1.0 with 56 data bytes, ACK: [38, 03, 55, 00, 53, 00, 42, 00, 20, 00, 4A, 00, 54, 00, 41, 00, 47, 00, 2F, 00, 73, 00, 65, 00, 72, 00, 69, 00, 61, 00, 6C, 00, 20, 00, 64, 00, 65, 00, 62, 00, 75, 00, 67, 00, 20, 00, 75, 00, 6E, 00, 69, 00, 74, 00, 00, 00]
++ OUT transaction on 1.0 with no data, ACK
+Expanding traffic view, row 12: IN transaction on 1.0 with 56 data bytes, ACK: [38, 03, 55, 00, 53, 00, 42, 00, 20, 00, 4A, 00, 54, 00, 41, 00, 47, 00, 2F, 00, 73, 00, 65, 00, 72, 00, 69, 00, 61, 00, 6C, 00, 20, 00, 64, 00, 65, 00, 62, 00, 75, 00, 67, 00, 20, 00, 75, 00, 6E, 00, 69, 00, 74, 00, 00, 00]
+At traffic row 13:
++ IN packet on 1.0, CRC 1D
++ DATA1 packet with CRC 5EC0 and 56 data bytes: [38, 03, 55, 00, 53, 00, 42, 00, 20, 00, 4A, 00, 54, 00, 41, 00, 47, 00, 2F, 00, 73, 00, 65, 00, 72, 00, 69, 00, 61, 00, 6C, 00, 20, 00, 64, 00, 65, 00, 62, 00, 75, 00, 67, 00, 20, 00, 75, 00, 6E, 00, 69, 00, 74, 00, 00, 00]
++ ACK packet
+Expanding traffic view, row 33: Setting configuration 1 for device 2
+At traffic row 34:
++ SETUP transaction on 2.0 with 8 data bytes, ACK: [00, 09, 01, 00, 00, 00, 00, 00]
++ 4 times: IN transaction on 2.0, NAK
++ IN transaction on 2.0 with no data, ACK
+Expanding traffic view, row 39: IN transaction on 2.0 with no data, ACK
+At traffic row 40:
++ IN packet on 2.0, CRC 15
++ DATA1 packet with CRC 0000 and no data
++ ACK packet
+Expanding traffic view, row 44: Class request #32, index 0, value 0 for interface 2.0, writing 7 bytes
+At traffic row 45:
++ SETUP transaction on 2.0 with 8 data bytes, ACK: [21, 20, 00, 00, 00, 00, 07, 00]
++ OUT transaction on 2.0 with 7 data bytes, NAK: [80, 25, 00, 00, 00, 00, 08]
++ OUT transaction on 2.0 with 7 data bytes, ACK: [80, 25, 00, 00, 00, 00, 08]
++ IN transaction on 2.0, NAK
++ IN transaction on 2.0 with no data, ACK
+Expanding traffic view, row 46: OUT transaction on 2.0 with 7 data bytes, NAK: [80, 25, 00, 00, 00, 00, 08]
+At traffic row 47:
++ OUT packet on 2.0, CRC 15
++ DATA1 packet with CRC C463 and 7 data bytes: [80, 25, 00, 00, 00, 00, 08]
++ NAK packet
+Collapsing traffic view, row 33: Setting configuration 1 for device 2
+At traffic row 40:
+- IN packet on 2.0, CRC 15
+- DATA1 packet with CRC 0000 and no data
+- ACK packet
+At traffic row 34:
+- SETUP transaction on 2.0 with 8 data bytes, ACK: [00, 09, 01, 00, 00, 00, 00, 00]
+- 4 times: IN transaction on 2.0, NAK
+- IN transaction on 2.0 with no data, ACK
+Collapsing traffic view, row 10: Getting string descriptor #2, language 0x0409 for device 1, reading 56 of 255 requested bytes: 'USB JTAG/serial debug unit\u{0}'
+At traffic row 13:
+- IN packet on 1.0, CRC 1D
+- DATA1 packet with CRC 5EC0 and 56 data bytes: [38, 03, 55, 00, 53, 00, 42, 00, 20, 00, 4A, 00, 54, 00, 41, 00, 47, 00, 2F, 00, 73, 00, 65, 00, 72, 00, 69, 00, 61, 00, 6C, 00, 20, 00, 64, 00, 65, 00, 62, 00, 75, 00, 67, 00, 20, 00, 75, 00, 6E, 00, 69, 00, 74, 00, 00, 00]
+- ACK packet
+At traffic row 11:
+- SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, FF, 00]
+- IN transaction on 1.0 with 56 data bytes, ACK: [38, 03, 55, 00, 53, 00, 42, 00, 20, 00, 4A, 00, 54, 00, 41, 00, 47, 00, 2F, 00, 73, 00, 65, 00, 72, 00, 69, 00, 61, 00, 6C, 00, 20, 00, 64, 00, 65, 00, 62, 00, 75, 00, 67, 00, 20, 00, 75, 00, 6E, 00, 69, 00, 74, 00, 00, 00]
+- OUT transaction on 1.0 with no data, ACK
+Collapsing traffic view, row 29: Class request #32, index 0, value 0 for interface 2.0, writing 7 bytes
+At traffic row 32:
+- OUT packet on 2.0, CRC 15
+- DATA1 packet with CRC C463 and 7 data bytes: [80, 25, 00, 00, 00, 00, 08]
+- NAK packet
+At traffic row 30:
+- SETUP transaction on 2.0 with 8 data bytes, ACK: [21, 20, 00, 00, 00, 00, 07, 00]
+- OUT transaction on 2.0 with 7 data bytes, NAK: [80, 25, 00, 00, 00, 00, 08]
+- OUT transaction on 2.0 with 7 data bytes, ACK: [80, 25, 00, 00, 00, 00, 08]
+- IN transaction on 2.0, NAK
+- IN transaction on 2.0 with no data, ACK
+Collapsing devices view, row 1: Device 2: TiDAL
+At devices row 9:
+- Length: 7 bytes
+- Type: 0x05
+- Endpoint address: 0x02
+- Attributes: 0x02
+- Max packet size: 64 bytes
+- Interval: 0x00
+At devices row 10:
+- Length: 7 bytes
+- Type: 0x05
+- Endpoint address: 0x82
+- Attributes: 0x02
+- Max packet size: 64 bytes
+- Interval: 0x00
+At devices row 7:
+- Interface descriptor
+- Endpoint 2 OUT
+- Endpoint 2 IN
+At devices row 8:
+- Interface descriptor
+- Endpoint 3 IN
+At devices row 4:
+- Configuration descriptor
+- Interface 0
+- Interface 1
+- Interface 2
+At devices row 2:
+- Device descriptor
+- Configuration 1

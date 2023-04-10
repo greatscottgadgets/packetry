@@ -1475,66 +1475,89 @@ mod tests {
     use super::*;
     use std::fs::File;
     use std::io::{BufReader, BufWriter, BufRead, Write};
+    use std::path::PathBuf;
     use crate::decoder::Decoder;
+    use itertools::Itertools;
     use pcap_file::pcap::PcapReader;
 
-    fn write_item(cap: &mut Capture, item: &TrafficItem, depth: u8,
+    fn summarize_item(cap: &mut Capture, item: &TrafficItem, depth: usize)
+        -> String
+    {
+        let mut summary = cap.summary(item).unwrap();
+        let (_completion, num_children) =
+            cap.item_children(Some(item)).unwrap();
+        let child_ids = 0..num_children;
+        for (n, child_summary) in child_ids
+            .map(|child_id| {
+                let child = cap.child_item(item, child_id).unwrap();
+                summarize_item(cap, &child, depth + 1)
+            })
+            .dedup_with_count()
+        {
+            summary += "\n";
+            summary += &" ".repeat(depth + 1);
+            if n > 1 {
+                summary += &format!("{} times: {}", n, &child_summary);
+            } else {
+                summary += &child_summary;
+            }
+        }
+        summary
+    }
+
+    fn write_item(cap: &mut Capture, item: &TrafficItem, depth: usize,
                   writer: &mut dyn Write)
     {
-        let summary = cap.summary(item).unwrap();
+        let summary = summarize_item(cap, item, depth);
         for _ in 0..depth {
             writer.write(b" ").unwrap();
         }
         writer.write(summary.as_bytes()).unwrap();
         writer.write(b"\n").unwrap();
-        let (_completion, num_children) = cap.item_children(Some(item)).unwrap();
-        for child_id in 0..num_children {
-            let child = cap.child_item(item, child_id).unwrap();
-            write_item(cap, &child, depth + 1, writer);
-        }
     }
 
     #[test]
     fn test_captures() {
-        let test_dir = "./tests/";
-        for result in std::fs::read_dir(test_dir).unwrap() {
-            let entry = result.unwrap();
-            if entry.file_type().unwrap().is_dir() {
-                let path = entry.path();
-                let mut cap_path = path.clone();
-                let mut ref_path = path.clone();
-                let mut out_path = path.clone();
-                cap_path.push("capture.pcap");
-                ref_path.push("reference.txt");
-                out_path.push("output.txt");
-                {
-                    let pcap_file = File::open(cap_path).unwrap();
-                    let mut pcap_reader = PcapReader::new(pcap_file).unwrap();
-                    let mut cap = Capture::new().unwrap();
-                    let mut decoder = Decoder::default();
-                    while let Some(result) = pcap_reader.next_raw_packet() {
-                        let packet = result.unwrap().data;
-                        decoder.handle_raw_packet(&mut cap, &packet).unwrap();
-                    }
-                    decoder.finish(&mut cap).unwrap();
-                    let out_file = File::create(out_path.clone()).unwrap();
-                    let mut out_writer = BufWriter::new(out_file);
-                    let num_items = cap.item_index.len();
-                    for item_id in 0 .. num_items {
-                        let item = cap.item(None, item_id).unwrap();
-                        write_item(&mut cap, &item, 0, &mut out_writer);
-                    }
+        let test_dir = PathBuf::from("./tests/");
+        let mut list_path = test_dir.clone();
+        list_path.push("tests.txt");
+        let list_file = File::open(list_path).unwrap();
+        for test_name in BufReader::new(list_file).lines() {
+            let mut test_path = test_dir.clone();
+            test_path.push(test_name.unwrap());
+            let mut cap_path = test_path.clone();
+            let mut ref_path = test_path.clone();
+            let mut out_path = test_path.clone();
+            cap_path.push("capture.pcap");
+            ref_path.push("reference.txt");
+            out_path.push("output.txt");
+            {
+                let pcap_file = File::open(cap_path).unwrap();
+                let mut pcap_reader = PcapReader::new(pcap_file).unwrap();
+                let mut cap = Capture::new().unwrap();
+                let mut decoder = Decoder::default();
+                while let Some(result) = pcap_reader.next_raw_packet() {
+                    let packet = result.unwrap().data;
+                    decoder.handle_raw_packet(&mut cap, &packet).unwrap();
                 }
-                let ref_file = File::open(ref_path).unwrap();
-                let out_file = File::open(out_path.clone()).unwrap();
-                let ref_reader = BufReader::new(ref_file);
-                let out_reader = BufReader::new(out_file);
-                let mut out_lines = out_reader.lines();
-                for line in ref_reader.lines() {
-                    let expected = line.unwrap();
-                    let actual = out_lines.next().unwrap().unwrap();
-                    assert!(actual == expected);
+                decoder.finish(&mut cap).unwrap();
+                let out_file = File::create(out_path.clone()).unwrap();
+                let mut out_writer = BufWriter::new(out_file);
+                let num_items = cap.item_index.len();
+                for item_id in 0 .. num_items {
+                    let item = cap.item(None, item_id).unwrap();
+                    write_item(&mut cap, &item, 0, &mut out_writer);
                 }
+            }
+            let ref_file = File::open(ref_path).unwrap();
+            let out_file = File::open(out_path.clone()).unwrap();
+            let ref_reader = BufReader::new(ref_file);
+            let out_reader = BufReader::new(out_file);
+            let mut out_lines = out_reader.lines();
+            for line in ref_reader.lines() {
+                let expected = line.unwrap();
+                let actual = out_lines.next().unwrap().unwrap();
+                assert_eq!(actual, expected);
             }
         }
     }
