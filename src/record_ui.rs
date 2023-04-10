@@ -1,15 +1,15 @@
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
 
 use gtk::glib::Object;
 use gtk::gio::prelude::ListModelExt;
 use itertools::Itertools;
 use serde::{Serialize, Deserialize};
 
-use crate::capture::{Capture, ItemSource};
+use crate::capture::{CaptureReader, ItemSource};
 use crate::model::GenericModel;
 use crate::row_data::ToGenericRowData;
 
@@ -37,7 +37,7 @@ impl std::fmt::Display for UiAction {
 }
 
 pub struct Recording {
-    capture: Arc<Mutex<Capture>>,
+    capture: CaptureReader,
     packet_count: u64,
     #[cfg(feature="record-ui-test")]
     action_log: File,
@@ -49,7 +49,7 @@ pub struct Recording {
 }
 
 impl Recording {
-    pub fn new(capture: Arc<Mutex<Capture>>) -> Recording {
+    pub fn new(capture: CaptureReader) -> Recording {
         Recording {
             capture,
             packet_count: 0,
@@ -111,7 +111,7 @@ impl Recording {
 
     pub fn log_open_file(&mut self,
                          path: &PathBuf, 
-                         capture: &Arc<Mutex<Capture>>)
+                         capture: &CaptureReader)
     {
         self.log_action(UiAction::Open(path.clone()));
         self.capture = capture.clone();
@@ -150,7 +150,7 @@ impl Recording {
         }
     }
 
-    pub fn log_items_changed<Model, Item>(
+    pub fn log_items_changed<Model, Item, Cursor>(
         &mut self,
         name: &str,
         model: &Model,
@@ -159,9 +159,9 @@ impl Recording {
         added: u32)
     where
         Model: ListModelExt + GenericModel<Item>,
-        Capture: ItemSource<Item>,
+        CaptureReader: ItemSource<Item, Cursor>,
         Object: ToGenericRowData<Item>,
-        Item: Copy
+        Item: Copy + PartialOrd + Debug
     {
         if (removed, added) == (0, 0) {
             return;
@@ -170,24 +170,41 @@ impl Recording {
         let position = position as usize;
         let removed = removed as usize;
         let removed_range = position..(position + removed);
-        let added_items: Vec<String> = added_range
+        let added_items: Vec<Item> = added_range
             .clone()
-            .map(|i| self.item_text(model, i))
+            .map(|i| self.item(model, i))
             .collect();
-        let removed_items: Vec<String> = self.view_items
+        for ((i, prev), (j, next)) in added_range
+            .zip(added_items.iter())
+            .tuple_windows()
+        {
+            if prev > next {
+                println!();
+                println!("Item at position {i}: {prev:?}");
+                println!("is followed by");
+                println!("Item at position {j}: {next:?}");
+                println!();
+                panic!("Items out of order")
+            }
+        }
+        let added_texts: Vec<String> = added_items
+            .iter()
+            .map(|item| self.item_text(item))
+            .collect();
+        let removed_texts: Vec<String> = self.view_items
             .entry(name.to_string())
             .or_insert_with(Vec::new)
-            .splice(removed_range, added_items.clone())
+            .splice(removed_range, added_texts.clone())
             .collect();
         self.log_output(format!("At {} row {}:\n", name, position));
-        for (n, string) in removed_items.iter().dedup_with_count() {
+        for (n, string) in removed_texts.iter().dedup_with_count() {
             if n == 1 {
                 self.log_output(format!("- {}\n", string));
             } else {
                 self.log_output(format!("- {} times: {}\n", n, string));
             }
         }
-        for (n, string) in added_items.iter().dedup_with_count() {
+        for (n, string) in added_texts.iter().dedup_with_count() {
             if n == 1 {
                 self.log_output(format!("+ {}\n", string));
             } else {
@@ -196,24 +213,27 @@ impl Recording {
         }
     }
 
-    fn item_text<Model, Item>(&self, model: &Model, position: u32) -> String
+    fn item<Model, Item, Cursor>(&self, model: &Model, position: u32) -> Item
         where Model: ListModelExt + GenericModel<Item>,
-              Capture: ItemSource<Item>,
+              CaptureReader: ItemSource<Item, Cursor>,
               Object: ToGenericRowData<Item>,
               Item: Copy
     {
-        let item = model
+        model
             .item(position)
             .expect("Failed to retrieve row data")
             .to_generic_row_data()
             .node()
             .expect("Failed to fetch item node from row data")
             .borrow()
-            .item;
+            .item
+    }
+
+    fn item_text<Item, Cursor>(&mut self, item: &Item) -> String
+        where CaptureReader: ItemSource<Item, Cursor>, Item: Copy
+    {
         self.capture
-            .lock()
-            .expect("Failed to lock capture")
-            .summary(&item)
+            .summary(item)
             .expect("Failed to generate item summary")
     }
 

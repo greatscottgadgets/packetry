@@ -1,5 +1,6 @@
-use std::marker::PhantomData;
 use std::iter::FilterMap;
+use std::ops::{Index, IndexMut};
+use std::marker::PhantomData;
 use std::slice::Iter;
 
 use crate::id::Id;
@@ -10,6 +11,7 @@ pub trait Key {
     fn key(id: usize) -> Self;
 }
 
+#[derive(Clone)]
 pub struct VecMap<K, V> where K: Key {
     _marker: PhantomData<K>,
     vec: Vec<Option<V>>,
@@ -92,6 +94,24 @@ impl<T> Key for Id<T> {
 
     fn key(id: usize) -> Id<T> {
         Id::<T>::from(id as u64)
+    }
+}
+
+impl<K, V> Index<K> for VecMap<K, V>
+where K: Key
+{
+    type Output = V;
+
+    fn index(&self, index: K) -> &V {
+        self.vec[index.id()].as_ref().unwrap()
+    }
+}
+
+impl<K, V> IndexMut<K> for VecMap<K, V>
+where K: Key
+{
+    fn index_mut(&mut self, index: K) -> &mut V {
+        self.vec[index.id()].as_mut().unwrap()
     }
 }
 

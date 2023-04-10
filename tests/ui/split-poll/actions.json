@@ -1,0 +1,14 @@
+{"Open":"tests/split-poll/capture.pcap"}
+{"Update":40}
+{"SetExpanded":["traffic",0,true]}
+{"SetExpanded":["traffic",1,true]}
+{"SetExpanded":["traffic",4,true]}
+{"SetExpanded":["traffic",19,true]}
+{"SetExpanded":["traffic",17,true]}
+{"SetExpanded":["traffic",12,true]}
+{"SetExpanded":["traffic",9,true]}
+{"SetExpanded":["traffic",4,false]}
+{"SetExpanded":["traffic",0,false]}
+{"SetExpanded":["traffic",0,true]}
+{"SetExpanded":["traffic",3,true]}
+{"SetExpanded":["traffic",2,true]}
