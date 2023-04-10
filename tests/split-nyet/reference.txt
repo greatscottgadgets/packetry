@@ -1,0 +1,899 @@
+30 SOF groups
+ 3 SOF packets
+  SOF packet with frame number 1383, CRC 06
+  SOF packet with frame number 1383, CRC 06
+  SOF packet with frame number 1383, CRC 06
+ 1 SOF packets
+  SOF packet with frame number 1383, CRC 06
+ 131 SOF packets
+  SOF packet with frame number 1383, CRC 06
+  SOF packet with frame number 1383, CRC 06
+  SOF packet with frame number 1383, CRC 06
+  SOF packet with frame number 1384, CRC 07
+  SOF packet with frame number 1384, CRC 07
+  SOF packet with frame number 1384, CRC 07
+  SOF packet with frame number 1384, CRC 07
+  SOF packet with frame number 1384, CRC 07
+  SOF packet with frame number 1384, CRC 07
+  SOF packet with frame number 1384, CRC 07
+  SOF packet with frame number 1384, CRC 07
+  SOF packet with frame number 1385, CRC 18
+  SOF packet with frame number 1385, CRC 18
+  SOF packet with frame number 1385, CRC 18
+  SOF packet with frame number 1385, CRC 18
+  SOF packet with frame number 1385, CRC 18
+  SOF packet with frame number 1385, CRC 18
+  SOF packet with frame number 1385, CRC 18
+  SOF packet with frame number 1385, CRC 18
+  SOF packet with frame number 1386, CRC 10
+  SOF packet with frame number 1386, CRC 10
+  SOF packet with frame number 1386, CRC 10
+  SOF packet with frame number 1386, CRC 10
+  SOF packet with frame number 1386, CRC 10
+  SOF packet with frame number 1386, CRC 10
+  SOF packet with frame number 1386, CRC 10
+  SOF packet with frame number 1386, CRC 10
+  SOF packet with frame number 1387, CRC 0F
+  SOF packet with frame number 1387, CRC 0F
+  SOF packet with frame number 1387, CRC 0F
+  SOF packet with frame number 1387, CRC 0F
+  SOF packet with frame number 1387, CRC 0F
+  SOF packet with frame number 1387, CRC 0F
+  SOF packet with frame number 1387, CRC 0F
+  SOF packet with frame number 1387, CRC 0F
+  SOF packet with frame number 1388, CRC 00
+  SOF packet with frame number 1388, CRC 00
+  SOF packet with frame number 1388, CRC 00
+  SOF packet with frame number 1388, CRC 00
+  SOF packet with frame number 1388, CRC 00
+  SOF packet with frame number 1388, CRC 00
+  SOF packet with frame number 1388, CRC 00
+  SOF packet with frame number 1388, CRC 00
+  SOF packet with frame number 1389, CRC 1F
+  SOF packet with frame number 1389, CRC 1F
+  SOF packet with frame number 1389, CRC 1F
+  SOF packet with frame number 1389, CRC 1F
+  SOF packet with frame number 1389, CRC 1F
+  SOF packet with frame number 1389, CRC 1F
+  SOF packet with frame number 1389, CRC 1F
+  SOF packet with frame number 1389, CRC 1F
+  SOF packet with frame number 1390, CRC 17
+  SOF packet with frame number 1390, CRC 17
+  SOF packet with frame number 1390, CRC 17
+  SOF packet with frame number 1390, CRC 17
+  SOF packet with frame number 1390, CRC 17
+  SOF packet with frame number 1390, CRC 17
+  SOF packet with frame number 1390, CRC 17
+  SOF packet with frame number 1390, CRC 17
+  SOF packet with frame number 1391, CRC 08
+  SOF packet with frame number 1391, CRC 08
+  SOF packet with frame number 1391, CRC 08
+  SOF packet with frame number 1391, CRC 08
+  SOF packet with frame number 1391, CRC 08
+  SOF packet with frame number 1391, CRC 08
+  SOF packet with frame number 1391, CRC 08
+  SOF packet with frame number 1391, CRC 08
+  SOF packet with frame number 1392, CRC 15
+  SOF packet with frame number 1392, CRC 15
+  SOF packet with frame number 1392, CRC 15
+  SOF packet with frame number 1392, CRC 15
+  SOF packet with frame number 1392, CRC 15
+  SOF packet with frame number 1392, CRC 15
+  SOF packet with frame number 1392, CRC 15
+  SOF packet with frame number 1392, CRC 15
+  SOF packet with frame number 1393, CRC 0A
+  SOF packet with frame number 1393, CRC 0A
+  SOF packet with frame number 1393, CRC 0A
+  SOF packet with frame number 1393, CRC 0A
+  SOF packet with frame number 1393, CRC 0A
+  SOF packet with frame number 1393, CRC 0A
+  SOF packet with frame number 1393, CRC 0A
+  SOF packet with frame number 1393, CRC 0A
+  SOF packet with frame number 1394, CRC 02
+  SOF packet with frame number 1394, CRC 02
+  SOF packet with frame number 1394, CRC 02
+  SOF packet with frame number 1394, CRC 02
+  SOF packet with frame number 1394, CRC 02
+  SOF packet with frame number 1394, CRC 02
+  SOF packet with frame number 1394, CRC 02
+  SOF packet with frame number 1394, CRC 02
+  SOF packet with frame number 1395, CRC 1D
+  SOF packet with frame number 1395, CRC 1D
+  SOF packet with frame number 1395, CRC 1D
+  SOF packet with frame number 1395, CRC 1D
+  SOF packet with frame number 1395, CRC 1D
+  SOF packet with frame number 1395, CRC 1D
+  SOF packet with frame number 1395, CRC 1D
+  SOF packet with frame number 1395, CRC 1D
+  SOF packet with frame number 1396, CRC 12
+  SOF packet with frame number 1396, CRC 12
+  SOF packet with frame number 1396, CRC 12
+  SOF packet with frame number 1396, CRC 12
+  SOF packet with frame number 1396, CRC 12
+  SOF packet with frame number 1396, CRC 12
+  SOF packet with frame number 1396, CRC 12
+  SOF packet with frame number 1396, CRC 12
+  SOF packet with frame number 1397, CRC 0D
+  SOF packet with frame number 1397, CRC 0D
+  SOF packet with frame number 1397, CRC 0D
+  SOF packet with frame number 1397, CRC 0D
+  SOF packet with frame number 1397, CRC 0D
+  SOF packet with frame number 1397, CRC 0D
+  SOF packet with frame number 1397, CRC 0D
+  SOF packet with frame number 1397, CRC 0D
+  SOF packet with frame number 1398, CRC 05
+  SOF packet with frame number 1398, CRC 05
+  SOF packet with frame number 1398, CRC 05
+  SOF packet with frame number 1398, CRC 05
+  SOF packet with frame number 1398, CRC 05
+  SOF packet with frame number 1398, CRC 05
+  SOF packet with frame number 1398, CRC 05
+  SOF packet with frame number 1398, CRC 05
+  SOF packet with frame number 1399, CRC 1A
+  SOF packet with frame number 1399, CRC 1A
+  SOF packet with frame number 1399, CRC 1A
+  SOF packet with frame number 1399, CRC 1A
+  SOF packet with frame number 1399, CRC 1A
+  SOF packet with frame number 1399, CRC 1A
+  SOF packet with frame number 1399, CRC 1A
+  SOF packet with frame number 1399, CRC 1A
+ 1 SOF packets
+  SOF packet with frame number 1400, CRC 1B
+ 1 SOF packets
+  SOF packet with frame number 1400, CRC 1B
+ 1 SOF packets
+  SOF packet with frame number 1400, CRC 1B
+ 1 SOF packets
+  SOF packet with frame number 1400, CRC 1B
+ 1 SOF packets
+  SOF packet with frame number 1400, CRC 1B
+ 1 SOF packets
+  SOF packet with frame number 1400, CRC 1B
+ 1 SOF packets
+  SOF packet with frame number 1400, CRC 1B
+ 1 SOF packets
+  SOF packet with frame number 1400, CRC 1B
+ 1 SOF packets
+  SOF packet with frame number 1401, CRC 04
+ 1 SOF packets
+  SOF packet with frame number 1401, CRC 04
+ 1 SOF packets
+  SOF packet with frame number 1401, CRC 04
+ 1 SOF packets
+  SOF packet with frame number 1401, CRC 04
+ 1 SOF packets
+  SOF packet with frame number 1401, CRC 04
+ 1 SOF packets
+  SOF packet with frame number 1401, CRC 04
+ 1 SOF packets
+  SOF packet with frame number 1401, CRC 04
+ 1 SOF packets
+  SOF packet with frame number 1401, CRC 04
+ 1 SOF packets
+  SOF packet with frame number 1402, CRC 0C
+ 1 SOF packets
+  SOF packet with frame number 1402, CRC 0C
+ 1 SOF packets
+  SOF packet with frame number 1402, CRC 0C
+ 1 SOF packets
+  SOF packet with frame number 1402, CRC 0C
+ 1 SOF packets
+  SOF packet with frame number 1402, CRC 0C
+ 1 SOF packets
+  SOF packet with frame number 1402, CRC 0C
+ 1 SOF packets
+  SOF packet with frame number 1402, CRC 0C
+ 1 SOF packets
+  SOF packet with frame number 1402, CRC 0C
+ 1 SOF packets
+  SOF packet with frame number 1403, CRC 13
+ 1 SOF packets
+  SOF packet with frame number 1403, CRC 13
+ 4 SOF packets
+  SOF packet with frame number 1403, CRC 13
+  SOF packet with frame number 1403, CRC 13
+  SOF packet with frame number 1403, CRC 13
+  SOF packet with frame number 1403, CRC 13
+Setting address to 3 for device 0
+ Starting SETUP transaction on 0.0 with 8 data bytes, ACK: [00, 05, 03, 00, 00, 00, 00, 00]
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  SETUP packet on 0.0, CRC 02
+  DATA0 packet with CRC C7EA and 8 data bytes: [00, 05, 03, 00, 00, 00, 00, 00]
+  ACK packet
+ Completing SETUP transaction on 0.0, ACK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  SETUP packet on 0.0, CRC 02
+  ACK packet
+ Starting IN transaction on 0.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 0.0, CRC 02
+  ACK packet
+ Completing IN transaction on 0.0, NAK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 0.0, CRC 02
+  NAK packet
+ Starting IN transaction on 0.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 0.0, CRC 02
+  ACK packet
+ Completing IN transaction on 0.0, NAK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 0.0, CRC 02
+  NAK packet
+ Starting IN transaction on 0.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 0.0, CRC 02
+  ACK packet
+ Completing IN transaction on 0.0, NAK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 0.0, CRC 02
+  NAK packet
+ Starting IN transaction on 0.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 0.0, CRC 02
+  ACK packet
+ Completing IN transaction on 0.0 with no data
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 0.0, CRC 02
+  DATA1 packet with CRC 0000 and no data
+Getting device descriptor #0 for device 3, reading 18 bytes
+ Starting SETUP transaction on 3.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 12, 00]
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  SETUP packet on 3.0, CRC 0A
+  DATA0 packet with CRC F4E0 and 8 data bytes: [80, 06, 00, 01, 00, 00, 12, 00]
+  ACK packet
+ Completing SETUP transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  SETUP packet on 3.0, CRC 0A
+  NYET packet
+ Completing SETUP transaction on 3.0, ACK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  SETUP packet on 3.0, CRC 0A
+  ACK packet
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NAK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NAK packet
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NAK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NAK packet
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NAK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NAK packet
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0 with 18 data bytes: [12, 01, 10, 01, 00, 00, 00, 40, 1E, 04, 32, 32, 00, 01, 01, 02, 03, 01]
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  DATA1 packet with CRC 997C and 18 data bytes: [12, 01, 10, 01, 00, 00, 00, 40, 1E, 04, 32, 32, 00, 01, 01, 02, 03, 01]
+ Starting OUT transaction on 3.0 with no data, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  OUT packet on 3.0, CRC 0A
+  DATA1 packet with CRC 0000 and no data
+  ACK packet
+ Completing OUT transaction on 3.0, ACK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  OUT packet on 3.0, CRC 0A
+  ACK packet
+Getting configuration descriptor #0 for device 3, reading 9 bytes
+ Starting SETUP transaction on 3.0 with 8 data bytes, ACK: [80, 06, 00, 02, 00, 00, 09, 00]
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  SETUP packet on 3.0, CRC 0A
+  DATA0 packet with CRC 04AE and 8 data bytes: [80, 06, 00, 02, 00, 00, 09, 00]
+  ACK packet
+ Completing SETUP transaction on 3.0, ACK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  SETUP packet on 3.0, CRC 0A
+  ACK packet
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NAK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NAK packet
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NAK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NAK packet
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NAK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NAK packet
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0 with 9 data bytes: [09, 02, 01, 05, 06, 01, 00, 80, FA]
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  DATA1 packet with CRC 6C66 and 9 data bytes: [09, 02, 01, 05, 06, 01, 00, 80, FA]
+ Starting OUT transaction on 3.0 with no data, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  OUT packet on 3.0, CRC 0A
+  DATA1 packet with CRC 0000 and no data
+  ACK packet
+ Completing OUT transaction on 3.0, ACK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  OUT packet on 3.0, CRC 0A
+  ACK packet
+Getting configuration descriptor #0 for device 3, reading 1281 bytes
+ Starting SETUP transaction on 3.0 with 8 data bytes, ACK: [80, 06, 00, 02, 00, 00, 01, 05]
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  SETUP packet on 3.0, CRC 0A
+  DATA0 packet with CRC C769 and 8 data bytes: [80, 06, 00, 02, 00, 00, 01, 05]
+  ACK packet
+ Completing SETUP transaction on 3.0, ACK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  SETUP packet on 3.0, CRC 0A
+  ACK packet
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NAK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NAK packet
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NAK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NAK packet
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NAK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NAK packet
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0 with 64 data bytes: [09, 02, 01, 05, 06, 01, 00, 80, FA, 09, 04, 00, 00, 01, 01, 01, 00, 00, 0C, 24, 01, 00, 01, 8B, 00, 04, 01, 02, 03, 04, 0C, 24, 02, 01, 01, 01, 00, 02, 03, 00, 00, 00, 0A, 24, 06, 02, 01, 01, 01, 02, 02, 00, 09, 24, 03, 03, 01, 03, 00, 02, 00, 0C, 24, 02]
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  DATA1 packet with CRC FF9A and 64 data bytes: [09, 02, 01, 05, 06, 01, 00, 80, FA, 09, 04, 00, 00, 01, 01, 01, 00, 00, 0C, 24, 01, 00, 01, 8B, 00, 04, 01, 02, 03, 04, 0C, 24, 02, 01, 01, 01, 00, 02, 03, 00, 00, 00, 0A, 24, 06, 02, 01, 01, 01, 02, 02, 00, 09, 24, 03, 03, 01, 03, 00, 02, 00, 0C, 24, 02]
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0 with 64 data bytes: [04, 01, 01, 00, 02, 03, 00, 00, 00, 09, 24, 03, 06, 02, 06, 00, 04, 00, 0C, 24, 02, 0A, 01, 02, 00, 02, 03, 00, 00, 00, 0C, 24, 02, 0C, 03, 06, 00, 02, 03, 00, 00, 00, 0C, 24, 02, 0E, 08, 07, 00, 02, 03, 00, 00, 00, 09, 24, 05, 10, 03, 0A, 0C, 0E, 00, 09]
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  DATA0 packet with CRC DBD6 and 64 data bytes: [04, 01, 01, 00, 02, 03, 00, 00, 00, 09, 24, 03, 06, 02, 06, 00, 04, 00, 0C, 24, 02, 0A, 01, 02, 00, 02, 03, 00, 00, 00, 0C, 24, 02, 0C, 03, 06, 00, 02, 03, 00, 00, 00, 0C, 24, 02, 0E, 08, 07, 00, 02, 03, 00, 00, 00, 09, 24, 05, 10, 03, 0A, 0C, 0E, 00, 09]
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0 with 64 data bytes: [24, 03, 11, 01, 01, 00, 10, 00, 0C, 24, 02, 07, 05, 06, 00, 02, 03, 00, 00, 00, 09, 24, 03, 09, 01, 01, 00, 07, 00, 09, 05, 83, 03, 02, 00, 0A, 00, 00, 09, 04, 01, 00, 00, 01, 02, 00, 00, 09, 04, 01, 01, 02, 01, 02, 00, 00, 07, 24, 01, 01, 00, 01, 00, 0B]
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  DATA1 packet with CRC C8D3 and 64 data bytes: [24, 03, 11, 01, 01, 00, 10, 00, 0C, 24, 02, 07, 05, 06, 00, 02, 03, 00, 00, 00, 09, 24, 03, 09, 01, 01, 00, 07, 00, 09, 05, 83, 03, 02, 00, 0A, 00, 00, 09, 04, 01, 00, 00, 01, 02, 00, 00, 09, 04, 01, 01, 02, 01, 02, 00, 00, 07, 24, 01, 01, 00, 01, 00, 0B]
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0 with 64 data bytes: [24, 02, 01, 02, 02, 10, 01, 80, BB, 00, 09, 05, 01, 05, C4, 00, 01, 00, 01, 07, 25, 01, 00, 00, 00, 00, 09, 05, 81, 11, 03, 00, 01, 05, 00, 09, 04, 01, 02, 02, 01, 02, 00, 00, 07, 24, 01, 01, 00, 01, 00, 0B, 24, 02, 01, 02, 03, 18, 01, 80, BB, 00, 09, 05]
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  DATA0 packet with CRC DAC3 and 64 data bytes: [24, 02, 01, 02, 02, 10, 01, 80, BB, 00, 09, 05, 01, 05, C4, 00, 01, 00, 01, 07, 25, 01, 00, 00, 00, 00, 09, 05, 81, 11, 03, 00, 01, 05, 00, 09, 04, 01, 02, 02, 01, 02, 00, 00, 07, 24, 01, 01, 00, 01, 00, 0B, 24, 02, 01, 02, 03, 18, 01, 80, BB, 00, 09, 05]
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0 with 64 data bytes: [01, 05, 26, 01, 01, 00, 01, 07, 25, 01, 00, 00, 00, 00, 09, 05, 81, 11, 03, 00, 01, 05, 00, 09, 04, 01, 03, 02, 01, 02, 00, 00, 07, 24, 01, 01, 00, 01, 00, 0B, 24, 02, 01, 02, 02, 10, 01, 00, 77, 01, 09, 05, 01, 05, 84, 01, 01, 00, 01, 07, 25, 01, 00, 00]
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  DATA1 packet with CRC C103 and 64 data bytes: [01, 05, 26, 01, 01, 00, 01, 07, 25, 01, 00, 00, 00, 00, 09, 05, 81, 11, 03, 00, 01, 05, 00, 09, 04, 01, 03, 02, 01, 02, 00, 00, 07, 24, 01, 01, 00, 01, 00, 0B, 24, 02, 01, 02, 02, 10, 01, 00, 77, 01, 09, 05, 01, 05, 84, 01, 01, 00, 01, 07, 25, 01, 00, 00]
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0 with 64 data bytes: [00, 00, 09, 05, 81, 11, 03, 00, 01, 05, 00, 09, 04, 01, 04, 02, 01, 02, 00, 00, 07, 24, 01, 01, 00, 01, 00, 0B, 24, 02, 01, 02, 03, 18, 01, 00, 77, 01, 09, 05, 01, 05, 46, 02, 01, 00, 01, 07, 25, 01, 00, 00, 00, 00, 09, 05, 81, 11, 03, 00, 01, 05, 00, 09]
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  DATA0 packet with CRC 2564 and 64 data bytes: [00, 00, 09, 05, 81, 11, 03, 00, 01, 05, 00, 09, 04, 01, 04, 02, 01, 02, 00, 00, 07, 24, 01, 01, 00, 01, 00, 0B, 24, 02, 01, 02, 03, 18, 01, 00, 77, 01, 09, 05, 01, 05, 46, 02, 01, 00, 01, 07, 25, 01, 00, 00, 00, 00, 09, 05, 81, 11, 03, 00, 01, 05, 00, 09]
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0 with 64 data bytes: [04, 02, 00, 00, 01, 02, 00, 00, 09, 04, 02, 01, 02, 01, 02, 00, 00, 07, 24, 01, 04, 00, 01, 00, 0B, 24, 02, 01, 02, 02, 10, 01, 44, AC, 00, 09, 05, 04, 05, B4, 00, 01, 00, 04, 07, 25, 01, 00, 00, 00, 00, 09, 05, 84, 11, 03, 00, 01, 05, 00, 09, 04, 02, 02]
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  DATA1 packet with CRC DF36 and 64 data bytes: [04, 02, 00, 00, 01, 02, 00, 00, 09, 04, 02, 01, 02, 01, 02, 00, 00, 07, 24, 01, 04, 00, 01, 00, 0B, 24, 02, 01, 02, 02, 10, 01, 44, AC, 00, 09, 05, 04, 05, B4, 00, 01, 00, 04, 07, 25, 01, 00, 00, 00, 00, 09, 05, 84, 11, 03, 00, 01, 05, 00, 09, 04, 02, 02]
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0 with 64 data bytes: [02, 01, 02, 00, 00, 07, 24, 01, 04, 00, 01, 00, 0B, 24, 02, 01, 02, 03, 18, 01, 44, AC, 00, 09, 05, 04, 05, 0E, 01, 01, 00, 04, 07, 25, 01, 00, 00, 00, 00, 09, 05, 84, 11, 03, 00, 01, 05, 00, 09, 04, 02, 03, 02, 01, 02, 00, 00, 07, 24, 01, 04, 00, 01, 00]
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  DATA0 packet with CRC C15B and 64 data bytes: [02, 01, 02, 00, 00, 07, 24, 01, 04, 00, 01, 00, 0B, 24, 02, 01, 02, 03, 18, 01, 44, AC, 00, 09, 05, 04, 05, 0E, 01, 01, 00, 04, 07, 25, 01, 00, 00, 00, 00, 09, 05, 84, 11, 03, 00, 01, 05, 00, 09, 04, 02, 03, 02, 01, 02, 00, 00, 07, 24, 01, 04, 00, 01, 00]
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0 with 64 data bytes: [0B, 24, 02, 01, 02, 02, 10, 01, 80, BB, 00, 09, 05, 04, 05, C4, 00, 01, 00, 04, 07, 25, 01, 00, 00, 00, 00, 09, 05, 84, 11, 03, 00, 01, 05, 00, 09, 04, 02, 04, 02, 01, 02, 00, 00, 07, 24, 01, 04, 00, 01, 00, 0B, 24, 02, 01, 02, 03, 18, 01, 80, BB, 00, 09]
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  DATA1 packet with CRC 1733 and 64 data bytes: [0B, 24, 02, 01, 02, 02, 10, 01, 80, BB, 00, 09, 05, 04, 05, C4, 00, 01, 00, 04, 07, 25, 01, 00, 00, 00, 00, 09, 05, 84, 11, 03, 00, 01, 05, 00, 09, 04, 02, 04, 02, 01, 02, 00, 00, 07, 24, 01, 04, 00, 01, 00, 0B, 24, 02, 01, 02, 03, 18, 01, 80, BB, 00, 09]
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0 with 64 data bytes: [05, 04, 05, 26, 01, 01, 00, 04, 07, 25, 01, 00, 00, 00, 00, 09, 05, 84, 11, 03, 00, 01, 05, 00, 09, 04, 02, 05, 02, 01, 02, 00, 00, 07, 24, 01, 04, 00, 01, 00, 0B, 24, 02, 01, 02, 02, 10, 01, 00, 77, 01, 09, 05, 04, 05, 84, 01, 01, 00, 04, 07, 25, 01, 00]
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  DATA0 packet with CRC 7A30 and 64 data bytes: [05, 04, 05, 26, 01, 01, 00, 04, 07, 25, 01, 00, 00, 00, 00, 09, 05, 84, 11, 03, 00, 01, 05, 00, 09, 04, 02, 05, 02, 01, 02, 00, 00, 07, 24, 01, 04, 00, 01, 00, 0B, 24, 02, 01, 02, 02, 10, 01, 00, 77, 01, 09, 05, 04, 05, 84, 01, 01, 00, 04, 07, 25, 01, 00]
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0 with 64 data bytes: [00, 00, 00, 09, 05, 84, 11, 03, 00, 01, 05, 00, 09, 04, 02, 06, 02, 01, 02, 00, 00, 07, 24, 01, 04, 00, 01, 00, 0B, 24, 02, 01, 02, 03, 18, 01, 00, 77, 01, 09, 05, 04, 05, 46, 02, 01, 00, 04, 07, 25, 01, 00, 00, 00, 00, 09, 05, 84, 11, 03, 00, 01, 05, 00]
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  DATA1 packet with CRC 9023 and 64 data bytes: [00, 00, 00, 09, 05, 84, 11, 03, 00, 01, 05, 00, 09, 04, 02, 06, 02, 01, 02, 00, 00, 07, 24, 01, 04, 00, 01, 00, 0B, 24, 02, 01, 02, 03, 18, 01, 00, 77, 01, 09, 05, 04, 05, 46, 02, 01, 00, 04, 07, 25, 01, 00, 00, 00, 00, 09, 05, 84, 11, 03, 00, 01, 05, 00]
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0 with 64 data bytes: [09, 04, 02, 07, 02, 01, 02, 00, 00, 07, 24, 01, 04, 00, 01, 20, 0B, 24, 02, 03, 02, 02, 10, 01, 44, AC, 00, 09, 05, 04, 05, B4, 00, 01, 00, 04, 07, 25, 01, 00, 00, 00, 00, 09, 05, 84, 11, 03, 00, 01, 05, 00, 09, 04, 02, 08, 02, 01, 02, 00, 00, 07, 24, 01]
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  DATA0 packet with CRC 84E4 and 64 data bytes: [09, 04, 02, 07, 02, 01, 02, 00, 00, 07, 24, 01, 04, 00, 01, 20, 0B, 24, 02, 03, 02, 02, 10, 01, 44, AC, 00, 09, 05, 04, 05, B4, 00, 01, 00, 04, 07, 25, 01, 00, 00, 00, 00, 09, 05, 84, 11, 03, 00, 01, 05, 00, 09, 04, 02, 08, 02, 01, 02, 00, 00, 07, 24, 01]
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0 with 64 data bytes: [04, 00, 01, 20, 0B, 24, 02, 03, 02, 02, 10, 01, 80, BB, 00, 09, 05, 04, 05, C4, 00, 01, 00, 04, 07, 25, 01, 00, 00, 00, 00, 09, 05, 84, 11, 03, 00, 01, 05, 00, 09, 04, 03, 00, 00, 01, 02, 00, 00, 09, 04, 03, 01, 01, 01, 02, 00, 00, 07, 24, 01, 11, 00, 01]
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  DATA1 packet with CRC B593 and 64 data bytes: [04, 00, 01, 20, 0B, 24, 02, 03, 02, 02, 10, 01, 80, BB, 00, 09, 05, 04, 05, C4, 00, 01, 00, 04, 07, 25, 01, 00, 00, 00, 00, 09, 05, 84, 11, 03, 00, 01, 05, 00, 09, 04, 03, 00, 00, 01, 02, 00, 00, 09, 04, 03, 01, 01, 01, 02, 00, 00, 07, 24, 01, 11, 00, 01]
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0 with 64 data bytes: [00, 0B, 24, 02, 01, 02, 02, 10, 01, 80, BB, 00, 09, 05, 82, 25, C4, 00, 01, 00, 00, 07, 25, 01, 00, 00, 00, 00, 09, 04, 03, 02, 01, 01, 02, 00, 00, 07, 24, 01, 11, 00, 01, 00, 0B, 24, 02, 01, 02, 03, 18, 01, 80, BB, 00, 09, 05, 82, 25, 26, 01, 01, 00, 00]
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  DATA0 packet with CRC 6E91 and 64 data bytes: [00, 0B, 24, 02, 01, 02, 02, 10, 01, 80, BB, 00, 09, 05, 82, 25, C4, 00, 01, 00, 00, 07, 25, 01, 00, 00, 00, 00, 09, 04, 03, 02, 01, 01, 02, 00, 00, 07, 24, 01, 11, 00, 01, 00, 0B, 24, 02, 01, 02, 03, 18, 01, 80, BB, 00, 09, 05, 82, 25, 26, 01, 01, 00, 00]
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0 with 64 data bytes: [07, 25, 01, 00, 00, 00, 00, 09, 04, 03, 03, 01, 01, 02, 00, 00, 07, 24, 01, 11, 00, 01, 00, 0B, 24, 02, 01, 02, 02, 10, 01, 00, 77, 01, 09, 05, 82, 25, 84, 01, 01, 00, 00, 07, 25, 01, 00, 00, 00, 00, 09, 04, 03, 04, 01, 01, 02, 00, 00, 07, 24, 01, 11, 00]
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  DATA1 packet with CRC B29E and 64 data bytes: [07, 25, 01, 00, 00, 00, 00, 09, 04, 03, 03, 01, 01, 02, 00, 00, 07, 24, 01, 11, 00, 01, 00, 0B, 24, 02, 01, 02, 02, 10, 01, 00, 77, 01, 09, 05, 82, 25, 84, 01, 01, 00, 00, 07, 25, 01, 00, 00, 00, 00, 09, 04, 03, 04, 01, 01, 02, 00, 00, 07, 24, 01, 11, 00]
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0 with 64 data bytes: [01, 00, 0B, 24, 02, 01, 02, 03, 18, 01, 00, 77, 01, 09, 05, 82, 25, 46, 02, 01, 00, 00, 07, 25, 01, 00, 00, 00, 00, 09, 04, 04, 00, 00, 01, 02, 00, 00, 09, 04, 04, 01, 01, 01, 02, 00, 00, 07, 24, 01, 09, 00, 01, 00, 0B, 24, 02, 01, 02, 02, 10, 01, 44, AC]
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  DATA0 packet with CRC E338 and 64 data bytes: [01, 00, 0B, 24, 02, 01, 02, 03, 18, 01, 00, 77, 01, 09, 05, 82, 25, 46, 02, 01, 00, 00, 07, 25, 01, 00, 00, 00, 00, 09, 04, 04, 00, 00, 01, 02, 00, 00, 09, 04, 04, 01, 01, 01, 02, 00, 00, 07, 24, 01, 09, 00, 01, 00, 0B, 24, 02, 01, 02, 02, 10, 01, 44, AC]
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0 with 64 data bytes: [00, 09, 05, 85, 25, B4, 00, 01, 00, 00, 07, 25, 01, 00, 00, 00, 00, 09, 04, 04, 02, 01, 01, 02, 00, 00, 07, 24, 01, 09, 00, 01, 00, 0B, 24, 02, 01, 02, 03, 18, 01, 44, AC, 00, 09, 05, 85, 25, 0E, 01, 01, 00, 00, 07, 25, 01, 00, 00, 00, 00, 09, 04, 04, 03]
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  DATA1 packet with CRC 1E22 and 64 data bytes: [00, 09, 05, 85, 25, B4, 00, 01, 00, 00, 07, 25, 01, 00, 00, 00, 00, 09, 04, 04, 02, 01, 01, 02, 00, 00, 07, 24, 01, 09, 00, 01, 00, 0B, 24, 02, 01, 02, 03, 18, 01, 44, AC, 00, 09, 05, 85, 25, 0E, 01, 01, 00, 00, 07, 25, 01, 00, 00, 00, 00, 09, 04, 04, 03]
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0 with 64 data bytes: [01, 01, 02, 00, 00, 07, 24, 01, 09, 00, 01, 00, 0B, 24, 02, 01, 02, 02, 10, 01, 80, BB, 00, 09, 05, 85, 25, C4, 00, 01, 00, 00, 07, 25, 01, 00, 00, 00, 00, 09, 04, 04, 04, 01, 01, 02, 00, 00, 07, 24, 01, 09, 00, 01, 00, 0B, 24, 02, 01, 02, 03, 18, 01, 80]
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  DATA0 packet with CRC B8C3 and 64 data bytes: [01, 01, 02, 00, 00, 07, 24, 01, 09, 00, 01, 00, 0B, 24, 02, 01, 02, 02, 10, 01, 80, BB, 00, 09, 05, 85, 25, C4, 00, 01, 00, 00, 07, 25, 01, 00, 00, 00, 00, 09, 04, 04, 04, 01, 01, 02, 00, 00, 07, 24, 01, 09, 00, 01, 00, 0B, 24, 02, 01, 02, 03, 18, 01, 80]
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0 with 64 data bytes: [BB, 00, 09, 05, 85, 25, 26, 01, 01, 00, 00, 07, 25, 01, 00, 00, 00, 00, 09, 04, 04, 05, 01, 01, 02, 00, 00, 07, 24, 01, 09, 00, 01, 00, 0B, 24, 02, 01, 02, 02, 10, 01, 00, 77, 01, 09, 05, 85, 25, 84, 01, 01, 00, 00, 07, 25, 01, 00, 00, 00, 00, 09, 04, 04]
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  DATA1 packet with CRC 4CE1 and 64 data bytes: [BB, 00, 09, 05, 85, 25, 26, 01, 01, 00, 00, 07, 25, 01, 00, 00, 00, 00, 09, 04, 04, 05, 01, 01, 02, 00, 00, 07, 24, 01, 09, 00, 01, 00, 0B, 24, 02, 01, 02, 02, 10, 01, 00, 77, 01, 09, 05, 85, 25, 84, 01, 01, 00, 00, 07, 25, 01, 00, 00, 00, 00, 09, 04, 04]
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0 with 64 data bytes: [06, 01, 01, 02, 00, 00, 07, 24, 01, 09, 00, 01, 00, 0B, 24, 02, 01, 02, 03, 18, 01, 00, 77, 01, 09, 05, 85, 25, 46, 02, 01, 00, 00, 07, 25, 01, 00, 00, 00, 00, 09, 04, 05, 00, 01, 03, 00, 00, 00, 09, 21, 11, 01, 00, 01, 22, 21, 00, 07, 05, 86, 03, 40, 00]
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  DATA0 packet with CRC 5B09 and 64 data bytes: [06, 01, 01, 02, 00, 00, 07, 24, 01, 09, 00, 01, 00, 0B, 24, 02, 01, 02, 03, 18, 01, 00, 77, 01, 09, 05, 85, 25, 46, 02, 01, 00, 00, 07, 25, 01, 00, 00, 00, 00, 09, 04, 05, 00, 01, 03, 00, 00, 00, 09, 21, 11, 01, 00, 01, 22, 21, 00, 07, 05, 86, 03, 40, 00]
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0 with 1 data bytes: [01]
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  DATA1 packet with CRC 7F81 and 1 data bytes: [01]
+ Starting OUT transaction on 3.0 with no data, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  OUT packet on 3.0, CRC 0A
+  DATA1 packet with CRC 0000 and no data
+  ACK packet
+ Completing OUT transaction on 3.0, ACK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  OUT packet on 3.0, CRC 0A
+  ACK packet
+Getting string descriptor #0 for device 3, reading 4 of 255 requested bytes
+ Starting SETUP transaction on 3.0 with 8 data bytes, ACK: [80, 06, 00, 03, 00, 00, FF, 00]
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  SETUP packet on 3.0, CRC 0A
+  DATA0 packet with CRC 64D4 and 8 data bytes: [80, 06, 00, 03, 00, 00, FF, 00]
+  ACK packet
+ Completing SETUP transaction on 3.0, ACK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  SETUP packet on 3.0, CRC 0A
+  ACK packet
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NAK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NAK packet
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NAK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NAK packet
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0 with 4 data bytes: [04, 03, 09, 04]
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  DATA1 packet with CRC 7809 and 4 data bytes: [04, 03, 09, 04]
+ Starting OUT transaction on 3.0 with no data, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  OUT packet on 3.0, CRC 0A
+  DATA1 packet with CRC 0000 and no data
+  ACK packet
+ Completing OUT transaction on 3.0, ACK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  OUT packet on 3.0, CRC 0A
+  ACK packet
+Getting string descriptor #2, language 0x0409 for device 3, reading 42 of 255 requested bytes: 'USB Sound Blaster HD'
+ Starting SETUP transaction on 3.0 with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, FF, 00]
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  SETUP packet on 3.0, CRC 0A
+  DATA0 packet with CRC DB97 and 8 data bytes: [80, 06, 02, 03, 09, 04, FF, 00]
+  ACK packet
+ Completing SETUP transaction on 3.0, ACK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  SETUP packet on 3.0, CRC 0A
+  ACK packet
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NAK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NAK packet
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NAK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NAK packet
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0 with 42 data bytes: [2A, 03, 55, 00, 53, 00, 42, 00, 20, 00, 53, 00, 6F, 00, 75, 00, 6E, 00, 64, 00, 20, 00, 42, 00, 6C, 00, 61, 00, 73, 00, 74, 00, 65, 00, 72, 00, 20, 00, 48, 00, 44, 00]
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  DATA1 packet with CRC E6A0 and 42 data bytes: [2A, 03, 55, 00, 53, 00, 42, 00, 20, 00, 53, 00, 6F, 00, 75, 00, 6E, 00, 64, 00, 20, 00, 42, 00, 6C, 00, 61, 00, 73, 00, 74, 00, 65, 00, 72, 00, 20, 00, 48, 00, 44, 00]
+ Starting OUT transaction on 3.0 with no data, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  OUT packet on 3.0, CRC 0A
+  DATA1 packet with CRC 0000 and no data
+  ACK packet
+ Completing OUT transaction on 3.0, ACK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  OUT packet on 3.0, CRC 0A
+  ACK packet
+Getting string descriptor #1, language 0x0409 for device 3, reading 40 of 255 requested bytes: 'Creative Technology'
+ Starting SETUP transaction on 3.0 with 8 data bytes, ACK: [80, 06, 01, 03, 09, 04, FF, 00]
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  SETUP packet on 3.0, CRC 0A
+  DATA0 packet with CRC E897 and 8 data bytes: [80, 06, 01, 03, 09, 04, FF, 00]
+  ACK packet
+ Completing SETUP transaction on 3.0, ACK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  SETUP packet on 3.0, CRC 0A
+  ACK packet
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NAK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NAK packet
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NAK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NAK packet
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NYET packet
+ Completing IN transaction on 3.0 with 40 data bytes: [28, 03, 43, 00, 72, 00, 65, 00, 61, 00, 74, 00, 69, 00, 76, 00, 65, 00, 20, 00, 54, 00, 65, 00, 63, 00, 68, 00, 6E, 00, 6F, 00, 6C, 00, 6F, 00, 67, 00, 79, 00]
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  DATA1 packet with CRC 57AC and 40 data bytes: [28, 03, 43, 00, 72, 00, 65, 00, 61, 00, 74, 00, 69, 00, 76, 00, 65, 00, 20, 00, 54, 00, 65, 00, 63, 00, 68, 00, 6E, 00, 6F, 00, 6C, 00, 6F, 00, 67, 00, 79, 00]
+ Starting OUT transaction on 3.0 with no data, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  OUT packet on 3.0, CRC 0A
+  DATA1 packet with CRC 0000 and no data
+  ACK packet
+ Completing OUT transaction on 3.0, ACK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  OUT packet on 3.0, CRC 0A
+  ACK packet
+Getting string descriptor #3, language 0x0409 for device 3, reading 18 of 255 requested bytes: '000000Xg'
+ Starting SETUP transaction on 3.0 with 8 data bytes, ACK: [80, 06, 03, 03, 09, 04, FF, 00]
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  SETUP packet on 3.0, CRC 0A
+  DATA0 packet with CRC 0A96 and 8 data bytes: [80, 06, 03, 03, 09, 04, FF, 00]
+  ACK packet
+ Completing SETUP transaction on 3.0, NYET
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  SETUP packet on 3.0, CRC 0A
+  NYET packet
+ Completing SETUP transaction on 3.0, ACK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  SETUP packet on 3.0, CRC 0A
+  ACK packet
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NAK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NAK packet
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0, NAK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  NAK packet
+ Starting IN transaction on 3.0, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  ACK packet
+ Completing IN transaction on 3.0 with 18 data bytes: [12, 03, 30, 00, 30, 00, 30, 00, 30, 00, 30, 00, 30, 00, 58, 00, 67, 00]
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  IN packet on 3.0, CRC 0A
+  DATA1 packet with CRC B980 and 18 data bytes: [12, 03, 30, 00, 30, 00, 30, 00, 30, 00, 30, 00, 30, 00, 58, 00, 67, 00]
+ Starting OUT transaction on 3.0 with no data, ACK
+  SPLIT packet starting full speed control transaction on hub 23 port 2
+  OUT packet on 3.0, CRC 0A
+  DATA1 packet with CRC 0000 and no data
+  ACK packet
+ Completing OUT transaction on 3.0, ACK
+  SPLIT packet completing full speed control transaction on hub 23 port 2
+  OUT packet on 3.0, CRC 0A
+  ACK packet
