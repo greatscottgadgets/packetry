@@ -430,8 +430,8 @@ Polling 8 times for unidentified transfer on endpoint 12.1 IN
  8 times: IN transaction on 12.1, NAK
   IN packet on 12.1, CRC 1D
   NAK packet
-End of control transfer on endpoint 0.0 OUT
-Class request #3, index 2, value 4 for device 12, index 2
+End of control transfer on device 0
+Class request #3, index 2, value 4 on device 12
  SETUP transaction on 12.0 with 8 data bytes, ACK: [23, 03, 04, 00, 02, 00, 00, 00]
   SETUP packet on 12.0, CRC 0B
   DATA0 packet with CRC C5CE and 8 data bytes: [23, 03, 04, 00, 02, 00, 00, 00]
@@ -445,7 +445,7 @@ Unidentified transfer of 1 byte on endpoint 12.1 IN: [04]
   IN packet on 12.1, CRC 1D
   DATA1 packet with CRC 7C41 and 1 data bytes: [04]
   ACK packet
-Class request #0, index 2, value 0 for device 12, index 2, reading 4 bytes
+Class request #0, index 2, value 0 on device 12, reading 4 bytes
  SETUP transaction on 12.0 with 8 data bytes, ACK: [A3, 00, 00, 00, 02, 00, 04, 00]
   SETUP packet on 12.0, CRC 0B
   DATA0 packet with CRC E1F6 and 8 data bytes: [A3, 00, 00, 00, 02, 00, 04, 00]
@@ -458,7 +458,7 @@ Class request #0, index 2, value 0 for device 12, index 2, reading 4 bytes
   OUT packet on 12.0, CRC 0B
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Class request #1, index 2, value 20 for device 12, index 2
+Class request #1, index 2, value 20 on device 12
  SETUP transaction on 12.0 with 8 data bytes, ACK: [23, 01, 14, 00, 02, 00, 00, 00]
   SETUP packet on 12.0, CRC 0B
   DATA0 packet with CRC 95EF and 8 data bytes: [23, 01, 14, 00, 02, 00, 00, 00]
@@ -467,7 +467,7 @@ Class request #1, index 2, value 20 for device 12, index 2
   IN packet on 12.0, CRC 0B
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Class request #0, index 2, value 0 for device 12, index 2, reading 4 bytes
+Class request #0, index 2, value 0 on device 12, reading 4 bytes
  SETUP transaction on 12.0 with 8 data bytes, ACK: [A3, 00, 00, 00, 02, 00, 04, 00]
   SETUP packet on 12.0, CRC 0B
   DATA0 packet with CRC E1F6 and 8 data bytes: [A3, 00, 00, 00, 02, 00, 04, 00]
