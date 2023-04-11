@@ -56,8 +56,6 @@ use crate::capture::{
     TrafficItem,
     DeviceItem,
     PacketId,
-    fmt_size,
-    fmt_count,
 };
 use crate::decoder::Decoder;
 use crate::expander::ExpanderWrapper;
@@ -68,6 +66,7 @@ use crate::row_data::{
     TrafficRowData,
     DeviceRowData};
 use crate::tree_list_model::ModelError;
+use crate::util::{fmt_size, fmt_count};
 
 #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
 use {

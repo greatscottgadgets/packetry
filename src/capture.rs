@@ -7,11 +7,10 @@ use crate::file_vec::{FileVec, FileVecError};
 use crate::hybrid_index::{HybridIndex, HybridIndexError, Number};
 use crate::vec_map::VecMap;
 use crate::usb::{self, prelude::*};
+use crate::util::{fmt_count, fmt_size};
 
 use bytemuck_derive::{Pod, Zeroable};
 use num_enum::{IntoPrimitive, FromPrimitive};
-use num_format::{Locale, ToFormattedString};
-use humansize::{FileSize, file_size_opts as options};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -470,23 +469,6 @@ impl Transaction {
                     Bytes::first(100, &capture.transaction_bytes(self)?)),
             }
         ))
-    }
-}
-
-pub fn fmt_count(count: u64) -> String {
-    count.to_formatted_string(&Locale::en)
-}
-
-pub fn fmt_size(size: u64) -> String {
-    if size == 1 {
-        "1 byte".to_string()
-    } else if size < 1024 {
-        format!("{size} bytes")
-    } else {
-        match size.file_size(options::BINARY) {
-            Ok(string) => string,
-            Err(e) => format!("<Error: {e}>")
-        }
     }
 }
 

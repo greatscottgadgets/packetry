@@ -13,6 +13,7 @@ pub mod row_data;
 mod tree_list_model;
 pub mod ui;
 mod usb;
+mod util;
 mod vec_map;
 
 #[cfg(test)]
