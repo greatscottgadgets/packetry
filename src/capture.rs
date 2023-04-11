@@ -8,7 +8,7 @@ use std::mem::size_of;
 use crate::id::{Id, HasLength};
 use crate::data_stream::{
     data_stream, data_stream_with_block_size, DataWriter, DataReader};
-use crate::index_stream::{index_stream, IndexWriter, IndexReader};
+use crate::compact_index::{compact_index, CompactWriter, CompactReader};
 use crate::rcu::SingleWriterRcu;
 use crate::stream::StreamError;
 use crate::vec_map::VecMap;
@@ -34,15 +34,15 @@ pub struct CaptureShared {
 pub struct CaptureWriter {
     pub shared: Arc<CaptureShared>,
     pub packet_data: DataWriter<u8, PACKET_DATA_BLOCK_SIZE>,
-    pub packet_index: IndexWriter<PacketId, PacketByteId>,
-    pub transaction_index: IndexWriter<TransactionId, PacketId>,
+    pub packet_index: CompactWriter<PacketId, PacketByteId, 2>,
+    pub transaction_index: CompactWriter<TransactionId, PacketId>,
     pub transfer_index: DataWriter<TransferIndexEntry>,
-    pub item_index: IndexWriter<TrafficItemId, TransferId>,
+    pub item_index: CompactWriter<TrafficItemId, TransferId>,
     pub devices: DataWriter<Device>,
     pub endpoints: DataWriter<Endpoint>,
     pub endpoint_states: DataWriter<u8>,
-    pub endpoint_state_index: IndexWriter<TransferId, Id<u8>>,
-    pub end_index: IndexWriter<TransferId, TrafficItemId>,
+    pub endpoint_state_index: CompactWriter<TransferId, Id<u8>>,
+    pub end_index: CompactWriter<TransferId, TrafficItemId>,
 }
 
 /// Cloneable handle for read access to a capture.
@@ -51,15 +51,15 @@ pub struct CaptureReader {
     pub shared: Arc<CaptureShared>,
     endpoint_readers: VecMap<EndpointId, EndpointReader>,
     pub packet_data: DataReader<u8, PACKET_DATA_BLOCK_SIZE>,
-    pub packet_index: IndexReader<PacketId, PacketByteId>,
-    pub transaction_index: IndexReader<TransactionId, PacketId>,
+    pub packet_index: CompactReader<PacketId, PacketByteId>,
+    pub transaction_index: CompactReader<TransactionId, PacketId>,
     pub transfer_index: DataReader<TransferIndexEntry>,
-    pub item_index: IndexReader<TrafficItemId, TransferId>,
+    pub item_index: CompactReader<TrafficItemId, TransferId>,
     pub devices: DataReader<Device>,
     pub endpoints: DataReader<Endpoint>,
     pub endpoint_states: DataReader<u8>,
-    pub endpoint_state_index: IndexReader<TransferId, Id<u8>>,
-    pub end_index: IndexReader<TransferId, TrafficItemId>,
+    pub endpoint_state_index: CompactReader<TransferId, Id<u8>>,
+    pub end_index: CompactReader<TransferId, TrafficItemId>,
 }
 
 /// Create a capture reader-writer pair.
@@ -69,15 +69,15 @@ pub fn create_capture()
     // Create all the required streams.
     let (data_writer, data_reader) =
         data_stream_with_block_size::<_, PACKET_DATA_BLOCK_SIZE>()?;
-    let (packets_writer, packets_reader) = index_stream()?;
-    let (transactions_writer, transactions_reader) = index_stream()?;
+    let (packets_writer, packets_reader) = compact_index()?;
+    let (transactions_writer, transactions_reader) = compact_index()?;
     let (transfers_writer, transfers_reader) = data_stream()?;
-    let (items_writer, items_reader) = index_stream()?;
+    let (items_writer, items_reader) = compact_index()?;
     let (devices_writer, devices_reader) = data_stream()?;
     let (endpoints_writer, endpoints_reader) = data_stream()?;
     let (endpoint_state_writer, endpoint_state_reader) = data_stream()?;
-    let (state_index_writer, state_index_reader) = index_stream()?;
-    let (end_writer, end_reader) = index_stream()?;
+    let (state_index_writer, state_index_reader) = compact_index()?;
+    let (end_writer, end_reader) = compact_index()?;
 
     // Create the state shared by readers and writer.
     let shared = Arc::new(CaptureShared {
@@ -130,20 +130,20 @@ pub struct EndpointShared {
 /// Unique handle for write access to endpoint data.
 pub struct EndpointWriter {
     pub shared: Arc<EndpointShared>,
-    pub transaction_ids: IndexWriter<EndpointTransactionId, TransactionId>,
-    pub transfer_index: IndexWriter<EndpointTransferId, EndpointTransactionId>,
-    pub data_index: IndexWriter<EndpointTransactionId, EndpointByteCount>,
-    pub end_index: IndexWriter<EndpointTransferId, TrafficItemId>,
+    pub transaction_ids: CompactWriter<EndpointTransactionId, TransactionId>,
+    pub transfer_index: CompactWriter<EndpointTransferId, EndpointTransactionId>,
+    pub data_index: CompactWriter<EndpointTransactionId, EndpointByteCount>,
+    pub end_index: CompactWriter<EndpointTransferId, TrafficItemId>,
 }
 
 /// Cloneable handle for read access to endpoint data.
 #[derive(Clone)]
 pub struct EndpointReader {
     pub shared: Arc<EndpointShared>,
-    pub transaction_ids: IndexReader<EndpointTransactionId, TransactionId>,
-    pub transfer_index: IndexReader<EndpointTransferId, EndpointTransactionId>,
-    pub data_index: IndexReader<EndpointTransactionId, EndpointByteCount>,
-    pub end_index: IndexReader<EndpointTransferId, TrafficItemId>,
+    pub transaction_ids: CompactReader<EndpointTransactionId, TransactionId>,
+    pub transfer_index: CompactReader<EndpointTransferId, EndpointTransactionId>,
+    pub data_index: CompactReader<EndpointTransactionId, EndpointByteCount>,
+    pub end_index: CompactReader<EndpointTransferId, TrafficItemId>,
 }
 
 /// Create a per-endpoint reader-writer pair.
@@ -151,10 +151,10 @@ pub fn create_endpoint()
     -> Result<(EndpointWriter, EndpointReader), CaptureError>
 {
     // Create all the required streams.
-    let (transactions_writer, transactions_reader) = index_stream()?;
-    let (transfers_writer, transfers_reader) = index_stream()?;
-    let (data_writer, data_reader) = index_stream()?;
-    let (end_writer, end_reader) = index_stream()?;
+    let (transactions_writer, transactions_reader) = compact_index()?;
+    let (transfers_writer, transfers_reader) = compact_index()?;
+    let (data_writer, data_reader) = compact_index()?;
+    let (end_writer, end_reader) = compact_index()?;
 
     // Create the shared state.
     let shared = Arc::new(EndpointShared {
