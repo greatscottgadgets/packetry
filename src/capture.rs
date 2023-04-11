@@ -1,24 +1,189 @@
 use std::ops::Range;
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64};
+use std::sync::atomic::Ordering::{Acquire, Release};
+use std::sync::Arc;
 use std::num::TryFromIntError;
 use std::mem::size_of;
 
 use crate::id::{Id, HasLength};
-use crate::file_vec::{FileVec, FileVecError};
-use crate::hybrid_index::{HybridIndex, HybridIndexError, Number};
+use crate::data_stream::{data_stream, DataWriter, DataReader};
+use crate::index_stream::{index_stream, IndexWriter, IndexReader};
+use crate::rcu::SingleWriterRcu;
+use crate::stream::StreamError;
 use crate::vec_map::VecMap;
 use crate::usb::{self, prelude::*};
 use crate::util::{fmt_count, fmt_size};
 
+use arc_swap::{ArcSwap, ArcSwapOption};
 use bytemuck_derive::{Pod, Zeroable};
 use num_enum::{IntoPrimitive, FromPrimitive};
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+/// Capture state shared between readers and writers.
+pub struct CaptureShared {
+    pub device_data: ArcSwap<VecMap<DeviceId, Arc<DeviceData>>>,
+    pub endpoint_readers: ArcSwap<VecMap<EndpointId, Arc<EndpointReader>>>,
+    pub complete: AtomicBool,
+}
+
+/// Unique handle for write access to a capture.
+pub struct CaptureWriter {
+    pub shared: Arc<CaptureShared>,
+    pub packet_data: DataWriter<u8>,
+    pub packet_index: IndexWriter<PacketId, PacketByteId>,
+    pub transaction_index: IndexWriter<TransactionId, PacketId>,
+    pub transfer_index: DataWriter<TransferIndexEntry>,
+    pub item_index: IndexWriter<TrafficItemId, TransferId>,
+    pub devices: DataWriter<Device>,
+    pub endpoints: DataWriter<Endpoint>,
+    pub endpoint_states: DataWriter<u8>,
+    pub endpoint_state_index: IndexWriter<TransferId, Id<u8>>,
+    pub end_index: IndexWriter<TransferId, TrafficItemId>,
+}
+
+/// Cloneable handle for read access to a capture.
+#[derive(Clone)]
+pub struct CaptureReader {
+    pub shared: Arc<CaptureShared>,
+    endpoint_readers: VecMap<EndpointId, EndpointReader>,
+    pub packet_data: DataReader<u8>,
+    pub packet_index: IndexReader<PacketId, PacketByteId>,
+    pub transaction_index: IndexReader<TransactionId, PacketId>,
+    pub transfer_index: DataReader<TransferIndexEntry>,
+    pub item_index: IndexReader<TrafficItemId, TransferId>,
+    pub devices: DataReader<Device>,
+    pub endpoints: DataReader<Endpoint>,
+    pub endpoint_states: DataReader<u8>,
+    pub endpoint_state_index: IndexReader<TransferId, Id<u8>>,
+    pub end_index: IndexReader<TransferId, TrafficItemId>,
+}
+
+/// Create a capture reader-writer pair.
+pub fn create_capture()
+    -> Result<(CaptureWriter, CaptureReader), CaptureError>
+{
+    // Create all the required streams.
+    let (data_writer, data_reader) = data_stream()?;
+    let (packets_writer, packets_reader) = index_stream()?;
+    let (transactions_writer, transactions_reader) = index_stream()?;
+    let (transfers_writer, transfers_reader) = data_stream()?;
+    let (items_writer, items_reader) = index_stream()?;
+    let (devices_writer, devices_reader) = data_stream()?;
+    let (endpoints_writer, endpoints_reader) = data_stream()?;
+    let (endpoint_state_writer, endpoint_state_reader) = data_stream()?;
+    let (state_index_writer, state_index_reader) = index_stream()?;
+    let (end_writer, end_reader) = index_stream()?;
+
+    // Create the state shared by readers and writer.
+    let shared = Arc::new(CaptureShared {
+        device_data: ArcSwap::new(Arc::new(VecMap::new())),
+        endpoint_readers: ArcSwap::new(Arc::new(VecMap::new())),
+        complete: AtomicBool::from(false),
+    });
+
+    // Create the write handle.
+    let writer = CaptureWriter {
+        shared: shared.clone(),
+        packet_data: data_writer,
+        packet_index: packets_writer,
+        transaction_index: transactions_writer,
+        transfer_index: transfers_writer,
+        item_index: items_writer,
+        devices: devices_writer,
+        endpoints: endpoints_writer,
+        endpoint_states: endpoint_state_writer,
+        endpoint_state_index: state_index_writer,
+        end_index: end_writer,
+    };
+
+    // Create the first read handle.
+    let reader = CaptureReader {
+        shared,
+        endpoint_readers: VecMap::new(),
+        packet_data: data_reader,
+        packet_index: packets_reader,
+        transaction_index: transactions_reader,
+        transfer_index: transfers_reader,
+        item_index: items_reader,
+        devices: devices_reader,
+        endpoints: endpoints_reader,
+        endpoint_states: endpoint_state_reader,
+        endpoint_state_index: state_index_reader,
+        end_index: end_reader,
+    };
+
+    // Return the pair.
+    Ok((writer, reader))
+}
+
+/// Per-endpoint state shared between readers and writers.
+pub struct EndpointShared {
+    pub total_data: AtomicU64,
+    pub first_item_id: ArcSwapOption<TrafficItemId>,
+}
+
+/// Unique handle for write access to endpoint data.
+pub struct EndpointWriter {
+    pub shared: Arc<EndpointShared>,
+    pub transaction_ids: IndexWriter<EndpointTransactionId, TransactionId>,
+    pub transfer_index: IndexWriter<EndpointTransferId, EndpointTransactionId>,
+    pub data_index: IndexWriter<EndpointTransactionId, EndpointByteCount>,
+    pub end_index: IndexWriter<EndpointTransferId, TrafficItemId>,
+}
+
+/// Cloneable handle for read access to endpoint data.
+#[derive(Clone)]
+pub struct EndpointReader {
+    pub shared: Arc<EndpointShared>,
+    pub transaction_ids: IndexReader<EndpointTransactionId, TransactionId>,
+    pub transfer_index: IndexReader<EndpointTransferId, EndpointTransactionId>,
+    pub data_index: IndexReader<EndpointTransactionId, EndpointByteCount>,
+    pub end_index: IndexReader<EndpointTransferId, TrafficItemId>,
+}
+
+/// Create a per-endpoint reader-writer pair.
+pub fn create_endpoint()
+    -> Result<(EndpointWriter, EndpointReader), CaptureError>
+{
+    // Create all the required streams.
+    let (transactions_writer, transactions_reader) = index_stream()?;
+    let (transfers_writer, transfers_reader) = index_stream()?;
+    let (data_writer, data_reader) = index_stream()?;
+    let (end_writer, end_reader) = index_stream()?;
+
+    // Create the shared state.
+    let shared = Arc::new(EndpointShared {
+        total_data: AtomicU64::from(0),
+        first_item_id: ArcSwapOption::const_empty(),
+    });
+
+    // Create the write handle.
+    let writer = EndpointWriter {
+        shared: shared.clone(),
+        transaction_ids: transactions_writer,
+        transfer_index: transfers_writer,
+        data_index: data_writer,
+        end_index: end_writer,
+    };
+
+    // Create the read handle.
+    let reader = EndpointReader {
+        shared,
+        transaction_ids: transactions_reader,
+        transfer_index: transfers_reader,
+        data_index: data_reader,
+        end_index: end_reader,
+    };
+
+    // Return the pair.
+    Ok((writer, reader))
+}
+
+/// Error type returned by operations on a capture.
+#[derive(Debug, Error)]
 pub enum CaptureError {
     #[error(transparent)]
-    FileVecError(#[from] FileVecError),
-    #[error(transparent)]
-    HybridIndexError(#[from] HybridIndexError),
+    StreamError(#[from] StreamError),
     #[error(transparent)]
     RangeError(#[from] TryFromIntError),
     #[error("Descriptor missing")]
@@ -149,44 +314,25 @@ impl std::fmt::Display for EndpointType {
     }
 }
 
-pub struct EndpointTraffic {
-    pub transaction_ids: HybridIndex<EndpointTransactionId, TransactionId>,
-    pub transfer_index: HybridIndex<EndpointTransferId, EndpointTransactionId>,
-    pub data_index: HybridIndex<EndpointTransactionId, EndpointByteCount>,
-    pub total_data: EndpointByteCount,
-    pub end_index: HybridIndex<EndpointTransferId, TrafficItemId>,
-}
-
-impl EndpointTraffic {
-    pub fn new() -> Result<Self, CaptureError> {
-        Ok(EndpointTraffic {
-            transaction_ids: HybridIndex::new(1)?,
-            transfer_index: HybridIndex::new(1)?,
-            data_index: HybridIndex::new(1)?,
-            total_data: 0,
-            end_index: HybridIndex::new(1)?,
-        })
-    }
-}
+type EndpointDetails = (usb::EndpointType, Option<usize>);
 
 #[derive(Default)]
 pub struct DeviceData {
-    pub device_descriptor: Option<DeviceDescriptor>,
-    pub configurations: VecMap<ConfigNum, Configuration>,
-    pub config_number: Option<ConfigNum>,
-    pub endpoint_details:
-        VecMap<EndpointAddr, (usb::EndpointType, Option<usize>)>,
-    pub strings: VecMap<StringId, UTF16ByteVec>,
-    pub version: DeviceVersion,
+    pub device_descriptor: ArcSwapOption<DeviceDescriptor>,
+    pub configurations: ArcSwap<VecMap<ConfigNum, Arc<Configuration>>>,
+    pub config_number: ArcSwapOption<ConfigNum>,
+    pub endpoint_details: ArcSwap<VecMap<EndpointAddr, EndpointDetails>>,
+    pub strings: ArcSwap<VecMap<StringId, UTF16ByteVec>>,
+    pub version: AtomicU32,
 }
 
 impl DeviceData {
     fn description(&self) -> String {
-        match self.device_descriptor {
+        match self.device_descriptor.load().as_ref() {
             None => "Unknown".to_string(),
             Some(descriptor) => {
                 let str_id = descriptor.product_str_id;
-                if let Some(utf16) = self.strings.get(str_id) {
+                if let Some(utf16) = self.strings.load().get(str_id) {
                     let chars = utf16.chars();
                     if let Ok(string) = String::from_utf16(&chars) {
                         return format!("{}", string.escape_default());
@@ -201,10 +347,10 @@ impl DeviceData {
     }
 
     pub fn configuration(&self, number: &ConfigNum)
-        -> Result<&Configuration, CaptureError>
+        -> Result<Arc<Configuration>, CaptureError>
     {
-        match self.configurations.get(*number) {
-            Some(config) => Ok(config),
+        match self.configurations.load().get(*number) {
+            Some(config) => Ok(config.clone()),
             None => Err(DescriptorMissing)
         }
     }
@@ -218,44 +364,52 @@ impl DeviceData {
             FRAMING_EP_NUM => (Framing, None),
             CONTROL_EP_NUM => (
                 Normal(usb::EndpointType::Control),
-                self.device_descriptor.map(|desc| {
+                self.device_descriptor.load().as_ref().map(|desc| {
                     desc.max_packet_size_0 as usize
                 })
             ),
-            _ => match self.endpoint_details.get(addr) {
+            _ => match self.endpoint_details.load().get(addr) {
                 Some((ep_type, ep_max)) => (Normal(*ep_type), *ep_max),
                 None => (Unidentified, None)
             }
         }
     }
 
-    pub fn update_endpoint_details(&mut self) {
-        if let Some(number) = self.config_number {
-            if let Some(config) = &self.configurations.get(number) {
-                for iface in &config.interfaces {
-                    for ep_desc in &iface.endpoint_descriptors {
-                        let ep_addr = ep_desc.endpoint_address;
-                        let ep_type = ep_desc.attributes.endpoint_type();
-                        let ep_max = ep_desc.max_packet_size as usize;
-                        self.endpoint_details.set(ep_addr,
-                            (ep_type, Some(ep_max))
-                        );
+    pub fn update_endpoint_details(&self) {
+        if let Some(number) = self.config_number.load().as_ref() {
+            if let Some(config) = &self.configurations.load().get(**number) {
+                self.endpoint_details.update(|endpoint_details| {
+                    for iface in &config.interfaces {
+                        for ep_desc in &iface.endpoint_descriptors {
+                            let ep_addr = ep_desc.endpoint_address;
+                            let ep_type = ep_desc.attributes.endpoint_type();
+                            let ep_max = ep_desc.max_packet_size as usize;
+                            endpoint_details.set(
+                                ep_addr,
+                                (ep_type, Some(ep_max))
+                            );
+                        }
                     }
-                }
+                });
             }
         }
     }
 
-    pub fn set_endpoint_type(&mut self,
+    pub fn set_endpoint_type(&self,
                              addr: EndpointAddr,
                              ep_type: usb::EndpointType)
     {
-        if self.endpoint_details.get(addr).is_none() {
-            self.endpoint_details.set(addr, (ep_type, None));
-        }
+        self.endpoint_details.maybe_update(|endpoint_details| {
+            if endpoint_details.get(addr).is_none() {
+                endpoint_details.set(addr, (ep_type, None));
+                true
+            } else {
+                false
+            }
+        });
     }
 
-    pub fn decode_request(&mut self, fields: &SetupFields, payload: &[u8])
+    pub fn decode_request(&self, fields: &SetupFields, payload: &[u8])
         -> Result<(), CaptureError>
     {
         let req_type = fields.type_fields.request_type();
@@ -270,7 +424,7 @@ impl DeviceData {
         Ok(())
     }
 
-    pub fn decode_descriptor_read(&mut self,
+    pub fn decode_descriptor_read(&self,
                                   fields: &SetupFields,
                                   payload: &[u8])
         -> Result<(), CaptureError>
@@ -282,8 +436,8 @@ impl DeviceData {
             (Recipient::Device, DescriptorType::Device) => {
                 if length == size_of::<DeviceDescriptor>() {
                     let descriptor = DeviceDescriptor::from_bytes(payload);
-                    self.device_descriptor = Some(descriptor);
-                    self.version += 1;
+                    self.device_descriptor.swap(Some(Arc::new(descriptor)));
+                    self.increment_version();
                 }
             },
             (Recipient::Device, DescriptorType::Configuration) => {
@@ -291,12 +445,13 @@ impl DeviceData {
                 if length >= size {
                     let configuration = Configuration::from_bytes(payload);
                     if let Some(config) = configuration {
-                        let configurations = &mut self.configurations;
                         let config_num = ConfigNum::from(
                             config.descriptor.config_value);
-                        configurations.set(config_num, config);
+                        self.configurations.update(|configurations| {
+                            configurations.set(config_num, Arc::new(config));
+                        });
                         self.update_endpoint_details();
-                        self.version += 1;
+                        self.increment_version();
                     }
                 }
             },
@@ -305,8 +460,10 @@ impl DeviceData {
                     let string = UTF16ByteVec(payload[2..length].to_vec());
                     let string_id =
                         StringId::from((fields.value & 0xFF) as u8);
-                    self.strings.set(string_id, string);
-                    self.version += 1;
+                    self.strings.update(|strings| {
+                        strings.set(string_id, string)
+                    });
+                    self.increment_version();
                 }
             },
             _ => {}
@@ -314,13 +471,22 @@ impl DeviceData {
         Ok(())
     }
 
-    fn decode_configuration_set(&mut self, fields: &SetupFields)
+    fn decode_configuration_set(&self, fields: &SetupFields)
         -> Result<(), CaptureError>
     {
-        self.config_number = Some(ConfigNum(fields.value.try_into()?));
+        let config_number = ConfigNum(fields.value.try_into()?);
+        self.config_number.swap(Some(Arc::new(config_number)));
         self.update_endpoint_details();
-        self.version += 1;
+        self.increment_version();
         Ok(())
+    }
+
+    fn increment_version(&self) {
+        self.version.fetch_add(1, Release);
+    }
+
+    fn version(&self) -> DeviceVersion {
+        self.version.load(Acquire)
     }
 }
 
@@ -418,7 +584,7 @@ impl Transaction {
     }
 
     fn description(&self,
-                   capture: &mut Capture,
+                   capture: &mut CaptureReader,
                    endpoint: &Endpoint)
         -> Result<String, CaptureError>
     {
@@ -442,7 +608,7 @@ impl Transaction {
     }
 
     fn inner_description(&self,
-                         capture: &mut Capture,
+                         capture: &mut CaptureReader,
                          endpoint: &Endpoint,
                          pid: PID)
         -> Result<String, CaptureError>
@@ -470,21 +636,6 @@ impl Transaction {
             }
         ))
     }
-}
-
-pub fn fmt_vec<T>(vec: &FileVec<T>) -> String
-    where T: bytemuck::Pod + Default
-{
-    format!("{} entries, {}", fmt_count(vec.len()), fmt_size(vec.size()))
-}
-
-pub fn fmt_index<I, T>(idx: &HybridIndex<I, T>) -> String
-    where I: Number, T: Number + Copy
-{
-    format!("{} values in {} entries, {}",
-            fmt_count(idx.len()),
-            fmt_count(idx.entry_count()),
-            fmt_size(idx.size()))
 }
 
 struct Bytes<'src> {
@@ -549,54 +700,16 @@ impl std::fmt::Display for Bytes<'_> {
     }
 }
 
-
-pub struct Capture {
-    pub packet_data: FileVec<u8>,
-    pub packet_index: HybridIndex<PacketId, PacketByteId>,
-    pub transaction_index: HybridIndex<TransactionId, PacketId>,
-    pub transfer_index: FileVec<TransferIndexEntry>,
-    pub item_index: HybridIndex<TrafficItemId, TransferId>,
-    pub devices: FileVec<Device>,
-    pub device_data: VecMap<DeviceId, DeviceData>,
-    pub endpoints: FileVec<Endpoint>,
-    pub endpoint_traffic: VecMap<EndpointId, EndpointTraffic>,
-    pub endpoint_states: FileVec<u8>,
-    pub endpoint_state_index: HybridIndex<TransferId, Id<u8>>,
-    pub end_index: HybridIndex<TransferId, TrafficItemId>,
-    pub completion: CompletionStatus,
-}
-
-impl Capture {
-    pub fn new() -> Result<Self, CaptureError> {
-        let mut capture = Capture {
-            packet_data: FileVec::new()?,
-            packet_index: HybridIndex::new(2)?,
-            transaction_index: HybridIndex::new(1)?,
-            transfer_index: FileVec::new()?,
-            item_index: HybridIndex::new(1)?,
-            devices: FileVec::new()?,
-            device_data: VecMap::new(),
-            endpoints: FileVec::new()?,
-            endpoint_traffic: VecMap::new(),
-            endpoint_states: FileVec::new()?,
-            endpoint_state_index: HybridIndex::new(1)?,
-            end_index: HybridIndex::new(1)?,
-            completion: CompletionStatus::Ongoing,
-        };
-        let default_addr = DeviceAddr(0);
-        let default_device = Device { address: default_addr };
-        let default_id = capture.devices.push(&default_device)?;
-        capture.device_data.set(default_id, DeviceData::default());
-        for number in [INVALID_EP_NUM, FRAMING_EP_NUM] {
-            let mut endpoint = Endpoint::default();
-            endpoint.set_device_id(default_id);
-            endpoint.set_device_address(default_addr);
-            endpoint.set_number(number);
-            endpoint.set_direction(Direction::Out);
-            let endpoint_id = capture.endpoints.push(&endpoint)?;
-            capture.endpoint_traffic.set(endpoint_id, EndpointTraffic::new()?);
-        }
-        Ok(capture)
+impl CaptureWriter {
+    pub fn device_data(&self, id: DeviceId)
+        -> Result<Arc<DeviceData>, CaptureError>
+    {
+        Ok(self.shared.device_data
+            .load()
+            .get(id)
+            .ok_or_else(||
+                IndexError(format!("Capture has no device with ID {id}")))?
+            .clone())
     }
 
     pub fn print_storage_summary(&self) {
@@ -607,17 +720,13 @@ impl Capture {
             self.endpoint_states.size() +
             self.endpoint_state_index.size();
         let mut trx_count = 0;
-        let mut trx_entries = 0;
         let mut trx_size = 0;
         let mut xfr_count = 0;
-        let mut xfr_entries = 0;
         let mut xfr_size = 0;
-        for ep_traf in &self.endpoint_traffic {
+        for ep_traf in self.shared.endpoint_readers.load().as_ref() {
             trx_count += ep_traf.transaction_ids.len();
-            trx_entries += ep_traf.transaction_ids.entry_count();
             trx_size += ep_traf.transaction_ids.size();
             xfr_count += ep_traf.transfer_index.len();
-            xfr_entries += ep_traf.transfer_index.entry_count();
             xfr_size += ep_traf.transfer_index.size();
             overhead += trx_size + xfr_size;
         }
@@ -631,26 +740,42 @@ impl Capture {
             "  Transfer index: {}\n",
             "  Endpoint states: {}\n",
             "  Endpoint state index: {}\n",
-            "  Endpoint transaction indices: {} values in {} entries, {}\n",
-            "  Endpoint transfer indices: {} values in {} entries, {}\n",
+            "  Endpoint transaction indices: {} values, {}\n",
+            "  Endpoint transfer indices: {} values, {}\n",
             "Total overhead: {:.1}% ({})\n"),
             fmt_size(self.packet_data.size()),
-            fmt_index(&self.packet_index),
-            fmt_index(&self.transaction_index),
-            fmt_vec(&self.transfer_index),
-            fmt_vec(&self.endpoint_states),
-            fmt_index(&self.endpoint_state_index),
-            fmt_count(trx_count), fmt_count(trx_entries), fmt_size(trx_size),
-            fmt_count(xfr_count), fmt_count(xfr_entries), fmt_size(xfr_size),
+            &self.packet_index,
+            &self.transaction_index,
+            &self.transfer_index,
+            &self.endpoint_states,
+            &self.endpoint_state_index,
+            fmt_count(trx_count), fmt_size(trx_size),
+            fmt_count(xfr_count), fmt_size(xfr_size),
             percentage, fmt_size(overhead),
         )
     }
+}
 
+impl CaptureReader {
     pub fn endpoint_traffic(&mut self, endpoint_id: EndpointId)
-        -> Result<&mut EndpointTraffic, CaptureError>
+        -> Result<&mut EndpointReader, CaptureError>
     {
-        self.endpoint_traffic.get_mut(endpoint_id).ok_or_else(||
-            IndexError(format!("Capture has no endpoint ID {endpoint_id}")))
+        if self.shared.endpoint_readers.load().get(endpoint_id).is_none() {
+            return Err(IndexError(format!(
+                "Capture has no endpoint ID {endpoint_id}")))
+        }
+
+        if self.endpoint_readers.get(endpoint_id).is_none() {
+            let reader = self.shared.endpoint_readers
+                .load()
+                .get(endpoint_id)
+                .unwrap()
+                .as_ref()
+                .clone();
+            self.endpoint_readers.set(endpoint_id, reader);
+        }
+
+        Ok(self.endpoint_readers.get_mut(endpoint_id).unwrap())
     }
 
     fn transfer_range(&mut self, entry: &TransferIndexEntry)
@@ -672,7 +797,7 @@ impl Capture {
         let index = &mut ep_traf.data_index;
         let start = index.get(range.start)?;
         let end = if range.end.value >= index.len() {
-            ep_traf.total_data
+            ep_traf.shared.total_data.load(Acquire)
         } else {
             index.get(range.end)?
         };
@@ -718,7 +843,7 @@ impl Capture {
             data_packet_id, self.packet_data.len())?;
         let data_byte_range =
             packet_byte_range.start + 1 .. packet_byte_range.end - 2;
-        Ok(self.packet_data.get_range(data_byte_range)?)
+        Ok(self.packet_data.get_range(&data_byte_range)?)
     }
 
     fn transfer_bytes(&mut self,
@@ -755,7 +880,7 @@ impl Capture {
     {
         let range = self.endpoint_state_index.target_range(
             transfer_id, self.endpoint_states.len())?;
-        Ok(self.endpoint_states.get_range(range)?)
+        Ok(self.endpoint_states.get_range(&range)?)
     }
 
     pub fn packet(&mut self, id: PacketId)
@@ -763,7 +888,7 @@ impl Capture {
     {
         let range = self.packet_index.target_range(
             id, self.packet_data.len())?;
-        Ok(self.packet_data.get_range(range)?)
+        Ok(self.packet_data.get_range(&range)?)
     }
 
     fn packet_pid(&mut self, id: PacketId)
@@ -862,7 +987,7 @@ impl Capture {
                 (In,  SPLIT, Some((_, IN)),  Some(range)) |
                 (Out, SPLIT, Some((_, OUT)), Some(range)) => {
                     data.extend_from_slice(
-                        &self.packet_data.get_range(range)?);
+                        &self.packet_data.get_range(&range)?);
                 },
                 (..) => {}
             };
@@ -876,27 +1001,29 @@ impl Capture {
     }
 
     pub fn device_data(&self, id: &DeviceId)
-        -> Result<&DeviceData, CaptureError>
+        -> Result<Arc<DeviceData>, CaptureError>
     {
-        self.device_data.get(*id).ok_or_else(||
-            IndexError(format!("Capture has no device with ID {id}")))
+        Ok(self.shared.device_data
+            .load()
+            .get(*id)
+            .ok_or_else(||
+                IndexError(format!("Capture has no device with ID {id}")))?
+            .clone())
     }
 
     fn device_version(&self, id: &DeviceId) -> Result<u32, CaptureError> {
-        Ok(self.device_data(id)?.version)
-    }
-
-    pub fn device_data_mut(&mut self, id: &DeviceId)
-        -> Result<&mut DeviceData, CaptureError>
-    {
-        self.device_data.get_mut(*id).ok_or_else(||
-            IndexError(format!("Capture has no device with ID {id}")))
+        Ok(self.device_data(id)?.version())
     }
 
     pub fn try_configuration(&self, dev: &DeviceId, conf: &ConfigNum)
-        -> Option<&Configuration>
+        -> Option<Arc<Configuration>>
     {
-        self.device_data(dev).ok()?.configurations.get(*conf)
+        self.device_data(dev)
+            .ok()?
+            .configurations
+            .load()
+            .get(*conf)
+            .map(Arc::clone)
     }
 
     fn transfer_extended(&mut self,
@@ -917,7 +1044,15 @@ impl Capture {
     }
 
     pub fn finish(&mut self) {
-        self.completion = CompletionStatus::Complete;
+        self.shared.complete.store(true, Release);
+    }
+
+    fn completion(&self) -> CompletionStatus {
+        use CompletionStatus::*;
+        match self.shared.complete.load(Acquire) {
+            false => Ongoing,
+            true => Complete,
+        }
     }
 }
 
@@ -940,7 +1075,7 @@ pub trait ItemSource<Item> {
     fn connectors(&mut self, item: &Item) -> Result<String, CaptureError>;
 }
 
-impl ItemSource<TrafficItem> for Capture {
+impl ItemSource<TrafficItem> for CaptureReader {
     fn item(&mut self, parent: Option<&TrafficItem>, index: u64)
         -> Result<TrafficItem, CaptureError>
     {
@@ -989,7 +1124,7 @@ impl ItemSource<TrafficItem> for Capture {
         use CompletionStatus::*;
         Ok(match parent {
             None => {
-                (self.completion, self.item_index.len())
+                (self.completion(), self.item_index.len())
             },
             Some(Transfer(transfer_id)) => {
                 let entry = self.transfer_index.get(*transfer_id)?;
@@ -1243,7 +1378,7 @@ impl ItemSource<TrafficItem> for Capture {
     }
 }
 
-impl ItemSource<DeviceItem> for Capture {
+impl ItemSource<DeviceItem> for CaptureReader {
     fn item(&mut self, parent: Option<&DeviceItem>, index: u64)
         -> Result<DeviceItem, CaptureError>
     {
@@ -1251,7 +1386,7 @@ impl ItemSource<DeviceItem> for Capture {
             None => {
                 let device_id = DeviceId::from(index + 1);
                 let data = self.device_data(&device_id)?;
-                Ok(DeviceItem::Device(device_id, data.version))
+                Ok(DeviceItem::Device(device_id, data.version()))
             },
             Some(item) => self.child_item(item, index)
         }
@@ -1338,14 +1473,16 @@ impl ItemSource<DeviceItem> for Capture {
         use CompletionStatus::*;
         let (completion, children) = match parent {
             None =>
-                (self.completion, self.device_data.len() - 1),
+                (self.completion(),
+                 self.devices.len().saturating_sub(1) as usize),
             Some(Device(dev, _version)) =>
                 (Ongoing, {
-                    let configs = self.device_data(dev)?.configurations.len();
-                    if configs == 0 { 1 } else { configs }
+                    let configs = &self.device_data(dev)?.configurations;
+                    let count = configs.load().len();
+                    if count == 0 { 1 } else { count }
                 }),
             Some(DeviceDescriptor(dev)) =>
-                match self.device_data(dev)?.device_descriptor {
+                match self.device_data(dev)?.device_descriptor.load().as_ref() {
                     Some(_) => (Ongoing, usb::DeviceDescriptor::NUM_FIELDS),
                     None => (Ongoing, 0),
                 },
@@ -1386,15 +1523,19 @@ impl ItemSource<DeviceItem> for Capture {
                 format!("Device {}: {}", device.address, data.description())
             },
             DeviceDescriptor(dev) => {
-                match self.device_data(dev)?.device_descriptor {
+                match self.device_data(dev)?.device_descriptor.load().as_ref() {
                     Some(_) => "Device descriptor",
                     None => "No device descriptor"
                 }.to_string()
             },
             DeviceDescriptorField(dev, field, _ver) => {
                 let data = self.device_data(dev)?;
-                match data.device_descriptor {
-                    Some(desc) => desc.field_text(*field, &data.strings),
+                let device_descriptor = data.device_descriptor.load();
+                match device_descriptor.as_ref() {
+                    Some(descriptor) => {
+                        let strings = data.strings.load();
+                        descriptor.field_text(*field, strings.as_ref())
+                    },
                     None => return Err(DescriptorMissing)
                 }
             },
@@ -1404,9 +1545,9 @@ impl ItemSource<DeviceItem> for Capture {
                 "Configuration descriptor".to_string(),
             ConfigurationDescriptorField(dev, conf, field, _ver) => {
                 let data = self.device_data(dev)?;
-                data.configuration(conf)?
-                    .descriptor
-                    .field_text(*field, &data.strings)
+                let config_descriptor = data.configuration(conf)?.descriptor;
+                let strings = data.strings.load();
+                config_descriptor.field_text(*field, strings.as_ref())
             },
             Interface(_, _, iface) => format!(
                 "Interface {iface}"),
@@ -1414,10 +1555,10 @@ impl ItemSource<DeviceItem> for Capture {
                 "Interface descriptor".to_string(),
             InterfaceDescriptorField(dev, conf, iface, field, _ver) => {
                 let data = self.device_data(dev)?;
-                data.configuration(conf)?
-                    .interface(iface)?
-                    .descriptor
-                    .field_text(*field, &data.strings)
+                let config = data.configuration(conf)?;
+                let interface = config.interface(iface)?;
+                let strings = data.strings.load();
+                interface.descriptor.field_text(*field, strings.as_ref())
             },
             EndpointDescriptor(dev, conf, iface, ep) => {
                 let addr = self.device_data(dev)?
@@ -1466,7 +1607,7 @@ mod tests {
     use itertools::Itertools;
     use pcap_file::pcap::PcapReader;
 
-    fn summarize_item(cap: &mut Capture, item: &TrafficItem, depth: usize)
+    fn summarize_item(cap: &mut CaptureReader, item: &TrafficItem, depth: usize)
         -> String
     {
         let mut summary = cap.summary(item).unwrap();
@@ -1491,7 +1632,7 @@ mod tests {
         summary
     }
 
-    fn write_item(cap: &mut Capture, item: &TrafficItem, depth: usize,
+    fn write_item(cap: &mut CaptureReader, item: &TrafficItem, depth: usize,
                   writer: &mut dyn Write)
     {
         let summary = summarize_item(cap, item, depth);
@@ -1520,19 +1661,19 @@ mod tests {
             {
                 let pcap_file = File::open(cap_path).unwrap();
                 let mut pcap_reader = PcapReader::new(pcap_file).unwrap();
-                let mut cap = Capture::new().unwrap();
-                let mut decoder = Decoder::default();
+                let (writer, mut reader) = create_capture().unwrap();
+                let mut decoder = Decoder::new(writer).unwrap();
                 while let Some(result) = pcap_reader.next_raw_packet() {
                     let packet = result.unwrap().data;
-                    decoder.handle_raw_packet(&mut cap, &packet).unwrap();
+                    decoder.handle_raw_packet(&packet).unwrap();
                 }
-                decoder.finish(&mut cap).unwrap();
+                decoder.finish().unwrap();
                 let out_file = File::create(out_path.clone()).unwrap();
                 let mut out_writer = BufWriter::new(out_file);
-                let num_items = cap.item_index.len();
+                let num_items = reader.item_index.len();
                 for item_id in 0 .. num_items {
-                    let item = cap.item(None, item_id).unwrap();
-                    write_item(&mut cap, &item, 0, &mut out_writer);
+                    let item = reader.item(None, item_id).unwrap();
+                    write_item(&mut reader, &item, 0, &mut out_writer);
                 }
             }
             let ref_file = File::open(ref_path).unwrap();
@@ -1551,7 +1692,10 @@ mod tests {
 
 pub mod prelude {
     pub use super::{
-        Capture,
+        create_capture,
+        create_endpoint,
+        CaptureReader,
+        CaptureWriter,
         CaptureError,
         Device,
         DeviceId,
@@ -1560,7 +1704,8 @@ pub mod prelude {
         EndpointId,
         EndpointType,
         EndpointState,
-        EndpointTraffic,
+        EndpointReader,
+        EndpointWriter,
         EndpointTransactionId,
         EndpointTransferId,
         PacketId,

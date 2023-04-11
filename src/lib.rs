@@ -3,27 +3,20 @@ extern crate bitfield;
 
 mod backend;
 mod capture;
+mod data_stream;
 pub mod decoder;
 mod expander;
-mod file_vec;
-mod hybrid_index;
 mod id;
+mod index_stream;
 pub mod model;
+mod rcu;
 pub mod row_data;
+mod stream;
 mod tree_list_model;
 pub mod ui;
 mod usb;
 mod util;
 mod vec_map;
-
-#[cfg(test)]
-mod stream;
-
-#[cfg(test)]
-mod data_stream;
-
-#[cfg(test)]
-mod index_stream;
 
 #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
 pub mod record_ui;

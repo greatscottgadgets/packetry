@@ -76,7 +76,7 @@ fn check_replays() {
                 .expect("Failed to deserialize action");
             match (action, &mut replay) {
                 (Open(path), _) => {
-                    reset_capture()
+                    let writer = reset_capture()
                         .expect("Resetting capture failed");
                     let mut capture = None;
                     with_ui(|ui| {
@@ -92,7 +92,8 @@ fn check_replays() {
                         let reader = BufReader::new(file);
                         let pcap = PcapReader::new(reader)
                             .expect("Failed to read pcap file");
-                        let decoder = Decoder::default();
+                        let decoder = Decoder::new(writer)
+                            .expect("Failed to create decoder");
                         replay = Some((pcap, decoder, capture));
                     }
                 },
@@ -104,19 +105,15 @@ fn check_replays() {
                             .log_update(count);
                         Ok(())
                     }).unwrap();
-                    let mut cap = capture
-                        .lock()
-                        .expect("Failed to lock capture");
-                    while cap.packet_index.len() < count {
+                    while capture.packet_index.len() < count {
                         let packet = pcap
                             .next_raw_packet()
                             .expect("No next pcap packet")
                             .expect("Error in pcap reader");
                         decoder
-                            .handle_raw_packet(&mut cap, &packet.data)
+                            .handle_raw_packet(&packet.data)
                             .expect("Failed to decode packet");
                     }
-                    drop(cap);
                     update_view()
                         .expect("Failed to update view");
                 },
