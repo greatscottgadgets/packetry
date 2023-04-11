@@ -6,6 +6,7 @@ use bytemuck::{bytes_of, cast_slice, from_bytes, Pod};
 
 use crate::id::Id;
 use crate::stream::{stream, StreamReader, StreamWriter, StreamError, MIN_BLOCK};
+use crate::util::{fmt_count, fmt_size};
 
 /// Unique handle for append-only write access to a data stream.
 pub struct DataWriter<Value, const S: usize = MIN_BLOCK> {
@@ -147,6 +148,14 @@ where Data: Deref<Target=[u8]>,
 
     fn deref(&self) -> &[Value] {
         cast_slice(self.data.deref())
+    }
+}
+
+impl<Value, const S: usize> std::fmt::Display for DataWriter<Value, S>
+where Value: Pod + Default
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{} items, {}", fmt_count(self.len()), fmt_size(self.size()))
     }
 }
 

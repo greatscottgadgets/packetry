@@ -7,6 +7,7 @@ use bisection::{bisect_left, bisect_right};
 use crate::data_stream::{data_stream, DataReader, DataWriter};
 use crate::id::Id;
 use crate::stream::{StreamError, MIN_BLOCK};
+use crate::util::{fmt_count, fmt_size};
 
 /// Unique handle for append-only write access to an index.
 pub struct IndexWriter<Position, Value, const S: usize = MIN_BLOCK> {
@@ -219,6 +220,14 @@ where Position: Copy + From<u64> + Into<u64>,
             };
         };
         Ok(Position::from(position))
+    }
+}
+
+impl<Position, Value> std::fmt::Display for IndexWriter<Position, Value>
+where Position: From<u64>, Value: Into<u64>
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{} entries, {}", fmt_count(self.len()), fmt_size(self.size()))
     }
 }
 
