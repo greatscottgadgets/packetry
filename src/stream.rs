@@ -1,3 +1,5 @@
+#![deny(unsafe_op_in_unsafe_fn)]
+
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::cmp::min;
 use std::fs::File;
@@ -181,27 +183,32 @@ impl<const BLOCK_SIZE: usize> StreamWriter<BLOCK_SIZE> {
 
     /// Helper method for writing data to buffer.
     ///
-    /// The data must be guaranteed to fit within the remaining space.
+    /// Safety: The data must fit within the space remaining in the buffer.
     ///
     #[inline(always)]
     unsafe fn write_to_buffer(&mut self, data: &[u8], length: usize) {
-        copy_nonoverlapping(data.as_ptr(), self.ptr, length);
-        self.ptr = self.ptr.add(length);
+        unsafe {
+            copy_nonoverlapping(data.as_ptr(), self.ptr, length);
+            self.ptr = self.ptr.add(length);
+        }
         self.length += length as u64;
     }
 
     /// Helper method for writing buffer to file.
     ///
-    /// The buffer must be guaranteed to be full.
+    /// Safety: The buffer must be full.
+    ///
     #[inline(always)]
     unsafe fn write_buffer_to_file(&mut self) -> Result<(), StreamError> {
-        let buf = slice::from_raw_parts(self.buf, Self::block_size());
-        self.write_to_file(buf)
+        unsafe {
+            let buf = slice::from_raw_parts(self.buf, Self::block_size());
+            self.write_to_file(buf)
+        }
     }
 
     /// Helper method for writing data to file.
     ///
-    /// The data must be guaranteed to be a multiple of the block size.
+    /// Safety: The data must be a multiple of the block size.
     ///
     unsafe fn write_to_file(&mut self, data: &[u8]) -> Result<(), StreamError> {
 
