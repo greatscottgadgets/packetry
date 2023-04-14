@@ -149,12 +149,24 @@ pub fn activate(application: &Application) -> Result<(), PacketryError> {
         .title("Packetry")
         .build();
 
-    let header_bar = gtk::HeaderBar::new();
+    let action_bar = gtk::ActionBar::new();
 
-    let open_button = gtk::Button::from_icon_name("document-open");
-    let save_button = gtk::Button::from_icon_name("document-save");
-    let capture_button = gtk::Button::from_icon_name("media-record");
-    let stop_button = gtk::Button::from_icon_name("media-playback-stop");
+    let open_button = gtk::Button::builder()
+        .icon_name("document-open")
+        .tooltip_text("Open")
+        .build();
+    let save_button = gtk::Button::builder()
+        .icon_name("document-save")
+        .tooltip_text("Save")
+        .build();
+    let capture_button = gtk::Button::builder()
+        .icon_name("media-record")
+        .tooltip_text("Capture")
+        .build();
+    let stop_button = gtk::Button::builder()
+        .icon_name("media-playback-stop")
+        .tooltip_text("Stop")
+        .build();
     let speed_dropdown = gtk::DropDown::from_strings(&[
         "High (480Mbps)",
         "Full (12Mbps)",
@@ -165,13 +177,14 @@ pub fn activate(application: &Application) -> Result<(), PacketryError> {
     save_button.set_sensitive(false);
     capture_button.set_sensitive(true);
 
-    header_bar.pack_start(&open_button);
-    header_bar.pack_start(&save_button);
-    header_bar.pack_start(&capture_button);
-    header_bar.pack_start(&stop_button);
-    header_bar.pack_start(&speed_dropdown);
+    action_bar.pack_start(&open_button);
+    action_bar.pack_start(&save_button);
+    action_bar.pack_start(&gtk::Separator::new(Orientation::Vertical));
+    action_bar.pack_start(&gtk::Label::new(Some("Speed:")));
+    action_bar.pack_start(&speed_dropdown);
+    action_bar.pack_start(&capture_button);
+    action_bar.pack_start(&stop_button);
 
-    window.set_titlebar(Some(&header_bar));
     #[cfg(not(feature="test-ui-replay"))]
     window.show();
     WINDOW.with(|win_opt| win_opt.replace(Some(window.clone())));
@@ -199,8 +212,6 @@ pub fn activate(application: &Application) -> Result<(), PacketryError> {
         .vexpand(true)
         .build();
 
-    let separator = gtk::Separator::new(Orientation::Horizontal);
-
     let progress_bar = gtk::ProgressBar::builder()
         .show_text(true)
         .text("")
@@ -211,8 +222,10 @@ pub fn activate(application: &Application) -> Result<(), PacketryError> {
         .orientation(Orientation::Vertical)
         .build();
 
+    vbox.append(&action_bar);
+    vbox.append(&gtk::Separator::new(Orientation::Horizontal));
     vbox.append(&paned);
-    vbox.append(&separator);
+    vbox.append(&gtk::Separator::new(Orientation::Horizontal));
 
     window.set_child(Some(&vbox));
 
