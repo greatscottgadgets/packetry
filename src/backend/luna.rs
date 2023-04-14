@@ -75,8 +75,7 @@ pub struct LunaStop {
 }
 
 impl LunaDevice {
-    pub fn scan() -> Result<Vec<Device<Context>>, Error> {
-        let context = Context::new()?;
+    pub fn scan(context: &mut Context) -> Result<Vec<Device<Context>>, Error> {
         let devices = context.devices()?;
         let mut result = Vec::with_capacity(devices.len());
         for device in devices.iter() {

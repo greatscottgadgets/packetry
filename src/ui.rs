@@ -102,6 +102,8 @@ pub enum PacketryError {
     Io(#[from] std::io::Error),
     #[error("pcap error: {0}")]
     Pcap(#[from] PcapError),
+    #[error(transparent)]
+    Usb(#[from] rusb::Error),
     #[error("device not found")]
     NotFound,
     #[error("LUNA error: {0}")]
@@ -114,6 +116,7 @@ pub enum PacketryError {
 
 pub struct UserInterface {
     pub capture: Arc<Mutex<Capture>>,
+    usb_context: rusb::Context,
     file_name: Option<String>,
     stop_handle: Option<LunaStop>,
     traffic_window: ScrolledWindow,
@@ -200,6 +203,7 @@ pub fn activate(application: &Application) -> Result<(), PacketryError> {
 
     let args: Vec<_> = std::env::args().collect();
     let capture = Arc::new(Mutex::new(Capture::new()?));
+    let usb_context = rusb::Context::new()?;
 
     let traffic_window = gtk::ScrolledWindow::builder()
         .hscrollbar_policy(gtk::PolicyType::Automatic)
@@ -264,6 +268,7 @@ pub fn activate(application: &Application) -> Result<(), PacketryError> {
                 recording: Rc::new(RefCell::new(
                     Recording::new(capture.clone()))),
                 capture,
+                usb_context,
                 file_name: None,
                 stop_handle: None,
                 traffic_window,
@@ -701,7 +706,7 @@ pub fn stop_pcap() -> Result<(), PacketryError> {
 pub fn start_luna() -> Result<(), PacketryError> { 
     reset_capture()?;
     with_ui(|ui| {
-        let device = LunaDevice::scan()?
+        let device = LunaDevice::scan(&mut ui.usb_context)?
             .into_iter()
             .next()
             .ok_or(PacketryError::NotFound)?;
