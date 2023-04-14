@@ -14,14 +14,17 @@ use gtk::gio::ListModel;
 use gtk::glib::Object;
 use gtk::{
     prelude::*,
+    Align,
     Application,
     ApplicationWindow,
     Button,
     DropDown,
+    Label,
     ListItem,
     ListView,
     ProgressBar,
     ScrolledWindow,
+    Separator,
     SignalListItemFactory,
     SingleSelection,
     Orientation,
@@ -109,6 +112,7 @@ pub enum PacketryError {
 
 pub struct UserInterface {
     pub capture: Arc<Mutex<Capture>>,
+    file_name: Option<String>,
     stop_handle: Option<LunaStop>,
     traffic_window: ScrolledWindow,
     device_window: ScrolledWindow,
@@ -117,12 +121,15 @@ pub struct UserInterface {
     endpoint_count: u16,
     show_progress: Option<FileAction>,
     progress_bar: ProgressBar,
+    separator: Separator,
     vbox: gtk::Box,
+    paned: gtk::Paned,
     open_button: Button,
     save_button: Button,
     capture_button: Button,
     stop_button: Button,
     speed_dropdown: DropDown,
+    status_label: Label,
     #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
     pub recording: Rc<RefCell<Recording>>,
 }
@@ -212,10 +219,23 @@ pub fn activate(application: &Application) -> Result<(), PacketryError> {
         .vexpand(true)
         .build();
 
+    let separator = gtk::Separator::new(Orientation::Horizontal);
+
     let progress_bar = gtk::ProgressBar::builder()
         .show_text(true)
         .text("")
         .hexpand(true)
+        .build();
+
+    let status_label = gtk::Label::builder()
+        .label("Ready")
+        .single_line_mode(true)
+        .halign(Align::Start)
+        .hexpand(true)
+        .margin_top(2)
+        .margin_bottom(2)
+        .margin_start(3)
+        .margin_end(3)
         .build();
 
     let vbox = gtk::Box::builder()
@@ -225,6 +245,8 @@ pub fn activate(application: &Application) -> Result<(), PacketryError> {
     vbox.append(&action_bar);
     vbox.append(&gtk::Separator::new(Orientation::Horizontal));
     vbox.append(&paned);
+    vbox.append(&gtk::Separator::new(Orientation::Horizontal));
+    vbox.append(&status_label);
     vbox.append(&gtk::Separator::new(Orientation::Horizontal));
 
     window.set_child(Some(&vbox));
@@ -240,6 +262,7 @@ pub fn activate(application: &Application) -> Result<(), PacketryError> {
                 recording: Rc::new(RefCell::new(
                     Recording::new(capture.clone()))),
                 capture,
+                file_name: None,
                 stop_handle: None,
                 traffic_window,
                 device_window,
@@ -248,12 +271,15 @@ pub fn activate(application: &Application) -> Result<(), PacketryError> {
                 endpoint_count: 2,
                 show_progress: None,
                 progress_bar,
+                separator,
                 vbox,
+                paned,
                 open_button,
                 save_button,
                 capture_button,
                 stop_button,
                 speed_dropdown,
+                status_label,
             }
         )
     });
@@ -441,6 +467,22 @@ pub fn update_view() -> Result<(), PacketryError> {
         if ui.show_progress == Some(Save) {
             more_updates = true;
         } else {
+            let (devices, endpoints, transactions, packets) = {
+                let cap = ui.capture.lock().or(Err(Lock))?;
+                let devices = cap.devices.len() - 1;
+                let endpoints = cap.endpoints.len() - 2;
+                let transactions = cap.transaction_index.len();
+                let packets = cap.packet_index.len();
+                (devices, endpoints, transactions, packets)
+            };
+            ui.status_label.set_text(&format!(
+                "{}: {} devices, {} endpoints, {} transactions, {} packets",
+                ui.file_name.as_deref().unwrap_or("Unsaved capture"),
+                fmt_count(devices),
+                fmt_count(endpoints),
+                fmt_count(transactions),
+                fmt_count(packets)
+            ));
             if let Some(model) = &ui.traffic_model {
                 let old_count = model.n_items();
                 more_updates |= model.update()?;
@@ -529,6 +571,9 @@ fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), PacketryError> {
     with_ui(|ui| {
         #[cfg(feature="record-ui-test")]
         ui.recording.borrow_mut().log_open_file(&path, &ui.capture);
+        ui.file_name = path
+            .file_name()
+            .map(|path| path.to_string_lossy().to_string());
         ui.open_button.set_sensitive(false);
         ui.save_button.set_sensitive(false);
         ui.capture_button.set_sensitive(false);
@@ -536,7 +581,8 @@ fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), PacketryError> {
         ui.stop_button.set_sensitive(true);
         let signal_id = ui.stop_button.connect_clicked(|_|
             display_error(stop_pcap()));
-        ui.vbox.append(&ui.progress_bar);
+        ui.vbox.insert_child_after(&ui.separator, Some(&ui.paned));
+        ui.vbox.insert_child_after(&ui.progress_bar, Some(&ui.separator));
         ui.show_progress = Some(action);
         let capture = ui.capture.clone();
         use PacketryError::Lock;
@@ -622,6 +668,7 @@ fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), PacketryError> {
                 display_error(
                     with_ui(|ui| {
                         ui.show_progress = None;
+                        ui.vbox.remove(&ui.separator);
                         ui.vbox.remove(&ui.progress_bar);
                         ui.stop_button.disconnect(signal_id);
                         ui.stop_button.set_sensitive(false);
