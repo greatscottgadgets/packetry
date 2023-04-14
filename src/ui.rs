@@ -102,6 +102,8 @@ pub enum PacketryError {
     Io(#[from] std::io::Error),
     #[error("pcap error: {0}")]
     Pcap(#[from] PcapError),
+    #[error("device not found")]
+    NotFound,
     #[error("LUNA error: {0}")]
     Luna(#[from] crate::backend::luna::Error),
     #[error("locking failed")]
@@ -699,9 +701,13 @@ pub fn stop_pcap() -> Result<(), PacketryError> {
 pub fn start_luna() -> Result<(), PacketryError> { 
     reset_capture()?;
     with_ui(|ui| {
+        let device = LunaDevice::scan()?
+            .into_iter()
+            .next()
+            .ok_or(PacketryError::NotFound)?;
         let speed_id: u8 = ui.speed_dropdown.selected().try_into().unwrap();
         let speed = Speed::from(speed_id);
-        let luna = LunaDevice::open()?;
+        let luna = LunaDevice::open(&device)?;
         let (mut stream_handle, stop_handle) = luna.start(speed)?;
         ui.stop_handle.replace(stop_handle);
         ui.open_button.set_sensitive(false);

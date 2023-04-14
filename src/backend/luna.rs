@@ -4,7 +4,13 @@ use std::sync::mpsc::{channel, Sender, Receiver};
 use std::time::Duration;
 
 use num_enum::{FromPrimitive, IntoPrimitive};
-use rusb::{Context, DeviceHandle, UsbContext, Version};
+use rusb::{
+    Context,
+    Device,
+    DeviceHandle,
+    UsbContext,
+    Version
+};
 
 const VID: u16 = 0x1d50;
 const PID: u16 = 0x615b;
@@ -49,8 +55,6 @@ pub enum Error {
     ChannelSend,
     #[error("worker thread panic")]
     ThreadPanic,
-    #[error("device not found")]
-    NotFound,
     #[error("unsupported analyzer version: Gateware version is {0}. \
              Supported range is {MIN_SUPPORTED} or higher, \
              but not {NOT_SUPPORTED} or higher")]
@@ -71,10 +75,21 @@ pub struct LunaStop {
 }
 
 impl LunaDevice {
-    pub fn open() -> Result<Self, Error> {
+    pub fn scan() -> Result<Vec<Device<Context>>, Error> {
         let context = Context::new()?;
-        let handle = context.open_device_with_vid_pid(VID, PID)
-            .ok_or(Error::NotFound)?;
+        let devices = context.devices()?;
+        let mut result = Vec::with_capacity(devices.len());
+        for device in devices.iter() {
+            let desc = device.device_descriptor()?;
+            if desc.vendor_id() == VID && desc.product_id() == PID {
+                result.push(device)
+            }
+        }
+        Ok(result)
+    }
+
+    pub fn open(device: &Device<Context>) -> Result<Self, Error> {
+        let handle = device.open()?;
         let version = handle
             .device()
             .device_descriptor()
