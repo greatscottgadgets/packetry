@@ -117,7 +117,7 @@ pub enum PacketryError {
 }
 
 struct DeviceSelector {
-    usb_context: Context,
+    usb_context: Option<Context>,
     devices: Vec<Device<Context>>,
     dev_strings: Vec<String>,
     dev_speeds: Vec<Vec<&'static str>>,
@@ -129,7 +129,7 @@ struct DeviceSelector {
 impl DeviceSelector {
     fn new() -> Result<Self, PacketryError> {
         let mut selector = DeviceSelector {
-            usb_context: Context::new()?,
+            usb_context: Context::new().ok(),
             devices: vec![],
             dev_strings: vec![],
             dev_speeds: vec![],
@@ -167,7 +167,11 @@ impl DeviceSelector {
     }
 
     fn scan(&mut self) -> Result<bool, PacketryError> {
-        self.devices = LunaDevice::scan(&mut self.usb_context)?;
+        self.devices = if let Some(context) = self.usb_context.as_mut() {
+            LunaDevice::scan(context)?
+        } else {
+            vec![]
+        };
         self.dev_strings = Vec::with_capacity(self.devices.len());
         self.dev_speeds = Vec::with_capacity(self.devices.len());
         for device in self.devices.iter() {
