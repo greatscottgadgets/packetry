@@ -27,6 +27,7 @@ use gtk::{
     Separator,
     SignalListItemFactory,
     SingleSelection,
+    StringList,
     Orientation,
 };
 
@@ -44,6 +45,7 @@ use pcap_file::{
     pcap::{PcapReader, PcapWriter, PcapHeader, RawPcapPacket},
 };
 
+use rusb::{Context, Device};
 use thiserror::Error;
 
 use crate::backend::luna::{LunaDevice, LunaStop, Speed};
@@ -114,9 +116,110 @@ pub enum PacketryError {
     Bug(&'static str)
 }
 
+struct DeviceSelector {
+    usb_context: Context,
+    devices: Vec<Device<Context>>,
+    dev_strings: Vec<String>,
+    dev_speeds: Vec<Vec<&'static str>>,
+    dev_dropdown: DropDown,
+    speed_dropdown: DropDown,
+    container: gtk::Box,
+}
+
+impl DeviceSelector {
+    fn new() -> Result<Self, PacketryError> {
+        let mut selector = DeviceSelector {
+            usb_context: Context::new()?,
+            devices: vec![],
+            dev_strings: vec![],
+            dev_speeds: vec![],
+            dev_dropdown: DropDown::from_strings(&[]),
+            speed_dropdown: DropDown::from_strings(&[]),
+            container: gtk::Box::builder()
+                .orientation(Orientation::Horizontal)
+                .build()
+        };
+        let device_label = Label::builder()
+            .label("Device: ")
+            .margin_start(2)
+            .margin_end(2)
+            .build();
+        let speed_label = Label::builder()
+            .label(" Speed: ")
+            .margin_start(2)
+            .margin_end(2)
+            .build();
+        selector.container.append(&device_label);
+        selector.container.append(&selector.dev_dropdown);
+        selector.container.append(&speed_label);
+        selector.container.append(&selector.speed_dropdown);
+        selector.scan()?;
+        Ok(selector)
+    }
+
+    fn device_available(&self) -> bool {
+        !self.devices.is_empty()
+    }
+
+    fn set_sensitive(&mut self, sensitive: bool) {
+        self.dev_dropdown.set_sensitive(sensitive);
+        self.speed_dropdown.set_sensitive(sensitive);
+    }
+
+    fn scan(&mut self) -> Result<bool, PacketryError> {
+        self.devices = LunaDevice::scan(&mut self.usb_context)?;
+        self.dev_strings = Vec::with_capacity(self.devices.len());
+        self.dev_speeds = Vec::with_capacity(self.devices.len());
+        for device in self.devices.iter() {
+            let desc = device.device_descriptor()?;
+            let handle = device.open()?;
+            let manufacturer = handle.read_manufacturer_string_ascii(&desc)?;
+            let product = handle.read_product_string_ascii(&desc)?;
+            self.dev_strings.push(
+                format!("{} {}", manufacturer, product));
+            self.dev_speeds.push(vec![
+                "High (480Mbps)",
+                "Full (12Mbps)",
+                "Low (1.5Mbps)"
+            ]);
+        }
+        let no_speeds = vec![];
+        let speed_strings = self.dev_speeds.get(0).unwrap_or(&no_speeds);
+        self.replace_dropdown(&self.dev_dropdown, &self.dev_strings);
+        self.replace_dropdown(&self.speed_dropdown, speed_strings);
+        let available = self.device_available();
+        self.set_sensitive(available);
+        Ok(available)
+    }
+
+    fn open(&self) -> Result<(LunaDevice, Speed), PacketryError> {
+        let device_id = self.dev_dropdown.selected();
+        let device = &self.devices[device_id as usize];
+        let speed_id = self.speed_dropdown.selected() as u8;
+        let speed = Speed::from(speed_id);
+        let luna = LunaDevice::open(device)?;
+        Ok((luna, speed))
+    }
+
+    fn replace_dropdown<T: AsRef<str>>(
+        &self, dropdown: &DropDown, strings: &[T])
+    {
+        let strings = strings
+            .iter()
+            .map(T::as_ref)
+            .collect::<Vec<_>>();
+        if let Some(model) = dropdown.model() {
+            let num_items = model.n_items();
+            if let Ok(list) = model.downcast::<StringList>() {
+                list.splice(0, num_items, strings.as_slice());
+            }
+        }
+    }
+}
+
 pub struct UserInterface {
     pub capture: Arc<Mutex<Capture>>,
-    usb_context: rusb::Context,
+    selector: DeviceSelector,
     file_name: Option<String>,
     stop_handle: Option<LunaStop>,
     traffic_window: ScrolledWindow,
@@ -131,9 +234,9 @@ pub struct UserInterface {
     paned: gtk::Paned,
     open_button: Button,
     save_button: Button,
+    scan_button: Button,
     capture_button: Button,
     stop_button: Button,
-    speed_dropdown: DropDown,
     status_label: Label,
     #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
     pub recording: Rc<RefCell<Recording>>,
@@ -171,6 +274,10 @@ pub fn activate(application: &Application) -> Result<(), PacketryError> {
         .icon_name("document-save")
         .tooltip_text("Save")
         .build();
+    let scan_button = gtk::Button::builder()
+        .icon_name("view-refresh")
+        .tooltip_text("Scan for devices")
+        .build();
     let capture_button = gtk::Button::builder()
         .icon_name("media-record")
         .tooltip_text("Capture")
@@ -179,23 +286,21 @@ pub fn activate(application: &Application) -> Result<(), PacketryError> {
         .icon_name("media-playback-stop")
         .tooltip_text("Stop")
         .build();
-    let speed_dropdown = gtk::DropDown::from_strings(&[
-        "High (480Mbps)",
-        "Full (12Mbps)",
-        "Low (1.5Mbps)"
-    ]);
 
     open_button.set_sensitive(true);
     save_button.set_sensitive(false);
-    capture_button.set_sensitive(true);
+    scan_button.set_sensitive(true);
+
+    let selector = DeviceSelector::new()?;
+    capture_button.set_sensitive(selector.device_available());
 
     action_bar.pack_start(&open_button);
     action_bar.pack_start(&save_button);
     action_bar.pack_start(&gtk::Separator::new(Orientation::Vertical));
-    action_bar.pack_start(&gtk::Label::new(Some("Speed:")));
-    action_bar.pack_start(&speed_dropdown);
+    action_bar.pack_start(&scan_button);
     action_bar.pack_start(&capture_button);
     action_bar.pack_start(&stop_button);
+    action_bar.pack_start(&selector.container);
 
     #[cfg(not(feature="test-ui-replay"))]
     window.show();
@@ -203,7 +308,6 @@ pub fn activate(application: &Application) -> Result<(), PacketryError> {
 
     let args: Vec<_> = std::env::args().collect();
     let capture = Arc::new(Mutex::new(Capture::new()?));
-    let usb_context = rusb::Context::new()?;
 
     let traffic_window = gtk::ScrolledWindow::builder()
         .hscrollbar_policy(gtk::PolicyType::Automatic)
@@ -257,6 +361,7 @@ pub fn activate(application: &Application) -> Result<(), PacketryError> {
 
     window.set_child(Some(&vbox));
 
+    scan_button.connect_clicked(|_| display_error(detect_hardware()));
     capture_button.connect_clicked(|_| display_error(start_luna()));
     open_button.connect_clicked(|_| display_error(choose_file(Load)));
     save_button.connect_clicked(|_| display_error(choose_file(Save)));
@@ -268,7 +373,7 @@ pub fn activate(application: &Application) -> Result<(), PacketryError> {
                 recording: Rc::new(RefCell::new(
                     Recording::new(capture.clone()))),
                 capture,
-                usb_context,
+                selector,
                 file_name: None,
                 stop_handle: None,
                 traffic_window,
@@ -281,11 +386,11 @@ pub fn activate(application: &Application) -> Result<(), PacketryError> {
                 separator,
                 vbox,
                 paned,
+                scan_button,
                 open_button,
                 save_button,
                 capture_button,
                 stop_button,
-                speed_dropdown,
                 status_label,
             }
         )
@@ -583,8 +688,9 @@ fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), PacketryError> {
             .map(|path| path.to_string_lossy().to_string());
         ui.open_button.set_sensitive(false);
         ui.save_button.set_sensitive(false);
+        ui.scan_button.set_sensitive(false);
+        ui.selector.set_sensitive(false);
         ui.capture_button.set_sensitive(false);
-        ui.speed_dropdown.set_sensitive(false);
         ui.stop_button.set_sensitive(true);
         let signal_id = ui.stop_button.connect_clicked(|_|
             display_error(stop_pcap()));
@@ -681,8 +787,10 @@ fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), PacketryError> {
                         ui.stop_button.set_sensitive(false);
                         ui.open_button.set_sensitive(true);
                         ui.save_button.set_sensitive(true);
-                        ui.capture_button.set_sensitive(true);
-                        ui.speed_dropdown.set_sensitive(true);
+                        ui.scan_button.set_sensitive(true);
+                        let available = ui.selector.device_available();
+                        ui.selector.set_sensitive(available);
+                        ui.capture_button.set_sensitive(available);
                         Ok(())
                     })
                 );
@@ -698,7 +806,16 @@ fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), PacketryError> {
 pub fn stop_pcap() -> Result<(), PacketryError> {
     STOP.store(true, Ordering::Relaxed);
     with_ui(|ui| {
+        ui.scan_button.set_sensitive(true);
         ui.stop_button.set_sensitive(false);
+        Ok(())
+    })
+}
+
+fn detect_hardware() -> Result<(), PacketryError> {
+    with_ui(|ui| {
+        ui.selector.scan()?;
+        ui.capture_button.set_sensitive(ui.selector.device_available());
         Ok(())
     })
 }
@@ -706,19 +823,14 @@ pub fn stop_pcap() -> Result<(), PacketryError> {
 pub fn start_luna() -> Result<(), PacketryError> { 
     reset_capture()?;
     with_ui(|ui| {
-        let device = LunaDevice::scan(&mut ui.usb_context)?
-            .into_iter()
-            .next()
-            .ok_or(PacketryError::NotFound)?;
-        let speed_id: u8 = ui.speed_dropdown.selected().try_into().unwrap();
-        let speed = Speed::from(speed_id);
-        let luna = LunaDevice::open(&device)?;
+        let (luna, speed) = ui.selector.open()?;
         let (mut stream_handle, stop_handle) = luna.start(speed)?;
         ui.stop_handle.replace(stop_handle);
         ui.open_button.set_sensitive(false);
+        ui.scan_button.set_sensitive(false);
+        ui.selector.set_sensitive(false);
         ui.capture_button.set_sensitive(false);
         ui.stop_button.set_sensitive(true);
-        ui.speed_dropdown.set_sensitive(false);
         let signal_id = ui.stop_button.connect_clicked(|_|
             display_error(stop_luna()));
         let capture = ui.capture.clone();
@@ -741,8 +853,9 @@ pub fn start_luna() -> Result<(), PacketryError> {
                         ui.stop_button.disconnect(signal_id);
                         ui.stop_button.set_sensitive(false);
                         ui.open_button.set_sensitive(true);
-                        ui.capture_button.set_sensitive(true);
-                        ui.speed_dropdown.set_sensitive(true);
+                        let available = ui.selector.device_available();
+                        ui.selector.set_sensitive(available);
+                        ui.capture_button.set_sensitive(available);
                         Ok(())
                     })
                 );
@@ -760,6 +873,7 @@ pub fn stop_luna() -> Result<(), PacketryError> {
         if let Some(stop_handle) = ui.stop_handle.take() {
             stop_handle.stop()?;
         }
+        ui.scan_button.set_sensitive(true);
         ui.save_button.set_sensitive(true);
         Ok(())
     })
