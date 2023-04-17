@@ -2352,10 +2352,14 @@ where Item: 'static + Clone + Debug,
         // First check that the position is valid (must be within the root
         // node's total child count).
         let position = position as u64;
-        if position >= self.row_count() {
-            return None
-        }
-        let node_or_err_msg = self.fetch(position).map_err(|e| format!("{e:?}"));
+        let row_count = self.row_count();
+        let node_or_err_msg = if position >= row_count {
+            Err(format!(
+                "No row at position {position}, only {row_count} rows in model"
+            ))
+        } else {
+            self.fetch(position).map_err(|e| format!("{e:?}"))
+        };
         let row_data = RowData::new(node_or_err_msg);
         Some(row_data.upcast::<Object>())
     }
