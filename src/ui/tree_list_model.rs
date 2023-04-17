@@ -3,7 +3,7 @@
 //! The concept is similar to the GTK TreeListModel type, but the
 //! implementation is customised for Packetry's usage.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::cmp::min;
 use std::collections::{BTreeMap, HashSet};
 use std::collections::btree_map::Entry;
@@ -470,6 +470,7 @@ pub struct TreeListModel<Item, Model, RowData, ViewMode> {
     view_mode: ViewMode,
     root: RootNodeRc<Item>,
     regions: RefCell<BTreeMap<u64, Region<Item>>>,
+    gtk_row_count: Cell<u32>,
     #[cfg(any(test, feature="record-ui-test"))]
     on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>,
 }
@@ -498,6 +499,7 @@ where Item: 'static + Clone + Debug,
                 complete: completion.is_complete(),
             })),
             regions: RefCell::new(BTreeMap::new()),
+            gtk_row_count: Cell::new(0),
             #[cfg(any(test, feature="record-ui-test"))]
             on_item_update,
         })
@@ -628,7 +630,7 @@ where Item: 'static + Clone + Debug,
         self.check()?;
 
         // Update model.
-        self.apply_update(model, children_position, update);
+        self.apply_update(model, children_position, update)?;
 
         Ok(())
     }
@@ -2066,7 +2068,7 @@ where Item: 'static + Clone + Debug,
                     rows_added: top_level_added + second_level_added,
                     rows_removed: 0,
                     rows_changed: 0
-                });
+                })?;
             }
         } else if children_added > 0 {
             // This is an item node. Update child counts.
@@ -2112,7 +2114,7 @@ where Item: 'static + Clone + Debug,
                     rows_added: children_added,
                     rows_removed: 0,
                     rows_changed: 0
-                });
+                })?;
 
                 // Update the position to continue from.
                 position += children_added;
@@ -2245,25 +2247,70 @@ where Item: 'static + Clone + Debug,
         }
     }
 
-    fn apply_update(&self, model: &Model, position: u64, update: ModelUpdate)
-    {
-        if let Ok(position) = u32::try_from(position) {
-            let rows_addressable = u32::MAX - position;
+    fn apply_update(
+        &self,
+        model: &Model,
+        position: u64,
+        update: ModelUpdate
+    ) -> Result<(), Error> {
+        // Check that there are enough rows in the model
+        // for this update to make sense.
+        let model_row_count = self.row_count();
+        let model_rows_required =
+            position + update.rows_changed + update.rows_added;
+        if model_row_count < model_rows_required {
+            bail!("Invalid update: {} at row {}, but only {} rows in model",
+                update, position, model_row_count);
+        }
+        // If an update happens beyond row u32::MAX, it's invisible to GTK.
+        if let Ok(gtk_position) = u32::try_from(position) {
+            // Check that we've told GTK about enough rows
+            // for this update to make sense.
+            let gtk_row_count = self.gtk_row_count.get();
+            let gtk_rows_required = clamp(
+                position + update.rows_changed + update.rows_removed,
+                u32::MAX
+            );
+            if gtk_row_count < gtk_rows_required {
+                bail!("Invalid update: {} at row {}, but only {} rows in GTK",
+                    update, gtk_position, gtk_row_count);
+            }
+            // If the update runs off the end of the u32::MAX rows visible
+            // to GTK, trim it down to the addressable rows only.
+            let rows_addressable = u32::MAX - gtk_position;
             let rows_removed = clamp(
                 update.rows_removed + update.rows_changed,
                 rows_addressable);
             let rows_added = clamp(
                 update.rows_added + update.rows_changed,
                 rows_addressable);
-            model.items_changed(position, rows_removed, rows_added);
+
+            // Pass the update to GTK.
+            model.items_changed(gtk_position, rows_removed, rows_added);
+
+            // Update our record of how many rows GTK knows about.
+            let new_gtk_count = gtk_row_count + rows_added - rows_removed;
+            self.gtk_row_count.replace(new_gtk_count);
+
+            // Check that this matches the count in our model.
+            if new_gtk_count != clamp(model_row_count, u32::MAX) {
+                bail!("Invalid update: {} at row {} leaves {} rows in GTK \
+                      but {} rows in model",
+                      update, position, new_gtk_count, model_row_count);
+            }
         }
+        Ok(())
     }
 
     // The following methods correspond to the ListModel interface, and can be
     // called by a GObject wrapper class to implement that interface.
 
     pub fn n_items(&self) -> u32 {
-        clamp(self.row_count(), u32::MAX)
+        // GTK can only handle up to u32::MAX rows.
+        let count = clamp(self.row_count(), u32::MAX);
+        // Keep track of how many rows we've told GTK about.
+        self.gtk_row_count.replace(count);
+        count
     }
 
     pub fn item(&self, position: u32) -> Option<Object> {
