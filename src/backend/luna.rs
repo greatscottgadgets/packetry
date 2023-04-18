@@ -61,8 +61,14 @@ pub enum Error {
     WrongVersion(Version),
 }
 
+/// A Luna device attached to the system.
 pub struct LunaDevice {
-    handle: DeviceHandle<Context>,
+    pub usb_device: Device<Context>,
+}
+
+/// A handle to an open Luna device.
+pub struct LunaHandle {
+    usb_handle: DeviceHandle<Context>,
 }
 
 pub struct LunaStream {
@@ -75,27 +81,32 @@ pub struct LunaStop {
 }
 
 impl LunaDevice {
-    pub fn scan(context: &mut Context) -> Result<Vec<Device<Context>>, Error> {
+    pub fn scan(context: &mut Context) -> Result<Vec<LunaDevice>, Error> {
         let devices = context.devices()?;
         let mut result = Vec::with_capacity(devices.len());
-        for device in devices.iter() {
-            let desc = device.device_descriptor()?;
+        for usb_device in devices.iter() {
+            let desc = usb_device.device_descriptor()?;
             if desc.vendor_id() == VID && desc.product_id() == PID {
-                result.push(device)
+                result.push(LunaDevice{ usb_device })
             }
         }
         Ok(result)
     }
 
-    pub fn open(device: &Device<Context>) -> Result<Self, Error> {
-        let handle = device.open()?;
-        let version = handle
+    pub fn open(&self) -> Result<LunaHandle, Error> {
+        LunaHandle::new(self.usb_device.open()?)
+    }
+}
+
+impl LunaHandle {
+    fn new(usb_handle: DeviceHandle<Context>) -> Result<Self, Error> {
+        let version = usb_handle
             .device()
             .device_descriptor()
             .map_err(Error::Usb)?
             .device_version();
         if version >= MIN_SUPPORTED && version < NOT_SUPPORTED {
-            Ok(LunaDevice { handle })
+            Ok(Self { usb_handle })
         } else {
             Err(Error::WrongVersion(version))
         }
@@ -104,7 +115,7 @@ impl LunaDevice {
     pub fn start(mut self, speed: Speed)
         -> Result<(LunaStream, LunaStop), Error>
     {
-        self.handle.claim_interface(0)?;
+        self.usb_handle.claim_interface(0)?;
         let (tx, rx) = channel();
         let (stop_tx, stop_rx) = channel();
         let worker = spawn(move || {
@@ -114,7 +125,7 @@ impl LunaDevice {
             self.write_state(state)?;
             println!("Capture enabled");
             while stop_rx.try_recv().is_err() {
-                let result = self.handle.read_bulk(
+                let result = self.usb_handle.read_bulk(
                     ENDPOINT, &mut buffer, Duration::from_millis(100));
                 match result {
                     Ok(count) => {
@@ -150,7 +161,7 @@ impl LunaDevice {
 
     fn write_state(&mut self, state: State) -> Result<(), Error> {
         use rusb::{Direction, RequestType, Recipient, request_type};
-        self.handle.write_control(
+        self.usb_handle.write_control(
             request_type(Direction::Out, RequestType::Vendor, Recipient::Device),
             1,
             u16::from(state.0),

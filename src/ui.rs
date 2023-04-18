@@ -45,10 +45,10 @@ use pcap_file::{
     pcap::{PcapReader, PcapWriter, PcapHeader, RawPcapPacket},
 };
 
-use rusb::{Context, Device};
+use rusb::Context;
 use thiserror::Error;
 
-use crate::backend::luna::{LunaDevice, LunaStop, Speed};
+use crate::backend::luna::{LunaDevice, LunaHandle, LunaStop, Speed};
 use crate::capture::{
     Capture,
     CaptureError,
@@ -118,7 +118,7 @@ pub enum PacketryError {
 
 struct DeviceSelector {
     usb_context: Option<Context>,
-    devices: Vec<Device<Context>>,
+    devices: Vec<LunaDevice>,
     dev_strings: Vec<String>,
     dev_speeds: Vec<Vec<&'static str>>,
     dev_dropdown: DropDown,
@@ -175,8 +175,8 @@ impl DeviceSelector {
         self.dev_strings = Vec::with_capacity(self.devices.len());
         self.dev_speeds = Vec::with_capacity(self.devices.len());
         for device in self.devices.iter() {
-            let desc = device.device_descriptor()?;
-            let handle = device.open()?;
+            let desc = device.usb_device.device_descriptor()?;
+            let handle = device.usb_device.open()?;
             let manufacturer = handle.read_manufacturer_string_ascii(&desc)?;
             let product = handle.read_product_string_ascii(&desc)?;
             self.dev_strings.push(
@@ -196,12 +196,12 @@ impl DeviceSelector {
         Ok(available)
     }
 
-    fn open(&self) -> Result<(LunaDevice, Speed), PacketryError> {
+    fn open(&self) -> Result<(LunaHandle, Speed), PacketryError> {
         let device_id = self.dev_dropdown.selected();
         let device = &self.devices[device_id as usize];
         let speed_id = self.speed_dropdown.selected() as u8;
         let speed = Speed::from(speed_id);
-        let luna = LunaDevice::open(device)?;
+        let luna = device.open()?;
         Ok((luna, speed))
     }
 
