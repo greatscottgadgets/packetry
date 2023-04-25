@@ -29,12 +29,14 @@ pub enum Speed {
     High = 0,
     Full = 1,
     Low  = 2,
+    Auto = 3,
 }
 
 impl Speed {
     pub fn description(&self) -> &'static str {
         use Speed::*;
         match self {
+            Auto => "Auto",
             High => "High (480Mbps)",
             Full => "Full (12Mbps)",
             Low => "Low (1.5Mbps)",
