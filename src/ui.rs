@@ -175,12 +175,7 @@ impl DeviceSelector {
         self.dev_strings = Vec::with_capacity(self.devices.len());
         self.dev_speeds = Vec::with_capacity(self.devices.len());
         for device in self.devices.iter() {
-            let desc = device.usb_device.device_descriptor()?;
-            let handle = device.usb_device.open()?;
-            let manufacturer = handle.read_manufacturer_string_ascii(&desc)?;
-            let product = handle.read_product_string_ascii(&desc)?;
-            self.dev_strings.push(
-                format!("{} {}", manufacturer, product));
+            self.dev_strings.push(device.description.clone());
             self.dev_speeds.push(vec![
                 "High (480Mbps)",
                 "Full (12Mbps)",

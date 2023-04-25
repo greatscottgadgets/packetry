@@ -63,7 +63,8 @@ pub enum Error {
 
 /// A Luna device attached to the system.
 pub struct LunaDevice {
-    pub usb_device: Device<Context>,
+    usb_device: Device<Context>,
+    pub description: String,
 }
 
 /// A handle to an open Luna device.
@@ -87,7 +88,12 @@ impl LunaDevice {
         for usb_device in devices.iter() {
             let desc = usb_device.device_descriptor()?;
             if desc.vendor_id() == VID && desc.product_id() == PID {
-                result.push(LunaDevice{ usb_device })
+                let handle = LunaHandle::new(usb_device.open()?)?;
+                let description = handle.description()?;
+                result.push(LunaDevice{
+                    usb_device,
+                    description
+                })
             }
         }
         Ok(result)
@@ -110,6 +116,13 @@ impl LunaHandle {
         } else {
             Err(Error::WrongVersion(version))
         }
+    }
+
+    pub fn description(&self) -> Result<String, Error> {
+        let desc = self.usb_handle.device().device_descriptor()?;
+        let manufacturer = self.usb_handle.read_manufacturer_string_ascii(&desc)?;
+        let product = self.usb_handle.read_product_string_ascii(&desc)?;
+        Ok(format!("{} {}", manufacturer, product))
     }
 
     pub fn start(mut self, speed: Speed)
