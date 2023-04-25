@@ -176,11 +176,9 @@ impl DeviceSelector {
         self.dev_speeds = Vec::with_capacity(self.devices.len());
         for device in self.devices.iter() {
             self.dev_strings.push(device.description.clone());
-            self.dev_speeds.push(vec![
-                "High (480Mbps)",
-                "Full (12Mbps)",
-                "Low (1.5Mbps)"
-            ]);
+            self.dev_speeds.push(
+                device.speeds.iter().map(|x| x.description()).collect()
+            )
         }
         let no_speeds = vec![];
         let speed_strings = self.dev_speeds.get(0).unwrap_or(&no_speeds);
@@ -194,8 +192,8 @@ impl DeviceSelector {
     fn open(&self) -> Result<(LunaHandle, Speed), PacketryError> {
         let device_id = self.dev_dropdown.selected();
         let device = &self.devices[device_id as usize];
-        let speed_id = self.speed_dropdown.selected() as u8;
-        let speed = Speed::from(speed_id);
+        let speed_id = self.speed_dropdown.selected() as usize;
+        let speed = device.speeds[speed_id];
         let luna = device.open()?;
         Ok((luna, speed))
     }

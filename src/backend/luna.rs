@@ -31,6 +31,17 @@ pub enum Speed {
     Low  = 2,
 }
 
+impl Speed {
+    pub fn description(&self) -> &'static str {
+        use Speed::*;
+        match self {
+            High => "High (480Mbps)",
+            Full => "Full (12Mbps)",
+            Low => "Low (1.5Mbps)",
+        }
+    }
+}
+
 bitfield! {
     #[derive(Copy, Clone)]
     struct State(u8);
@@ -65,6 +76,7 @@ pub enum Error {
 pub struct LunaDevice {
     usb_device: Device<Context>,
     pub description: String,
+    pub speeds: Vec<Speed>,
 }
 
 /// A handle to an open Luna device.
@@ -90,9 +102,11 @@ impl LunaDevice {
             if desc.vendor_id() == VID && desc.product_id() == PID {
                 let handle = LunaHandle::new(usb_device.open()?)?;
                 let description = handle.description()?;
+                let speeds = handle.speeds()?;
                 result.push(LunaDevice{
                     usb_device,
-                    description
+                    description,
+                    speeds,
                 })
             }
         }
@@ -125,6 +139,10 @@ impl LunaHandle {
         Ok(format!("{} {}", manufacturer, product))
     }
 
+    pub fn speeds(&self) -> Result<Vec<Speed>, Error> {
+        Ok(vec![Speed::High, Speed::Full, Speed::Low])
+    }
+
     pub fn start(mut self, speed: Speed)
         -> Result<(LunaStream, LunaStop), Error>
     {
@@ -136,7 +154,7 @@ impl LunaHandle {
             let mut packet_queue = PacketQueue::new();
             let mut state = State::new(true, speed);
             self.write_state(state)?;
-            println!("Capture enabled");
+            println!("Capture enabled, speed: {}", speed.description());
             while stop_rx.try_recv().is_err() {
                 let result = self.usb_handle.read_bulk(
                     ENDPOINT, &mut buffer, Duration::from_millis(100));
