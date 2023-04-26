@@ -15,8 +15,8 @@ use rusb::{
 const VID: u16 = 0x1d50;
 const PID: u16 = 0x615b;
 
-const MIN_SUPPORTED: Version = Version(0, 0, 1);
-const NOT_SUPPORTED: Version = Version(0, 0, 2);
+const MIN_SUPPORTED: Version = Version(0, 0, 2);
+const NOT_SUPPORTED: Version = Version(0, 0, 3);
 
 const ENDPOINT: u8 = 0x81;
 
@@ -40,6 +40,16 @@ impl Speed {
             High => "High (480Mbps)",
             Full => "Full (12Mbps)",
             Low => "Low (1.5Mbps)",
+        }
+    }
+
+    pub fn mask(&self) -> u8 {
+        use Speed::*;
+        match self {
+            Auto => 0b0001,
+            Low  => 0b0010,
+            Full => 0b0100,
+            High => 0b1000,
         }
     }
 }
@@ -142,7 +152,24 @@ impl LunaHandle {
     }
 
     pub fn speeds(&self) -> Result<Vec<Speed>, Error> {
-        Ok(vec![Speed::High, Speed::Full, Speed::Low])
+        use rusb::{Direction, RequestType, Recipient, request_type};
+        let mut buf = [0u8];
+        self.usb_handle.read_control(
+            request_type(Direction::In, RequestType::Vendor, Recipient::Device),
+            2,
+            0,
+            0,
+            &mut buf,
+            Duration::from_secs(5),
+        )?;
+        let mut speeds = vec![];
+        use Speed::*;
+        for speed in [Auto, High, Full, Low] {
+            if buf[0] & speed.mask() != 0 {
+                speeds.push(speed);
+            }
+        }
+        Ok(speeds)
     }
 
     pub fn start(mut self, speed: Speed)
