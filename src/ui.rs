@@ -128,7 +128,7 @@ struct DeviceSelector {
 
 impl DeviceSelector {
     fn new() -> Result<Self, PacketryError> {
-        let mut selector = DeviceSelector {
+        let selector = DeviceSelector {
             usb_context: Context::new().ok(),
             devices: vec![],
             dev_strings: vec![],
@@ -153,7 +153,6 @@ impl DeviceSelector {
         selector.container.append(&selector.dev_dropdown);
         selector.container.append(&speed_label);
         selector.container.append(&selector.speed_dropdown);
-        selector.scan()?;
         Ok(selector)
     }
 
@@ -400,6 +399,8 @@ pub fn activate(application: &Application) -> Result<(), PacketryError> {
         let path = PathBuf::from(filename);
         start_pcap(Load, path)?;
     }
+
+    gtk::glib::idle_add_once(|| display_error(detect_hardware()));
 
     Ok(())
 }
