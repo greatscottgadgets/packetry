@@ -15,8 +15,8 @@ use rusb::{
 const VID: u16 = 0x1d50;
 const PID: u16 = 0x615b;
 
-const MIN_SUPPORTED: Version = Version(0, 0, 1);
-const NOT_SUPPORTED: Version = Version(0, 0, 2);
+const MIN_SUPPORTED: Version = Version(0, 0, 2);
+const NOT_SUPPORTED: Version = Version(0, 0, 3);
 
 const ENDPOINT: u8 = 0x81;
 
@@ -29,6 +29,29 @@ pub enum Speed {
     High = 0,
     Full = 1,
     Low  = 2,
+    Auto = 3,
+}
+
+impl Speed {
+    pub fn description(&self) -> &'static str {
+        use Speed::*;
+        match self {
+            Auto => "Auto",
+            High => "High (480Mbps)",
+            Full => "Full (12Mbps)",
+            Low => "Low (1.5Mbps)",
+        }
+    }
+
+    pub fn mask(&self) -> u8 {
+        use Speed::*;
+        match self {
+            Auto => 0b0001,
+            Low  => 0b0010,
+            Full => 0b0100,
+            High => 0b1000,
+        }
+    }
 }
 
 bitfield! {
@@ -61,8 +84,16 @@ pub enum Error {
     WrongVersion(Version),
 }
 
+/// A Luna device attached to the system.
 pub struct LunaDevice {
-    handle: DeviceHandle<Context>,
+    usb_device: Device<Context>,
+    pub description: String,
+    pub speeds: Vec<Speed>,
+}
+
+/// A handle to an open Luna device.
+pub struct LunaHandle {
+    usb_handle: DeviceHandle<Context>,
 }
 
 pub struct LunaStream {
@@ -75,36 +106,76 @@ pub struct LunaStop {
 }
 
 impl LunaDevice {
-    pub fn scan(context: &mut Context) -> Result<Vec<Device<Context>>, Error> {
+    pub fn scan(context: &mut Context) -> Result<Vec<LunaDevice>, Error> {
         let devices = context.devices()?;
         let mut result = Vec::with_capacity(devices.len());
-        for device in devices.iter() {
-            let desc = device.device_descriptor()?;
+        for usb_device in devices.iter() {
+            let desc = usb_device.device_descriptor()?;
             if desc.vendor_id() == VID && desc.product_id() == PID {
-                result.push(device)
+                let handle = LunaHandle::new(usb_device.open()?)?;
+                let description = handle.description()?;
+                let speeds = handle.speeds()?;
+                result.push(LunaDevice{
+                    usb_device,
+                    description,
+                    speeds,
+                })
             }
         }
         Ok(result)
     }
 
-    pub fn open(device: &Device<Context>) -> Result<Self, Error> {
-        let handle = device.open()?;
-        let version = handle
+    pub fn open(&self) -> Result<LunaHandle, Error> {
+        LunaHandle::new(self.usb_device.open()?)
+    }
+}
+
+impl LunaHandle {
+    fn new(usb_handle: DeviceHandle<Context>) -> Result<Self, Error> {
+        let version = usb_handle
             .device()
             .device_descriptor()
             .map_err(Error::Usb)?
             .device_version();
         if version >= MIN_SUPPORTED && version < NOT_SUPPORTED {
-            Ok(LunaDevice { handle })
+            Ok(Self { usb_handle })
         } else {
             Err(Error::WrongVersion(version))
         }
     }
 
+    pub fn description(&self) -> Result<String, Error> {
+        let desc = self.usb_handle.device().device_descriptor()?;
+        let manufacturer = self.usb_handle.read_manufacturer_string_ascii(&desc)?;
+        let product = self.usb_handle.read_product_string_ascii(&desc)?;
+        Ok(format!("{} {}", manufacturer, product))
+    }
+
+    pub fn speeds(&self) -> Result<Vec<Speed>, Error> {
+        use rusb::{Direction, RequestType, Recipient, request_type};
+        let mut buf = [0u8];
+        self.usb_handle.read_control(
+            request_type(Direction::In, RequestType::Vendor, Recipient::Device),
+            2,
+            0,
+            0,
+            &mut buf,
+            Duration::from_secs(5),
+        )?;
+        let mut speeds = vec![];
+        use Speed::*;
+        for speed in [Auto, High, Full, Low] {
+            if buf[0] & speed.mask() != 0 {
+                speeds.push(speed);
+            }
+        }
+        Ok(speeds)
+    }
+
     pub fn start(mut self, speed: Speed)
         -> Result<(LunaStream, LunaStop), Error>
     {
-        self.handle.claim_interface(0)?;
+        self.usb_handle.claim_interface(0)?;
         let (tx, rx) = channel();
         let (stop_tx, stop_rx) = channel();
         let worker = spawn(move || {
@@ -112,9 +183,9 @@ impl LunaDevice {
             let mut packet_queue = PacketQueue::new();
             let mut state = State::new(true, speed);
             self.write_state(state)?;
-            println!("Capture enabled");
+            println!("Capture enabled, speed: {}", speed.description());
             while stop_rx.try_recv().is_err() {
-                let result = self.handle.read_bulk(
+                let result = self.usb_handle.read_bulk(
                     ENDPOINT, &mut buffer, Duration::from_millis(100));
                 match result {
                     Ok(count) => {
@@ -150,7 +221,7 @@ impl LunaDevice {
 
     fn write_state(&mut self, state: State) -> Result<(), Error> {
         use rusb::{Direction, RequestType, Recipient, request_type};
-        self.handle.write_control(
+        self.usb_handle.write_control(
             request_type(Direction::Out, RequestType::Vendor, Recipient::Device),
             1,
             u16::from(state.0),
