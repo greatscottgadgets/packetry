@@ -10,7 +10,7 @@ Packetry is currently in active development and not yet ready for initial releas
 
 Packetry is written in [Rust](https://rust-lang.org/), with its GUI using [GTK 4](https://gtk.org) via the [gtk-rs](https://gtk-rs.org/) bindings.
 
-To build it, you need a working Rust development environment.
+To build it, you need a working Rust development environment. The minimum supported Rust version is 1.57.
 
 You must also have the GTK 4 headers installed and discoverable via `pkg-config`, as this is required for Rust to build the gtk-rs crates.
 
