@@ -2,8 +2,6 @@
 
 mod imp;
 
-use std::sync::{Arc, Mutex};
-
 #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
 use {
     std::cell::RefCell,
@@ -13,7 +11,7 @@ use {
 use gtk::subclass::prelude::*;
 use gtk::{gio, glib};
 
-use crate::capture::{Capture, TrafficItem, DeviceItem};
+use crate::capture::{CaptureReader, TrafficItem, DeviceItem};
 use crate::tree_list_model::{TreeListModel, ItemNodeRc, ModelError};
 
 // Public part of the Model type.
@@ -25,7 +23,7 @@ glib::wrapper! {
 }
 
 pub trait GenericModel<Item> where Self: Sized {
-    fn new(capture: Arc<Mutex<Capture>>,
+    fn new(capture: CaptureReader,
            #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
            on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>)
         -> Result<Self, ModelError>;
@@ -35,10 +33,12 @@ pub trait GenericModel<Item> where Self: Sized {
                     expanded: bool)
         -> Result<(), ModelError>;
     fn update(&self) -> Result<bool, ModelError>;
+    fn summary(&self, item: &Item) -> String;
+    fn connectors(&self, item: &Item) -> String;
 }
 
 impl GenericModel<TrafficItem> for TrafficModel {
-    fn new(capture: Arc<Mutex<Capture>>,
+    fn new(capture: CaptureReader,
            #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
            on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>)
         -> Result<Self, ModelError>
@@ -69,10 +69,22 @@ impl GenericModel<TrafficItem> for TrafficModel {
         let tree = tree_opt.as_ref().unwrap();
         tree.update(self)
     }
+
+    fn summary(&self, item: &TrafficItem) -> String {
+        let tree_opt = self.imp().tree.borrow();
+        let tree = tree_opt.as_ref().unwrap();
+        tree.summary(item)
+    }
+
+    fn connectors(&self, item: &TrafficItem) -> String {
+        let tree_opt = self.imp().tree.borrow();
+        let tree = tree_opt.as_ref().unwrap();
+        tree.connectors(item)
+    }
 }
 
 impl GenericModel<DeviceItem> for DeviceModel {
-    fn new(capture: Arc<Mutex<Capture>>,
+    fn new(capture: CaptureReader,
            #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
            on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>)
         -> Result<Self, ModelError>
@@ -102,5 +114,17 @@ impl GenericModel<DeviceItem> for DeviceModel {
         let tree_opt = self.imp().tree.borrow();
         let tree = tree_opt.as_ref().unwrap();
         tree.update(self)
+    }
+
+    fn summary(&self, item: &DeviceItem) -> String {
+        let tree_opt = self.imp().tree.borrow();
+        let tree = tree_opt.as_ref().unwrap();
+        tree.summary(item)
+    }
+
+    fn connectors(&self, item: &DeviceItem) -> String {
+        let tree_opt = self.imp().tree.borrow();
+        let tree = tree_opt.as_ref().unwrap();
+        tree.connectors(item)
     }
 }

@@ -3,8 +3,6 @@ use std::collections::{BTreeMap, HashSet};
 use std::marker::PhantomData;
 use std::num::TryFromIntError;
 use std::rc::{Rc, Weak};
-use std::sync::{Arc, Mutex};
-use std::ops::DerefMut;
 
 use gtk::prelude::{IsA, Cast, WidgetExt};
 use gtk::glib::Object;
@@ -12,7 +10,12 @@ use gtk::gio::prelude::ListModelExt;
 
 use thiserror::Error;
 
-use crate::capture::{Capture, CaptureError, ItemSource, CompletionStatus};
+use crate::capture::{
+    CaptureReader,
+    CaptureError,
+    ItemSource,
+    CompletionStatus,
+};
 use crate::model::GenericModel;
 use crate::row_data::GenericRowData;
 use crate::expander::ExpanderWrapper;
@@ -23,8 +26,6 @@ pub enum ModelError {
     CaptureError(#[from] CaptureError),
     #[error(transparent)]
     RangeError(#[from] TryFromIntError),
-    #[error("Locking capture failed")]
-    LockError,
     #[error("Node references a dropped parent")]
     ParentDropped,
 }
@@ -257,26 +258,6 @@ impl<Item> ItemNode<Item> where Item: Copy {
         self.children.total_count != 0
     }
 
-    #[allow(clippy::type_complexity)]
-    pub fn field(&self,
-             capture: &Arc<Mutex<Capture>>,
-             func: Box<dyn
-                Fn(&mut Capture, &Item)
-                    -> Result<String, CaptureError>>)
-        -> String
-    {
-        match capture.lock() {
-            Err(_) => "Error: failed to lock capture".to_string(),
-            Ok(mut guard) => {
-                let cap = guard.deref_mut();
-                match func(cap, &self.item) {
-                    Err(e) => format!("Error: {e:?}"),
-                    Ok(string) => string
-                }
-            }
-        }
-    }
-
     pub fn attach_widget(&self, widget: &ExpanderWrapper) {
         self.widgets.borrow_mut().insert(widget.clone());
     }
@@ -288,7 +269,7 @@ impl<Item> ItemNode<Item> where Item: Copy {
 
 pub struct TreeListModel<Item, Model, RowData> {
     _marker: PhantomData<(Model, RowData)>,
-    capture: Arc<Mutex<Capture>>,
+    capture: RefCell<CaptureReader>,
     root: Rc<RefCell<RootNode<Item>>>,
     #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
     on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>,
@@ -298,19 +279,18 @@ impl<Item, Model, RowData> TreeListModel<Item, Model, RowData>
 where Item: 'static + Copy,
       Model: GenericModel<Item> + ListModelExt,
       RowData: GenericRowData<Item> + IsA<Object> + Cast,
-      Capture: ItemSource<Item>
+      CaptureReader: ItemSource<Item>,
 {
-    pub fn new(capture: Arc<Mutex<Capture>>,
+    pub fn new(mut capture: CaptureReader,
                #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
                on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>)
         -> Result<Self, ModelError>
     {
-        let mut cap = capture.lock().or(Err(ModelError::LockError))?;
-        let (completion, item_count) = cap.item_children(None)?;
-        let child_count = u32::try_from(item_count)?;
+        let (completion, item_count) = capture.item_children(None)?;
+        let child_count = item_count.try_into()?;
         Ok(TreeListModel {
             _marker: PhantomData,
-            capture: capture.clone(),
+            capture: RefCell::new(capture.clone()),
             root: Rc::new(RefCell::new(RootNode {
                 children: Children::new(child_count),
                 complete: matches!(completion, CompletionStatus::Complete),
@@ -401,19 +381,14 @@ where Item: 'static + Copy,
             .collect::<Vec<(u32, ItemNodeWeak<Item>)>>();
 
         // Check if this node had children added and/or was completed.
-        let (completion, new_direct_count) = self.capture
-            .lock()
-            .or(Err(ModelError::LockError))?
-            .item_children(node.item())?;
+        let mut cap = self.capture.borrow_mut();
+        let (completion, new_direct_count) = cap.item_children(node.item())?;
         let new_direct_count = new_direct_count as u32;
         let completed = matches!(completion, Complete);
         let children_added = new_direct_count - old_direct_count;
 
         // Deal with this node's own row, if it has one.
         if let Some(item_node) = node.item_node() {
-            let mut cap = self.capture
-                .lock()
-                .or(Err(ModelError::LockError))?;
 
             // Check whether this item itself should be updated.
             let item_updated = if children_added > 0 {
@@ -446,6 +421,8 @@ where Item: 'static + Copy,
             // Advance past this node's own row.
             position += 1;
         }
+
+        drop(cap);
 
         // If completed, remove from incomplete node list.
         if completed {
@@ -553,7 +530,7 @@ where Item: 'static + Copy,
         }
 
         // Otherwise, fetch it from the database.
-        let mut cap = self.capture.lock().or(Err(ModelError::LockError))?;
+        let mut cap = self.capture.borrow_mut();
         let mut parent = parent_ref.borrow_mut();
         let item = cap.item(parent.item(), relative_position as u64)?;
         let (completion, child_count) = cap.item_children(Some(&item))?;
@@ -571,6 +548,22 @@ where Item: 'static + Copy,
                 .add_incomplete(relative_position, &node_rc);
         }
         Ok(node_rc)
+    }
+
+    pub fn summary(&self, item: &Item) -> String {
+        let mut cap = self.capture.borrow_mut();
+        match cap.summary(item) {
+            Ok(string) => string,
+            Err(e) => format!("Error: {e:?}")
+        }
+    }
+
+    pub fn connectors(&self, item: &Item) -> String {
+        let mut cap = self.capture.borrow_mut();
+        match cap.connectors(item) {
+            Ok(string) => string,
+            Err(e) => format!("Error: {e:?}")
+        }
     }
 
     // The following methods correspond to the ListModel interface, and can be
