@@ -2,10 +2,11 @@ use std::cmp::max;
 use std::fmt::Debug;
 use std::iter::once;
 use std::marker::PhantomData;
-use std::ops::{Add, Range, Sub};
+use std::ops::{Add, AddAssign, Range, Sub, SubAssign};
 use std::sync::atomic::{AtomicU64, Ordering::{Acquire, Release}};
 use std::sync::Arc;
 
+use bisection::bisect_left;
 use itertools::multizip;
 
 use crate::data_stream::{data_stream, DataReader, DataWriter};
@@ -166,8 +167,8 @@ where Position: Copy + From<u64> + Into<u64>,
 impl<Position, Value> CompactReader<Position, Value>
 where
     Position: Copy + From<u64> + Into<u64> + Ord
-        + Add<u64, Output=Position>
-        + Sub<u64, Output=Position> + Sub<Output=u64>
+        + Add<u64, Output=Position> + AddAssign<u64>
+        + Sub<u64, Output=Position> + SubAssign<u64> + Sub<Output=u64>
         + Debug,
     Value: Copy + From<u64> + Into<u64> + Ord
         + Add<u64, Output=Value>
@@ -326,6 +327,69 @@ where
         };
         Ok(range)
     }
+
+    /// Leftmost position where a value would be ordered within this index.
+    pub fn bisect_left(&mut self, value: &Value)
+        -> Result<Position, StreamError>
+    {
+        let range = Position::from(0)..Position::from(self.len());
+        self.bisect_range_left(&range, value)
+    }
+
+    /// Leftmost position where a value would be ordered within this range.
+    pub fn bisect_range_left(&mut self, range: &Range<Position>, value: &Value)
+        -> Result<Position, StreamError>
+    {
+        // Find the segment required.
+        let segment_id = match self.segment_base_reader.bisect_right(value)? {
+            id if id.value == 0 => return Ok(Position::from(0)),
+            id => id - 1,
+        };
+        let segment_start = self.segment_start_reader.get(segment_id)?;
+        let base_value = self.segment_base_reader.get(segment_id)?;
+        let delta_start = segment_start + 1;
+        // If the value equals the base value, position is the segment start.
+        if base_value == *value {
+            return Ok(segment_start)
+        // If there is no delta width yet, position follows the base value.
+        } else if segment_id.value >= self.segment_width_reader.len() {
+            return Ok(delta_start)
+        }
+        // Otherwise, get the delta width and delta byte range for the segment.
+        let delta_start = segment_start + 1;
+        let width = self.segment_width_reader.get(segment_id)? as usize;
+        let mut byte_range = self.segment_offset_reader
+            .target_range(segment_id, self.data_reader.len())?;
+        let mut num_deltas = (byte_range.end - byte_range.start) / width as u64;
+        let mut delta_range = delta_start..(delta_start + num_deltas);
+        // Limit the range to access if possible.
+        if range.start > delta_range.start {
+            let skip = range.start - delta_range.start;
+            byte_range.start += skip * width as u64;
+            delta_range.start += skip;
+            num_deltas -= skip;
+        }
+        if range.end < delta_range.end {
+            let skip = delta_range.end - range.end;
+            byte_range.end -= skip * width as u64;
+            delta_range.end -= skip;
+            num_deltas -= skip;
+        }
+        // Fetch all the delta bytes needed.
+        let all_delta_bytes = self.data_reader.access(&byte_range)?;
+        // Reconstruct deltas and values.
+        let mut values = Vec::with_capacity(num_deltas as usize);
+        let mut delta_bytes = [0; 8];
+        for low_bytes in all_delta_bytes.chunks_exact(width) {
+            delta_bytes[..width].copy_from_slice(low_bytes);
+            let delta = u64::from_le_bytes(delta_bytes);
+            values.push(base_value + delta);
+        }
+        // Bisect the values to find the position.
+        let offset = bisect_left(&values, value) as u64;
+        let position = delta_range.start + offset;
+        Ok(position)
+    }
 }
 
 fn byte_width(value: u64) -> usize {
@@ -411,5 +475,15 @@ mod tests {
             let xr = &expected[xrng];
             assert!(vr == xr);
         }
+        for i in 0..n {
+            let id = Id::<Id<u8>>::from(i);
+            let vi = expected[i as usize];
+            let bl = reader.bisect_left(&vi).unwrap();
+            assert!(bl == id);
+        }
+        let end = Id::<Id<u8>>::from(n);
+        let big = expected[(n - 1) as usize] + 1;
+        let bl = reader.bisect_left(&big).unwrap();
+        assert!(bl == end);
     }
 }

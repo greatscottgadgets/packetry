@@ -29,7 +29,7 @@ struct EndpointData {
     last_success: bool,
     setup: Option<SetupFields>,
     payload: Vec<u8>,
-    pending_payload: Option<Vec<u8>>,
+    pending_payload: Option<(Vec<u8>, EndpointTransactionId)>,
     total_data: u64,
 }
 
@@ -258,13 +258,19 @@ impl TransactionState {
     }
 }
 
+enum TransactionSideEffect {
+    NoEffect,
+    PendingData(Vec<u8>),
+    IndexData(usize, Option<EndpointTransactionId>)
+}
+
 impl EndpointData {
     fn transfer_status(&mut self,
                        dev_data: &DeviceData,
                        transaction: &mut TransactionState,
                        success: bool,
                        complete: bool)
-        -> Result<TransferStatus, CaptureError>
+        -> Result<(TransferStatus, TransactionSideEffect), CaptureError>
     {
         use TransactionStyle::*;
         let (ep_type, ep_max) = dev_data.endpoint_details(self.address);
@@ -274,8 +280,14 @@ impl EndpointData {
         };
         let next = transaction.start_pid()?;
         let pending_payload = self.pending_payload.take();
-        let payload = transaction.payload.take().or(pending_payload);
-        let length = payload.as_ref().map_or(0, |vec| vec.len()) as u64;
+        let (payload, id) = match transaction.payload.take() {
+            Some(payload) => (Some(payload), None),
+            None => match pending_payload {
+                Some((payload, id)) => (Some(payload), Some(id)),
+                None => (None, None)
+            }
+        };
+        let length = payload.as_ref().map_or(0, |vec| vec.len());
         let short = match (&payload, ep_max) {
             (Some(payload), Some(max)) => payload.len() < max,
             (..) => false,
@@ -286,7 +298,9 @@ impl EndpointData {
         use Direction::*;
         use TransferStatus::*;
         use StartComplete::*;
-        Ok(match (ep_type, &self.active, next) {
+        use TransactionSideEffect::*;
+        let mut effect = NoEffect;
+        let status = match (ep_type, &self.active, next) {
 
             // A SETUP transaction starts a new control transfer.
             // Store the setup fields to interpret the request.
@@ -321,10 +335,15 @@ impl EndpointData {
                         (In,  true, IN,    IN ) |
                         (Out, true, OUT,   OUT) => {
                             if success {
-                                if (split_sc, next) == (Some(Complete), OUT) {
-                                    self.pending_payload = payload;
-                                } else if let Some(data) = payload {
-                                    self.payload.extend(data);
+                                if let Some(data) = payload {
+                                    if (split_sc, next) ==
+                                        (Some(Start), OUT)
+                                    {
+                                        effect = PendingData(data);
+                                    } else {
+                                        self.payload.extend(data);
+                                        effect = IndexData(length, id);
+                                    }
                                 }
                                 // Await status stage.
                                 Continue
@@ -370,14 +389,13 @@ impl EndpointData {
             // This can be either an actual transfer, or a polling
             // group used to collect NAKed transactions.
             (_, None, IN | OUT) => {
-                self.writer.data_index.push(self.total_data)?;
                 if success {
-                    if split_sc == Some(Complete) && next == OUT {
-                        self.pending_payload = payload;
-                    } else {
-                        self.total_data += length;
-                        self.writer.shared.total_data
-                            .store(self.total_data, Release);
+                    if let Some(data) = payload {
+                        if split_sc == Some(Start) && next == OUT {
+                            effect = PendingData(data);
+                        } else {
+                            effect = IndexData(length, id);
+                        }
                     }
                 }
                 if complete {
@@ -398,14 +416,13 @@ impl EndpointData {
             // IN or OUT may then be repeated.
             (_, Some(TransferState { first: IN,  ..}), IN) |
             (_, Some(TransferState { first: OUT, ..}), OUT) => {
-                self.writer.data_index.push(self.total_data)?;
                 if success {
-                    if split_sc == Some(Complete) && next == OUT {
-                        self.pending_payload = payload;
-                    } else if complete {
-                        self.total_data += length;
-                        self.writer.shared.total_data
-                            .store(self.total_data, Release);
+                    if let Some(data) = payload {
+                        if split_sc == Some(Start) && next == OUT {
+                            effect = PendingData(data);
+                        } else if complete {
+                            effect = IndexData(length, id);
+                        }
                     }
                 }
                 if complete {
@@ -450,7 +467,36 @@ impl EndpointData {
 
             // Any other case is not a valid part of a transfer.
             _ => Invalid
-        })
+        };
+        Ok((status, effect))
+    }
+
+    fn apply_effect(&mut self,
+                    transaction: &TransactionState,
+                    effect: TransactionSideEffect)
+        -> Result<(), CaptureError>
+    {
+        use TransactionSideEffect::*;
+        match effect {
+            NoEffect => {},
+            PendingData(data) => {
+                let ep_transaction_id = transaction.ep_transaction_id
+                    .ok_or_else(|| IndexError(String::from(
+                        "Pending data but no endpoint transaction ID set")))?;
+                self.pending_payload = Some((data, ep_transaction_id));
+            },
+            IndexData(length, ep_transaction_id) => {
+                let ep_transaction_id = ep_transaction_id
+                    .or(transaction.ep_transaction_id)
+                    .ok_or_else(|| IndexError(String::from(
+                        "Data to index but no endpoint transaction ID set")))?;
+                self.writer.data_transactions.push(ep_transaction_id)?;
+                self.writer.data_byte_counts.push(self.total_data)?;
+                self.total_data += length as u64;
+                self.writer.shared.total_data.store(self.total_data, Release);
+            }
+        };
+        Ok(())
     }
 }
 
@@ -828,9 +874,9 @@ impl Decoder {
         let endpoint_id = transaction.endpoint_id()?;
         let ep_data = &mut self.endpoint_data[endpoint_id];
         let dev_data = self.capture.device_data(ep_data.device_id)?;
-        match ep_data.transfer_status(
-            dev_data.as_ref(), transaction, success, complete)?
-        {
+        let (status, effect) = ep_data.transfer_status(
+            dev_data.as_ref(), transaction, success, complete)?;
+        match status {
             Single => {
                 self.transfer_start(transaction, true)?;
                 self.transfer_end(transaction)?;
@@ -853,6 +899,7 @@ impl Decoder {
                 self.transfer_end(transaction)?;
             }
         }
+        self.endpoint_data[endpoint_id].apply_effect(transaction, effect)?;
         Ok(())
     }
 

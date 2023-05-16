@@ -96,6 +96,30 @@ where Position: Copy + From<u64> + Into<u64>,
         Ok(values)
     }
 
+    /// Get the range of values between the specified position and the next.
+    ///
+    /// The length of the data referenced by this index must be passed
+    /// as a parameter. If the specified position is the last in the
+    /// index, the range will be from the last value in the index to the
+    /// end of the referenced data.
+    pub fn target_range(&mut self, position: Position, target_length: u64)
+        -> Result<Range<Value>, StreamError>
+    {
+        let stop = position.into() + 2;
+        let range = if stop > self.len() {
+            let start = self.get(position)?;
+            let end = Value::from(target_length);
+            start..end
+        } else {
+            let range = position..Position::from(stop);
+            let vec = self.get_range(&range)?;
+            let start = vec[0];
+            let end = vec[1];
+            start..end
+        };
+        Ok(range)
+    }
+
     /// Leftmost position where a value would be ordered within this index.
     pub fn bisect_left(&mut self, value: &Value)
         -> Result<Position, StreamError>
