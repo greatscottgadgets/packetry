@@ -1005,7 +1005,7 @@ impl CaptureReader {
 }
 
 impl EndpointReader {
-    fn transfer_data_range(&mut self, range: &Range<EndpointTransactionId>)
+    pub fn transfer_data_range(&mut self, range: &Range<EndpointTransactionId>)
         -> Result<Range<EndpointDataEvent>, Error>
     {
         let first_data_id = self.data_transactions.bisect_left(&range.start)?;
@@ -1013,7 +1013,7 @@ impl EndpointReader {
         Ok(first_data_id..last_data_id)
     }
 
-    fn transfer_data_length(&mut self, range: &Range<EndpointDataEvent>)
+    pub fn transfer_data_length(&mut self, range: &Range<EndpointDataEvent>)
         -> Result<u64, Error>
     {
         if range.start == range.end {
