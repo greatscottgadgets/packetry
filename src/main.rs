@@ -1,4 +1,5 @@
 use gtk::prelude::*;
+use gtk::gio::ApplicationFlags;
 
 use packetry::ui::{
     activate,
@@ -9,7 +10,7 @@ use packetry::ui::{
 fn main() {
     let application = gtk::Application::new(
         Some("com.greatscottgadgets.packetry"),
-        Default::default(),
+        ApplicationFlags::NON_UNIQUE
     );
     application.connect_activate(|app| display_error(activate(app)));
     application.run_with_args::<&str>(&[]);
