@@ -466,7 +466,7 @@ where Item: 'static + Copy,
         if children_added > 0 {
             // Update this node's child counts.
             let mut node = node_rc.borrow_mut();
-            let mut children = node.children_mut();
+            let children = node.children_mut();
             children.direct_count += children_added;
             children.total_count += children_added;
             drop(node);
