@@ -219,14 +219,14 @@ pub type EndpointDataEvent = u64;
 pub type EndpointByteCount = u64;
 pub type DeviceVersion = u32;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum TrafficItem {
     Transfer(TransferId),
     Transaction(TransferId, TransactionId),
     Packet(TransferId, TransactionId, PacketId),
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum DeviceItem {
     Device(DeviceId, DeviceVersion),
     DeviceDescriptor(DeviceId),
@@ -1061,6 +1061,16 @@ impl EndpointReader {
 pub enum CompletionStatus {
     Complete,
     Ongoing
+}
+
+impl CompletionStatus {
+    pub fn is_complete(&self) -> bool {
+        use CompletionStatus::*;
+        match self {
+            Complete => true,
+            Ongoing => false,
+        }
+    }
 }
 
 pub trait ItemSource<Item> {
