@@ -636,9 +636,9 @@ impl Transaction {
                     String::from(""),
                 (None, Some(outcome)) =>
                     format!(", {outcome}"),
-                (Some(size), None) if size == 0 =>
+                (Some(0), None) =>
                     String::from(" with no data"),
-                (Some(size), Some(outcome)) if size == 0 =>
+                (Some(0), Some(outcome)) =>
                     format!(" with no data, {outcome}"),
                 (Some(size), None) => format!(
                     " with {size} data bytes: {}",
