@@ -616,6 +616,46 @@ fn create_view<Item, Model, RowData>(
     view.append_column(&column);
     view.add_css_class("data-table");
 
+    if Model::HAS_TIMES {
+        let model = model.clone();
+        let factory = SignalListItemFactory::new();
+        factory.connect_setup(move |_, list_item| {
+            let label = Label::new(None);
+            list_item.set_child(Some(&label));
+        });
+        let bind = move |list_item: &ListItem| {
+            let row = list_item
+                .item()
+                .context("ListItem has no item")?
+                .downcast::<RowData>()
+                .or_else(|_| bail!("Item is not RowData"))?;
+            let label = list_item
+                .child()
+                .context("ListItem has no child widget")?
+                .downcast::<Label>()
+                .or_else(|_| bail!("Child widget is not a Label"))?;
+            match row.node() {
+                Ok(node_ref) => {
+                    let node = node_ref.borrow();
+                    let timestamp = model.timestamp(&node.item);
+                    label.set_text(&format!("{}.{:09}",
+                                           timestamp / 1_000_000_000,
+                                           timestamp % 1_000_000_000));
+                },
+                Err(msg) => {
+                    label.set_text(&format!("Error: {msg}"));
+                }
+            }
+            Ok(())
+        };
+
+        factory.connect_bind(move |_, item| display_error(bind(item)));
+
+        let timestamp_column =
+            ColumnViewColumn::new(Some("Time"), Some(factory));
+        view.insert_column(0, &timestamp_column);
+    }
+
     #[cfg(any(test, feature="record-ui-test"))]
     model.connect_items_changed(move |model, position, removed, added|
         changed_rec.borrow_mut().log_items_changed(

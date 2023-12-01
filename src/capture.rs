@@ -1068,6 +1068,7 @@ pub trait ItemSource<Item> {
         -> Result<(CompletionStatus, u64), Error>;
     fn summary(&mut self, item: &Item) -> Result<String, Error>;
     fn connectors(&mut self, item: &Item) -> Result<String, Error>;
+    fn timestamp(&mut self, item: &Item) -> Result<Timestamp, Error>;
 }
 
 impl ItemSource<TrafficItem> for CaptureReader {
@@ -1373,6 +1374,27 @@ impl ItemSource<TrafficItem> for CaptureReader {
         );
         Ok(connectors)
     }
+
+    fn timestamp(&mut self, item: &TrafficItem)
+        -> Result<Timestamp, Error>
+    {
+        use TrafficItem::*;
+        let packet_id = match item {
+            Transfer(transfer_id) => {
+                let entry = self.transfer_index.get(*transfer_id)?;
+                let ep_traf = self.endpoint_traffic(entry.endpoint_id())?;
+                let ep_transaction_id =
+                    ep_traf.transfer_index.get(entry.transfer_id())?;
+                let transaction_id =
+                    ep_traf.transaction_ids.get(ep_transaction_id)?;
+                self.transaction_index.get(transaction_id)?
+            },
+            Transaction(.., transaction_id) =>
+                self.transaction_index.get(*transaction_id)?,
+            Packet(.., packet_id) => *packet_id,
+        };
+        self.packet_time(packet_id)
+    }
 }
 
 impl ItemSource<DeviceItem> for CaptureReader {
@@ -1590,6 +1612,12 @@ impl ItemSource<DeviceItem> for CaptureReader {
             EndpointDescriptorField(..) => 4,
         };
         Ok("   ".repeat(depth))
+    }
+
+    fn timestamp(&mut self, _item: &DeviceItem)
+        -> Result<Timestamp, Error>
+    {
+        unreachable!()
     }
 }
 
