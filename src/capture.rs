@@ -1628,8 +1628,8 @@ mod tests {
     use std::io::{BufReader, BufWriter, BufRead, Write};
     use std::path::PathBuf;
     use crate::decoder::Decoder;
+    use crate::loader::Loader;
     use itertools::Itertools;
-    use pcap_file::{pcap::PcapReader, TsResolution};
 
     fn summarize_item(cap: &mut CaptureReader, item: &TrafficItem, depth: usize)
         -> String
@@ -1683,19 +1683,11 @@ mod tests {
             ref_path.push("reference.txt");
             out_path.push("output.txt");
             {
-                let pcap_file = File::open(cap_path).unwrap();
-                let mut pcap_reader = PcapReader::new(pcap_file).unwrap();
-                let frac_ns = match pcap_reader.header().ts_resolution {
-                    TsResolution::MicroSecond => 1_000,
-                    TsResolution::NanoSecond => 1,
-                };
+                let mut loader = Loader::open(cap_path).unwrap();
                 let (writer, mut reader) = create_capture().unwrap();
                 let mut decoder = Decoder::new(writer).unwrap();
-                while let Some(result) = pcap_reader.next_raw_packet() {
-                    let packet = result.unwrap();
-                    let timestamp_ns =
-                        packet.ts_sec as u64 * 1_000_000_000 +
-                        packet.ts_frac as u64 * frac_ns;
+                while let Some(result) = loader.next() {
+                    let (packet, timestamp_ns) = result.unwrap();
                     decoder
                         .handle_raw_packet(&packet.data, timestamp_ns)
                         .unwrap();

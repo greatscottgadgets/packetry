@@ -5,10 +5,10 @@ use std::path::PathBuf;
 use gtk::prelude::*;
 
 use itertools::assert_equal;
-use pcap_file::{pcap::PcapReader, TsResolution};
 use serde_json::Deserializer;
 
 use crate::decoder::Decoder;
+use crate::loader::Loader;
 use crate::model::GenericModel;
 use crate::row_data::{GenericRowData, TrafficRowData, DeviceRowData};
 use crate::record_ui::UiAction;
@@ -112,36 +112,25 @@ fn check_replays() {
                         Ok(())
                     }).unwrap();
                     if let Some(capture) = capture {
-                        let file = File::open(path)
+                        let loader = Loader::open(path)
                             .expect("Failed to open pcap file");
-                        let reader = BufReader::new(file);
-                        let pcap = PcapReader::new(reader)
-                            .expect("Failed to read pcap file");
                         let decoder = Decoder::new(writer)
                             .expect("Failed to create decoder");
-                        replay = Some((pcap, decoder, capture));
+                        replay = Some((loader, decoder, capture));
                     }
                 },
                 (Update(count),
-                 Some((pcap, decoder, capture))) => {
+                 Some((loader, decoder, capture))) => {
                     with_ui(|ui| {
                         ui.recording
                             .borrow_mut()
                             .log_update(count);
                         Ok(())
                     }).unwrap();
-                    let frac_ns = match pcap.header().ts_resolution {
-                        TsResolution::MicroSecond => 1_000,
-                        TsResolution::NanoSecond => 1,
-                    };
                     while capture.packet_index.len() < count {
-                        let packet = pcap
-                            .next_raw_packet()
+                        let (packet, timestamp_ns) = loader.next()
                             .expect("No next pcap packet")
                             .expect("Error in pcap reader");
-                        let timestamp_ns =
-                            packet.ts_sec as u64 * 1_000_000_000 +
-                            packet.ts_frac as u64 * frac_ns;
                         decoder
                             .handle_raw_packet(&packet.data, timestamp_ns)
                             .expect("Failed to decode packet");

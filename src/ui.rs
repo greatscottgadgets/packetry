@@ -1,8 +1,7 @@
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::fs::File;
-use std::io::{BufReader, BufWriter, Write};
-use std::mem::size_of;
+use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::Duration;
@@ -50,7 +49,7 @@ use gtk::{
 use pcap_file::{
     DataLink,
     TsResolution,
-    pcap::{PcapReader, PcapWriter, PcapHeader, RawPcapPacket},
+    pcap::{PcapWriter, PcapHeader, RawPcapPacket},
 };
 
 use crate::backend::cynthion::{
@@ -71,6 +70,7 @@ use crate::capture::{
 };
 use crate::decoder::Decoder;
 use crate::expander::ExpanderWrapper;
+use crate::loader::Loader;
 use crate::model::{GenericModel, TrafficModel, DeviceModel};
 use crate::row_data::{
     GenericRowData,
@@ -829,37 +829,24 @@ fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), Error> {
         let mut capture = ui.capture.clone();
         let worker = move || match action {
             Load => {
-                let file = File::open(path)?;
-                let file_size = file.metadata()?.len();
-                TOTAL.store(file_size, Ordering::Relaxed);
-                let reader = BufReader::new(file);
-                let mut pcap = PcapReader::new(reader)?;
-                let frac_ns = match pcap.header().ts_resolution {
-                    TsResolution::MicroSecond => 1_000,
-                    TsResolution::NanoSecond => 1,
-                };
-                let mut bytes_read = size_of::<PcapHeader>() as u64;
+                let mut loader = Loader::open(path)?;
+                TOTAL.store(loader.file_size, Ordering::Relaxed);
                 let mut decoder = Decoder::new(writer.unwrap())?;
                 #[cfg(feature="step-decoder")]
                 let (mut client, _addr) =
                     TcpListener::bind("127.0.0.1:46563")?.accept()?;
-                while let Some(result) = pcap.next_raw_packet() {
+                while let Some(result) = loader.next() {
+                    let (packet, timestamp_ns) = result?;
                     #[cfg(feature="step-decoder")] {
                         let mut buf = [0; 1];
                         client.read(&mut buf).unwrap();
                     };
-                    let packet = result?;
-                    let timestamp_ns =
-                        packet.ts_sec as u64 * 1_000_000_000 +
-                        packet.ts_frac as u64 * frac_ns;
                     #[cfg(feature="record-ui-test")]
                     let guard = UPDATE_LOCK.lock();
                     decoder.handle_raw_packet(&packet.data, timestamp_ns)?;
                     #[cfg(feature="record-ui-test")]
                     drop(guard);
-                    let size = 16 + packet.data.len();
-                    bytes_read += size as u64;
-                    CURRENT.store(bytes_read, Ordering::Relaxed);
+                    CURRENT.store(loader.bytes_read, Ordering::Relaxed);
                     if STOP.load(Ordering::Relaxed) {
                         break;
                     }
