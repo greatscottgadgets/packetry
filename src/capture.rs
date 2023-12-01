@@ -35,6 +35,7 @@ pub struct CaptureWriter {
     pub shared: Arc<CaptureShared>,
     pub packet_data: DataWriter<u8, PACKET_DATA_BLOCK_SIZE>,
     pub packet_index: CompactWriter<PacketId, PacketByteId, 2>,
+    pub packet_times: CompactWriter<PacketId, Timestamp, 2>,
     pub transaction_index: CompactWriter<TransactionId, PacketId>,
     pub transfer_index: DataWriter<TransferIndexEntry>,
     pub item_index: CompactWriter<TrafficItemId, TransferId>,
@@ -53,6 +54,7 @@ pub struct CaptureReader {
     endpoint_readers: VecMap<EndpointId, EndpointReader>,
     pub packet_data: DataReader<u8, PACKET_DATA_BLOCK_SIZE>,
     pub packet_index: CompactReader<PacketId, PacketByteId>,
+    pub packet_times: CompactReader<PacketId, Timestamp>,
     pub transaction_index: CompactReader<TransactionId, PacketId>,
     pub transfer_index: DataReader<TransferIndexEntry>,
     pub item_index: CompactReader<TrafficItemId, TransferId>,
@@ -72,6 +74,7 @@ pub fn create_capture()
     let (data_writer, data_reader) =
         data_stream_with_block_size::<_, PACKET_DATA_BLOCK_SIZE>()?;
     let (packets_writer, packets_reader) = compact_index()?;
+    let (timestamp_writer, timestamp_reader) = compact_index()?;
     let (transactions_writer, transactions_reader) = compact_index()?;
     let (transfers_writer, transfers_reader) = data_stream()?;
     let (items_writer, items_reader) = compact_index()?;
@@ -93,6 +96,7 @@ pub fn create_capture()
         shared: shared.clone(),
         packet_data: data_writer,
         packet_index: packets_writer,
+        packet_times: timestamp_writer,
         transaction_index: transactions_writer,
         transfer_index: transfers_writer,
         item_index: items_writer,
@@ -109,6 +113,7 @@ pub fn create_capture()
         endpoint_readers: VecMap::new(),
         packet_data: data_reader,
         packet_index: packets_reader,
+        packet_times: timestamp_reader,
         transaction_index: transactions_reader,
         transfer_index: transfers_reader,
         item_index: items_reader,
@@ -194,6 +199,7 @@ pub fn create_endpoint()
 
 pub type PacketByteId = Id<u8>;
 pub type PacketId = Id<PacketByteId>;
+pub type Timestamp = u64;
 pub type TransactionId = Id<PacketId>;
 pub type TransferId = Id<TransferIndexEntry>;
 pub type EndpointTransactionId = Id<TransactionId>;
@@ -860,6 +866,12 @@ impl CaptureReader {
         let range = self.packet_index.target_range(
             id, self.packet_data.len())?;
         self.packet_data.get_range(&range)
+    }
+
+    pub fn packet_time(&mut self, id: PacketId)
+        -> Result<Timestamp, Error>
+    {
+        Ok(self.packet_times.get(id)?)
     }
 
     fn packet_pid(&mut self, id: PacketId)
@@ -1589,7 +1601,7 @@ mod tests {
     use std::path::PathBuf;
     use crate::decoder::Decoder;
     use itertools::Itertools;
-    use pcap_file::pcap::PcapReader;
+    use pcap_file::{pcap::PcapReader, TsResolution};
 
     fn summarize_item(cap: &mut CaptureReader, item: &TrafficItem, depth: usize)
         -> String
@@ -1645,11 +1657,20 @@ mod tests {
             {
                 let pcap_file = File::open(cap_path).unwrap();
                 let mut pcap_reader = PcapReader::new(pcap_file).unwrap();
+                let frac_ns = match pcap_reader.header().ts_resolution {
+                    TsResolution::MicroSecond => 1_000,
+                    TsResolution::NanoSecond => 1,
+                };
                 let (writer, mut reader) = create_capture().unwrap();
                 let mut decoder = Decoder::new(writer).unwrap();
                 while let Some(result) = pcap_reader.next_raw_packet() {
-                    let packet = result.unwrap().data;
-                    decoder.handle_raw_packet(&packet).unwrap();
+                    let packet = result.unwrap();
+                    let timestamp_ns =
+                        packet.ts_sec as u64 * 1_000_000_000 +
+                        packet.ts_frac as u64 * frac_ns;
+                    decoder
+                        .handle_raw_packet(&packet.data, timestamp_ns)
+                        .unwrap();
                 }
                 decoder.finish().unwrap();
                 let out_file = File::create(out_path.clone()).unwrap();

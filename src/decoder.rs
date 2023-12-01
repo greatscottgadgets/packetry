@@ -578,11 +578,12 @@ impl Decoder {
         Ok(decoder)
     }
 
-    pub fn handle_raw_packet(&mut self, packet: &[u8])
+    pub fn handle_raw_packet(&mut self, packet: &[u8], timestamp_ns: u64)
         -> Result<(), Error>
     {
         let data_range = self.capture.packet_data.append(packet)?;
         let packet_id = self.capture.packet_index.push(data_range.start)?;
+        self.capture.packet_times.push(timestamp_ns)?;
         self.transaction_update(packet_id, packet)?;
         Ok(())
     }

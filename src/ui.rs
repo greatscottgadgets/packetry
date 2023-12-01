@@ -49,6 +49,7 @@ use gtk::{
 
 use pcap_file::{
     DataLink,
+    TsResolution,
     pcap::{PcapReader, PcapWriter, PcapHeader, RawPcapPacket},
 };
 
@@ -793,6 +794,10 @@ fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), Error> {
                 TOTAL.store(file_size, Ordering::Relaxed);
                 let reader = BufReader::new(file);
                 let mut pcap = PcapReader::new(reader)?;
+                let frac_ns = match pcap.header().ts_resolution {
+                    TsResolution::MicroSecond => 1_000,
+                    TsResolution::NanoSecond => 1,
+                };
                 let mut bytes_read = size_of::<PcapHeader>() as u64;
                 let mut decoder = Decoder::new(writer.unwrap())?;
                 #[cfg(feature="step-decoder")]
@@ -804,9 +809,12 @@ fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), Error> {
                         client.read(&mut buf).unwrap();
                     };
                     let packet = result?;
+                    let timestamp_ns =
+                        packet.ts_sec as u64 * 1_000_000_000 +
+                        packet.ts_frac as u64 * frac_ns;
                     #[cfg(feature="record-ui-test")]
                     let guard = UPDATE_LOCK.lock();
-                    decoder.handle_raw_packet(&packet.data)?;
+                    decoder.handle_raw_packet(&packet.data, timestamp_ns)?;
                     #[cfg(feature="record-ui-test")]
                     drop(guard);
                     let size = 16 + packet.data.len();
@@ -828,19 +836,21 @@ fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), Error> {
                 let writer = BufWriter::new(file);
                 let header = PcapHeader {
                     datalink: DataLink::USB_2_0,
+                    ts_resolution: TsResolution::NanoSecond,
                     .. PcapHeader::default()
                 };
                 let mut pcap = PcapWriter::with_header(writer, header)?;
                 for i in 0..packet_count {
                     let packet_id = PacketId::from(i);
                     let bytes = capture.packet(packet_id)?;
+                    let timestamp_ns = capture.packet_time(packet_id)?;
                     let length: u32 = bytes
                         .len()
                         .try_into()
                         .context("Packet too large for pcap file")?;
                     let packet = RawPcapPacket {
-                        ts_sec: 0,
-                        ts_frac: 0,
+                        ts_sec: (timestamp_ns / 1_000_000_000) as u32,
+                        ts_frac: (timestamp_ns % 1_000_000_000) as u32,
                         incl_len: length,
                         orig_len: length,
                         data: Cow::from(bytes)
@@ -927,7 +937,7 @@ pub fn start_cynthion() -> Result<(), Error> {
         let read_cynthion = move || {
             let mut decoder = Decoder::new(writer)?;
             for packet in stream_handle {
-                decoder.handle_raw_packet(&packet.bytes)?;
+                decoder.handle_raw_packet(&packet.bytes, packet.timestamp_ns)?;
             }
             decoder.finish()?;
             Ok(())

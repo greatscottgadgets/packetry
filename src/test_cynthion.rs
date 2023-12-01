@@ -80,7 +80,7 @@ fn test(speed: Speed, ep_addr: u8, length: usize) -> Result<(), Error> {
 
     // Decode all packets that were received.
     for packet in packets {
-        decoder.handle_raw_packet(&packet.bytes)
+        decoder.handle_raw_packet(&packet.bytes, packet.timestamp_ns)
             .context("Error decoding packet")?;
     }
 
