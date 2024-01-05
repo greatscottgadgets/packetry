@@ -6,13 +6,13 @@ use std::ops::{Add, AddAssign, Range, Sub, SubAssign};
 use std::sync::atomic::{AtomicU64, Ordering::{Acquire, Release}};
 use std::sync::Arc;
 
+use anyhow::{Error, bail};
 use bisection::bisect_left;
 use itertools::multizip;
 
 use crate::data_stream::{data_stream, DataReader, DataWriter};
 use crate::id::Id;
 use crate::index_stream::{index_stream, IndexReader, IndexWriter};
-use crate::stream::StreamError;
 use crate::util::{fmt_count, fmt_size};
 
 type Offset = Id<u8>;
@@ -68,7 +68,7 @@ type CompactPair<P, V, const W: usize> =
 /// Returns a unique writer and a cloneable reader.
 ///
 pub fn compact_index<P, V, const W: usize>()
-    -> Result<CompactPair<P, V, W>, StreamError>
+    -> Result<CompactPair<P, V, W>, Error>
 {
     let (segment_start_writer, segment_start_reader) = index_stream()?;
     let (segment_base_writer, segment_base_reader) = index_stream()?;
@@ -122,7 +122,7 @@ where Position: Copy + From<u64> + Into<u64>,
     /// Add a single value to the end of the index.
     ///
     /// Returns the position of the added value.
-    pub fn push(&mut self, value: Value) -> Result<Position, StreamError> {
+    pub fn push(&mut self, value: Value) -> Result<Position, Error> {
         match self.current_base_value {
             None => self.start_segment(value)?,
             Some(current_base_value) => {
@@ -153,7 +153,7 @@ where Position: Copy + From<u64> + Into<u64>,
         Ok(position)
     }
 
-    fn start_segment(&mut self, base_value: Value) -> Result<(), StreamError> {
+    fn start_segment(&mut self, base_value: Value) -> Result<(), Error> {
         let segment_start = Position::from(self.length);
         self.segment_start_writer.push(segment_start)?;
         self.segment_base_writer.push(base_value)?;
@@ -189,13 +189,11 @@ where
     }
 
     /// Get a single value from the index, by position.
-    pub fn get(&mut self, position: Position) -> Result<Value, StreamError> {
+    pub fn get(&mut self, position: Position) -> Result<Value, Error> {
         // Check position is valid.
         let length = self.len();
         if position.into() >= length {
-            return Err(StreamError::ReadPastEnd(format!(
-                "requested position {:?} but index length is {}",
-                position, length)))
+            bail!("requested position {position:?} but index length is {length}")
         }
         // Find the segment required.
         let segment_id = self.segment_start_reader.bisect_right(&position)? - 1;
@@ -222,14 +220,12 @@ where
 
     /// Get multiple values from the index, for a range of positions.
     pub fn get_range(&mut self, range: &Range<Position>)
-        -> Result<Vec<Value>, StreamError>
+        -> Result<Vec<Value>, Error>
     {
         // Check range is valid.
         let length = self.len();
         if range.end.into() > length {
-            return Err(StreamError::ReadPastEnd(format!(
-                "requested range {:?} but index length is {}",
-                range, length)))
+            bail!("requested range {range:?} but index length is {length}")
         }
         // Allocate space for the result.
         let total_count: usize = (range.end - range.start).try_into().unwrap();
@@ -313,7 +309,7 @@ where
     /// index, the range will be from the last value in the index to the
     /// end of the referenced data.
     pub fn target_range(&mut self, position: Position, target_length: u64)
-        -> Result<Range<Value>, StreamError>
+        -> Result<Range<Value>, Error>
     {
         let range = if position.into() + 2 > self.len() {
             let start = self.get(position)?;
@@ -330,7 +326,7 @@ where
 
     /// Leftmost position where a value would be ordered within this index.
     pub fn bisect_left(&mut self, value: &Value)
-        -> Result<Position, StreamError>
+        -> Result<Position, Error>
     {
         let range = Position::from(0)..Position::from(self.len());
         self.bisect_range_left(&range, value)
@@ -338,7 +334,7 @@ where
 
     /// Leftmost position where a value would be ordered within this range.
     pub fn bisect_range_left(&mut self, range: &Range<Position>, value: &Value)
-        -> Result<Position, StreamError>
+        -> Result<Position, Error>
     {
         // Find the segment required.
         let segment_id = match self.segment_base_reader.bisect_right(value)? {

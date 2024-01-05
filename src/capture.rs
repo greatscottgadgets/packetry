@@ -4,7 +4,6 @@ use std::ops::Range;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64};
 use std::sync::atomic::Ordering::{Acquire, Release};
 use std::sync::Arc;
-use std::num::TryFromIntError;
 use std::mem::size_of;
 
 use crate::id::{Id, HasLength};
@@ -12,15 +11,14 @@ use crate::data_stream::{
     data_stream, data_stream_with_block_size, DataWriter, DataReader};
 use crate::compact_index::{compact_index, CompactWriter, CompactReader};
 use crate::rcu::SingleWriterRcu;
-use crate::stream::StreamError;
 use crate::vec_map::VecMap;
 use crate::usb::{self, prelude::*};
 use crate::util::{fmt_count, fmt_size};
 
+use anyhow::{Context, Error, bail};
 use arc_swap::{ArcSwap, ArcSwapOption};
 use bytemuck_derive::{Pod, Zeroable};
 use num_enum::{IntoPrimitive, FromPrimitive};
-use thiserror::Error;
 
 // Use 2MB block size for packet data, which is a large page size on x86_64.
 const PACKET_DATA_BLOCK_SIZE: usize = 0x200000;
@@ -66,7 +64,7 @@ pub struct CaptureReader {
 
 /// Create a capture reader-writer pair.
 pub fn create_capture()
-    -> Result<(CaptureWriter, CaptureReader), CaptureError>
+    -> Result<(CaptureWriter, CaptureReader), Error>
 {
     // Create all the required streams.
     let (data_writer, data_reader) =
@@ -152,7 +150,7 @@ pub struct EndpointReader {
 
 /// Create a per-endpoint reader-writer pair.
 pub fn create_endpoint()
-    -> Result<(EndpointWriter, EndpointReader), CaptureError>
+    -> Result<(EndpointWriter, EndpointReader), Error>
 {
     // Create all the required streams.
     let (transactions_writer, transactions_reader) = compact_index()?;
@@ -190,21 +188,6 @@ pub fn create_endpoint()
     // Return the pair.
     Ok((writer, reader))
 }
-
-/// Error type returned by operations on a capture.
-#[derive(Debug, Error)]
-pub enum CaptureError {
-    #[error(transparent)]
-    StreamError(#[from] StreamError),
-    #[error(transparent)]
-    RangeError(#[from] TryFromIntError),
-    #[error("Descriptor missing")]
-    DescriptorMissing,
-    #[error("Indexing error: {0}")]
-    IndexError(String),
-}
-
-use CaptureError::{DescriptorMissing, IndexError};
 
 pub type PacketByteId = Id<u8>;
 pub type PacketId = Id<PacketByteId>;
@@ -360,11 +343,11 @@ impl DeviceData {
     }
 
     pub fn configuration(&self, number: &ConfigNum)
-        -> Result<Arc<Configuration>, CaptureError>
+        -> Result<Arc<Configuration>, Error>
     {
         match self.configurations.load().get(*number) {
             Some(config) => Ok(config.clone()),
-            None => Err(DescriptorMissing)
+            None => bail!("No descriptor for config {number}")
         }
     }
 
@@ -423,7 +406,7 @@ impl DeviceData {
     }
 
     pub fn decode_request(&self, fields: &SetupFields, payload: &[u8])
-        -> Result<(), CaptureError>
+        -> Result<(), Error>
     {
         let req_type = fields.type_fields.request_type();
         let request = StandardRequest::from(fields.request);
@@ -440,7 +423,7 @@ impl DeviceData {
     pub fn decode_descriptor_read(&self,
                                   fields: &SetupFields,
                                   payload: &[u8])
-        -> Result<(), CaptureError>
+        -> Result<(), Error>
     {
         let recipient = fields.type_fields.recipient();
         let desc_type = DescriptorType::from((fields.value >> 8) as u8);
@@ -485,7 +468,7 @@ impl DeviceData {
     }
 
     fn decode_configuration_set(&self, fields: &SetupFields)
-        -> Result<(), CaptureError>
+        -> Result<(), Error>
     {
         let config_number = ConfigNum(fields.value.try_into()?);
         self.config_number.swap(Some(Arc::new(config_number)));
@@ -505,24 +488,22 @@ impl DeviceData {
 
 impl Configuration {
     pub fn interface(&self, number: &InterfaceNum)
-        -> Result<&Interface, CaptureError>
+        -> Result<&Interface, Error>
     {
         match self.interfaces.get(*number) {
             Some(iface) => Ok(iface),
-            _ => Err(IndexError(format!(
-                "Configuration has no interface {number}")))
+            _ => bail!("Configuration has no interface {number}")
         }
     }
 }
 
 impl Interface {
     pub fn endpoint_descriptor(&self, number: &InterfaceEpNum)
-        -> Result<&EndpointDescriptor, CaptureError>
+        -> Result<&EndpointDescriptor, Error>
     {
         match self.endpoint_descriptors.get(*number) {
             Some(desc) => Ok(desc),
-            _ => Err(IndexError(format!(
-                "Interface has no endpoint descriptor {number}")))
+            _ => bail!("Interface has no endpoint descriptor {number}")
         }
     }
 }
@@ -599,7 +580,7 @@ impl Transaction {
     fn description(&self,
                    capture: &mut CaptureReader,
                    endpoint: &Endpoint)
-        -> Result<String, CaptureError>
+        -> Result<String, Error>
     {
         use PID::*;
         use StartComplete::*;
@@ -624,7 +605,7 @@ impl Transaction {
                          capture: &mut CaptureReader,
                          endpoint: &Endpoint,
                          pid: PID)
-        -> Result<String, CaptureError>
+        -> Result<String, Error>
     {
         Ok(format!(
             "{} transaction on {}.{}{}",
@@ -715,13 +696,12 @@ impl std::fmt::Display for Bytes<'_> {
 
 impl CaptureWriter {
     pub fn device_data(&self, id: DeviceId)
-        -> Result<Arc<DeviceData>, CaptureError>
+        -> Result<Arc<DeviceData>, Error>
     {
         Ok(self.shared.device_data
             .load()
             .get(id)
-            .ok_or_else(||
-                IndexError(format!("Capture has no device with ID {id}")))?
+            .context("Capture has no device with ID {id}")?
             .clone())
     }
 
@@ -771,11 +751,10 @@ impl CaptureWriter {
 
 impl CaptureReader {
     pub fn endpoint_traffic(&mut self, endpoint_id: EndpointId)
-        -> Result<&mut EndpointReader, CaptureError>
+        -> Result<&mut EndpointReader, Error>
     {
         if self.shared.endpoint_readers.load().get(endpoint_id).is_none() {
-            return Err(IndexError(format!(
-                "Capture has no endpoint ID {endpoint_id}")))
+            bail!("Capture has no endpoint ID {endpoint_id}")
         }
 
         if self.endpoint_readers.get(endpoint_id).is_none() {
@@ -792,35 +771,31 @@ impl CaptureReader {
     }
 
     fn transfer_range(&mut self, entry: &TransferIndexEntry)
-        -> Result<Range<EndpointTransactionId>, CaptureError>
+        -> Result<Range<EndpointTransactionId>, Error>
     {
         let endpoint_id = entry.endpoint_id();
         let ep_transfer_id = entry.transfer_id();
         let ep_traf = self.endpoint_traffic(endpoint_id)?;
-        Ok(ep_traf.transfer_index.target_range(
-            ep_transfer_id, ep_traf.transaction_ids.len())?)
+        ep_traf.transfer_index.target_range(
+            ep_transfer_id, ep_traf.transaction_ids.len())
     }
 
     fn transaction_fields(&mut self, transaction: &Transaction)
-        -> Result<SetupFields, CaptureError>
+        -> Result<SetupFields, Error>
     {
         match transaction.data_packet_id {
-            None => Err(IndexError(String::from(
-                "Transaction has no data packet"))),
+            None => bail!("Transaction has no data packet"),
             Some(data_packet_id) => {
                 let data_packet = self.packet(data_packet_id)?;
                 match data_packet.first() {
-                    None => Err(IndexError(String::from(
-                        "Found empty packet instead of setup data"))),
+                    None => bail!("Found empty packet instead of setup data"),
                     Some(byte) => {
                         let pid = PID::from(*byte);
                         if pid != PID::DATA0 {
-                            Err(IndexError(format!(
-                                "Found {pid} packet instead of setup data")))
+                            bail!("Found {pid} packet instead of setup data")
                         } else if data_packet.len() != 11 {
-                            Err(IndexError(format!(
-                                "Found DATA0 with packet length {} \
-                                 instead of setup data", data_packet.len())))
+                            bail!("Found DATA0 with packet length {} \
+                                   instead of setup data", data_packet.len())
                         } else {
                             Ok(SetupFields::from_data_packet(&data_packet))
                         }
@@ -831,30 +806,29 @@ impl CaptureReader {
     }
 
     fn transaction_bytes(&mut self, transaction: &Transaction)
-        -> Result<Vec<u8>, CaptureError>
+        -> Result<Vec<u8>, Error>
     {
         let data_packet_id = transaction.data_packet_id
-            .ok_or_else(||IndexError(String::from(
-                "Transaction has no data packet")))?;
+            .context("Transaction has no data packet")?;
         let packet_byte_range = self.packet_index.target_range(
             data_packet_id, self.packet_data.len())?;
         let data_byte_range =
             packet_byte_range.start + 1 .. packet_byte_range.end - 2;
-        Ok(self.packet_data.get_range(&data_byte_range)?)
+        self.packet_data.get_range(&data_byte_range)
     }
 
     fn transfer_bytes(&mut self,
                       endpoint_id: EndpointId,
                       data_range: &Range<EndpointDataEvent>,
                       length: usize)
-        -> Result<Vec<u8>, CaptureError>
+        -> Result<Vec<u8>, Error>
     {
         let mut transfer_bytes = Vec::with_capacity(length);
         let mut data_range = data_range.clone();
         while transfer_bytes.len() < length {
-            let data_id = data_range.next().ok_or_else(|| IndexError(format!(
+            let data_id = data_range.next().with_context(|| format!(
                 "Ran out of data events after fetching {}/{} requested bytes",
-                transfer_bytes.len(), length)))?;
+                transfer_bytes.len(), length))?;
             let ep_traf = self.endpoint_traffic(endpoint_id)?;
             let ep_transaction_id = ep_traf.data_transactions.get(data_id)?;
             let transaction_id = ep_traf.transaction_ids.get(ep_transaction_id)?;
@@ -870,30 +844,30 @@ impl CaptureReader {
     }
 
     fn endpoint_state(&mut self, transfer_id: TransferId)
-        -> Result<Vec<u8>, CaptureError>
+        -> Result<Vec<u8>, Error>
     {
         let range = self.endpoint_state_index.target_range(
             transfer_id, self.endpoint_states.len())?;
-        Ok(self.endpoint_states.get_range(&range)?)
+        self.endpoint_states.get_range(&range)
     }
 
     pub fn packet(&mut self, id: PacketId)
-        -> Result<Vec<u8>, CaptureError>
+        -> Result<Vec<u8>, Error>
     {
         let range = self.packet_index.target_range(
             id, self.packet_data.len())?;
-        Ok(self.packet_data.get_range(&range)?)
+        self.packet_data.get_range(&range)
     }
 
     fn packet_pid(&mut self, id: PacketId)
-        -> Result<PID, CaptureError>
+        -> Result<PID, Error>
     {
         let offset: Id<u8> = self.packet_index.get(id)?;
         Ok(PID::from(self.packet_data.get(offset)?))
     }
 
     fn transaction(&mut self, id: TransactionId)
-        -> Result<Transaction, CaptureError>
+        -> Result<Transaction, Error>
     {
         let packet_id_range = self.transaction_index.target_range(
             id, self.packet_index.len())?;
@@ -952,7 +926,7 @@ impl CaptureReader {
                         address: DeviceAddr,
                         endpoint_id: EndpointId,
                         range: Range<EndpointTransactionId>)
-        -> Result<ControlTransfer, CaptureError>
+        -> Result<ControlTransfer, Error>
     {
         let ep_traf = self.endpoint_traffic(endpoint_id)?;
         let transaction_ids = ep_traf.transaction_ids.get_range(&range)?;
@@ -976,17 +950,16 @@ impl CaptureReader {
     }
 
     pub fn device_data(&self, id: &DeviceId)
-        -> Result<Arc<DeviceData>, CaptureError>
+        -> Result<Arc<DeviceData>, Error>
     {
         Ok(self.shared.device_data
             .load()
             .get(*id)
-            .ok_or_else(||
-                IndexError(format!("Capture has no device with ID {id}")))?
+            .with_context(|| format!("Capture has no device with ID {id}"))?
             .clone())
     }
 
-    fn device_version(&self, id: &DeviceId) -> Result<u32, CaptureError> {
+    fn device_version(&self, id: &DeviceId) -> Result<u32, Error> {
         Ok(self.device_data(id)?.version())
     }
 
@@ -1004,7 +977,7 @@ impl CaptureReader {
     fn transfer_extended(&mut self,
                          endpoint_id: EndpointId,
                          transfer_id: TransferId)
-        -> Result<bool, CaptureError>
+        -> Result<bool, Error>
     {
         use EndpointState::*;
         let count = self.transfer_index.len();
@@ -1033,7 +1006,7 @@ impl CaptureReader {
 
 impl EndpointReader {
     fn transfer_data_range(&mut self, range: &Range<EndpointTransactionId>)
-        -> Result<Range<EndpointDataEvent>, CaptureError>
+        -> Result<Range<EndpointDataEvent>, Error>
     {
         let first_data_id = self.data_transactions.bisect_left(&range.start)?;
         let last_data_id = self.data_transactions.bisect_left(&range.end)?;
@@ -1041,7 +1014,7 @@ impl EndpointReader {
     }
 
     fn transfer_data_length(&mut self, range: &Range<EndpointDataEvent>)
-        -> Result<u64, CaptureError>
+        -> Result<u64, Error>
     {
         if range.start == range.end {
             return Ok(0);
@@ -1075,20 +1048,20 @@ impl CompletionStatus {
 
 pub trait ItemSource<Item> {
     fn item(&mut self, parent: Option<&Item>, index: u64)
-        -> Result<Item, CaptureError>;
+        -> Result<Item, Error>;
     fn item_update(&mut self, item: &Item)
-        -> Result<Option<Item>, CaptureError>;
+        -> Result<Option<Item>, Error>;
     fn child_item(&mut self, parent: &Item, index: u64)
-        -> Result<Item, CaptureError>;
+        -> Result<Item, Error>;
     fn item_children(&mut self, parent: Option<&Item>)
-        -> Result<(CompletionStatus, u64), CaptureError>;
-    fn summary(&mut self, item: &Item) -> Result<String, CaptureError>;
-    fn connectors(&mut self, item: &Item) -> Result<String, CaptureError>;
+        -> Result<(CompletionStatus, u64), Error>;
+    fn summary(&mut self, item: &Item) -> Result<String, Error>;
+    fn connectors(&mut self, item: &Item) -> Result<String, Error>;
 }
 
 impl ItemSource<TrafficItem> for CaptureReader {
     fn item(&mut self, parent: Option<&TrafficItem>, index: u64)
-        -> Result<TrafficItem, CaptureError>
+        -> Result<TrafficItem, Error>
     {
         match parent {
             None => {
@@ -1101,13 +1074,13 @@ impl ItemSource<TrafficItem> for CaptureReader {
     }
 
     fn item_update(&mut self, _item: &TrafficItem)
-        -> Result<Option<TrafficItem>, CaptureError>
+        -> Result<Option<TrafficItem>, Error>
     {
         Ok(None)
     }
 
     fn child_item(&mut self, parent: &TrafficItem, index: u64)
-        -> Result<TrafficItem, CaptureError>
+        -> Result<TrafficItem, Error>
     {
         use TrafficItem::*;
         Ok(match parent {
@@ -1123,13 +1096,12 @@ impl ItemSource<TrafficItem> for CaptureReader {
             Transaction(transfer_id, transaction_id) =>
                 Packet(*transfer_id, *transaction_id, {
                     self.transaction_index.get(*transaction_id)? + index}),
-            Packet(..) => return Err(IndexError(String::from(
-                "Packets have no child items")))
+            Packet(..) => bail!("Packets have no child items")
         })
     }
 
     fn item_children(&mut self, parent: Option<&TrafficItem>)
-        -> Result<(CompletionStatus, u64), CaptureError>
+        -> Result<(CompletionStatus, u64), Error>
     {
         use TrafficItem::*;
         use CompletionStatus::*;
@@ -1164,16 +1136,15 @@ impl ItemSource<TrafficItem> for CaptureReader {
     }
 
     fn summary(&mut self, item: &TrafficItem)
-        -> Result<String, CaptureError>
+        -> Result<String, Error>
     {
         use TrafficItem::*;
         use usb::StartComplete::*;
         Ok(match item {
             Packet(.., packet_id) => {
                 let packet = self.packet(*packet_id)?;
-                let first_byte = *packet.first().ok_or_else(||
-                    IndexError(format!(
-                        "Packet {packet_id} is empty, cannot retrieve PID")))?;
+                let first_byte = *packet.first().with_context(|| format!(
+                    "Packet {packet_id} is empty, cannot retrieve PID"))?;
                 let pid = PID::from(first_byte);
                 format!("{pid} packet{}",
                     match PacketFields::from_packet(&packet) {
@@ -1299,7 +1270,7 @@ impl ItemSource<TrafficItem> for CaptureReader {
     }
 
     fn connectors(&mut self, item: &TrafficItem)
-        -> Result<String, CaptureError>
+        -> Result<String, Error>
     {
         use EndpointState::*;
         use TrafficItem::*;
@@ -1395,7 +1366,7 @@ impl ItemSource<TrafficItem> for CaptureReader {
 
 impl ItemSource<DeviceItem> for CaptureReader {
     fn item(&mut self, parent: Option<&DeviceItem>, index: u64)
-        -> Result<DeviceItem, CaptureError>
+        -> Result<DeviceItem, Error>
     {
         match parent {
             None => {
@@ -1408,7 +1379,7 @@ impl ItemSource<DeviceItem> for CaptureReader {
     }
 
     fn item_update(&mut self, item: &DeviceItem)
-        -> Result<Option<DeviceItem>, CaptureError>
+        -> Result<Option<DeviceItem>, Error>
     {
         use DeviceItem::*;
         Ok(match item {
@@ -1441,7 +1412,7 @@ impl ItemSource<DeviceItem> for CaptureReader {
     }
 
     fn child_item(&mut self, parent: &DeviceItem, index: u64)
-        -> Result<DeviceItem, CaptureError>
+        -> Result<DeviceItem, Error>
     {
         use DeviceItem::*;
         Ok(match parent {
@@ -1476,13 +1447,12 @@ impl ItemSource<DeviceItem> for CaptureReader {
                 EndpointDescriptorField(*dev, *conf, *iface, *ep,
                     EndpointField(index.try_into()?),
                     self.device_version(dev)?),
-            _ => return Err(IndexError(String::from(
-                "This device item type cannot have children")))
+            _ => bail!("This device item type cannot have children")
         })
     }
 
     fn item_children(&mut self, parent: Option<&DeviceItem>)
-        -> Result<(CompletionStatus, u64), CaptureError>
+        -> Result<(CompletionStatus, u64), Error>
     {
         use DeviceItem::*;
         use CompletionStatus::*;
@@ -1528,7 +1498,7 @@ impl ItemSource<DeviceItem> for CaptureReader {
     }
 
     fn summary(&mut self, item: &DeviceItem)
-        -> Result<String, CaptureError>
+        -> Result<String, Error>
     {
         use DeviceItem::*;
         Ok(match item {
@@ -1551,7 +1521,7 @@ impl ItemSource<DeviceItem> for CaptureReader {
                         let strings = data.strings.load();
                         descriptor.field_text(*field, strings.as_ref())
                     },
-                    None => return Err(DescriptorMissing)
+                    None => bail!("Device descriptor missing")
                 }
             },
             Configuration(_, conf) => format!(
@@ -1593,7 +1563,7 @@ impl ItemSource<DeviceItem> for CaptureReader {
         })
     }
 
-    fn connectors(&mut self, item: &DeviceItem) -> Result<String, CaptureError> {
+    fn connectors(&mut self, item: &DeviceItem) -> Result<String, Error> {
         use DeviceItem::*;
         let depth = match item {
             Device(..) => 0,
@@ -1709,7 +1679,6 @@ pub mod prelude {
     pub use super::{
         create_endpoint,
         CaptureWriter,
-        CaptureError,
         Device,
         DeviceId,
         DeviceData,

@@ -1,20 +1,18 @@
 use std::sync::atomic::Ordering::Release;
 use std::sync::Arc;
 
+use anyhow::{Context, Error, bail};
+
 use crate::capture::prelude::*;
 use crate::rcu::SingleWriterRcu;
 use crate::usb::{self, prelude::*};
 use crate::vec_map::{VecMap, Key};
 
-use CaptureError::IndexError;
-
 impl PID {
-    fn from_packet(packet: &[u8]) -> Result<PID, CaptureError> {
+    fn from_packet(packet: &[u8]) -> Result<PID, Error> {
         let first_byte = packet
             .first()
-            .ok_or_else(||
-                IndexError(String::from(
-                    "Packet is empty, cannot retrieve PID")))?;
+            .context("Packet is empty, cannot retrieve PID")?;
         Ok(PID::from(*first_byte))
     }
 }
@@ -97,7 +95,7 @@ struct TransactionState {
 }
 
 fn transaction_status(state: &Option<TransactionState>, packet: &[u8])
-    -> Result<TransactionStatus, CaptureError>
+    -> Result<TransactionStatus, Error>
 {
     let next = PID::from_packet(packet)?;
     use PID::*;
@@ -225,18 +223,16 @@ fn transaction_status(state: &Option<TransactionState>, packet: &[u8])
 }
 
 impl TransactionState {
-    fn start_pid(&self) -> Result<PID, CaptureError> {
+    fn start_pid(&self) -> Result<PID, Error> {
         use TransactionStyle::*;
         match self.style {
             Simple(pid) | Split(.., Some(pid)) => Ok(pid),
-            _ => Err(IndexError(String::from(
-                "Transaction state has no token PID")))
+            _ => bail!("Transaction state has no token PID")
         }
     }
 
-    fn endpoint_id(&self) -> Result<EndpointId, CaptureError> {
-        self.endpoint_id.ok_or_else(|| IndexError(String::from(
-            "Transaction state has no endpoint ID")))
+    fn endpoint_id(&self) -> Result<EndpointId, Error> {
+        self.endpoint_id.context("Transaction state has no endpoint ID")
     }
 
     fn extract_payload(&mut self, packet: &[u8]) {
@@ -270,7 +266,7 @@ impl EndpointData {
                        transaction: &mut TransactionState,
                        success: bool,
                        complete: bool)
-        -> Result<(TransferStatus, TransactionSideEffect), CaptureError>
+        -> Result<(TransferStatus, TransactionSideEffect), Error>
     {
         use TransactionStyle::*;
         let (ep_type, ep_max) = dev_data.endpoint_details(self.address);
@@ -474,22 +470,20 @@ impl EndpointData {
     fn apply_effect(&mut self,
                     transaction: &TransactionState,
                     effect: TransactionSideEffect)
-        -> Result<(), CaptureError>
+        -> Result<(), Error>
     {
         use TransactionSideEffect::*;
         match effect {
             NoEffect => {},
             PendingData(data) => {
                 let ep_transaction_id = transaction.ep_transaction_id
-                    .ok_or_else(|| IndexError(String::from(
-                        "Pending data but no endpoint transaction ID set")))?;
+                    .context("Pending data but no endpoint transaction ID set")?;
                 self.pending_payload = Some((data, ep_transaction_id));
             },
             IndexData(length, ep_transaction_id) => {
                 let ep_transaction_id = ep_transaction_id
                     .or(transaction.ep_transaction_id)
-                    .ok_or_else(|| IndexError(String::from(
-                        "Data to index but no endpoint transaction ID set")))?;
+                    .context("Data to index but no endpoint transaction ID set")?;
                 self.writer.data_transactions.push(ep_transaction_id)?;
                 self.writer.data_byte_counts.push(self.total_data)?;
                 self.total_data += length as u64;
@@ -534,7 +528,7 @@ pub struct Decoder {
 }
 
 impl Decoder {
-    pub fn new(capture: CaptureWriter) -> Result<Decoder, CaptureError> {
+    pub fn new(capture: CaptureWriter) -> Result<Decoder, Error> {
         // Create the decoder.
         let mut decoder = Decoder {
             capture,
@@ -585,7 +579,7 @@ impl Decoder {
     }
 
     pub fn handle_raw_packet(&mut self, packet: &[u8])
-        -> Result<(), CaptureError>
+        -> Result<(), Error>
     {
         let data_range = self.capture.packet_data.append(packet)?;
         let packet_id = self.capture.packet_index.push(data_range.start)?;
@@ -593,14 +587,14 @@ impl Decoder {
         Ok(())
     }
 
-    pub fn finish(mut self) -> Result<CaptureWriter, CaptureError> {
+    pub fn finish(mut self) -> Result<CaptureWriter, Error> {
         self.transaction_end(false, false)?;
         self.capture.shared.complete.store(true, Release);
         Ok(self.capture)
     }
 
     pub fn token_endpoint(&mut self, pid: PID, token: &TokenFields)
-        -> Result<EndpointId, CaptureError>
+        -> Result<EndpointId, Error>
     {
         let dev_addr = token.device_address();
         let ep_num = token.endpoint_number();
@@ -609,8 +603,7 @@ impl Decoder {
             (_, PID::IN)   => Direction::In,
             (_, PID::OUT)  => Direction::Out,
             (_, PID::PING) => Direction::Out,
-            _ => return Err(IndexError(format!(
-                "PID {pid} does not indicate a direction")))
+            _ => bail!("PID {pid} does not indicate a direction")
         };
         let key = EndpointKey {
             dev_addr,
@@ -629,7 +622,7 @@ impl Decoder {
     }
 
     fn packet_endpoint(&mut self, packet: &[u8])
-        -> Result<EndpointId, CaptureError>
+        -> Result<EndpointId, Error>
     {
         let pid = PID::from_packet(packet)?;
         Ok(match PacketFields::from_packet(packet) {
@@ -641,7 +634,7 @@ impl Decoder {
     }
 
     fn transaction_update(&mut self, packet_id: PacketId, packet: &[u8])
-        -> Result<(), CaptureError>
+        -> Result<(), Error>
     {
         use TransactionStatus::*;
         use TransactionStyle::*;
@@ -683,7 +676,7 @@ impl Decoder {
     }
 
     fn transaction_start(&mut self, packet_id: PacketId, packet: &[u8])
-        -> Result<(), CaptureError>
+        -> Result<(), Error>
     {
         use PID::*;
         use TransactionStyle::*;
@@ -711,7 +704,7 @@ impl Decoder {
     }
 
     fn transaction_append(&mut self, packet: &[u8])
-        -> Result<(), CaptureError>
+        -> Result<(), Error>
     {
         use TransactionStyle::*;
         let pid = PID::from_packet(packet)?;
@@ -735,13 +728,12 @@ impl Decoder {
             }
             Ok(())
         } else {
-            Err(IndexError(String::from(
-                "No current transaction to append to")))
+            bail!("No current transaction to append to")
         }
     }
 
     fn transaction_end(&mut self, success: bool, complete: bool)
-        -> Result<(), CaptureError>
+        -> Result<(), Error>
     {
         if let Some(mut state) = self.transaction_state.take() {
             if state.endpoint_id.is_some() {
@@ -752,7 +744,7 @@ impl Decoder {
     }
 
     fn add_device(&mut self, address: DeviceAddr)
-        -> Result<DeviceId, CaptureError>
+        -> Result<DeviceId, Error>
     {
         let device = Device { address };
         let device_id = self.capture.devices.push(&device)?;
@@ -767,7 +759,7 @@ impl Decoder {
                     dev_addr: DeviceAddr,
                     number: EndpointNum,
                     direction: Direction)
-        -> Result<EndpointId, CaptureError>
+        -> Result<EndpointId, Error>
     {
         let device_id = match self.device_index.get(dev_addr) {
             Some(id) => *id,
@@ -794,7 +786,7 @@ impl Decoder {
     fn transfer_early_start(&mut self,
                             transaction: &mut TransactionState,
                             start: PID)
-        -> Result<(), CaptureError>
+        -> Result<(), Error>
     {
         use PID::*;
         let start_early = match (start, transaction.endpoint_id) {
@@ -824,7 +816,7 @@ impl Decoder {
         Ok(())
     }
 
-    fn transfer_early_append(&mut self) -> Result<(), CaptureError> {
+    fn transfer_early_append(&mut self) -> Result<(), Error> {
         use PID::*;
         use TransactionStyle::*;
         // Decide whether to index this transaction now.
@@ -868,7 +860,7 @@ impl Decoder {
                        transaction: &mut TransactionState,
                        success: bool,
                        complete: bool)
-        -> Result<(), CaptureError>
+        -> Result<(), Error>
     {
         use TransferStatus::*;
         let endpoint_id = transaction.endpoint_id()?;
@@ -906,7 +898,7 @@ impl Decoder {
     fn transfer_start(&mut self,
                       transaction: &mut TransactionState,
                       done: bool)
-        -> Result<(), CaptureError>
+        -> Result<(), Error>
     {
         let endpoint_id = transaction.endpoint_id()?;
         let ep_data = &mut self.endpoint_data[endpoint_id];
@@ -932,7 +924,7 @@ impl Decoder {
     fn transfer_append(&mut self,
                        transaction: &mut TransactionState,
                        done: bool)
-        -> Result<(), CaptureError>
+        -> Result<(), Error>
     {
         let endpoint_id = transaction.endpoint_id()?;
         let ep_data = &mut self.endpoint_data[endpoint_id];
@@ -952,7 +944,7 @@ impl Decoder {
     }
 
     fn transfer_end(&mut self, transaction: &TransactionState)
-        -> Result<(), CaptureError>
+        -> Result<(), Error>
     {
         let endpoint_id = transaction.endpoint_id()?;
         let ep_data = &mut self.endpoint_data[endpoint_id];
@@ -972,7 +964,7 @@ impl Decoder {
     fn add_transfer(&mut self,
                     endpoint_id: EndpointId,
                     transaction: &mut TransactionState)
-        -> Result<EndpointTransferId, CaptureError>
+        -> Result<EndpointTransferId, Error>
     {
         let ep_data = &mut self.endpoint_data[endpoint_id];
         if let Some(transfer) = ep_data.active.take() {
@@ -1002,7 +994,7 @@ impl Decoder {
                           endpoint_id: EndpointId,
                           ep_transfer_id: EndpointTransferId,
                           start: bool)
-        -> Result<TransferId, CaptureError>
+        -> Result<TransferId, Error>
     {
         self.add_endpoint_state(endpoint_id, start)?;
         let mut entry = TransferIndexEntry::default();
@@ -1016,7 +1008,7 @@ impl Decoder {
     fn add_endpoint_state(&mut self,
                           endpoint_id: EndpointId,
                           start: bool)
-        -> Result<TransferId, CaptureError>
+        -> Result<TransferId, Error>
     {
         let endpoint_count = self.capture.endpoints.len() as usize;
         for i in 0..endpoint_count {
@@ -1041,7 +1033,7 @@ impl Decoder {
     fn add_item(&mut self,
                 item_endpoint_id: EndpointId,
                 transfer_id: TransferId)
-        -> Result<TrafficItemId, CaptureError>
+        -> Result<TrafficItemId, Error>
     {
         let item_id = self.capture.item_index.push(transfer_id)?;
         self.last_item_endpoint = Some(item_endpoint_id);

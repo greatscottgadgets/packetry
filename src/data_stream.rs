@@ -2,10 +2,11 @@ use std::marker::PhantomData;
 use std::mem::size_of;
 use std::ops::{Deref, Range};
 
+use anyhow::Error;
 use bytemuck::{bytes_of, cast_slice, from_bytes, Pod};
 
 use crate::id::Id;
-use crate::stream::{stream, StreamReader, StreamWriter, StreamError, MIN_BLOCK};
+use crate::stream::{stream, StreamReader, StreamWriter, MIN_BLOCK};
 use crate::util::{fmt_count, fmt_size};
 
 /// Unique handle for append-only write access to a data stream.
@@ -32,7 +33,7 @@ struct Values<Data, Value> where Data: Deref<Target=[u8]> {
 /// Returns a unique writer and a cloneable reader.
 ///
 pub fn data_stream<Value>()
-    -> Result<(DataWriter<Value>, DataReader<Value>), StreamError>
+    -> Result<(DataWriter<Value>, DataReader<Value>), Error>
 {
     data_stream_with_block_size::<Value, MIN_BLOCK>()
 }
@@ -42,7 +43,7 @@ pub fn data_stream<Value>()
 /// Returns a unique writer and a cloneable reader.
 ///
 pub fn data_stream_with_block_size<Value, const S: usize>()
-    -> Result<(DataWriter<Value, S>, DataReader<Value, S>), StreamError>
+    -> Result<(DataWriter<Value, S>, DataReader<Value, S>), Error>
 {
     let (stream_writer, stream_reader) = stream()?;
     let data_writer = DataWriter {
@@ -72,7 +73,7 @@ where Value: Pod + Default
     /// Add a single item to the end of the stream.
     ///
     /// Returns the position of the added item.
-    pub fn push(&mut self, item: &Value) -> Result<Id<Value>, StreamError> {
+    pub fn push(&mut self, item: &Value) -> Result<Id<Value>, Error> {
         let id = Id::<Value>::from_offset(self.size());
         self.stream_writer.append(bytes_of(item))?;
         Ok(id)
@@ -82,7 +83,7 @@ where Value: Pod + Default
     ///
     /// Returns the ID range of the added items.
     pub fn append(&mut self, items: &[Value])
-        -> Result<Range<Id<Value>>, StreamError>
+        -> Result<Range<Id<Value>>, Error>
     {
         let mut size = self.size();
         let start = Id::<Value>::from_offset(size);
@@ -111,7 +112,7 @@ where Value: Pod + Default
     }
 
     /// Get a single item from the stream.
-    pub fn get(&mut self, id: Id<Value>) -> Result<Value, StreamError> {
+    pub fn get(&mut self, id: Id<Value>) -> Result<Value, Error> {
         let byte_range = id.offset_range();
         let bytes = self.stream_reader.access(&byte_range)?;
         let value = from_bytes(&bytes);
@@ -120,7 +121,7 @@ where Value: Pod + Default
 
     /// Get multiple items from the stream.
     pub fn get_range(&mut self, range: &Range<Id<Value>>)
-        -> Result<Vec<Value>, StreamError>
+        -> Result<Vec<Value>, Error>
     {
         let count = (range.end - range.start).try_into().unwrap();
         let mut result = Vec::with_capacity(count);
@@ -140,7 +141,7 @@ where Value: Pod + Default
     /// requested length. May be called again to access further values.
     ///
     pub fn access(&mut self, range: &Range<Id<Value>>)
-        -> Result<impl Deref<Target=[Value]>, StreamError>
+        -> Result<impl Deref<Target=[Value]>, Error>
     {
         let range = range.start.offset()..range.end.offset();
         Ok(Values {

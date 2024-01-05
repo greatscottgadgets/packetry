@@ -10,6 +10,8 @@ use std::time::Duration;
 #[cfg(feature="step-decoder")]
 use std::{io::Read, net::TcpListener};
 
+use anyhow::{Context as ErrorContext, Error, bail};
+
 use gtk::gio::ListModel;
 use gtk::glib::Object;
 use gtk::{
@@ -40,20 +42,17 @@ use gtk::{
 };
 
 use pcap_file::{
-    PcapError,
     DataLink,
     pcap::{PcapReader, PcapWriter, PcapHeader, RawPcapPacket},
 };
 
 use rusb::Context;
-use thiserror::Error;
 
 use crate::backend::luna::{LunaDevice, LunaHandle, LunaStop, Speed};
 use crate::capture::{
     create_capture,
     CaptureReader,
     CaptureWriter,
-    CaptureError,
     ItemSource,
     TrafficItem,
     DeviceItem,
@@ -67,7 +66,6 @@ use crate::row_data::{
     ToGenericRowData,
     TrafficRowData,
     DeviceRowData};
-use crate::tree_list_model::ModelError;
 use crate::util::{fmt_count, fmt_size};
 
 #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
@@ -95,28 +93,6 @@ enum FileAction {
     Save,
 }
 
-#[derive(Error, Debug)]
-pub enum PacketryError {
-    #[error("capture data error: {0}")]
-    Capture(#[from] CaptureError),
-    #[error("tree model error: {0}")]
-    Model(#[from] ModelError),
-    #[error("I/O error: {0}")]
-    Io(#[from] std::io::Error),
-    #[error("pcap error: {0}")]
-    Pcap(#[from] PcapError),
-    #[error(transparent)]
-    Usb(#[from] rusb::Error),
-    #[error("device not found")]
-    NotFound,
-    #[error("LUNA error: {0}")]
-    Luna(#[from] crate::backend::luna::Error),
-    #[error("locking failed")]
-    Lock,
-    #[error("internal bug: {0}")]
-    Bug(&'static str)
-}
-
 struct DeviceSelector {
     usb_context: Option<Context>,
     devices: Vec<LunaDevice>,
@@ -128,7 +104,7 @@ struct DeviceSelector {
 }
 
 impl DeviceSelector {
-    fn new() -> Result<Self, PacketryError> {
+    fn new() -> Result<Self, Error> {
         let selector = DeviceSelector {
             usb_context: Context::new().ok(),
             devices: vec![],
@@ -166,7 +142,7 @@ impl DeviceSelector {
         self.speed_dropdown.set_sensitive(sensitive);
     }
 
-    fn scan(&mut self) -> Result<bool, PacketryError> {
+    fn scan(&mut self) -> Result<bool, Error> {
         self.devices = if let Some(context) = self.usb_context.as_mut() {
             LunaDevice::scan(context)?
         } else {
@@ -189,7 +165,7 @@ impl DeviceSelector {
         Ok(available)
     }
 
-    fn open(&self) -> Result<(LunaHandle, Speed), PacketryError> {
+    fn open(&self) -> Result<(LunaHandle, Speed), Error> {
         let device_id = self.dev_dropdown.selected();
         let device = &self.devices[device_id as usize];
         let speed_id = self.speed_dropdown.selected() as usize;
@@ -239,19 +215,19 @@ pub struct UserInterface {
     pub recording: Rc<RefCell<Recording>>,
 }
 
-pub fn with_ui<F>(f: F) -> Result<(), PacketryError>
-    where F: FnOnce(&mut UserInterface) -> Result<(), PacketryError>
+pub fn with_ui<F>(f: F) -> Result<(), Error>
+    where F: FnOnce(&mut UserInterface) -> Result<(), Error>
 {
     UI.with(|cell| {
         if let Some(ui) = cell.borrow_mut().as_mut() {
             f(ui)
         } else {
-            Err(PacketryError::Bug("UI not set up"))
+            bail!("UI not set up")
         }
     })
 }
 
-pub fn activate(application: &Application) -> Result<(), PacketryError> {
+pub fn activate(application: &Application) -> Result<(), Error> {
     use FileAction::*;
 
     let window = gtk::ApplicationWindow::builder()
@@ -441,18 +417,18 @@ fn create_view<Item, Model, RowData>(
         let expander = ExpanderWrapper::new();
         list_item.set_child(Some(&expander));
     });
-    let bind = move |list_item: &ListItem| {
+    let bind = move |list_item: &ListItem| -> Result<(), Error> {
         let row = list_item
             .item()
-            .or_bug("ListItem has no item")?
+            .context("ListItem has no item")?
             .downcast::<RowData>()
-            .or_bug("Item is not RowData")?;
+            .or_else(|_| bail!("Item is not RowData"))?;
 
         let expander_wrapper = list_item
             .child()
-            .or_bug("ListItem has no child widget")?
+            .context("ListItem has no child widget")?
             .downcast::<ExpanderWrapper>()
-            .or_bug("Child widget is not an ExpanderWrapper")?;
+            .or_else(|_| bail!("Child widget is not an ExpanderWrapper"))?;
 
         let expander = expander_wrapper.expander();
         match row.node() {
@@ -478,8 +454,7 @@ fn create_view<Item, Model, RowData>(
                     recording.borrow_mut().log_item_expanded(
                         name, position, expanded);
                     display_error(
-                        model.set_expanded(&node_ref, position, expanded)
-                            .map_err(PacketryError::Model))
+                        model.set_expanded(&node_ref, position, expanded))
                 });
                 expander_wrapper.set_handler(handler);
                 node.attach_widget(&expander_wrapper);
@@ -495,15 +470,15 @@ fn create_view<Item, Model, RowData>(
     let unbind = move |list_item: &ListItem| {
         let row = list_item
             .item()
-            .or_bug("ListItem has no item")?
+            .context("ListItem has no item")?
             .downcast::<RowData>()
-            .or_bug("Item is not RowData")?;
+            .or_else(|_| bail!("Item is not RowData"))?;
 
         let expander_wrapper = list_item
             .child()
-            .or_bug("ListItem has no child widget")?
+            .context("ListItem has no child widget")?
             .downcast::<ExpanderWrapper>()
-            .or_bug("Child widget is not an ExpanderWrapper")?;
+            .or_else(|_| bail!("Child widget is not an ExpanderWrapper"))?;
 
         if let Ok(node_ref) = row.node() {
             node_ref.borrow().remove_widget(&expander_wrapper);
@@ -529,7 +504,7 @@ fn create_view<Item, Model, RowData>(
     (model, view)
 }
 
-pub fn reset_capture() -> Result<CaptureWriter, PacketryError> {
+pub fn reset_capture() -> Result<CaptureWriter, Error> {
     let (writer, reader) = create_capture()?;
     with_ui(|ui| {
         let (traffic_model, traffic_view) =
@@ -556,7 +531,7 @@ pub fn reset_capture() -> Result<CaptureWriter, PacketryError> {
     Ok(writer)
 }
 
-pub fn update_view() -> Result<(), PacketryError> {
+pub fn update_view() -> Result<(), Error> {
     with_ui(|ui| {
         use FileAction::*;
         #[cfg(feature="record-ui-test")]
@@ -631,7 +606,7 @@ pub fn update_view() -> Result<(), PacketryError> {
     })
 }
 
-fn choose_file(action: FileAction) -> Result<(), PacketryError> {
+fn choose_file(action: FileAction) -> Result<(), Error> {
     use FileAction::*;
     let chooser = WINDOW.with(|cell| {
         let borrow = cell.borrow();
@@ -665,7 +640,7 @@ fn choose_file(action: FileAction) -> Result<(), PacketryError> {
     Ok(())
 }
 
-fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), PacketryError> {
+fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), Error> {
     use FileAction::*;
     let writer = if action == Load {
         Some(reset_capture()?)
@@ -741,7 +716,7 @@ fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), PacketryError> {
                     let length: u32 = bytes
                         .len()
                         .try_into()
-                        .or_bug("Packet too large for pcap file")?;
+                        .context("Packet too large for pcap file")?;
                     let packet = RawPcapPacket {
                         ts_sec: 0,
                         ts_frac: 0,
@@ -788,7 +763,7 @@ fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), PacketryError> {
     })
 }
 
-pub fn stop_pcap() -> Result<(), PacketryError> {
+pub fn stop_pcap() -> Result<(), Error> {
     STOP.store(true, Ordering::Relaxed);
     with_ui(|ui| {
         ui.scan_button.set_sensitive(true);
@@ -797,7 +772,7 @@ pub fn stop_pcap() -> Result<(), PacketryError> {
     })
 }
 
-fn detect_hardware() -> Result<(), PacketryError> {
+fn detect_hardware() -> Result<(), Error> {
     with_ui(|ui| {
         ui.selector.scan()?;
         ui.capture_button.set_sensitive(ui.selector.device_available());
@@ -805,7 +780,7 @@ fn detect_hardware() -> Result<(), PacketryError> {
     })
 }
 
-pub fn start_luna() -> Result<(), PacketryError> { 
+pub fn start_luna() -> Result<(), Error> {
     let writer = reset_capture()?;
     with_ui(|ui| {
         let (luna, speed) = ui.selector.open()?;
@@ -849,7 +824,7 @@ pub fn start_luna() -> Result<(), PacketryError> {
     })
 }
 
-pub fn stop_luna() -> Result<(), PacketryError> {
+pub fn stop_luna() -> Result<(), Error> {
     with_ui(|ui| {
         if let Some(stop_handle) = ui.stop_handle.take() {
             stop_handle.stop()?;
@@ -860,7 +835,7 @@ pub fn stop_luna() -> Result<(), PacketryError> {
     })
 }
 
-pub fn display_error(result: Result<(), PacketryError>) {
+pub fn display_error(result: Result<(), Error>) {
     #[cfg(not(feature="test-ui-replay"))]
     if let Err(e) = result {
         let message = format!("{e}");
@@ -888,20 +863,4 @@ pub fn display_error(result: Result<(), PacketryError>) {
     }
     #[cfg(feature="test-ui-replay")]
     result.unwrap();
-}
-
-trait OrBug<T> {
-    fn or_bug(self, msg: &'static str) -> Result<T, PacketryError>;
-}
-
-impl<T> OrBug<T> for Option<T> {
-    fn or_bug(self, msg: &'static str) -> Result<T, PacketryError> {
-        self.ok_or(PacketryError::Bug(msg))
-    }
-}
-
-impl<T, E> OrBug<T> for Result<T, E> {
-    fn or_bug(self, msg: &'static str) -> Result<T, PacketryError> {
-        self.or(Err(PacketryError::Bug(msg)))
-    }
 }

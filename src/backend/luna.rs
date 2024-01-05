@@ -3,6 +3,7 @@ use std::thread::{spawn, JoinHandle};
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::time::Duration;
 
+use anyhow::{Context as ErrorContext, Error, bail};
 use num_enum::{FromPrimitive, IntoPrimitive};
 use rusb::{
     Context,
@@ -70,20 +71,6 @@ impl State {
     }
 }
 
-#[derive(thiserror::Error, Debug)]
-pub enum Error {
-    #[error(transparent)]
-    Usb(#[from] rusb::Error),
-    #[error("channel send error")]
-    ChannelSend,
-    #[error("worker thread panic")]
-    ThreadPanic,
-    #[error("unsupported analyzer version: Gateware version is {0}. \
-             Supported range is {MIN_SUPPORTED} or higher, \
-             but not {NOT_SUPPORTED} or higher")]
-    WrongVersion(Version),
-}
-
 /// A Luna device attached to the system.
 pub struct LunaDevice {
     usb_device: Device<Context>,
@@ -97,7 +84,7 @@ pub struct LunaHandle {
 }
 
 pub struct LunaStream {
-    receiver: Receiver<Result<Vec<u8>, Error>>,
+    receiver: Receiver<Result<Vec<u8>, rusb::Error>>,
 }
 
 pub struct LunaStop {
@@ -134,13 +121,14 @@ impl LunaHandle {
     fn new(usb_handle: DeviceHandle<Context>) -> Result<Self, Error> {
         let version = usb_handle
             .device()
-            .device_descriptor()
-            .map_err(Error::Usb)?
+            .device_descriptor()?
             .device_version();
         if version >= MIN_SUPPORTED && version < NOT_SUPPORTED {
             Ok(Self { usb_handle })
         } else {
-            Err(Error::WrongVersion(version))
+            bail!("Unsupported analyzer version: Gateware version is {version}. \
+                   Supported range is {MIN_SUPPORTED} or higher, \
+                   but not {NOT_SUPPORTED} or higher")
         }
     }
 
@@ -192,13 +180,13 @@ impl LunaHandle {
                         packet_queue.extend(&buffer[..count]);
                         while let Some(packet) = packet_queue.next() {
                             tx.send(Ok(packet))
-                                .or(Err(Error::ChannelSend))?;
+                                .context("Failed sending packet to channel")?;
                         };
                     },
                     Err(rusb::Error::Timeout) => continue,
                     Err(usb_error) => {
-                        tx.send(Err(Error::from(usb_error)))
-                            .or(Err(Error::ChannelSend))?;
+                        tx.send(Err(usb_error))
+                            .context("Failed sending error to channel")?;
                         return Err(Error::from(usb_error));
                     }
                 }
@@ -234,17 +222,17 @@ impl LunaHandle {
 }
 
 impl LunaStream {
-    pub fn next(&mut self) -> Option<Result<Vec<u8>, Error>> {
+    pub fn next(&mut self) -> Option<Result<Vec<u8>, rusb::Error>> {
         self.receiver.recv().ok()
     }
 }
 
 impl LunaStop {
     pub fn stop(self) -> Result<(), Error> {
-        use Error::*;
         println!("Requesting capture stop");
-        self.stop_request.send(()).or(Err(ChannelSend))?;
-        self.worker.join().or(Err(ThreadPanic))?
+        self.stop_request.send(()).context("Failed sending stop request")?;
+        self.worker.join().err().context("Worker thread panic")?;
+        Ok(())
     }
 }
 
