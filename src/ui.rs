@@ -181,7 +181,7 @@ impl DeviceSelector {
             )
         }
         let no_speeds = vec![];
-        let speed_strings = self.dev_speeds.get(0).unwrap_or(&no_speeds);
+        let speed_strings = self.dev_speeds.first().unwrap_or(&no_speeds);
         self.replace_dropdown(&self.dev_dropdown, &self.dev_strings);
         self.replace_dropdown(&self.speed_dropdown, speed_strings);
         let available = self.device_available();

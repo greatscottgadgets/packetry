@@ -1707,9 +1707,7 @@ mod tests {
 
 pub mod prelude {
     pub use super::{
-        create_capture,
         create_endpoint,
-        CaptureReader,
         CaptureWriter,
         CaptureError,
         Device,
@@ -1719,7 +1717,6 @@ pub mod prelude {
         EndpointId,
         EndpointType,
         EndpointState,
-        EndpointReader,
         EndpointWriter,
         EndpointTransactionId,
         EndpointTransferId,
