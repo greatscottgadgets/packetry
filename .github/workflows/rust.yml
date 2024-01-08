@@ -43,7 +43,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ['macos-latest', 'ubuntu-22.04']
+        os: ['macos-latest', 'ubuntu-22.04', 'windows-latest']
         rust: ['stable', '1.57']
 
     runs-on: ${{ matrix.os }}
@@ -62,6 +62,26 @@ jobs:
       - name: Install dependencies (macOS)
         run: brew install gtk4 pkg-config
         if: matrix.os == 'macos-latest'
+
+      - name: Install dependencies (Windows)
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: 261dd6831673d3b07e5118261f7e161a21d1a759
+          runVcpkgInstall: true
+          doNotCache: false
+        if: matrix.os == 'windows-latest'
+
+      - name: Set PKG_CONFIG (Windows)
+        run: echo "PKG_CONFIG=$env:VCPKG_DEFAULT_BINARY_CACHE/../vcpkg_installed/x64-windows/tools/pkgconf/pkgconf.exe" | Out-File -FilePath $env:GITHUB_ENV -Append
+        if: matrix.os == 'windows-latest'
+
+      - name: Set PKG_CONFIG_PATH (Windows)
+        run: echo "PKG_CONFIG_PATH=$env:VCPKG_DEFAULT_BINARY_CACHE/../vcpkg_installed/x64-windows/lib/pkgconfig" | Out-File -FilePath $env:GITHUB_ENV -Append
+        if: matrix.os == 'windows-latest'
+
+      - name: Set PATH (Windows)
+        run: echo "$env:VCPKG_DEFAULT_BINARY_CACHE/../vcpkg_installed/x64-windows/bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+        if: matrix.os == 'windows-latest'
 
       - uses: Swatinem/rust-cache@v2
 
