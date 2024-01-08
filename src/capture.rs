@@ -1676,8 +1676,11 @@ mod tests {
 }
 
 pub mod prelude {
+    #[allow(unused_imports)]
     pub use super::{
+        create_capture,
         create_endpoint,
+        CaptureReader,
         CaptureWriter,
         Device,
         DeviceId,
@@ -1686,6 +1689,7 @@ pub mod prelude {
         EndpointId,
         EndpointType,
         EndpointState,
+        EndpointReader,
         EndpointWriter,
         EndpointTransactionId,
         EndpointTransferId,

@@ -904,6 +904,7 @@ mod tests {
 }
 
 pub mod prelude {
+    #[allow(unused_imports)]
     pub use super::{
         PID,
         PacketFields,
@@ -911,6 +912,7 @@ pub mod prelude {
         SetupFields,
         SplitFields,
         StartComplete,
+        Speed,
         Direction,
         EndpointAddr,
         StandardRequest,
@@ -919,6 +921,7 @@ pub mod prelude {
         DescriptorType,
         DeviceDescriptor,
         ConfigDescriptor,
+        InterfaceDescriptor,
         EndpointDescriptor,
         Configuration,
         Interface,
