@@ -10,11 +10,11 @@ use std::slice;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering::{Acquire, Release}};
 
+use anyhow::{Context, Error, bail};
 use arc_swap::{ArcSwap, ArcSwapOption};
 use lrumap::LruBTreeMap;
 use memmap2::{Mmap, MmapOptions};
 use tempfile::tempfile;
-use thiserror::Error;
 
 /// Minimum block size, defined by largest minimum page size on target systems.
 pub const MIN_BLOCK: usize = 0x4000; // 16KB (Apple M1/M2)
@@ -69,32 +69,6 @@ enum Data<const S: usize> {
     Buffered(Arc<Buffer<S>>, Range<usize>),
 }
 
-/// Error type returned by stream operations.
-#[derive(Debug, Error)]
-pub enum StreamError {
-    /// Failed to create temporary file to store the stream.
-    #[error("failed creating temporary file: {0}")]
-    TempFile(std::io::Error),
-    /// Failed to clone file handle to the stream file.
-    #[error("failed cloning file handle: {0}")]
-    CloneFile(std::io::Error),
-    /// Failed to write to the end of the stream file.
-    #[error("failed writing to stream file: {0}")]
-    WriteFile(std::io::Error),
-    /// Failed to create a memory mapping into part of the stream file.
-    #[error("failed mapping stream file: {0}")]
-    MapFile(std::io::Error),
-    /// Failed to allocate a buffer.
-    #[error("failed to allocate buffer")]
-    Alloc(),
-    /// Attempted to read past the end of the stream.
-    #[error("attemped to read past end of stream: {0}")]
-    ReadPastEnd(String),
-    /// Block size is not a multiple of the system page size.
-    #[error("block size {0:x} is not a multiple of the system page size {1:x}")]
-    PageSize(usize, usize),
-}
-
 // Number of most recent file mappings retained by each reader.
 const MAP_CACHE_PER_READER: usize = 4;
 
@@ -105,11 +79,12 @@ type StreamPair<const S: usize> = (StreamWriter<S>, StreamReader<S>);
 /// Returns a unique writer and a cloneable reader.
 ///
 pub fn stream<const BLOCK_SIZE: usize>()
-    -> Result<StreamPair<BLOCK_SIZE>, StreamError>
+    -> Result<StreamPair<BLOCK_SIZE>, Error>
 {
     let page_size = page_size::get();
     if BLOCK_SIZE < page_size {
-        return Err(StreamError::PageSize(BLOCK_SIZE, page_size))
+        bail!("Block size {BLOCK_SIZE:x} is not a multiple \
+               of the system page size {page_size:x}")
     }
     let buffer = Arc::new(Buffer::new(0)?);
     let shared = Arc::new(Shared {
@@ -142,7 +117,7 @@ impl<const BLOCK_SIZE: usize> StreamWriter<BLOCK_SIZE> {
     ///
     /// Returns the new stream length.
     ///
-    pub fn append(&mut self, mut data: &[u8]) -> Result<u64, StreamError> {
+    pub fn append(&mut self, mut data: &[u8]) -> Result<u64, Error> {
         let length = data.len();
         let buffered = self.length as usize & Self::block_mask();
         if buffered + length <= Self::block_size() {
@@ -199,7 +174,7 @@ impl<const BLOCK_SIZE: usize> StreamWriter<BLOCK_SIZE> {
     /// Safety: The buffer must be full.
     ///
     #[inline(always)]
-    unsafe fn write_buffer_to_file(&mut self) -> Result<(), StreamError> {
+    unsafe fn write_buffer_to_file(&mut self) -> Result<(), Error> {
         unsafe {
             let buf = slice::from_raw_parts(self.buf, Self::block_size());
             self.write_to_file(buf)
@@ -210,21 +185,21 @@ impl<const BLOCK_SIZE: usize> StreamWriter<BLOCK_SIZE> {
     ///
     /// Safety: The data must be a multiple of the block size.
     ///
-    unsafe fn write_to_file(&mut self, data: &[u8]) -> Result<(), StreamError> {
+    unsafe fn write_to_file(&mut self, data: &[u8]) -> Result<(), Error> {
 
         // Create the file if it does not exist yet.
         let file = match &mut self.file {
             None => {
-                let file = tempfile().map_err(StreamError::TempFile)?;
+                let file = tempfile().context("Failed creating temporary file")?;
                 self.shared.file.store(Some(Arc::new(
-                    file.try_clone().map_err(StreamError::CloneFile)?)));
+                    file.try_clone().context("Failed cloning file handle")?)));
                 self.file.insert(file)
             },
             Some(file) => file
         };
 
         // Write the data to file.
-        file.write(data).map_err(StreamError::WriteFile)?;
+        file.write(data).context("Failed writing to stream file")?;
 
         // We must change the stream's current buffer to one for the new block.
         let block_base = self.length;
@@ -282,16 +257,15 @@ impl<const BLOCK_SIZE: usize> StreamReader<BLOCK_SIZE> {
     /// requested length. The method may be called again to access further data.
     ///
     pub fn access(&mut self, range: &Range<u64>)
-        -> Result<impl Deref<Target=[u8]>, StreamError>
+        -> Result<impl Deref<Target=[u8]>, Error>
     {
         use Data::*;
 
         // First guarantee that the requested data exists, somewhere.
         let available_length = self.shared.length.load(Acquire);
         if range.end > available_length {
-            return Err(StreamError::ReadPastEnd(format!(
-                "requested read of range {:?}, but stream length is {}",
-                range, available_length)));
+            bail!("Requested read of range {range:?}, \
+                   but stream length is {available_length}")
         }
 
         // Identify the block and the range required from within it.
@@ -331,8 +305,8 @@ impl<const BLOCK_SIZE: usize> StreamReader<BLOCK_SIZE> {
                             .len(Self::block_size())
                             .map(file)
                     };
-                    let new_mmap =
-                        Arc::new(mmap_result.map_err(StreamError::MapFile)?);
+                    let new_mmap = Arc::new(
+                        mmap_result.context("Failed mapping stream file")?);
                     self.mappings.push(block_base, Arc::clone(&new_mmap));
                     new_mmap
                 }
@@ -356,7 +330,7 @@ impl<const BLOCK_SIZE: usize> StreamReader<BLOCK_SIZE> {
 
 impl<const BLOCK_SIZE: usize> Buffer<BLOCK_SIZE> {
     /// Create a new buffer for the specified block.
-    fn new(block_base: u64) -> Result<Self, StreamError>{
+    fn new(block_base: u64) -> Result<Self, Error> {
         Ok(Buffer {
             block_base,
             // Calling System.alloc safely requires the layout to be known to
@@ -365,7 +339,7 @@ impl<const BLOCK_SIZE: usize> Buffer<BLOCK_SIZE> {
             ptr: unsafe {
                 let ptr = System.alloc(Self::block_layout());
                 if ptr.is_null() {
-                    return Err(StreamError::Alloc());
+                    bail!("Failed to allocate buffer")
                 }
                 ptr
             }

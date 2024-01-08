@@ -4,8 +4,9 @@ use std::collections::{BTreeMap, HashSet};
 use std::collections::btree_map::Entry;
 use std::fmt::Debug;
 use std::marker::PhantomData;
-use std::num::TryFromIntError;
 use std::rc::{Rc, Weak};
+
+use anyhow::{Context, Error, bail};
 
 use gtk::prelude::{IsA, Cast, WidgetExt};
 use gtk::glib::Object;
@@ -13,26 +14,11 @@ use gtk::gio::prelude::ListModelExt;
 
 use derive_more::AddAssign;
 use itertools::Itertools;
-use thiserror::Error;
 
-use crate::capture::{CaptureReader, CaptureError, ItemSource};
+use crate::capture::{CaptureReader, ItemSource};
 use crate::model::GenericModel;
 use crate::row_data::GenericRowData;
 use crate::expander::ExpanderWrapper;
-
-#[derive(Error, Debug)]
-pub enum ModelError {
-    #[error(transparent)]
-    CaptureError(#[from] CaptureError),
-    #[error(transparent)]
-    RangeError(#[from] TryFromIntError),
-    #[error("Node references a dropped parent")]
-    ParentDropped,
-    #[error("Internal error: {0}")]
-    InternalError(String),
-}
-
-use ModelError::InternalError;
 
 type RootNodeRc<Item> = Rc<RefCell<RootNode<Item>>>;
 pub type ItemNodeRc<Item> = Rc<RefCell<ItemNode<Item>>>;
@@ -44,7 +30,7 @@ trait Node<Item> {
     fn item(&self) -> Option<&Item>;
 
     /// Parent of this node, or None if the root.
-    fn parent(&self) -> Result<Option<AnyNodeRc<Item>>, ModelError>;
+    fn parent(&self) -> Result<Option<AnyNodeRc<Item>>, Error>;
 
     /// Access the children of this node.
     fn children(&self) -> &Children<Item>;
@@ -150,7 +136,7 @@ impl<Item> Node<Item> for RootNode<Item> {
         None
     }
 
-    fn parent(&self) -> Result<Option<AnyNodeRc<Item>>, ModelError> {
+    fn parent(&self) -> Result<Option<AnyNodeRc<Item>>, Error> {
         Ok(None)
     }
 
@@ -176,8 +162,11 @@ impl<Item> Node<Item> for ItemNode<Item> where Item: Copy {
         Some(&self.item)
     }
 
-    fn parent(&self) -> Result<Option<AnyNodeRc<Item>>, ModelError> {
-        Ok(Some(self.parent.upgrade().ok_or(ModelError::ParentDropped)?))
+    fn parent(&self) -> Result<Option<AnyNodeRc<Item>>, Error> {
+        Ok(Some(self.parent
+            .upgrade()
+            .context("Parent dropped")?
+        ))
     }
 
     fn children(&self) -> &Children<Item> {
@@ -212,14 +201,14 @@ impl<Item> Node<Item> for ItemNode<Item> where Item: Copy {
 
 trait UpdateTotal<Item> {
     fn update_total(&self, expanded: bool, rows_affected: u64)
-        -> Result<(), ModelError>;
+        -> Result<(), Error>;
 }
 
 impl<T, Item> UpdateTotal<Item> for Rc<RefCell<T>>
 where T: Node<Item> + 'static, Item: Copy + 'static
 {
     fn update_total(&self, expanded: bool, rows_affected: u64)
-        -> Result<(), ModelError>
+        -> Result<(), Error>
     {
         let mut node_rc: AnyNodeRc<Item> = self.clone();
         while let Some(parent_rc) = node_rc.clone().borrow().parent()? {
@@ -375,7 +364,7 @@ where Item: 'static + Copy + Debug,
     pub fn new(mut capture: CaptureReader,
                #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
                on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>)
-        -> Result<Self, ModelError>
+        -> Result<Self, Error>
     {
         let (completion, item_count) = capture.item_children(None)?;
         Ok(TreeListModel {
@@ -395,7 +384,7 @@ where Item: 'static + Copy + Debug,
         self.root.borrow().children().total_count
     }
 
-    fn check(&self) -> Result<(), ModelError> {
+    fn check(&self) -> Result<(), Error> {
         // Check that we have the expected number of rows in the region map.
         let expected_count = self.row_count();
         let actual_count = self.regions
@@ -405,9 +394,8 @@ where Item: 'static + Copy + Debug,
             .map(|(start, region)| start + region.length)
             .unwrap_or(0);
         if expected_count != actual_count {
-            Err(InternalError(format!(
-                "Region map total row count is {}, expected {}",
-                actual_count, expected_count)))
+            bail!("Region map total row count is {}, expected {}",
+                  actual_count, expected_count)
         } else {
             Ok(())
         }
@@ -418,7 +406,7 @@ where Item: 'static + Copy + Debug,
                         node_ref: &ItemNodeRc<Item>,
                         position: u64,
                         expanded: bool)
-        -> Result<(), ModelError>
+        -> Result<(), Error>
     {
         let mut node = node_ref.borrow_mut();
 
@@ -428,7 +416,7 @@ where Item: 'static + Copy + Debug,
 
         let parent_rc = node.parent
             .upgrade()
-            .ok_or(ModelError::ParentDropped)?;
+            .context("Parent dropped")?;
 
         let rows_affected = node.children.direct_count;
         let expanded_children = node.children.expanded.clone();
@@ -492,16 +480,15 @@ where Item: 'static + Copy + Debug,
     }
 
     fn expand(&self, position: u64, node_ref: &ItemNodeRc<Item>)
-        -> Result<ModelUpdate, ModelError>
+        -> Result<ModelUpdate, Error>
     {
         // Find the start of the parent region.
         let (&parent_start, _) = self.regions
             .borrow()
             .range(..position)
             .next_back()
-            .ok_or_else(||
-                InternalError(format!(
-                    "No region before position {position}")))?;
+            .with_context(|| format!(
+                "No region before position {position}"))?;
 
         // Find position of the new region relative to its parent.
         let relative_position = position - parent_start;
@@ -510,9 +497,8 @@ where Item: 'static + Copy + Debug,
         let parent = self.regions
             .borrow_mut()
             .remove(&parent_start)
-            .ok_or_else(||
-                InternalError(format!(
-                    "Parent not found at position {parent_start}")))?;
+            .with_context(|| format!(
+                "Parent not found at position {parent_start}"))?;
 
         // Remove all following regions, to iterate over later.
         let following_regions = self.regions
@@ -548,15 +534,14 @@ where Item: 'static + Copy + Debug,
     }
 
     fn collapse(&self, position: u64, node_ref: &ItemNodeRc<Item>)
-        -> Result<ModelUpdate, ModelError>
+        -> Result<ModelUpdate, Error>
     {
         // Clone the region starting at this position.
         let region = self.regions
             .borrow()
             .get(&position)
-            .ok_or_else(||
-                InternalError(format!(
-                    "No region to delete at position {position}")))?
+            .with_context(||
+                format!("No region to delete at position {position}"))?
             .clone();
 
         // Remove it with following regions, to iterate over and replace them.
@@ -568,9 +553,7 @@ where Item: 'static + Copy + Debug,
         // Process the effects of removing this region.
         let update = match &region.source {
             // Root regions cannot be collapsed.
-            TopLevelItems() => return Err(
-                InternalError(String::from(
-                    "Unable to collapse root region"))),
+            TopLevelItems() => bail!("Unable to collapse root region"),
             // Non-interleaved region is just removed.
             ChildrenOf(_) => {
                 let (_, _region) = following_regions.next().unwrap();
@@ -595,7 +578,7 @@ where Item: 'static + Copy + Debug,
     }
 
     fn insert_region(&self, position: u64, region: Region<Item>)
-        -> Result<(), ModelError>
+        -> Result<(), Error>
     {
         match self.regions.borrow_mut().entry(position) {
             Entry::Occupied(mut entry) => {
@@ -604,8 +587,7 @@ where Item: 'static + Copy + Debug,
                     entry.insert(region);
                     Ok(())
                 } else {
-                    Err(InternalError(format!(
-                        "At position {position}, overwriting region")))
+                    bail!("At position {position}, overwriting region")
                 }
             },
             Entry::Vacant(entry) => {
@@ -622,7 +604,7 @@ where Item: 'static + Copy + Debug,
                     parts_before: Vec<Region<Item>>,
                     new_region: Region<Item>,
                     parts_after: Vec<Region<Item>>)
-        -> Result<ModelUpdate, ModelError>
+        -> Result<ModelUpdate, Error>
     {
         let length_before: u64 = parts_before
             .iter()
@@ -726,7 +708,7 @@ where Item: 'static + Copy + Debug,
         self.regions.replace(new_regions);
     }
 
-    pub fn update(&self, model: &Model) -> Result<bool, ModelError> {
+    pub fn update(&self, model: &Model) -> Result<bool, Error> {
         #[cfg(feature="debug-region-map")]
         let rows_before = self.row_count();
         self.update_node(&self.root, 0, model)?;
@@ -751,7 +733,7 @@ where Item: 'static + Copy + Debug,
                    node_rc: &Rc<RefCell<T>>,
                    mut position: u64,
                    model: &Model)
-        -> Result<u64, ModelError>
+        -> Result<u64, Error>
         where T: Node<Item> + 'static,
               Rc<RefCell<T>>: NodeRcOps<Item>,
     {
@@ -901,16 +883,15 @@ where Item: 'static + Copy + Debug,
         Ok(position)
     }
 
-    fn fetch(&self, position: u64) -> Result<ItemNodeRc<Item>, ModelError> {
+    fn fetch(&self, position: u64) -> Result<ItemNodeRc<Item>, Error> {
         // Fetch the region this row is in.
         let (start, region) = self.regions
             .borrow()
             .range(..=position)
             .next_back()
             .map(|(start, region)| (*start, region.clone()))
-            .ok_or_else(||
-                InternalError(format!(
-                    "No region before position {position}")))?;
+            .with_context(|| format!(
+                "No region before position {position}"))?;
 
         // Get the index of this row relative to the start of that region.
         let relative_position = region.offset + (position - start);

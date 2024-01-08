@@ -2,11 +2,12 @@ use std::cmp::min;
 use std::marker::PhantomData;
 use std::ops::Range;
 
+use anyhow::Error;
 use bisection::{bisect_left, bisect_right};
 
 use crate::data_stream::{data_stream, DataReader, DataWriter};
 use crate::id::Id;
-use crate::stream::{StreamError, MIN_BLOCK};
+use crate::stream::MIN_BLOCK;
 use crate::util::{fmt_count, fmt_size};
 
 /// Unique handle for append-only write access to an index.
@@ -28,7 +29,7 @@ type IndexPair<P, V> = (IndexWriter<P, V>, IndexReader<P, V>);
 ///
 /// Returns a unique writer and a cloneable reader.
 ///
-pub fn index_stream<P, V>() -> Result<IndexPair<P, V>, StreamError> {
+pub fn index_stream<P, V>() -> Result<IndexPair<P, V>, Error> {
     let (data_writer, data_reader) = data_stream()?;
     let writer = IndexWriter {
         marker: PhantomData,
@@ -57,7 +58,7 @@ where Position: From<u64>, Value: Into<u64>
     /// Add a single value to the end of the index.
     ///
     /// Returns the position of the added value.
-    pub fn push(&mut self, value: Value) -> Result<Position, StreamError> {
+    pub fn push(&mut self, value: Value) -> Result<Position, Error> {
         let id = self.data_writer.push(&value.into())?;
         let position = Position::from(id.into());
         Ok(position)
@@ -79,7 +80,7 @@ where Position: Copy + From<u64> + Into<u64>,
     }
 
     /// Get a single value from the index, by position.
-    pub fn get(&mut self, position: Position) -> Result<Value, StreamError> {
+    pub fn get(&mut self, position: Position) -> Result<Value, Error> {
         let id = Id::<u64>::from(position.into());
         let value = self.data_reader.get(id)?;
         Ok(Value::from(value))
@@ -87,7 +88,7 @@ where Position: Copy + From<u64> + Into<u64>,
 
     /// Get multiple values from the index, for a range of positions.
     pub fn get_range(&mut self, range: &Range<Position>)
-        -> Result<Vec<Value>, StreamError>
+        -> Result<Vec<Value>, Error>
     {
         let start = Id::<u64>::from(range.start.into());
         let end = Id::<u64>::from(range.end.into());
@@ -103,7 +104,7 @@ where Position: Copy + From<u64> + Into<u64>,
     /// index, the range will be from the last value in the index to the
     /// end of the referenced data.
     pub fn target_range(&mut self, position: Position, target_length: u64)
-        -> Result<Range<Value>, StreamError>
+        -> Result<Range<Value>, Error>
     {
         let stop = position.into() + 2;
         let range = if stop > self.len() {
@@ -122,7 +123,7 @@ where Position: Copy + From<u64> + Into<u64>,
 
     /// Leftmost position where a value would be ordered within this index.
     pub fn bisect_left(&mut self, value: &Value)
-        -> Result<Position, StreamError>
+        -> Result<Position, Error>
     {
         let range = Position::from(0)..Position::from(self.len());
         self.bisect_range_left(&range, value)
@@ -130,7 +131,7 @@ where Position: Copy + From<u64> + Into<u64>,
 
     /// Rightmost position where a value would be ordered within this index.
     pub fn bisect_right(&mut self, value: &Value)
-        -> Result<Position, StreamError>
+        -> Result<Position, Error>
     {
         let range = Position::from(0)..Position::from(self.len());
         self.bisect_range_right(&range, value)
@@ -138,7 +139,7 @@ where Position: Copy + From<u64> + Into<u64>,
 
     /// Leftmost position where a value would be ordered within this range.
     pub fn bisect_range_left(&mut self, range: &Range<Position>, value: &Value)
-        -> Result<Position, StreamError>
+        -> Result<Position, Error>
     {
         let mut search_start = range.start.into();
         let mut search_end = range.end.into();
@@ -180,7 +181,7 @@ where Position: Copy + From<u64> + Into<u64>,
 
     /// Rightmost position where a value would be ordered within this range.
     pub fn bisect_range_right(&mut self, range: &Range<Position>, value: &Value)
-        -> Result<Position, StreamError>
+        -> Result<Position, Error>
     {
         let mut search_start = range.start.into();
         let mut search_end = range.end.into();
