@@ -43,7 +43,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ['macos-latest', 'ubuntu-22.04']
+        os: ['macos-latest', 'ubuntu-22.04', 'windows-latest']
         rust: ['stable', '1.57']
 
     runs-on: ${{ matrix.os }}
@@ -62,6 +62,20 @@ jobs:
       - name: Install dependencies (macOS)
         run: brew install gtk4 pkg-config
         if: matrix.os == 'macos-latest'
+
+      - name: Install dependencies (Windows)
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: c8696863d371ab7f46e213d8f5ca923c4aef2a00
+          runVcpkgInstall: true
+          doNotCache: false
+        if: matrix.os == 'windows-latest'
+
+      - name: Set environment (Windows)
+        run: echo "PKG_CONFIG=${VCPKG_INSTALLED_DIR}/x64-windows/tools/pkgconf/pkgconf.exe" >> $GITHUB_ENV
+        if: matrix.os == 'windows-latest'
+
+      - uses: mxschmitt/action-tmate@v3
 
       - uses: Swatinem/rust-cache@v2
 
