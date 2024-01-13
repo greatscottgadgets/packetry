@@ -838,8 +838,15 @@ pub fn stop_luna() -> Result<(), Error> {
 pub fn display_error(result: Result<(), Error>) {
     #[cfg(not(feature="test-ui-replay"))]
     if let Err(e) = result {
-        let backtrace = e.backtrace();
-        let message = format!("{e}\n\nBacktrace:\n\n{backtrace}");
+        use std::fmt::Write;
+        let mut message = format!("{e}");
+        for cause in e.chain().skip(1) {
+            write!(message, "\ncaused by: {cause} ({cause:?})").unwrap();
+        }
+        let backtrace = format!("{}", e.backtrace());
+        if backtrace != "disabled backtrace" {
+            write!(message, "\n\nBacktrace:\n{backtrace}").unwrap();
+        }
         gtk::glib::idle_add_once(move || {
             WINDOW.with(|win_opt| {
                 match win_opt.borrow().as_ref() {
