@@ -231,8 +231,20 @@ impl LunaStop {
     pub fn stop(self) -> Result<(), Error> {
         println!("Requesting capture stop");
         self.stop_request.send(()).context("Failed sending stop request")?;
-        self.worker.join().err().context("Worker thread panic")?;
-        Ok(())
+        match self.worker.join() {
+            Ok(result) => result,
+            Err(panic) => {
+                let msg = match (
+                    panic.downcast_ref::<&str>(),
+                    panic.downcast_ref::<String>())
+                {
+                    (Some(&s), _) => s,
+                    (_,  Some(s)) => s,
+                    (None,  None) => "<No panic message>"
+                };
+                bail!("Worker thread panic: {msg}");
+            }
+        }
     }
 }
 
