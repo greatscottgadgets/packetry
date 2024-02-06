@@ -45,8 +45,7 @@ impl GenericModel<TrafficItem> for TrafficModel {
            on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>)
         -> Result<Self, Error>
     {
-        let model: TrafficModel =
-            glib::Object::new(&[]).expect("Failed to create TrafficModel");
+        let model: TrafficModel = glib::Object::new::<TrafficModel>();
         let tree = TreeListModel::new(
             capture,
             #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
@@ -91,8 +90,7 @@ impl GenericModel<DeviceItem> for DeviceModel {
            on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>)
         -> Result<Self, Error>
     {
-        let model: DeviceModel =
-            glib::Object::new(&[]).expect("Failed to create DeviceModel");
+        let model: DeviceModel = glib::Object::new::<DeviceModel>();
         let tree = TreeListModel::new(
             capture,
             #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]

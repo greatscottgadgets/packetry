@@ -36,18 +36,18 @@ impl ObjectImpl for TrafficModel {}
 impl ObjectImpl for DeviceModel {}
 
 impl ListModelImpl for TrafficModel {
-    fn item_type(&self, _list_model: &Self::Type) -> glib::Type {
+    fn item_type(&self) -> glib::Type {
         TrafficRowData::static_type()
     }
 
-    fn n_items(&self, _list_model: &Self::Type) -> u32 {
+    fn n_items(&self) -> u32 {
         match self.tree.borrow().as_ref() {
             Some(tree) => tree.n_items(),
             None => 0
         }
     }
 
-    fn item(&self, _list_model: &Self::Type, position: u32)
+    fn item(&self, position: u32)
         -> Option<glib::Object>
     {
         match self.tree.borrow().as_ref() {
@@ -58,18 +58,18 @@ impl ListModelImpl for TrafficModel {
 }
 
 impl ListModelImpl for DeviceModel {
-    fn item_type(&self, _list_model: &Self::Type) -> glib::Type {
+    fn item_type(&self) -> glib::Type {
         DeviceRowData::static_type()
     }
 
-    fn n_items(&self, _list_model: &Self::Type) -> u32 {
+    fn n_items(&self) -> u32 {
         match self.tree.borrow().as_ref() {
             Some(tree) => tree.n_items(),
             None => 0
         }
     }
 
-    fn item(&self, _list_model: &Self::Type, position: u32)
+    fn item(&self, position: u32)
         -> Option<glib::Object>
     {
         match self.tree.borrow().as_ref() {

@@ -411,7 +411,7 @@ fn create_view<Item, Model, RowData>(
             )
         )).expect("Failed to create model");
     let bind_model = model.clone();
-    let selection_model = SingleSelection::new(Some(&model));
+    let selection_model = SingleSelection::new(Some(model.clone()));
     let factory = SignalListItemFactory::new();
     factory.connect_setup(move |_, list_item| {
         let expander = ExpanderWrapper::new();
@@ -494,7 +494,7 @@ fn create_view<Item, Model, RowData>(
     factory.connect_bind(move |_, item| display_error(bind(item)));
     factory.connect_unbind(move |_, item| display_error(unbind(item)));
 
-    let view = ListView::new(Some(&selection_model), Some(&factory));
+    let view = ListView::new(Some(selection_model), Some(factory));
 
     #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
     model.connect_items_changed(move |model, position, removed, added|

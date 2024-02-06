@@ -6,7 +6,8 @@
 
 mod imp;
 
-use gtk::glib::{self, Cast};
+use gtk::glib;
+use gtk::prelude::Cast;
 use gtk::subclass::prelude::*;
 
 use crate::capture::{TrafficItem, DeviceItem};
@@ -28,8 +29,7 @@ pub trait GenericRowData<Item> where Item: Copy {
 
 impl GenericRowData<TrafficItem> for TrafficRowData {
     fn new(node: Result<ItemNodeRc<TrafficItem>, String>) -> TrafficRowData {
-        let row: TrafficRowData =
-            glib::Object::new(&[]).expect("Failed to create row data");
+        let row: TrafficRowData = glib::Object::new::<TrafficRowData>();
         row.imp().node.replace(Some(node));
         row
     }
@@ -41,8 +41,7 @@ impl GenericRowData<TrafficItem> for TrafficRowData {
 
 impl GenericRowData<DeviceItem> for DeviceRowData {
     fn new(node: Result<ItemNodeRc<DeviceItem>, String>) -> DeviceRowData {
-        let row: DeviceRowData =
-            glib::Object::new(&[]).expect("Failed to create row data");
+        let row: DeviceRowData = glib::Object::new::<DeviceRowData>();
         row.imp().node.replace(Some(node));
         row
     }

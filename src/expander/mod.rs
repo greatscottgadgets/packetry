@@ -20,9 +20,7 @@ glib::wrapper! {
 
 impl ExpanderWrapper {
     pub fn new() -> ExpanderWrapper {
-        let wrapper: ExpanderWrapper =
-            glib::Object::new(&[])
-                         .expect("Failed to create new expander wrapper");
+        let wrapper: ExpanderWrapper = glib::Object::new::<ExpanderWrapper>();
         wrapper.imp().text_label.replace(
             Label::builder()
                 .ellipsize(EllipsizeMode::End)
