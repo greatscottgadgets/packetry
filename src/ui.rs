@@ -21,7 +21,7 @@ use gtk::gio::{
     MenuItem,
     SimpleActionGroup
 };
-use gtk::glib::{self, Object, SignalHandlerId};
+use gtk::glib::{Object, SignalHandlerId};
 use gtk::{
     prelude::*,
     AboutDialog,
@@ -45,11 +45,14 @@ use gtk::{
     SignalListItemFactory,
     SingleSelection,
     StringList,
+    TextBuffer,
     Orientation,
+    WrapMode,
 };
 
 #[cfg(not(test))]
 use gtk::{
+    glib,
     MessageDialog,
     DialogFlags,
     ButtonsType,
@@ -314,13 +317,14 @@ pub struct UserInterface {
     device_window: ScrolledWindow,
     pub traffic_model: Option<TrafficModel>,
     pub device_model: Option<DeviceModel>,
+    detail_text: TextBuffer,
     endpoint_count: u16,
     show_progress: Option<FileAction>,
     cancel_handle: Cancellable,
     progress_bar: ProgressBar,
     separator: Separator,
     vbox: gtk::Box,
-    paned: gtk::Paned,
+    vertical_panes: gtk::Paned,
     open_button: Button,
     save_button: Button,
     scan_button: Button,
@@ -427,12 +431,36 @@ pub fn activate(application: &Application) -> Result<(), Error> {
         .min_content_width(240)
         .build();
 
-    let paned = gtk::Paned::builder()
+    let detail_text = gtk::TextBuffer::new(None);
+    let detail_view = gtk::TextView::builder()
+        .buffer(&detail_text)
+        .editable(false)
+        .wrap_mode(WrapMode::Word)
+        .vexpand(true)
+        .left_margin(5)
+        .build();
+
+    let detail_window = gtk::ScrolledWindow::builder()
+        .hscrollbar_policy(gtk::PolicyType::Automatic)
+        .min_content_width(640)
+        .min_content_height(120)
+        .child(&detail_view)
+        .build();
+
+    let horizontal_panes = gtk::Paned::builder()
         .orientation(Orientation::Horizontal)
         .wide_handle(true)
         .start_child(&traffic_window)
         .end_child(&device_window)
         .vexpand(true)
+        .build();
+
+    let vertical_panes = gtk::Paned::builder()
+        .orientation(Orientation::Vertical)
+        .wide_handle(true)
+        .start_child(&horizontal_panes)
+        .end_child(&detail_window)
+        .hexpand(true)
         .build();
 
     let separator = gtk::Separator::new(Orientation::Horizontal);
@@ -462,7 +490,7 @@ pub fn activate(application: &Application) -> Result<(), Error> {
     vbox.append(&gtk::Separator::new(Orientation::Horizontal));
     vbox.append(&warning.info_bar);
     vbox.append(&gtk::Separator::new(Orientation::Horizontal));
-    vbox.append(&paned);
+    vbox.append(&vertical_panes);
     vbox.append(&gtk::Separator::new(Orientation::Horizontal));
     vbox.append(&status_label);
     vbox.append(&gtk::Separator::new(Orientation::Horizontal));
@@ -488,13 +516,14 @@ pub fn activate(application: &Application) -> Result<(), Error> {
                 device_window,
                 traffic_model: None,
                 device_model: None,
+                detail_text,
                 endpoint_count: 2,
                 show_progress: None,
                 cancel_handle: Cancellable::new(),
                 progress_bar,
                 separator,
                 vbox,
-                paned,
+                vertical_panes,
                 scan_button,
                 open_button,
                 save_button,
@@ -522,7 +551,7 @@ fn create_view<Item, Model, RowData>(
         capture: &CaptureReader,
         #[cfg(any(test, feature="record-ui-test"))]
         recording_args: (&Rc<RefCell<Recording>>, &'static str))
-    -> (Model, ColumnView)
+    -> (Model, SingleSelection, ColumnView)
     where
         Item: Copy + 'static,
         Model: GenericModel<Item> + IsA<ListModel> + IsA<Object>,
@@ -630,7 +659,7 @@ fn create_view<Item, Model, RowData>(
     factory.connect_bind(move |_, item| display_error(bind(item)));
     factory.connect_unbind(move |_, item| display_error(unbind(item)));
 
-    let view = ColumnView::new(Some(selection_model));
+    let view = ColumnView::new(Some(selection_model.clone()));
     let column = ColumnViewColumn::new(Some(title), Some(factory));
     view.append_column(&column);
     view.add_css_class("data-table");
@@ -680,20 +709,20 @@ fn create_view<Item, Model, RowData>(
         changed_rec.borrow_mut().log_items_changed(
             name, model, position, removed, added));
 
-    (model, view)
+    (model, selection_model, view)
 }
 
 pub fn reset_capture() -> Result<CaptureWriter, Error> {
     let (writer, reader) = create_capture()?;
     with_ui(|ui| {
-        let (traffic_model, traffic_view) =
+        let (traffic_model, traffic_selection, traffic_view) =
             create_view::<TrafficItem, TrafficModel, TrafficRowData>(
                 "Traffic",
                 &reader,
                 #[cfg(any(test, feature="record-ui-test"))]
                 (&ui.recording, "traffic")
             );
-        let (device_model, device_view) =
+        let (device_model, _device_selection, device_view) =
             create_view::<DeviceItem, DeviceModel, DeviceRowData>(
                 "Devices",
                 &reader,
@@ -701,12 +730,36 @@ pub fn reset_capture() -> Result<CaptureWriter, Error> {
                 (&ui.recording, "devices")
             );
         ui.capture = reader;
-        ui.traffic_model = Some(traffic_model);
+        ui.traffic_model = Some(traffic_model.clone());
         ui.device_model = Some(device_model);
         ui.endpoint_count = 2;
         ui.traffic_window.set_child(Some(&traffic_view));
         ui.device_window.set_child(Some(&device_view));
         ui.stop_button.set_sensitive(false);
+        traffic_selection.connect_selection_changed(
+            move |selection_model, _position, _n_items| {
+                display_error(with_ui(|ui| {
+                    let text = match selection_model.selected_item() {
+                        Some(item) => {
+                            let row = item
+                                .downcast::<TrafficRowData>()
+                                .or_else(|_|
+                                    bail!("Item is not TrafficRowData"))?;
+                            match row.node() {
+                                Ok(node_ref) => {
+                                    let node = node_ref.borrow();
+                                    traffic_model.summary(&node.item)
+                                },
+                                Err(msg) => msg
+                            }
+                        },
+                        None => String::from("No item selected"),
+                    };
+                    ui.detail_text.set_text(&text);
+                    Ok(())
+                }))
+            }
+        );
         Ok(())
     })?;
     Ok(writer)
@@ -843,7 +896,7 @@ fn start_pcap(action: FileAction, file: gio::File) -> Result<(), Error> {
         ui.stop_button.set_sensitive(true);
         let signal_id = ui.stop_button.connect_clicked(|_|
             display_error(stop_pcap()));
-        ui.vbox.insert_child_after(&ui.separator, Some(&ui.paned));
+        ui.vbox.insert_child_after(&ui.separator, Some(&ui.vertical_panes));
         ui.vbox.insert_child_after(&ui.progress_bar, Some(&ui.separator));
         ui.show_progress = Some(action);
         ui.file_name = file
