@@ -971,7 +971,7 @@ impl CaptureReader {
             .configurations
             .load()
             .get(*conf)
-            .map(Arc::clone)
+            .cloned()
     }
 
     fn transfer_extended(&mut self,
