@@ -47,8 +47,6 @@ use pcap_file::{
     pcap::{PcapReader, PcapWriter, PcapHeader, RawPcapPacket},
 };
 
-use rusb::Context;
-
 use crate::backend::luna::{LunaDevice, LunaHandle, LunaStop, Speed};
 use crate::capture::{
     create_capture,
@@ -95,7 +93,6 @@ enum FileAction {
 }
 
 struct DeviceSelector {
-    usb_context: Option<Context>,
     devices: Vec<LunaDevice>,
     dev_strings: Vec<String>,
     dev_speeds: Vec<Vec<&'static str>>,
@@ -107,7 +104,6 @@ struct DeviceSelector {
 impl DeviceSelector {
     fn new() -> Result<Self, Error> {
         let selector = DeviceSelector {
-            usb_context: Context::new().ok(),
             devices: vec![],
             dev_strings: vec![],
             dev_speeds: vec![],
@@ -144,11 +140,7 @@ impl DeviceSelector {
     }
 
     fn scan(&mut self) -> Result<bool, Error> {
-        self.devices = if let Some(context) = self.usb_context.as_mut() {
-            LunaDevice::scan(context)?
-        } else {
-            vec![]
-        };
+        self.devices = LunaDevice::scan()?;
         self.dev_strings = Vec::with_capacity(self.devices.len());
         self.dev_speeds = Vec::with_capacity(self.devices.len());
         for device in self.devices.iter() {
