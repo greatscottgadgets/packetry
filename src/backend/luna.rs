@@ -84,12 +84,12 @@ pub struct LunaHandle {
 }
 
 pub struct LunaStream {
-    receiver: Receiver<Result<Vec<u8>, rusb::Error>>,
+    receiver: Receiver<Vec<u8>>,
 }
 
 pub struct LunaStop {
     stop_request: Sender<()>,
-    worker: JoinHandle::<Result<(), Error>>,
+    worker: JoinHandle::<()>,
 }
 
 impl LunaDevice {
@@ -160,13 +160,14 @@ impl LunaHandle {
         Ok(speeds)
     }
 
-    pub fn start(mut self, speed: Speed)
+    pub fn start<F>(mut self, speed: Speed, result_handler: F)
         -> Result<(LunaStream, LunaStop), Error>
+        where F: FnOnce(Result<(), Error>) + Send + 'static
     {
         self.usb_handle.claim_interface(0)?;
         let (tx, rx) = channel();
         let (stop_tx, stop_rx) = channel();
-        let worker = spawn(move || {
+        let mut run_capture = move || {
             let mut buffer = [0u8; READ_LEN];
             let mut packet_queue = PacketQueue::new();
             let mut state = State::new(true, speed);
@@ -179,23 +180,20 @@ impl LunaHandle {
                     Ok(count) => {
                         packet_queue.extend(&buffer[..count]);
                         while let Some(packet) = packet_queue.next() {
-                            tx.send(Ok(packet))
+                            tx.send(packet)
                                 .context("Failed sending packet to channel")?;
                         };
                     },
                     Err(rusb::Error::Timeout) => continue,
-                    Err(usb_error) => {
-                        tx.send(Err(usb_error))
-                            .context("Failed sending error to channel")?;
-                        return Err(Error::from(usb_error));
-                    }
+                    Err(usb_error) => return Err(Error::from(usb_error))
                 }
             }
             state.set_enable(false);
             self.write_state(state)?;
             println!("Capture disabled");
             Ok(())
-        });
+        };
+        let worker = spawn(move || result_handler(run_capture()));
         Ok((
             LunaStream {
                 receiver: rx,
@@ -222,7 +220,7 @@ impl LunaHandle {
 }
 
 impl LunaStream {
-    pub fn next(&mut self) -> Option<Result<Vec<u8>, rusb::Error>> {
+    pub fn next(&mut self) -> Option<Vec<u8>> {
         self.receiver.recv().ok()
     }
 }
@@ -232,7 +230,7 @@ impl LunaStop {
         println!("Requesting capture stop");
         self.stop_request.send(()).context("Failed sending stop request")?;
         match self.worker.join() {
-            Ok(result) => result,
+            Ok(()) => Ok(()),
             Err(panic) => {
                 let msg = match (
                     panic.downcast_ref::<&str>(),
