@@ -6,6 +6,7 @@ use std::sync::mpsc;
 use anyhow::{Context as ErrorContext, Error, bail};
 use futures_channel::oneshot;
 use futures_lite::future::block_on;
+use futures_util::{select_biased, FutureExt};
 use num_enum::{FromPrimitive, IntoPrimitive};
 use nusb::{
     self,
@@ -14,6 +15,7 @@ use nusb::{
         ControlType,
         Recipient,
         RequestBuffer,
+        TransferError,
     },
     DeviceInfo,
     Interface
@@ -28,6 +30,7 @@ const NOT_SUPPORTED: u16 = 0x0003;
 const ENDPOINT: u8 = 0x81;
 
 const READ_LEN: usize = 0x4000;
+const NUM_TRANSFERS: usize = 4;
 
 #[derive(Copy, Clone, FromPrimitive, IntoPrimitive)]
 #[repr(u8)]
@@ -176,25 +179,60 @@ impl LunaHandle {
         // Channel to stop the capture thread on request.
         let (stop_tx, mut stop_rx) = oneshot::channel();
         // Capture thread.
-        let mut run_capture = move || {
+        let run_capture = move || {
             let mut state = State::new(true, speed);
             self.write_state(state)?;
             println!("Capture enabled, speed: {}", speed.description());
-            while stop_rx.try_recv() == Ok(None) {
-                let buffer = RequestBuffer::new(READ_LEN);
-                let completion = block_on(self.interface.bulk_in(ENDPOINT, buffer));
-                match completion.status {
-                    Ok(()) => {
-                        // Transfer successful. Send data to decoder thread.
-                        tx.send(completion.data)
-                            .context("Failed sending capture data to channel")?;
-                    },
-                    Err(usb_error) => {
-                        // Transfer failed.
-                        return Err(Error::from(usb_error));
-                    }
-                }
+            let mut stopped = false;
+
+            // Set up transfer queue.
+            let mut data_transfer_queue = self.interface.bulk_in_queue(ENDPOINT);
+            while data_transfer_queue.pending() < NUM_TRANSFERS {
+                data_transfer_queue.submit(RequestBuffer::new(READ_LEN));
             }
+
+            // Set up capture task.
+            let capture_task = async move {
+                loop {
+                    select_biased!(
+                        _ = stop_rx => {
+                            // Capture stop requested. Cancel all transfers.
+                            data_transfer_queue.cancel_all();
+                            stopped = true;
+                        }
+                        completion = data_transfer_queue.next_complete().fuse() => {
+                            match completion.status {
+                                Ok(()) => {
+                                    // Transfer successful.
+                                    if !stopped {
+                                        // Send data to decoder thread.
+                                        tx.send(completion.data)
+                                            .context("Failed sending capture data to channel")?;
+                                        // Submit next transfer.
+                                        data_transfer_queue.submit(RequestBuffer::new(READ_LEN));
+                                    }
+                                },
+                                Err(TransferError::Cancelled) if stopped => {
+                                    // Transfer cancelled during shutdown. Drop it.
+                                    drop(completion);
+                                    if data_transfer_queue.pending() == 0 {
+                                        // All cancellations now handled.
+                                        return Ok(());
+                                    }
+                                },
+                                Err(usb_error) => {
+                                    // Transfer failed.
+                                    return Err(Error::from(usb_error));
+                                }
+                            }
+                        }
+                    );
+                }
+            };
+
+            // Run capture task to completion.
+            block_on(capture_task)?;
+
             // Stop capture.
             state.set_enable(false);
             self.write_state(state)?;
