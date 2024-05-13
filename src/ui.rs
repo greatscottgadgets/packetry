@@ -791,7 +791,7 @@ pub fn start_luna() -> Result<(), Error> {
     let writer = reset_capture()?;
     with_ui(|ui| {
         let (luna, speed) = ui.selector.open()?;
-        let (mut stream_handle, stop_handle) =
+        let (stream_handle, stop_handle) =
             luna.start(speed, display_error)?;
         ui.stop_handle.replace(stop_handle);
         ui.open_button.set_sensitive(false);
@@ -803,7 +803,7 @@ pub fn start_luna() -> Result<(), Error> {
             display_error(stop_luna()));
         let read_luna = move || {
             let mut decoder = Decoder::new(writer)?;
-            while let Some(packet) = stream_handle.next() {
+            for packet in stream_handle {
                 decoder.handle_raw_packet(&packet)?;
             }
             decoder.finish()?;

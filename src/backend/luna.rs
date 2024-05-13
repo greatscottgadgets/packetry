@@ -218,9 +218,10 @@ impl LunaHandle {
     }
 }
 
-impl LunaStream {
+impl Iterator for LunaStream {
+    type Item = Vec<u8>;
 
-    pub fn next(&mut self) -> Option<Vec<u8>> {
+    fn next(&mut self) -> Option<Vec<u8>> {
         loop {
             // Do we have another packet already in the buffer?
             match self.next_buffered_packet() {
@@ -236,7 +237,9 @@ impl LunaStream {
             }
         }
     }
+}
 
+impl LunaStream {
     fn next_buffered_packet(&mut self) -> Option<Vec<u8>> {
         // Do we have the length header for the next packet?
         let buffer_len = self.buffer.len();
