@@ -169,16 +169,17 @@ impl LunaHandle {
         let (tx, rx) = channel();
         let (stop_tx, stop_rx) = channel();
         let mut run_capture = move || {
-            let mut buffer = [0u8; READ_LEN];
             let mut state = State::new(true, speed);
             self.write_state(state)?;
             println!("Capture enabled, speed: {}", speed.description());
             while stop_rx.try_recv().is_err() {
+                let mut buffer = vec![0u8; READ_LEN];
                 let result = self.usb_handle.read_bulk(
                     ENDPOINT, &mut buffer, Duration::from_millis(100));
                 match result {
                     Ok(count) => {
-                        tx.send(buffer[..count].to_vec())
+                        buffer.truncate(count);
+                        tx.send(buffer)
                             .context("Failed sending capture data to channel")?;
                     },
                     Err(rusb::Error::Timeout) => continue,
