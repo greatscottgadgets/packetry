@@ -85,6 +85,7 @@ pub struct LunaHandle {
 
 pub struct LunaStream {
     receiver: Receiver<Vec<u8>>,
+    buffer: VecDeque<u8>,
 }
 
 pub struct LunaStop {
@@ -169,7 +170,6 @@ impl LunaHandle {
         let (stop_tx, stop_rx) = channel();
         let mut run_capture = move || {
             let mut buffer = [0u8; READ_LEN];
-            let mut packet_queue = PacketQueue::new();
             let mut state = State::new(true, speed);
             self.write_state(state)?;
             println!("Capture enabled, speed: {}", speed.description());
@@ -178,11 +178,8 @@ impl LunaHandle {
                     ENDPOINT, &mut buffer, Duration::from_millis(100));
                 match result {
                     Ok(count) => {
-                        packet_queue.extend(&buffer[..count]);
-                        while let Some(packet) = packet_queue.next() {
-                            tx.send(packet)
-                                .context("Failed sending packet to channel")?;
-                        };
+                        tx.send(buffer[..count].to_vec())
+                            .context("Failed sending capture data to channel")?;
                     },
                     Err(rusb::Error::Timeout) => continue,
                     Err(usb_error) => return Err(Error::from(usb_error))
@@ -197,6 +194,7 @@ impl LunaHandle {
         Ok((
             LunaStream {
                 receiver: rx,
+                buffer: VecDeque::new(),
             },
             LunaStop {
                 stop_request: stop_tx,
@@ -220,8 +218,43 @@ impl LunaHandle {
 }
 
 impl LunaStream {
+
     pub fn next(&mut self) -> Option<Vec<u8>> {
-        self.receiver.recv().ok()
+        loop {
+            // Do we have another packet already in the buffer?
+            match self.next_buffered_packet() {
+                // Yes; return the packet.
+                Some(packet) => return Some(packet),
+                // No; wait for more data from the capture thread.
+                None => match self.receiver.recv().ok() {
+                    // Received more data; add it to the buffer and retry.
+                    Some(bytes) => self.buffer.extend(bytes.iter()),
+                    // Capture has ended, there are no more packets.
+                    None => return None
+                }
+            }
+        }
+    }
+
+    fn next_buffered_packet(&mut self) -> Option<Vec<u8>> {
+        // Do we have the length header for the next packet?
+        let buffer_len = self.buffer.len();
+        if buffer_len <= 2 {
+            return None;
+        }
+
+        // Do we have all the data for the next packet?
+        let packet_len = u16::from_be_bytes(
+            [self.buffer[0], self.buffer[1]]) as usize;
+        if buffer_len <= 2 + packet_len {
+            return None;
+        }
+
+        // Remove the length header from the buffer.
+        self.buffer.drain(0..2);
+
+        // Remove the packet from the buffer and return it.
+        Some(self.buffer.drain(0..packet_len).collect())
     }
 }
 
@@ -243,36 +276,5 @@ impl LunaStop {
                 bail!("Worker thread panic: {msg}");
             }
         }
-    }
-}
-
-struct PacketQueue {
-    buffer: VecDeque<u8>,
-}
-
-impl PacketQueue {
-    pub fn new() -> Self {
-        PacketQueue {
-            buffer: VecDeque::new(),
-        }
-    }
-
-    pub fn extend(&mut self, slice: &[u8]) {
-        self.buffer.extend(slice.iter());
-    }
-
-    pub fn next(&mut self) -> Option<Vec<u8>> {
-        let buffer_len = self.buffer.len();
-        if buffer_len <= 2 {
-            return None;
-        }
-        let packet_len = u16::from_be_bytes([self.buffer[0], self.buffer[1]]) as usize;
-        if buffer_len <= 2 + packet_len {
-            return None;
-        }
-
-        self.buffer.drain(0..2);
-
-        Some(self.buffer.drain(0..packet_len).collect())
     }
 }
