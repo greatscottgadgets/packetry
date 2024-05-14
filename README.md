@@ -1,6 +1,6 @@
 # Packetry
 
-A fast, intuitive USB 2.0 protocol analysis application for use with [LUNA](https://github.com/greatscottgadgets/luna).
+A fast, intuitive USB 2.0 protocol analysis application for use with [Cynthion](https://greatscottgadgets.com/cynthion/).
 
 Packetry is currently in active development and not yet ready for initial release.
 
@@ -19,8 +19,6 @@ You must also have the GTK 4 headers installed and discoverable via `pkg-config`
 To build, run `cargo build` after installing the necessary prerequisites (see below). Run with `cargo run`.
 
 If you pass a capture filename as an argument, Packetry will attempt to load it. The current supported file format is a `.pcap` file with the `LINKTYPE_USB_2_0` link layer header type.
-
-If no filename is provided, Packetry will attempt to start live capture from an attached device running the [LUNA](https://github.com/greatscottgadgets/luna) USB analyzer applet.
 
 ### Installing prerequisites
 
