@@ -47,7 +47,7 @@ use pcap_file::{
     pcap::{PcapReader, PcapWriter, PcapHeader, RawPcapPacket},
 };
 
-use crate::backend::luna::{LunaDevice, LunaHandle, LunaStop, Speed};
+use crate::backend::cynthion::{CynthionDevice, CynthionHandle, CynthionStop, Speed};
 use crate::capture::{
     create_capture,
     CaptureReader,
@@ -93,7 +93,7 @@ enum FileAction {
 }
 
 struct DeviceSelector {
-    devices: Vec<LunaDevice>,
+    devices: Vec<CynthionDevice>,
     dev_strings: Vec<String>,
     dev_speeds: Vec<Vec<&'static str>>,
     dev_dropdown: DropDown,
@@ -140,7 +140,7 @@ impl DeviceSelector {
     }
 
     fn scan(&mut self) -> Result<bool, Error> {
-        self.devices = LunaDevice::scan()?;
+        self.devices = CynthionDevice::scan()?;
         self.dev_strings = Vec::with_capacity(self.devices.len());
         self.dev_speeds = Vec::with_capacity(self.devices.len());
         for device in self.devices.iter() {
@@ -158,13 +158,13 @@ impl DeviceSelector {
         Ok(available)
     }
 
-    fn open(&self) -> Result<(LunaHandle, Speed), Error> {
+    fn open(&self) -> Result<(CynthionHandle, Speed), Error> {
         let device_id = self.dev_dropdown.selected();
         let device = &self.devices[device_id as usize];
         let speed_id = self.speed_dropdown.selected() as usize;
         let speed = device.speeds[speed_id];
-        let luna = device.open()?;
-        Ok((luna, speed))
+        let cynthion = device.open()?;
+        Ok((cynthion, speed))
     }
 
     fn replace_dropdown<T: AsRef<str>>(
@@ -187,7 +187,7 @@ pub struct UserInterface {
     pub capture: CaptureReader,
     selector: DeviceSelector,
     file_name: Option<String>,
-    stop_handle: Option<LunaStop>,
+    stop_handle: Option<CynthionStop>,
     traffic_window: ScrolledWindow,
     device_window: ScrolledWindow,
     pub traffic_model: Option<TrafficModel>,
@@ -328,7 +328,7 @@ pub fn activate(application: &Application) -> Result<(), Error> {
     window.set_child(Some(&vbox));
 
     scan_button.connect_clicked(|_| display_error(detect_hardware()));
-    capture_button.connect_clicked(|_| display_error(start_luna()));
+    capture_button.connect_clicked(|_| display_error(start_cynthion()));
     open_button.connect_clicked(|_| display_error(choose_file(Load)));
     save_button.connect_clicked(|_| display_error(choose_file(Save)));
 
@@ -779,12 +779,12 @@ fn detect_hardware() -> Result<(), Error> {
     })
 }
 
-pub fn start_luna() -> Result<(), Error> {
+pub fn start_cynthion() -> Result<(), Error> {
     let writer = reset_capture()?;
     with_ui(|ui| {
-        let (luna, speed) = ui.selector.open()?;
+        let (cynthion, speed) = ui.selector.open()?;
         let (stream_handle, stop_handle) =
-            luna.start(speed, display_error)?;
+            cynthion.start(speed, display_error)?;
         ui.stop_handle.replace(stop_handle);
         ui.open_button.set_sensitive(false);
         ui.scan_button.set_sensitive(false);
@@ -792,8 +792,8 @@ pub fn start_luna() -> Result<(), Error> {
         ui.capture_button.set_sensitive(false);
         ui.stop_button.set_sensitive(true);
         let signal_id = ui.stop_button.connect_clicked(|_|
-            display_error(stop_luna()));
-        let read_luna = move || {
+            display_error(stop_cynthion()));
+        let read_cynthion = move || {
             let mut decoder = Decoder::new(writer)?;
             for packet in stream_handle {
                 decoder.handle_raw_packet(&packet)?;
@@ -802,7 +802,7 @@ pub fn start_luna() -> Result<(), Error> {
             Ok(())
         };
         std::thread::spawn(move || {
-            display_error(read_luna());
+            display_error(read_cynthion());
             gtk::glib::idle_add_once(|| {
                 display_error(
                     with_ui(|ui| {
@@ -824,7 +824,7 @@ pub fn start_luna() -> Result<(), Error> {
     })
 }
 
-pub fn stop_luna() -> Result<(), Error> {
+pub fn stop_cynthion() -> Result<(), Error> {
     with_ui(|ui| {
         if let Some(stop_handle) = ui.stop_handle.take() {
             stop_handle.stop()?;

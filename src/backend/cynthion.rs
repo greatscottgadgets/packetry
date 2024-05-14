@@ -80,30 +80,30 @@ impl State {
     }
 }
 
-/// A Luna device attached to the system.
-pub struct LunaDevice {
+/// A Cynthion device attached to the system.
+pub struct CynthionDevice {
     device_info: DeviceInfo,
     pub description: String,
     pub speeds: Vec<Speed>,
 }
 
-/// A handle to an open Luna device.
-pub struct LunaHandle {
+/// A handle to an open Cynthion device.
+pub struct CynthionHandle {
     interface: Interface,
 }
 
-pub struct LunaStream {
+pub struct CynthionStream {
     receiver: mpsc::Receiver<Vec<u8>>,
     buffer: VecDeque<u8>,
 }
 
-pub struct LunaStop {
+pub struct CynthionStop {
     stop_request: oneshot::Sender<()>,
     worker: JoinHandle::<()>,
 }
 
-impl LunaDevice {
-    pub fn scan() -> Result<Vec<LunaDevice>, Error> {
+impl CynthionDevice {
+    pub fn scan() -> Result<Vec<CynthionDevice>, Error> {
         let mut result = Vec::new();
         for device_info in nusb::list_devices()? {
             if device_info.vendor_id() == VID &&
@@ -120,9 +120,9 @@ impl LunaDevice {
                     .product_string()
                     .unwrap_or("Device");
                 let description = format!("{} {}", manufacturer, product);
-                let handle = LunaHandle::new(&device_info)?;
+                let handle = CynthionHandle::new(&device_info)?;
                 let speeds = handle.speeds()?;
-                result.push(LunaDevice{
+                result.push(CynthionDevice{
                     device_info,
                     description,
                     speeds,
@@ -132,16 +132,16 @@ impl LunaDevice {
         Ok(result)
     }
 
-    pub fn open(&self) -> Result<LunaHandle, Error> {
-        LunaHandle::new(&self.device_info)
+    pub fn open(&self) -> Result<CynthionHandle, Error> {
+        CynthionHandle::new(&self.device_info)
     }
 }
 
-impl LunaHandle {
-    fn new(device_info: &DeviceInfo) -> Result<LunaHandle, Error> {
+impl CynthionHandle {
+    fn new(device_info: &DeviceInfo) -> Result<CynthionHandle, Error> {
         let device = device_info.open()?;
         let interface = device.claim_interface(0)?;
-        Ok(LunaHandle { interface })
+        Ok(CynthionHandle { interface })
     }
 
     pub fn speeds(&self) -> Result<Vec<Speed>, Error> {
@@ -171,7 +171,7 @@ impl LunaHandle {
     }
 
     pub fn start<F>(mut self, speed: Speed, result_handler: F)
-        -> Result<(LunaStream, LunaStop), Error>
+        -> Result<(CynthionStream, CynthionStop), Error>
         where F: FnOnce(Result<(), Error>) + Send + 'static
     {
         // Channel to pass captured data to the decoder thread.
@@ -241,11 +241,11 @@ impl LunaHandle {
         };
         let worker = spawn(move || result_handler(run_capture()));
         Ok((
-            LunaStream {
+            CynthionStream {
                 receiver: rx,
                 buffer: VecDeque::new(),
             },
-            LunaStop {
+            CynthionStop {
                 stop_request: stop_tx,
                 worker,
             }
@@ -269,7 +269,7 @@ impl LunaHandle {
     }
 }
 
-impl Iterator for LunaStream {
+impl Iterator for CynthionStream {
     type Item = Vec<u8>;
 
     fn next(&mut self) -> Option<Vec<u8>> {
@@ -290,7 +290,7 @@ impl Iterator for LunaStream {
     }
 }
 
-impl LunaStream {
+impl CynthionStream {
     fn next_buffered_packet(&mut self) -> Option<Vec<u8>> {
         // Do we have the length header for the next packet?
         let buffer_len = self.buffer.len();
@@ -313,7 +313,7 @@ impl LunaStream {
     }
 }
 
-impl LunaStop {
+impl CynthionStop {
     pub fn stop(self) -> Result<(), Error> {
         println!("Requesting capture stop");
         self.stop_request.send(())
