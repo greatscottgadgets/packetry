@@ -146,7 +146,7 @@ impl DeviceSelector {
         for device in self.devices.iter() {
             self.dev_strings.push(device.description.clone());
             self.dev_speeds.push(
-                device.speeds.iter().map(|x| x.description()).collect()
+                device.speeds.iter().map(Speed::description).collect()
             )
         }
         let no_speeds = vec![];
