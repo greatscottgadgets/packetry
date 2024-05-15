@@ -80,10 +80,20 @@ impl State {
     }
 }
 
+/// Whether a Cynthion device is ready for use as an analyzer.
+pub enum CynthionUsability {
+    /// Device is usable at supported speeds.
+    Usable(Vec<Speed>),
+    /// Device not usable, with a string explaining why.
+    Unusable(String),
+}
+
+use CynthionUsability::*;
+
 /// A Cynthion device attached to the system.
 pub struct CynthionDevice {
     pub device_info: DeviceInfo,
-    pub speeds: Vec<Speed>,
+    pub usability: CynthionUsability,
 }
 
 /// A handle to an open Cynthion device.
@@ -101,39 +111,68 @@ pub struct CynthionStop {
     worker: JoinHandle::<()>,
 }
 
+/// Check whether a Cynthion device is usable as an analyzer.
+fn check_device(device_info: &DeviceInfo) -> Result<Vec<Speed>, Error>
+{
+    // Check version is correct.
+    let version = device_info.device_version();
+    if !(MIN_SUPPORTED..=NOT_SUPPORTED).contains(&version) {
+        bail!("Device version not supported");
+    }
+
+    // Check we can open the device.
+    let device = device_info
+        .open()
+        .context("Failed to open device")?;
+
+    // Try to claim the interface.
+    let interface = device
+        .claim_interface(0)
+        .context("Failed to claim interface")?;
+
+    // Fetch the available speeds.
+    let handle = CynthionHandle { interface };
+    let speeds = handle
+        .speeds()
+        .context("Failed to fetch available speeds")?;
+
+    // Now we have a usable device.
+    return Ok(speeds);
+}
+
 impl CynthionDevice {
     pub fn scan() -> Result<Vec<CynthionDevice>, Error> {
-        let mut result = Vec::new();
-        for device_info in nusb::list_devices()? {
-            if device_info.vendor_id() == VID &&
-               device_info.product_id() == PID
-            {
-                let version = device_info.device_version();
-                if !(MIN_SUPPORTED..=NOT_SUPPORTED).contains(&version) {
-                    continue;
+        Ok(nusb::list_devices()?
+            .filter(|info| info.vendor_id() == VID)
+            .filter(|info| info.product_id() == PID)
+            .map(|device_info|
+                match check_device(&device_info) {
+                    Ok(speeds) => CynthionDevice {
+                        device_info,
+                        usability: Usable(speeds)
+                    },
+                    Err(err) => CynthionDevice {
+                        device_info,
+                        usability: Unusable(format!("{}", err))
+                    }
                 }
-                let handle = CynthionHandle::new(&device_info)?;
-                let speeds = handle.speeds()?;
-                result.push(CynthionDevice{
-                    device_info,
-                    speeds,
-                })
-            }
-        }
-        Ok(result)
+            )
+            .collect())
     }
 
     pub fn open(&self) -> Result<CynthionHandle, Error> {
-        CynthionHandle::new(&self.device_info)
+        match &self.usability {
+            Usable(..) => {
+                let device = self.device_info.open()?;
+                let interface = device.claim_interface(0)?;
+                Ok(CynthionHandle { interface })
+            },
+            Unusable(reason) => bail!("Device not usable: {}", reason),
+        }
     }
 }
 
 impl CynthionHandle {
-    fn new(device_info: &DeviceInfo) -> Result<CynthionHandle, Error> {
-        let device = device_info.open()?;
-        let interface = device.claim_interface(0)?;
-        Ok(CynthionHandle { interface })
-    }
 
     pub fn speeds(&self) -> Result<Vec<Speed>, Error> {
         use Speed::*;
