@@ -82,8 +82,7 @@ impl State {
 
 /// A Cynthion device attached to the system.
 pub struct CynthionDevice {
-    device_info: DeviceInfo,
-    pub description: String,
+    pub device_info: DeviceInfo,
     pub speeds: Vec<Speed>,
 }
 
@@ -113,18 +112,10 @@ impl CynthionDevice {
                 if !(MIN_SUPPORTED..=NOT_SUPPORTED).contains(&version) {
                     continue;
                 }
-                let manufacturer = device_info
-                    .manufacturer_string()
-                    .unwrap_or("Unknown");
-                let product = device_info
-                    .product_string()
-                    .unwrap_or("Device");
-                let description = format!("{} {}", manufacturer, product);
                 let handle = CynthionHandle::new(&device_info)?;
                 let speeds = handle.speeds()?;
                 result.push(CynthionDevice{
                     device_info,
-                    description,
                     speeds,
                 })
             }

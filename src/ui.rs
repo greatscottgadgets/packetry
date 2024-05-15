@@ -146,10 +146,24 @@ impl DeviceSelector {
             self.dev_dropdown.disconnect(handler);
         }
         self.devices = CynthionDevice::scan()?;
-        self.dev_strings = Vec::with_capacity(self.devices.len());
-        self.dev_speeds = Vec::with_capacity(self.devices.len());
+        let count = self.devices.len();
+        self.dev_strings = Vec::with_capacity(count);
+        self.dev_speeds = Vec::with_capacity(count);
         for device in self.devices.iter() {
-            self.dev_strings.push(device.description.clone());
+            self.dev_strings.push(
+                if count <= 1 {
+                    String::from("Cynthion")
+                } else {
+                    let info = &device.device_info;
+                    if let Some(serial) = info.serial_number() {
+                        format!("Cynthion #{}", serial)
+                    } else {
+                        format!("Cynthion (bus {}, device {})",
+                            info.bus_number(),
+                            info.device_address())
+                    }
+                }
+            );
             self.dev_speeds.push(
                 device.speeds.iter().map(Speed::description).collect()
             )
