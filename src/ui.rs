@@ -13,7 +13,7 @@ use std::{io::Read, net::TcpListener};
 use anyhow::{Context as ErrorContext, Error, bail};
 
 use gtk::gio::ListModel;
-use gtk::glib::Object;
+use gtk::glib::{Object, SignalHandlerId};
 use gtk::{
     prelude::*,
     Align,
@@ -98,6 +98,7 @@ struct DeviceSelector {
     dev_speeds: Vec<Vec<&'static str>>,
     dev_dropdown: DropDown,
     speed_dropdown: DropDown,
+    change_handler: Option<SignalHandlerId>,
     container: gtk::Box,
 }
 
@@ -109,6 +110,7 @@ impl DeviceSelector {
             dev_speeds: vec![],
             dev_dropdown: DropDown::from_strings(&[]),
             speed_dropdown: DropDown::from_strings(&[]),
+            change_handler: None,
             container: gtk::Box::builder()
                 .orientation(Orientation::Horizontal)
                 .build()
@@ -140,6 +142,9 @@ impl DeviceSelector {
     }
 
     fn scan(&mut self) -> Result<(), Error> {
+        if let Some(handler) = self.change_handler.take() {
+            self.dev_dropdown.disconnect(handler);
+        }
         self.devices = CynthionDevice::scan()?;
         self.dev_strings = Vec::with_capacity(self.devices.len());
         self.dev_speeds = Vec::with_capacity(self.devices.len());
@@ -154,7 +159,17 @@ impl DeviceSelector {
         self.replace_dropdown(&self.dev_dropdown, &self.dev_strings);
         self.replace_dropdown(&self.speed_dropdown, speed_strings);
         self.set_sensitive(self.device_available());
+        self.change_handler = Some(
+            self.dev_dropdown.connect_selected_notify(
+                |_| display_error(device_selection_changed())));
         Ok(())
+    }
+
+    fn update_speeds(&self) {
+        let index = self.dev_dropdown.selected() as usize;
+        let speed_strings = &self.dev_speeds[index];
+        self.replace_dropdown(&self.speed_dropdown, speed_strings);
+        self.speed_dropdown.set_sensitive(!speed_strings.is_empty());
     }
 
     fn open(&self) -> Result<(CynthionHandle, Speed), Error> {
@@ -774,6 +789,13 @@ fn detect_hardware() -> Result<(), Error> {
     with_ui(|ui| {
         ui.selector.scan()?;
         ui.capture_button.set_sensitive(ui.selector.device_available());
+        Ok(())
+    })
+}
+
+fn device_selection_changed() -> Result<(), Error> {
+    with_ui(|ui| {
+        ui.selector.update_speeds();
         Ok(())
     })
 }
