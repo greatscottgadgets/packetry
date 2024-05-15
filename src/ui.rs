@@ -139,7 +139,7 @@ impl DeviceSelector {
         self.speed_dropdown.set_sensitive(sensitive);
     }
 
-    fn scan(&mut self) -> Result<bool, Error> {
+    fn scan(&mut self) -> Result<(), Error> {
         self.devices = CynthionDevice::scan()?;
         self.dev_strings = Vec::with_capacity(self.devices.len());
         self.dev_speeds = Vec::with_capacity(self.devices.len());
@@ -153,9 +153,8 @@ impl DeviceSelector {
         let speed_strings = self.dev_speeds.first().unwrap_or(&no_speeds);
         self.replace_dropdown(&self.dev_dropdown, &self.dev_strings);
         self.replace_dropdown(&self.speed_dropdown, speed_strings);
-        let available = self.device_available();
-        self.set_sensitive(available);
-        Ok(available)
+        self.set_sensitive(self.device_available());
+        Ok(())
     }
 
     fn open(&self) -> Result<(CynthionHandle, Speed), Error> {
