@@ -189,7 +189,7 @@ impl DeviceSelector {
                     }
                 }
             );
-            if let Usable(speeds) = &device.usability {
+            if let Usable(_, speeds) = &device.usability {
                 self.dev_speeds.push(
                     speeds.iter().map(Speed::description).collect()
                 )
@@ -220,7 +220,7 @@ impl DeviceSelector {
         let device_id = self.dev_dropdown.selected();
         let device = &self.devices[device_id as usize];
         match &device.usability {
-            Usable(speeds) => {
+            Usable(_, speeds) => {
                 let speed_id = self.speed_dropdown.selected() as usize;
                 let speed = speeds[speed_id];
                 let cynthion = device.open()?;
