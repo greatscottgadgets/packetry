@@ -24,8 +24,9 @@ use nusb::{
 const VID: u16 = 0x1d50;
 const PID: u16 = 0x615b;
 
-const MIN_SUPPORTED: u16 = 0x0002;
-const NOT_SUPPORTED: u16 = 0x0003;
+const CLASS: u8 = 0xff;
+const SUBCLASS: u8 = 0x10;
+const PROTOCOL: u8 = 0x00;
 
 const ENDPOINT: u8 = 0x81;
 
@@ -80,11 +81,25 @@ impl State {
     }
 }
 
+pub struct InterfaceSelection {
+    interface_number: u8,
+    alt_setting_number: u8,
+}
+
+/// Whether a Cynthion device is ready for use as an analyzer.
+pub enum CynthionUsability {
+    /// Device is usable via the given interface, at supported speeds.
+    Usable(InterfaceSelection, Vec<Speed>),
+    /// Device not usable, with a string explaining why.
+    Unusable(String),
+}
+
+use CynthionUsability::*;
+
 /// A Cynthion device attached to the system.
 pub struct CynthionDevice {
-    device_info: DeviceInfo,
-    pub description: String,
-    pub speeds: Vec<Speed>,
+    pub device_info: DeviceInfo,
+    pub usability: CynthionUsability,
 }
 
 /// A handle to an open Cynthion device.
@@ -102,56 +117,119 @@ pub struct CynthionStop {
     worker: JoinHandle::<()>,
 }
 
+/// Check whether a Cynthion device has an accessible analyzer interface.
+fn check_device(device_info: &DeviceInfo)
+    -> Result<(InterfaceSelection, Vec<Speed>), Error>
+{
+    // Check we can open the device.
+    let device = device_info
+        .open()
+        .context("Failed to open device")?;
+
+    // Read the active configuration.
+    let config = device
+        .active_configuration()
+        .context("Failed to retrieve active configuration")?;
+
+    // Iterate over the interfaces...
+    for interface in config.interfaces() {
+        let interface_number = interface.interface_number();
+
+        // ...and alternate settings...
+        for alt_setting in interface.alt_settings() {
+            let alt_setting_number = alt_setting.alternate_setting();
+
+            // Ignore if this is not our supported target.
+            if alt_setting.class() != CLASS ||
+               alt_setting.subclass() != SUBCLASS
+            {
+                continue;
+            }
+
+            // Check protocol version.
+            let protocol = alt_setting.protocol();
+            if protocol != PROTOCOL {
+                bail!("Wrong protocol version: {} supported, {} found",
+                      PROTOCOL, protocol);
+            }
+
+            // Try to claim the interface.
+            let interface = device
+                .claim_interface(interface_number)
+                .context("Failed to claim interface")?;
+
+            // Select the required alternate, if not the default.
+            if alt_setting_number != 0 {
+                interface
+                    .set_alt_setting(alt_setting_number)
+                    .context("Failed to select alternate setting")?;
+            }
+
+            // Fetch the available speeds.
+            let handle = CynthionHandle { interface };
+            let speeds = handle
+                .speeds()
+                .context("Failed to fetch available speeds")?;
+
+            // Now we have a usable device.
+            return Ok((
+                InterfaceSelection {
+                    interface_number,
+                    alt_setting_number,
+                },
+                speeds
+            ))
+        }
+    }
+
+    bail!("No supported analyzer interface found");
+}
+
 impl CynthionDevice {
     pub fn scan() -> Result<Vec<CynthionDevice>, Error> {
-        let mut result = Vec::new();
-        for device_info in nusb::list_devices()? {
-            if device_info.vendor_id() == VID &&
-               device_info.product_id() == PID
-            {
-                let version = device_info.device_version();
-                if !(MIN_SUPPORTED..=NOT_SUPPORTED).contains(&version) {
-                    continue;
+        Ok(nusb::list_devices()?
+            .filter(|info| info.vendor_id() == VID)
+            .filter(|info| info.product_id() == PID)
+            .map(|device_info|
+                match check_device(&device_info) {
+                    Ok((iface, speeds)) => CynthionDevice {
+                        device_info,
+                        usability: Usable(iface, speeds)
+                    },
+                    Err(err) => CynthionDevice {
+                        device_info,
+                        usability: Unusable(format!("{}", err))
+                    }
                 }
-                let manufacturer = device_info
-                    .manufacturer_string()
-                    .unwrap_or("Unknown");
-                let product = device_info
-                    .product_string()
-                    .unwrap_or("Device");
-                let description = format!("{} {}", manufacturer, product);
-                let handle = CynthionHandle::new(&device_info)?;
-                let speeds = handle.speeds()?;
-                result.push(CynthionDevice{
-                    device_info,
-                    description,
-                    speeds,
-                })
-            }
-        }
-        Ok(result)
+            )
+            .collect())
     }
 
     pub fn open(&self) -> Result<CynthionHandle, Error> {
-        CynthionHandle::new(&self.device_info)
+        match &self.usability {
+            Usable(iface, _) => {
+                let device = self.device_info.open()?;
+                let interface = device.claim_interface(iface.interface_number)?;
+                if iface.alt_setting_number != 0 {
+                    interface.set_alt_setting(iface.alt_setting_number)?;
+                }
+                Ok(CynthionHandle { interface })
+            },
+            Unusable(reason) => bail!("Device not usable: {}", reason),
+        }
     }
 }
 
 impl CynthionHandle {
-    fn new(device_info: &DeviceInfo) -> Result<CynthionHandle, Error> {
-        let device = device_info.open()?;
-        let interface = device.claim_interface(0)?;
-        Ok(CynthionHandle { interface })
-    }
 
     pub fn speeds(&self) -> Result<Vec<Speed>, Error> {
         use Speed::*;
         let control = Control {
             control_type: ControlType::Vendor,
-            recipient: Recipient::Device,
+            recipient: Recipient::Interface,
             request: 2,
             value: 0,
-            index: 0,
+            index: self.interface.interface_number() as u16,
         };
         let mut buf = [0; 64];
         let timeout = Duration::from_secs(1);
@@ -255,10 +333,10 @@ impl CynthionHandle {
     fn write_state(&mut self, state: State) -> Result<(), Error> {
         let control = Control {
             control_type: ControlType::Vendor,
-            recipient: Recipient::Device,
+            recipient: Recipient::Interface,
             request: 1,
             value: u16::from(state.0),
-            index: 0,
+            index: self.interface.interface_number() as u16,
         };
         let data = &[];
         let timeout = Duration::from_secs(1);

@@ -13,7 +13,7 @@ use std::{io::Read, net::TcpListener};
 use anyhow::{Context as ErrorContext, Error, bail};
 
 use gtk::gio::ListModel;
-use gtk::glib::Object;
+use gtk::glib::{Object, SignalHandlerId};
 use gtk::{
     prelude::*,
     Align,
@@ -47,7 +47,13 @@ use pcap_file::{
     pcap::{PcapReader, PcapWriter, PcapHeader, RawPcapPacket},
 };
 
-use crate::backend::cynthion::{CynthionDevice, CynthionHandle, CynthionStop, Speed};
+use crate::backend::cynthion::{
+    CynthionDevice,
+    CynthionHandle,
+    CynthionStop,
+    CynthionUsability::*,
+    Speed};
+
 use crate::capture::{
     create_capture,
     CaptureReader,
@@ -98,6 +104,7 @@ struct DeviceSelector {
     dev_speeds: Vec<Vec<&'static str>>,
     dev_dropdown: DropDown,
     speed_dropdown: DropDown,
+    change_handler: Option<SignalHandlerId>,
     container: gtk::Box,
 }
 
@@ -109,6 +116,7 @@ impl DeviceSelector {
             dev_speeds: vec![],
             dev_dropdown: DropDown::from_strings(&[]),
             speed_dropdown: DropDown::from_strings(&[]),
+            change_handler: None,
             container: gtk::Box::builder()
                 .orientation(Orientation::Horizontal)
                 .build()
@@ -130,41 +138,98 @@ impl DeviceSelector {
         Ok(selector)
     }
 
+    fn current_device(&self) -> Option<&CynthionDevice> {
+        if self.devices.is_empty() {
+            None
+        } else {
+            Some(&self.devices[self.dev_dropdown.selected() as usize])
+        }
+    }
+
     fn device_available(&self) -> bool {
-        !self.devices.is_empty()
+        match self.current_device() {
+            None => false,
+            Some(device) => match device.usability {
+                Usable(..) => true,
+                Unusable(..) => false,
+            }
+        }
     }
 
     fn set_sensitive(&mut self, sensitive: bool) {
-        self.dev_dropdown.set_sensitive(sensitive);
-        self.speed_dropdown.set_sensitive(sensitive);
+        if sensitive {
+            self.dev_dropdown.set_sensitive(!self.devices.is_empty());
+            self.speed_dropdown.set_sensitive(self.device_available());
+        } else {
+            self.dev_dropdown.set_sensitive(false);
+            self.speed_dropdown.set_sensitive(false);
+        }
     }
 
-    fn scan(&mut self) -> Result<bool, Error> {
+    fn scan(&mut self) -> Result<(), Error> {
+        if let Some(handler) = self.change_handler.take() {
+            self.dev_dropdown.disconnect(handler);
+        }
         self.devices = CynthionDevice::scan()?;
-        self.dev_strings = Vec::with_capacity(self.devices.len());
-        self.dev_speeds = Vec::with_capacity(self.devices.len());
+        let count = self.devices.len();
+        self.dev_strings = Vec::with_capacity(count);
+        self.dev_speeds = Vec::with_capacity(count);
         for device in self.devices.iter() {
-            self.dev_strings.push(device.description.clone());
-            self.dev_speeds.push(
-                device.speeds.iter().map(|x| x.description()).collect()
-            )
+            self.dev_strings.push(
+                if count <= 1 {
+                    String::from("Cynthion")
+                } else {
+                    let info = &device.device_info;
+                    if let Some(serial) = info.serial_number() {
+                        format!("Cynthion #{}", serial)
+                    } else {
+                        format!("Cynthion (bus {}, device {})",
+                            info.bus_number(),
+                            info.device_address())
+                    }
+                }
+            );
+            if let Usable(_, speeds) = &device.usability {
+                self.dev_speeds.push(
+                    speeds.iter().map(Speed::description).collect()
+                )
+            } else {
+                self.dev_speeds.push(vec![]);
+            }
         }
         let no_speeds = vec![];
         let speed_strings = self.dev_speeds.first().unwrap_or(&no_speeds);
         self.replace_dropdown(&self.dev_dropdown, &self.dev_strings);
         self.replace_dropdown(&self.speed_dropdown, speed_strings);
-        let available = self.device_available();
-        self.set_sensitive(available);
-        Ok(available)
+        self.dev_dropdown.set_sensitive(!self.devices.is_empty());
+        self.speed_dropdown.set_sensitive(!speed_strings.is_empty());
+        self.change_handler = Some(
+            self.dev_dropdown.connect_selected_notify(
+                |_| display_error(device_selection_changed())));
+        Ok(())
+    }
+
+    fn update_speeds(&self) {
+        let index = self.dev_dropdown.selected() as usize;
+        let speed_strings = &self.dev_speeds[index];
+        self.replace_dropdown(&self.speed_dropdown, speed_strings);
+        self.speed_dropdown.set_sensitive(!speed_strings.is_empty());
     }
 
     fn open(&self) -> Result<(CynthionHandle, Speed), Error> {
         let device_id = self.dev_dropdown.selected();
         let device = &self.devices[device_id as usize];
-        let speed_id = self.speed_dropdown.selected() as usize;
-        let speed = device.speeds[speed_id];
-        let cynthion = device.open()?;
-        Ok((cynthion, speed))
+        match &device.usability {
+            Usable(_, speeds) => {
+                let speed_id = self.speed_dropdown.selected() as usize;
+                let speed = speeds[speed_id];
+                let cynthion = device.open()?;
+                Ok((cynthion, speed))
+            },
+            Unusable(reason) => {
+                bail!("Device not usable: {}", reason)
+            }
+        }
     }
 
     fn replace_dropdown<T: AsRef<str>>(
@@ -747,9 +812,8 @@ fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), Error> {
                         ui.open_button.set_sensitive(true);
                         ui.save_button.set_sensitive(true);
                         ui.scan_button.set_sensitive(true);
-                        let available = ui.selector.device_available();
-                        ui.selector.set_sensitive(available);
-                        ui.capture_button.set_sensitive(available);
+                        ui.selector.set_sensitive(true);
+                        ui.capture_button.set_sensitive(ui.selector.device_available());
                         Ok(())
                     })
                 );
@@ -775,6 +839,14 @@ fn detect_hardware() -> Result<(), Error> {
     with_ui(|ui| {
         ui.selector.scan()?;
         ui.capture_button.set_sensitive(ui.selector.device_available());
+        Ok(())
+    })
+}
+
+fn device_selection_changed() -> Result<(), Error> {
+    with_ui(|ui| {
+        ui.capture_button.set_sensitive(ui.selector.device_available());
+        ui.selector.update_speeds();
         Ok(())
     })
 }
@@ -809,9 +881,8 @@ pub fn start_cynthion() -> Result<(), Error> {
                         ui.stop_button.disconnect(signal_id);
                         ui.stop_button.set_sensitive(false);
                         ui.open_button.set_sensitive(true);
-                        let available = ui.selector.device_available();
-                        ui.selector.set_sensitive(available);
-                        ui.capture_button.set_sensitive(available);
+                        ui.selector.set_sensitive(true);
+                        ui.capture_button.set_sensitive(ui.selector.device_available());
                         Ok(())
                     })
                 );
