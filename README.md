@@ -6,7 +6,7 @@ A fast, intuitive USB 2.0 protocol analysis application for use with [Cynthion](
 
 Packetry is currently in active development and not yet ready for initial release.
 
-![Screenshot of Packetry](screenshot.png)
+![Screenshot of Packetry](assets/screenshot.png)
 
 ## Development
 
