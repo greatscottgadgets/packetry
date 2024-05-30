@@ -1,5 +1,7 @@
 # Packetry
 
+![Illustration of a USB-C connector and a stylized network packet behind a green magnifying glass](assets/icon-generated/512x512@2/icon.png)
+
 A fast, intuitive USB 2.0 protocol analysis application for use with [Cynthion](https://greatscottgadgets.com/cynthion/).
 
 Packetry is currently in active development and not yet ready for initial release.
