@@ -6,6 +6,9 @@ use anyhow::{Context, Error};
 use futures_lite::future::block_on;
 use nusb::transfer::RequestBuffer;
 
+use std::thread::sleep;
+use std::time::Duration;
+
 const TRANSFER_LENGTH: usize = 0x1000;
 
 fn main() {
@@ -20,13 +23,24 @@ fn test() -> Result<(), Error> {
         .context("Failed to create decoder")?;
 
     // Open analyzer device.
-    let analyzer = CynthionDevice::scan()
+    println!("Opening analyzer device");
+    let mut analyzer = CynthionDevice::scan()
         .context("Failed to scan for analyzers")?
         .iter()
         .find(|dev| matches!(dev.usability, CynthionUsability::Usable(..)))
         .context("No usable analyzer found")?
         .open()
         .context("Failed to open analyzer")?;
+
+    // Tell analyzer to disconnect test device.
+    println!("Disabling test device");
+    analyzer.configure_test_device(false)?;
+    sleep(Duration::from_millis(100));
+
+    // Tell analyzer to connect test device, then wait for it to enumerate.
+    println!("Enabling test device");
+    analyzer.configure_test_device(true)?;
+    sleep(Duration::from_millis(2000));
 
     // Start capture.
     let (packets, stop_handle) = analyzer
