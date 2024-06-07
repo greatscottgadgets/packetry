@@ -817,10 +817,10 @@ impl CaptureReader {
         self.packet_data.get_range(&data_byte_range)
     }
 
-    fn transfer_bytes(&mut self,
-                      endpoint_id: EndpointId,
-                      data_range: &Range<EndpointDataEvent>,
-                      length: usize)
+    pub fn transfer_bytes(&mut self,
+                          endpoint_id: EndpointId,
+                          data_range: &Range<EndpointDataEvent>,
+                          length: usize)
         -> Result<Vec<u8>, Error>
     {
         let mut transfer_bytes = Vec::with_capacity(length);

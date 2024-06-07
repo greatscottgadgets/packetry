@@ -87,12 +87,21 @@ bitfield! {
     #[derive(Copy, Clone)]
     struct TestConfig(u8);
     bool, connect, set_connect: 0;
+    u8, from into Speed, speed, set_speed: 2, 1;
 }
 
 impl TestConfig {
-    fn new(connect: bool) -> TestConfig {
+    fn new(speed: Option<Speed>) -> TestConfig {
         let mut config = TestConfig(0);
-        config.set_connect(connect);
+        match speed {
+            Some(speed) => {
+                config.set_connect(true);
+                config.set_speed(speed);
+            },
+            None => {
+                config.set_connect(false);
+            }
+        };
         config
     }
 }
@@ -345,10 +354,10 @@ impl CynthionHandle {
         Ok(())
     }
 
-    pub fn configure_test_device(&mut self, connect: bool)
+    pub fn configure_test_device(&mut self, speed: Option<Speed>)
         -> Result<(), Error>
     {
-        let test_config = TestConfig::new(connect);
+        let test_config = TestConfig::new(speed);
         self.write_request(3, test_config.0)
             .context("Failed to set test device configuration")
     }

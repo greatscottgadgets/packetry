@@ -9,13 +9,20 @@ use nusb::transfer::RequestBuffer;
 use std::thread::sleep;
 use std::time::Duration;
 
-const TRANSFER_LENGTH: usize = 0x1000;
-
 fn main() {
-    test().unwrap();
+    for (speed, ep_addr, length) in [
+        (Speed::High, 0x81, 4096),
+        (Speed::Full, 0x82, 512),
+        (Speed::Low,  0x83, 64)]
+    {
+        test(speed, ep_addr, length).unwrap();
+    }
 }
 
-fn test() -> Result<(), Error> {
+fn test(speed: Speed, ep_addr: u8, length: usize) -> Result<(), Error> {
+    let desc = speed.description();
+    println!("\nTesting at {desc}:\n");
+
     // Create capture and decoder.
     let (writer, mut reader) = create_capture()
         .context("Failed to create capture")?;
@@ -34,17 +41,17 @@ fn test() -> Result<(), Error> {
 
     // Tell analyzer to disconnect test device.
     println!("Disabling test device");
-    analyzer.configure_test_device(false)?;
+    analyzer.configure_test_device(None)?;
     sleep(Duration::from_millis(100));
 
     // Tell analyzer to connect test device, then wait for it to enumerate.
     println!("Enabling test device");
-    analyzer.configure_test_device(true)?;
+    analyzer.configure_test_device(Some(speed))?;
     sleep(Duration::from_millis(2000));
 
     // Start capture.
     let (packets, stop_handle) = analyzer
-        .start(Speed::High,
+        .start(speed,
                |err| err.context("Failure in capture thread").unwrap())
         .context("Failed to start analyzer")?;
 
@@ -60,12 +67,12 @@ fn test() -> Result<(), Error> {
 
     // Read some data from the test device.
     println!("Starting read from test device");
-    let buf = RequestBuffer::new(TRANSFER_LENGTH);
-    let transfer = test_interface.bulk_in(0x81, buf);
+    let buf = RequestBuffer::new(length);
+    let transfer = test_interface.interrupt_in(ep_addr, buf);
     let completion = block_on(transfer);
     completion.status.context("Transfer from test device failed")?;
     println!("Read {} bytes from test device", completion.data.len());
-    assert_eq!(completion.data.len(), TRANSFER_LENGTH);
+    assert_eq!(completion.data.len(), length);
 
     // Stop analyzer.
     stop_handle.stop()
@@ -77,17 +84,18 @@ fn test() -> Result<(), Error> {
             .context("Error decoding packet")?;
     }
 
-    // Look up the endpoint we're interested in and count payload bytes.
+    // Check captured payload bytes match received ones.
     let bytes_captured = bytes_on_endpoint(&mut reader)
         .context("Error counting captured bytes on endpoint")?;
     println!("Captured {}/{} bytes of data read from test device",
-             bytes_captured, TRANSFER_LENGTH);
-    assert_eq!(bytes_captured, TRANSFER_LENGTH as u64);
+             bytes_captured.len(), length);
+    assert_eq!(bytes_captured, completion.data[0..bytes_captured.len()],
+                   "Captured data did not match received data");
 
     Ok(())
 }
 
-fn bytes_on_endpoint(reader: &mut CaptureReader) -> Result<u64, Error> {
+fn bytes_on_endpoint(reader: &mut CaptureReader) -> Result<Vec<u8>, Error> {
     // Endpoint IDs 0 and 1 are special (used for invalid and framing packets).
     // The first normal endpoint in the capture will have endpoint ID 2.
     let endpoint_id = EndpointId::from(2);
@@ -97,6 +105,10 @@ fn bytes_on_endpoint(reader: &mut CaptureReader) -> Result<u64, Error> {
     let ep_transaction_ids = ep_traf.transfer_index.target_range(
         ep_transfer_id, ep_traf.transaction_ids.len())?;
     let data_range = ep_traf.transfer_data_range(&ep_transaction_ids)?;
-    let data_length = ep_traf.transfer_data_length(&data_range)?;
-    Ok(data_length)
+    let data_length = ep_traf
+        .transfer_data_length(&data_range)?
+        .try_into()
+        .unwrap();
+    let data = reader.transfer_bytes(endpoint_id, &data_range, data_length)?;
+    Ok(data)
 }
