@@ -1,5 +1,5 @@
 use std::collections::VecDeque;
-use std::thread::{spawn, JoinHandle};
+use std::thread::{spawn, sleep, JoinHandle};
 use std::time::Duration;
 use std::sync::mpsc;
 
@@ -288,6 +288,9 @@ impl CynthionHandle {
                    stop: oneshot::Receiver<()>)
         -> Result<(), Error>
     {
+        // Set up a separate channel pair to stop queue processing.
+        let (queue_stop_tx, queue_stop_rx) = oneshot::channel();
+
         // Start capture.
         let mut state = State::new(true, speed);
         self.write_state(state)?;
@@ -296,13 +299,27 @@ impl CynthionHandle {
         // Set up transfer queue.
         let mut queue = CynthionQueue::new(&self.interface, tx);
 
-        // Run queue until stopped.
-        block_on(queue.process(stop))?;
+        // Spawn a worker thread to process queue until stopped.
+        let worker = spawn(move || block_on(queue.process(queue_stop_rx)));
+
+        // Wait until this thread is signalled to stop.
+        block_on(stop)
+            .context("Sender was dropped")?;
 
         // Stop capture.
         state.set_enable(false);
         self.write_state(state)?;
         println!("Capture disabled");
+
+        // Leave queue worker running briefly to receive flushed data.
+        sleep(Duration::from_millis(100));
+
+        // Signal queue processing to stop, then join the worker thread.
+        queue_stop_tx.send(())
+            .or_else(|_| bail!("Failed sending stop signal to queue worker"))?;
+        handle_thread_panic(worker.join())?
+            .context("Error in queue worker thread")?;
+
         Ok(())
     }
 
