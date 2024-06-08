@@ -103,6 +103,7 @@ pub struct CynthionDevice {
 }
 
 /// A handle to an open Cynthion device.
+#[derive(Clone)]
 pub struct CynthionHandle {
     interface: Interface,
 }
@@ -248,7 +249,7 @@ impl CynthionHandle {
         Ok(speeds)
     }
 
-    pub fn start<F>(self, speed: Speed, result_handler: F)
+    pub fn start<F>(&self, speed: Speed, result_handler: F)
         -> Result<(CynthionStream, CynthionStop), Error>
         where F: FnOnce(Result<(), Error>) + Send + 'static
     {
@@ -256,9 +257,12 @@ impl CynthionHandle {
         let (tx, rx) = mpsc::channel();
         // Channel to stop the capture thread on request.
         let (stop_tx, stop_rx) = oneshot::channel();
+        // Clone handle to give to the worker thread.
+        let handle = self.clone();
+        // Start worker thread.
         let worker = spawn(move ||
             result_handler(
-                self.run_capture(speed, tx, stop_rx)));
+                handle.run_capture(speed, tx, stop_rx)));
         Ok((
             CynthionStream {
                 receiver: rx,
