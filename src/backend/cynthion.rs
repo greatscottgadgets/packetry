@@ -292,9 +292,7 @@ impl CynthionHandle {
         let (queue_stop_tx, queue_stop_rx) = oneshot::channel();
 
         // Start capture.
-        let mut state = State::new(true, speed);
-        self.write_state(state)?;
-        println!("Capture enabled, speed: {}", speed.description());
+        self.start_capture(speed)?;
 
         // Set up transfer queue.
         let mut queue = CynthionQueue::new(&self.interface, tx);
@@ -307,9 +305,7 @@ impl CynthionHandle {
             .context("Sender was dropped")?;
 
         // Stop capture.
-        state.set_enable(false);
-        self.write_state(state)?;
-        println!("Capture disabled");
+        self.stop_capture()?;
 
         // Leave queue worker running briefly to receive flushed data.
         sleep(Duration::from_millis(100));
@@ -320,6 +316,18 @@ impl CynthionHandle {
         handle_thread_panic(worker.join())?
             .context("Error in queue worker thread")?;
 
+        Ok(())
+    }
+
+    fn start_capture(&mut self, speed: Speed) -> Result<(), Error> {
+        self.write_state(State::new(true, speed))?;
+        println!("Capture enabled, speed: {}", speed.description());
+        Ok(())
+    }
+
+    fn stop_capture(&mut self) -> Result<(), Error> {
+        self.write_state(State::new(false, Speed::High))?;
+        println!("Capture disabled");
         Ok(())
     }
 
