@@ -1,11 +1,12 @@
 use std::collections::VecDeque;
-use std::thread::{spawn, JoinHandle};
+use std::thread::{spawn, sleep, JoinHandle};
 use std::time::Duration;
 use std::sync::mpsc;
 
 use anyhow::{Context as ErrorContext, Error, bail};
 use futures_channel::oneshot;
 use futures_lite::future::block_on;
+use futures_util::future::FusedFuture;
 use futures_util::{select_biased, FutureExt};
 use num_enum::{FromPrimitive, IntoPrimitive};
 use nusb::{
@@ -13,6 +14,7 @@ use nusb::{
     transfer::{
         Control,
         ControlType,
+        Queue,
         Recipient,
         RequestBuffer,
         TransferError,
@@ -103,8 +105,14 @@ pub struct CynthionDevice {
 }
 
 /// A handle to an open Cynthion device.
+#[derive(Clone)]
 pub struct CynthionHandle {
     interface: Interface,
+}
+
+pub struct CynthionQueue {
+    tx: mpsc::Sender<Vec<u8>>,
+    queue: Queue<RequestBuffer>,
 }
 
 pub struct CynthionStream {
@@ -248,76 +256,20 @@ impl CynthionHandle {
         Ok(speeds)
     }
 
-    pub fn start<F>(mut self, speed: Speed, result_handler: F)
+    pub fn start<F>(&self, speed: Speed, result_handler: F)
         -> Result<(CynthionStream, CynthionStop), Error>
         where F: FnOnce(Result<(), Error>) + Send + 'static
     {
         // Channel to pass captured data to the decoder thread.
         let (tx, rx) = mpsc::channel();
         // Channel to stop the capture thread on request.
-        let (stop_tx, mut stop_rx) = oneshot::channel();
-        // Capture thread.
-        let run_capture = move || {
-            let mut state = State::new(true, speed);
-            self.write_state(state)?;
-            println!("Capture enabled, speed: {}", speed.description());
-            let mut stopped = false;
-
-            // Set up transfer queue.
-            let mut data_transfer_queue = self.interface.bulk_in_queue(ENDPOINT);
-            while data_transfer_queue.pending() < NUM_TRANSFERS {
-                data_transfer_queue.submit(RequestBuffer::new(READ_LEN));
-            }
-
-            // Set up capture task.
-            let capture_task = async move {
-                loop {
-                    select_biased!(
-                        _ = stop_rx => {
-                            // Capture stop requested. Cancel all transfers.
-                            data_transfer_queue.cancel_all();
-                            stopped = true;
-                        }
-                        completion = data_transfer_queue.next_complete().fuse() => {
-                            match completion.status {
-                                Ok(()) => {
-                                    // Transfer successful.
-                                    if !stopped {
-                                        // Send data to decoder thread.
-                                        tx.send(completion.data)
-                                            .context("Failed sending capture data to channel")?;
-                                        // Submit next transfer.
-                                        data_transfer_queue.submit(RequestBuffer::new(READ_LEN));
-                                    }
-                                },
-                                Err(TransferError::Cancelled) if stopped => {
-                                    // Transfer cancelled during shutdown. Drop it.
-                                    drop(completion);
-                                    if data_transfer_queue.pending() == 0 {
-                                        // All cancellations now handled.
-                                        return Ok(());
-                                    }
-                                },
-                                Err(usb_error) => {
-                                    // Transfer failed.
-                                    return Err(Error::from(usb_error));
-                                }
-                            }
-                        }
-                    );
-                }
-            };
-
-            // Run capture task to completion.
-            block_on(capture_task)?;
-
-            // Stop capture.
-            state.set_enable(false);
-            self.write_state(state)?;
-            println!("Capture disabled");
-            Ok(())
-        };
-        let worker = spawn(move || result_handler(run_capture()));
+        let (stop_tx, stop_rx) = oneshot::channel();
+        // Clone handle to give to the worker thread.
+        let handle = self.clone();
+        // Start worker thread.
+        let worker = spawn(move ||
+            result_handler(
+                handle.run_capture(speed, tx, stop_rx)));
         Ok((
             CynthionStream {
                 receiver: rx,
@@ -328,6 +280,55 @@ impl CynthionHandle {
                 worker,
             }
         ))
+    }
+
+    fn run_capture(mut self,
+                   speed: Speed,
+                   tx: mpsc::Sender<Vec<u8>>,
+                   stop: oneshot::Receiver<()>)
+        -> Result<(), Error>
+    {
+        // Set up a separate channel pair to stop queue processing.
+        let (queue_stop_tx, queue_stop_rx) = oneshot::channel();
+
+        // Start capture.
+        self.start_capture(speed)?;
+
+        // Set up transfer queue.
+        let mut queue = CynthionQueue::new(&self.interface, tx);
+
+        // Spawn a worker thread to process queue until stopped.
+        let worker = spawn(move || block_on(queue.process(queue_stop_rx)));
+
+        // Wait until this thread is signalled to stop.
+        block_on(stop)
+            .context("Sender was dropped")?;
+
+        // Stop capture.
+        self.stop_capture()?;
+
+        // Leave queue worker running briefly to receive flushed data.
+        sleep(Duration::from_millis(100));
+
+        // Signal queue processing to stop, then join the worker thread.
+        queue_stop_tx.send(())
+            .or_else(|_| bail!("Failed sending stop signal to queue worker"))?;
+        handle_thread_panic(worker.join())?
+            .context("Error in queue worker thread")?;
+
+        Ok(())
+    }
+
+    fn start_capture(&mut self, speed: Speed) -> Result<(), Error> {
+        self.write_state(State::new(true, speed))?;
+        println!("Capture enabled, speed: {}", speed.description());
+        Ok(())
+    }
+
+    fn stop_capture(&mut self) -> Result<(), Error> {
+        self.write_state(State::new(false, Speed::High))?;
+        println!("Capture disabled");
+        Ok(())
     }
 
     fn write_state(&mut self, state: State) -> Result<(), Error> {
@@ -344,6 +345,58 @@ impl CynthionHandle {
             .control_out_blocking(control, data, timeout)
             .context("Failed writing state to device")?;
         Ok(())
+    }
+}
+
+impl CynthionQueue {
+
+    fn new(interface: &Interface, tx: mpsc::Sender<Vec<u8>>)
+        -> CynthionQueue
+    {
+        let mut queue = interface.bulk_in_queue(ENDPOINT);
+        while queue.pending() < NUM_TRANSFERS {
+            queue.submit(RequestBuffer::new(READ_LEN));
+        }
+        CynthionQueue { queue, tx }
+    }
+
+    async fn process(&mut self, mut stop: oneshot::Receiver<()>)
+        -> Result<(), Error>
+    {
+        use TransferError::Cancelled;
+        loop {
+            select_biased!(
+                _ = stop => {
+                    // Stop requested. Cancel all transfers.
+                    self.queue.cancel_all();
+                }
+                completion = self.queue.next_complete().fuse() => {
+                    match completion.status {
+                        Ok(()) => {
+                            // Send data to decoder thread.
+                            self.tx.send(completion.data)
+                                .context("Failed sending capture data to channel")?;
+                            if !stop.is_terminated() {
+                                // Submit next transfer.
+                                self.queue.submit(RequestBuffer::new(READ_LEN));
+                            }
+                        },
+                        Err(Cancelled) if stop.is_terminated() => {
+                            // Transfer cancelled during shutdown. Drop it.
+                            drop(completion);
+                            if self.queue.pending() == 0 {
+                                // All cancellations now handled.
+                                return Ok(());
+                            }
+                        },
+                        Err(usb_error) => {
+                            // Transfer failed.
+                            return Err(Error::from(usb_error));
+                        }
+                    }
+                }
+            );
+        }
     }
 }
 
@@ -396,19 +449,24 @@ impl CynthionStop {
         println!("Requesting capture stop");
         self.stop_request.send(())
             .or_else(|_| bail!("Failed sending stop request"))?;
-        match self.worker.join() {
-            Ok(()) => Ok(()),
-            Err(panic) => {
-                let msg = match (
-                    panic.downcast_ref::<&str>(),
-                    panic.downcast_ref::<String>())
-                {
-                    (Some(&s), _) => s,
-                    (_,  Some(s)) => s,
-                    (None,  None) => "<No panic message>"
-                };
-                bail!("Worker thread panic: {msg}");
-            }
+        handle_thread_panic(self.worker.join())?;
+        Ok(())
+    }
+}
+
+fn handle_thread_panic<T>(result: std::thread::Result<T>) -> Result<T, Error> {
+    match result {
+        Ok(x) => Ok(x),
+        Err(panic) => {
+            let msg = match (
+                panic.downcast_ref::<&str>(),
+                panic.downcast_ref::<String>())
+            {
+                (Some(&s), _) => s,
+                (_,  Some(s)) => s,
+                (None,  None) => "<No panic message>"
+            };
+            bail!("Worker thread panic: {msg}");
         }
     }
 }
