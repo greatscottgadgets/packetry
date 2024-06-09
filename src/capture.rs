@@ -323,7 +323,7 @@ pub struct DeviceData {
 }
 
 impl DeviceData {
-    fn description(&self) -> String {
+    pub fn description(&self) -> String {
         match self.device_descriptor.load().as_ref() {
             None => "Unknown".to_string(),
             Some(descriptor) => {

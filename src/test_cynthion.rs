@@ -1,5 +1,5 @@
 use packetry::backend::cynthion::{CynthionDevice, CynthionUsability, Speed};
-use packetry::capture::{create_capture, CaptureReader, EndpointId, EndpointTransferId};
+use packetry::capture::{create_capture, CaptureReader, DeviceId, EndpointId, EndpointTransferId};
 use packetry::decoder::Decoder;
 
 use anyhow::{Context, Error};
@@ -44,16 +44,16 @@ fn test(speed: Speed, ep_addr: u8, length: usize) -> Result<(), Error> {
     analyzer.configure_test_device(None)?;
     sleep(Duration::from_millis(100));
 
-    // Tell analyzer to connect test device, then wait for it to enumerate.
-    println!("Enabling test device");
-    analyzer.configure_test_device(Some(speed))?;
-    sleep(Duration::from_millis(2000));
-
     // Start capture.
     let (packets, stop_handle) = analyzer
         .start(speed,
                |err| err.context("Failure in capture thread").unwrap())
         .context("Failed to start analyzer")?;
+
+    // Tell analyzer to connect test device, then wait for it to enumerate.
+    println!("Enabling test device");
+    analyzer.configure_test_device(Some(speed))?;
+    sleep(Duration::from_millis(2000));
 
     // Open test device on AUX port.
     let test_device = nusb::list_devices()
@@ -84,6 +84,12 @@ fn test(speed: Speed, ep_addr: u8, length: usize) -> Result<(), Error> {
             .context("Error decoding packet")?;
     }
 
+    // Look for the test device in the capture.
+    let device_id = DeviceId::from(1);
+    let device_data = reader.device_data(&device_id)?;
+    assert_eq!(device_data.description(), "USB Analyzer Test Device");
+    println!("Found test device in capture");
+
     // Check captured payload bytes match received ones.
     let bytes_captured = bytes_on_endpoint(&mut reader)
         .context("Error counting captured bytes on endpoint")?;
@@ -97,8 +103,11 @@ fn test(speed: Speed, ep_addr: u8, length: usize) -> Result<(), Error> {
 
 fn bytes_on_endpoint(reader: &mut CaptureReader) -> Result<Vec<u8>, Error> {
     // Endpoint IDs 0 and 1 are special (used for invalid and framing packets).
-    // The first normal endpoint in the capture will have endpoint ID 2.
-    let endpoint_id = EndpointId::from(2);
+    // Endpoint 2 will be the control endpoint for device zero.
+    // Endpoint 3 wil be the control endpoint for the test device.
+    
+    // The first normal endpoint in the capture will have endpoint ID 4.
+    let endpoint_id = EndpointId::from(4);
     // We're looking for the first and only transfer on the endpoint.
     let ep_transfer_id = EndpointTransferId::from(0);
     let ep_traf = reader.endpoint_traffic(endpoint_id)?;
