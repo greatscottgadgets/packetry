@@ -95,8 +95,10 @@ fn test(speed: Speed, ep_addr: u8, length: usize) -> Result<(), Error> {
         .context("Error counting captured bytes on endpoint")?;
     println!("Captured {}/{} bytes of data read from test device",
              bytes_captured.len(), length);
-    assert_eq!(bytes_captured, completion.data[0..bytes_captured.len()],
-                   "Captured data did not match received data");
+    assert_eq!(bytes_captured.len(), length,
+               "Not all data was captured");
+    assert_eq!(bytes_captured, completion.data,
+               "Captured data did not match received data");
 
     Ok(())
 }
