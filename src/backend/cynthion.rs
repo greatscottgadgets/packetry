@@ -150,6 +150,11 @@ pub struct CynthionStop {
     worker: JoinHandle::<()>,
 }
 
+pub struct CynthionPacket {
+    pub clk_cycles: u16,
+    pub bytes: Vec<u8>,
+}
+
 /// Check whether a Cynthion device has an accessible analyzer interface.
 fn check_device(device_info: &DeviceInfo)
     -> Result<(InterfaceSelection, Vec<Speed>), Error>
@@ -439,9 +444,9 @@ impl CynthionQueue {
 }
 
 impl Iterator for CynthionStream {
-    type Item = Vec<u8>;
+    type Item = CynthionPacket;
 
-    fn next(&mut self) -> Option<Vec<u8>> {
+    fn next(&mut self) -> Option<CynthionPacket> {
         loop {
             // Do we have another packet already in the buffer?
             match self.next_buffered_packet() {
@@ -460,7 +465,7 @@ impl Iterator for CynthionStream {
 }
 
 impl CynthionStream {
-    fn next_buffered_packet(&mut self) -> Option<Vec<u8>> {
+    fn next_buffered_packet(&mut self) -> Option<CynthionPacket> {
         // Are we waiting for a padding byte?
         if self.padding_due {
             if self.buffer.is_empty() {
@@ -471,29 +476,36 @@ impl CynthionStream {
             }
         }
 
-        // Do we have the length header for the next packet?
+        // Do we have the length and timestamp for the next packet?
         let buffer_len = self.buffer.len();
-        if buffer_len <= 2 {
+        if buffer_len <= 4 {
             return None;
         }
 
         // Do we have all the data for the next packet?
         let packet_len = u16::from_be_bytes(
             [self.buffer[0], self.buffer[1]]) as usize;
-        if buffer_len <= 2 + packet_len {
+        if buffer_len <= 4 + packet_len {
             return None;
         }
 
-        // Remove the length header from the buffer.
-        self.buffer.drain(0..2);
+        // Decode the timestamp field.
+        let clk_cycles = u16::from_be_bytes(
+            [self.buffer[2], self.buffer[3]]);
+
+        // Remove the length and timestamp from the buffer.
+        self.buffer.drain(0..4);
 
         // If packet length is odd, we will need to skip a padding byte after.
         if packet_len % 2 == 1 {
             self.padding_due = true;
         }
 
-        // Remove the packet from the buffer and return it.
-        Some(self.buffer.drain(0..packet_len).collect())
+        // Remove the rest of the packet from the buffer and return it.
+        Some(CynthionPacket {
+            clk_cycles,
+            bytes: self.buffer.drain(0..packet_len).collect()
+        })
     }
 }
 
