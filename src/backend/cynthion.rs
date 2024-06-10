@@ -83,6 +83,29 @@ impl State {
     }
 }
 
+bitfield! {
+    #[derive(Copy, Clone)]
+    struct TestConfig(u8);
+    bool, connect, set_connect: 0;
+    u8, from into Speed, speed, set_speed: 2, 1;
+}
+
+impl TestConfig {
+    fn new(speed: Option<Speed>) -> TestConfig {
+        let mut config = TestConfig(0);
+        match speed {
+            Some(speed) => {
+                config.set_connect(true);
+                config.set_speed(speed);
+            },
+            None => {
+                config.set_connect(false);
+            }
+        };
+        config
+    }
+}
+
 pub struct InterfaceSelection {
     interface_number: u8,
     alt_setting_number: u8,
@@ -320,30 +343,38 @@ impl CynthionHandle {
     }
 
     fn start_capture(&mut self, speed: Speed) -> Result<(), Error> {
-        self.write_state(State::new(true, speed))?;
+        self.write_request(1, State::new(true, speed).0)?;
         println!("Capture enabled, speed: {}", speed.description());
         Ok(())
     }
 
     fn stop_capture(&mut self) -> Result<(), Error> {
-        self.write_state(State::new(false, Speed::High))?;
+        self.write_request(1, State::new(false, Speed::High).0)?;
         println!("Capture disabled");
         Ok(())
     }
 
-    fn write_state(&mut self, state: State) -> Result<(), Error> {
+    pub fn configure_test_device(&mut self, speed: Option<Speed>)
+        -> Result<(), Error>
+    {
+        let test_config = TestConfig::new(speed);
+        self.write_request(3, test_config.0)
+            .context("Failed to set test device configuration")
+    }
+
+    fn write_request(&mut self, request: u8, value: u8) -> Result<(), Error> {
         let control = Control {
             control_type: ControlType::Vendor,
             recipient: Recipient::Interface,
-            request: 1,
-            value: u16::from(state.0),
+            request,
+            value: u16::from(value),
             index: self.interface.interface_number() as u16,
         };
         let data = &[];
         let timeout = Duration::from_secs(1);
         self.interface
             .control_out_blocking(control, data, timeout)
-            .context("Failed writing state to device")?;
+            .context("Write request failed")?;
         Ok(())
     }
 }

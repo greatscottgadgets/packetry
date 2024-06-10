@@ -1,8 +1,8 @@
 #[macro_use]
 extern crate bitfield;
 
-mod backend;
-mod capture;
+pub mod backend;
+pub mod capture;
 mod compact_index;
 mod data_stream;
 pub mod decoder;
