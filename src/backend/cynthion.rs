@@ -142,6 +142,7 @@ pub struct CynthionQueue {
 pub struct CynthionStream {
     receiver: mpsc::Receiver<Vec<u8>>,
     buffer: VecDeque<u8>,
+    padding_due: bool,
 }
 
 pub struct CynthionStop {
@@ -302,6 +303,7 @@ impl CynthionHandle {
             CynthionStream {
                 receiver: rx,
                 buffer: VecDeque::new(),
+                padding_due: false,
             },
             CynthionStop {
                 stop_request: stop_tx,
@@ -459,6 +461,16 @@ impl Iterator for CynthionStream {
 
 impl CynthionStream {
     fn next_buffered_packet(&mut self) -> Option<Vec<u8>> {
+        // Are we waiting for a padding byte?
+        if self.padding_due {
+            if self.buffer.is_empty() {
+                return None;
+            } else {
+                self.buffer.pop_front();
+                self.padding_due= false;
+            }
+        }
+
         // Do we have the length header for the next packet?
         let buffer_len = self.buffer.len();
         if buffer_len <= 2 {
@@ -474,6 +486,11 @@ impl CynthionStream {
 
         // Remove the length header from the buffer.
         self.buffer.drain(0..2);
+
+        // If packet length is odd, we will need to skip a padding byte after.
+        if packet_len % 2 == 1 {
+            self.padding_due = true;
+        }
 
         // Remove the packet from the buffer and return it.
         Some(self.buffer.drain(0..packet_len).collect())
