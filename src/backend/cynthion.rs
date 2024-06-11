@@ -476,16 +476,29 @@ impl CynthionStream {
             }
         }
 
-        // Do we have the length and timestamp for the next packet?
-        let buffer_len = self.buffer.len();
-        if buffer_len <= 4 {
-            return None;
+        // Loop over any non-packet events, until we get to a packet.
+        loop {
+            // Do we have the length and timestamp for the next packet/event?
+            if self.buffer.len() < 4 {
+                return None;
+            }
+
+            if self.buffer[0] == 0xFF {
+                // This is an event.
+                let _event_code = self.buffer[1];
+
+                // Remove event from buffer.
+                self.buffer.drain(0..4);
+            } else {
+                // This is a packet, handle it below.
+                break;
+            }
         }
 
         // Do we have all the data for the next packet?
         let packet_len = u16::from_be_bytes(
             [self.buffer[0], self.buffer[1]]) as usize;
-        if buffer_len <= 4 + packet_len {
+        if self.buffer.len() <= 4 + packet_len {
             return None;
         }
 
