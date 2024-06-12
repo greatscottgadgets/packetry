@@ -521,7 +521,7 @@ pub struct Transaction {
     start_pid: PID,
     end_pid: PID,
     split: Option<(SplitFields, PID)>,
-    packet_id_range: Range<PacketId>,
+    pub packet_id_range: Range<PacketId>,
     data_packet_id: Option<PacketId>,
     payload_byte_range: Option<Range<Id<u8>>>,
 }
@@ -881,7 +881,7 @@ impl CaptureReader {
         Ok(PID::from(self.packet_data.get(offset)?))
     }
 
-    fn transaction(&mut self, id: TransactionId)
+    pub fn transaction(&mut self, id: TransactionId)
         -> Result<Transaction, Error>
     {
         let packet_id_range = self.transaction_index.target_range(
