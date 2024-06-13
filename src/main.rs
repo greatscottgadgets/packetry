@@ -1,3 +1,9 @@
+// We need the ctor macro for the replay test on macOS.
+#[cfg(all(test, target_os="macos"))]
+#[allow(unused_imports)]
+#[macro_use]
+extern crate ctor;
+
 use gtk::prelude::*;
 use gtk::gio::ApplicationFlags;
 
@@ -16,3 +22,6 @@ fn main() {
     application.run_with_args::<&str>(&[]);
     display_error(stop_cynthion());
 }
+
+#[cfg(test)]
+mod test_replay;

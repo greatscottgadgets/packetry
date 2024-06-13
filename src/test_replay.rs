@@ -20,7 +20,32 @@ use packetry::ui::{
     with_ui,
 };
 
-fn main() {
+// On systems other than macOS we can run this as a normal unit test.
+#[cfg(not(target_os="macos"))]
+#[test]
+fn test_replay() {
+    run_test();
+}
+
+// On macOS, GTK must run on the main thread, so we spawn a new process.
+#[cfg(target_os="macos")]
+#[test]
+fn spawn_test_replay() {
+    procspawn::init();
+    let process = procspawn::spawn((), |_| run_test());
+    process.join().unwrap();
+}
+
+// We register this hook as a constructor, so that the child process - which
+// is another copy of the test binary - can begin running our target code
+// immediately, rather than going through the rest of the tests again first.
+#[cfg(target_os="macos")]
+#[ctor]
+fn on_cargo_test_startup() {
+    procspawn::init();
+}
+
+fn run_test() {
     let application = gtk::Application::new(
         Some("com.greatscottgadgets.packetry.test"),
         Default::default(),
