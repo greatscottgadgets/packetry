@@ -12,6 +12,15 @@ documentation = "https://packetry.readthedocs.io"
 edition = "2021"
 rust-version = "1.57"
 
+include = [
+    "CHANGELOG.md",
+    "CODE_OF_CONDUCT.md",
+    "LICENSE",
+    "README.md",
+    "src/**/*",
+    "tests/**/*",
+]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
