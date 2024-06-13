@@ -16,3 +16,6 @@ fn main() {
     application.run_with_args::<&str>(&[]);
     display_error(stop_cynthion());
 }
+
+#[cfg(test)]
+mod test_replay;

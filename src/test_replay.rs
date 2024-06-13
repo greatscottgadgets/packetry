@@ -20,7 +20,29 @@ use packetry::ui::{
     with_ui,
 };
 
-fn main() {
+// On systems other than macOS we can run this as a normal unit test.
+#[cfg(not(target_os="macos"))]
+#[test]
+fn test_replay() {
+    run_test();
+}
+
+// On macOS, GTK must run on the main thread, so we spawn a new process.
+#[cfg(target_os="macos")]
+#[test]
+fn mitosis() {
+    mitosis::init_test();
+}
+
+#[cfg(target_os="macos")]
+#[test]
+fn test_replay() {
+    mitosis::init_test();
+    let process = mitosis::spawn((), |_| run_test());
+    process.join().unwrap();
+}
+
+fn run_test() {
     let application = gtk::Application::new(
         Some("com.greatscottgadgets.packetry.test"),
         Default::default(),
