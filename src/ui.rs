@@ -10,6 +10,9 @@ use std::time::Duration;
 #[cfg(feature="step-decoder")]
 use std::{io::Read, net::TcpListener};
 
+#[cfg(feature="record-ui-test")]
+use std::sync::Mutex;
+
 use anyhow::{Context as ErrorContext, Error, bail};
 
 use gtk::gio::ListModel;
