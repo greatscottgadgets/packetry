@@ -991,10 +991,6 @@ impl CaptureReader {
         })
     }
 
-    pub fn finish(&mut self) {
-        self.shared.complete.store(true, Release);
-    }
-
     fn completion(&self) -> CompletionStatus {
         use CompletionStatus::*;
         match self.shared.complete.load(Acquire) {
