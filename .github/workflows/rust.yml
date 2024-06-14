@@ -83,8 +83,6 @@ jobs:
         run: echo "$env:VCPKG_DEFAULT_BINARY_CACHE/../vcpkg_installed/x64-windows/bin" | Out-File -FilePath $env:GITHUB_PATH -Append
         if: matrix.os == 'windows-latest'
 
-      - uses: Swatinem/rust-cache@v2
-
       - name: Build
         uses: actions-rs/cargo@v1
         with:
