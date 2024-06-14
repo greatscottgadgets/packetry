@@ -351,7 +351,7 @@ pub struct TreeListModel<Item, Model, RowData> {
     capture: RefCell<CaptureReader>,
     root: RootNodeRc<Item>,
     regions: RefCell<BTreeMap<u64, Region<Item>>>,
-    #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
+    #[cfg(any(test, feature="record-ui-test"))]
     on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>,
 }
 
@@ -362,7 +362,7 @@ where Item: 'static + Copy + Debug,
       CaptureReader: ItemSource<Item>,
 {
     pub fn new(mut capture: CaptureReader,
-               #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
+               #[cfg(any(test, feature="record-ui-test"))]
                on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>)
         -> Result<Self, Error>
     {
@@ -375,7 +375,7 @@ where Item: 'static + Copy + Debug,
                 complete: completion.is_complete(),
             })),
             regions: RefCell::new(BTreeMap::new()),
-            #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
+            #[cfg(any(test, feature="record-ui-test"))]
             on_item_update,
         })
     }
@@ -774,7 +774,7 @@ where Item: 'static + Copy + Debug,
             if item_updated {
                 // The node's description may change.
                 let summary = cap.summary(&item_node.item)?;
-                #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
+                #[cfg(any(test, feature="record-ui-test"))]
                 if let Ok(position) = u32::try_from(position) {
                     let mut on_item_update = self.on_item_update.borrow_mut();
                     on_item_update(position, summary.clone());

@@ -92,7 +92,7 @@ jobs:
       - name: Test
         uses: GabrielBB/xvfb-action@v1
         with:
-          run: cargo test --features=test-ui-replay
+          run: cargo test
 
       - uses: actions/upload-artifact@v2
         with:

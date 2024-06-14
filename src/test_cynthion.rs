@@ -1,6 +1,6 @@
-use packetry::backend::cynthion::{CynthionDevice, CynthionUsability, Speed};
-use packetry::capture::{create_capture, CaptureReader, DeviceId, EndpointId, EndpointTransferId};
-use packetry::decoder::Decoder;
+use crate::backend::cynthion::{CynthionDevice, CynthionUsability, Speed};
+use crate::capture::{create_capture, CaptureReader, DeviceId, EndpointId, EndpointTransferId};
+use crate::decoder::Decoder;
 
 use anyhow::{Context, Error};
 use futures_lite::future::block_on;

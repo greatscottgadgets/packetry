@@ -1,4 +1,9 @@
+// On Windows, produce a GUI app rather than a console one.
 #![windows_subsystem = "windows"]
+
+// We need the bitfield macro.
+#[macro_use]
+extern crate bitfield;
 
 // We need the ctor macro for the replay test on macOS.
 #[cfg(all(test, target_os="macos"))]
@@ -6,10 +11,36 @@
 #[macro_use]
 extern crate ctor;
 
+// Declare all modules used.
+mod backend;
+mod capture;
+mod compact_index;
+mod data_stream;
+mod decoder;
+mod expander;
+mod id;
+mod index_stream;
+mod model;
+mod rcu;
+mod row_data;
+mod stream;
+mod test_cynthion;
+mod tree_list_model;
+mod ui;
+mod usb;
+mod util;
+mod vec_map;
+
+// Declare optional modules.
+#[cfg(any(test, feature="record-ui-test"))]
+mod record_ui;
+#[cfg(test)]
+mod test_replay;
+
 use gtk::prelude::*;
 use gtk::gio::ApplicationFlags;
 
-use packetry::ui::{
+use ui::{
     activate,
     display_error,
     stop_cynthion
@@ -29,6 +60,3 @@ fn main() {
     }
 }
 
-mod test_cynthion;
-#[cfg(test)]
-mod test_replay;

@@ -7,8 +7,10 @@
 mod imp;
 
 use gtk::glib;
-use gtk::prelude::Cast;
 use gtk::subclass::prelude::*;
+
+#[cfg(any(test, feature="record-ui-test"))]
+use gtk::prelude::Cast;
 
 use crate::capture::{TrafficItem, DeviceItem};
 use crate::tree_list_model::ItemNodeRc;
@@ -52,16 +54,19 @@ impl GenericRowData<DeviceItem> for DeviceRowData {
 }
 
 pub trait ToGenericRowData<Item> {
+    #[cfg(any(test, feature="record-ui-test"))]
     fn to_generic_row_data(self) -> Box<dyn GenericRowData<Item>>;
 }
 
 impl ToGenericRowData<TrafficItem> for glib::Object {
+    #[cfg(any(test, feature="record-ui-test"))]
     fn to_generic_row_data(self) -> Box<dyn GenericRowData<TrafficItem>> {
         Box::new(self.downcast::<TrafficRowData>().unwrap())
     }
 }
 
 impl ToGenericRowData<DeviceItem> for glib::Object {
+    #[cfg(any(test, feature="record-ui-test"))]
     fn to_generic_row_data(self) -> Box<dyn GenericRowData<DeviceItem>> {
         Box::new(self.downcast::<DeviceRowData>().unwrap())
     }

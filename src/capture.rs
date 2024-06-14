@@ -42,6 +42,7 @@ pub struct CaptureWriter {
     pub endpoints: DataWriter<Endpoint>,
     pub endpoint_states: DataWriter<u8>,
     pub endpoint_state_index: CompactWriter<TransferId, Id<u8>>,
+    #[allow(dead_code)]
     pub end_index: CompactWriter<TransferId, TrafficItemId>,
 }
 
@@ -59,6 +60,7 @@ pub struct CaptureReader {
     pub endpoints: DataReader<Endpoint>,
     pub endpoint_states: DataReader<u8>,
     pub endpoint_state_index: CompactReader<TransferId, Id<u8>>,
+    #[allow(dead_code)]
     pub end_index: CompactReader<TransferId, TrafficItemId>,
 }
 
@@ -124,6 +126,7 @@ pub fn create_capture()
 /// Per-endpoint state shared between readers and writers.
 pub struct EndpointShared {
     pub total_data: AtomicU64,
+    #[allow(dead_code)]
     pub first_item_id: ArcSwapOption<TrafficItemId>,
 }
 
