@@ -603,6 +603,7 @@ impl EndpointDescriptor {
     pub const NUM_FIELDS: usize = 6;
 }
 
+#[allow(dead_code)]
 pub enum Descriptor {
     Device(DeviceDescriptor),
     Configuration(ConfigDescriptor),
