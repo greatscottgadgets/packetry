@@ -1,3 +1,5 @@
+#![windows_subsystem = "windows"]
+
 // We need the ctor macro for the replay test on macOS.
 #[cfg(all(test, target_os="macos"))]
 #[allow(unused_imports)]
