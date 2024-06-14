@@ -9,7 +9,7 @@ use nusb::transfer::RequestBuffer;
 use std::thread::sleep;
 use std::time::Duration;
 
-fn main() {
+pub fn run_test() {
     for (speed, ep_addr, length) in [
         (Speed::High, 0x81, 4096),
         (Speed::Full, 0x82, 512),

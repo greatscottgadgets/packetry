@@ -16,14 +16,19 @@ use packetry::ui::{
 };
 
 fn main() {
-    let application = gtk::Application::new(
-        Some("com.greatscottgadgets.packetry"),
-        ApplicationFlags::NON_UNIQUE
-    );
-    application.connect_activate(|app| display_error(activate(app)));
-    application.run_with_args::<&str>(&[]);
-    display_error(stop_cynthion());
+    if std::env::args().any(|arg| arg == "--test-cynthion") {
+        test_cynthion::run_test();
+    } else {
+        let application = gtk::Application::new(
+            Some("com.greatscottgadgets.packetry"),
+            ApplicationFlags::NON_UNIQUE
+        );
+        application.connect_activate(|app| display_error(activate(app)));
+        application.run_with_args::<&str>(&[]);
+        display_error(stop_cynthion());
+    }
 }
 
+mod test_cynthion;
 #[cfg(test)]
 mod test_replay;
