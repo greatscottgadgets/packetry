@@ -42,7 +42,7 @@ pub struct Recording {
     action_log: File,
     #[cfg(feature="record-ui-test")]
     output_log: File,
-    #[cfg(feature="test-ui-replay")]
+    #[cfg(test)]
     output_log: Option<File>,
     view_items: HashMap<String, Vec<String>>,
 }
@@ -66,13 +66,13 @@ impl Recording {
                 .truncate(true)
                 .open("output.txt")
                 .expect("Failed to open UI output log file"),
-            #[cfg(feature="test-ui-replay")]
+            #[cfg(test)]
             output_log: None,
             view_items: HashMap::new(),
         }
     }
 
-    #[cfg(feature="test-ui-replay")]
+    #[cfg(test)]
     pub fn set_output(&mut self, file: File) {
         self.output_log = Some(file)
     }
@@ -98,7 +98,7 @@ impl Recording {
     fn log_output(&mut self, string: String) {
         #[cfg(feature="record-ui-test")]
         let output_log = &mut self.output_log;
-        #[cfg(feature="test-ui-replay")]
+        #[cfg(test)]
         let output_log = self.output_log
             .as_mut()
             .expect("Recording has no output file set");

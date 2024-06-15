@@ -1,6 +1,6 @@
-use packetry::backend::cynthion::{CynthionDevice, CynthionUsability, Speed};
-use packetry::capture::{create_capture, CaptureReader, DeviceId, EndpointId, EndpointTransferId};
-use packetry::decoder::Decoder;
+use crate::backend::cynthion::{CynthionDevice, CynthionUsability, Speed};
+use crate::capture::{create_capture, CaptureReader, DeviceId, EndpointId, EndpointTransferId};
+use crate::decoder::Decoder;
 
 use anyhow::{Context, Error};
 use futures_lite::future::block_on;
@@ -9,7 +9,7 @@ use nusb::transfer::RequestBuffer;
 use std::thread::sleep;
 use std::time::Duration;
 
-fn main() {
+pub fn run_test() {
     for (speed, ep_addr, length) in [
         (Speed::High, 0x81, 4096),
         (Speed::Full, 0x82, 512),

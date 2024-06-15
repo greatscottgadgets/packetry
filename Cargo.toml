@@ -46,12 +46,4 @@ ctor = "0.2.8"
 [features]
 step-decoder = []
 record-ui-test = ["serde", "serde_json"]
-test-ui-replay = ["serde", "serde_json"]
 debug-region-map = []
-test-cynthion = []
-
-[[test]]
-name = "test_cynthion"
-path = "src/test_cynthion.rs"
-harness = false
-required-features = ["test-cynthion"]

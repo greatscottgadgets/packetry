@@ -8,11 +8,11 @@ use itertools::assert_equal;
 use pcap_file::pcap::PcapReader;
 use serde_json::Deserializer;
 
-use packetry::decoder::Decoder;
-use packetry::model::GenericModel;
-use packetry::row_data::{GenericRowData, TrafficRowData, DeviceRowData};
-use packetry::record_ui::UiAction;
-use packetry::ui::{
+use crate::decoder::Decoder;
+use crate::model::GenericModel;
+use crate::row_data::{GenericRowData, TrafficRowData, DeviceRowData};
+use crate::record_ui::UiAction;
+use crate::ui::{
     UserInterface,
     activate,
     reset_capture,

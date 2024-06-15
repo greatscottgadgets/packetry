@@ -10,6 +10,9 @@ use std::time::Duration;
 #[cfg(feature="step-decoder")]
 use std::{io::Read, net::TcpListener};
 
+#[cfg(feature="record-ui-test")]
+use std::sync::Mutex;
+
 use anyhow::{Context as ErrorContext, Error, bail};
 
 use gtk::gio::ListModel;
@@ -34,7 +37,7 @@ use gtk::{
     Orientation,
 };
 
-#[cfg(not(feature="test-ui-replay"))]
+#[cfg(not(test))]
 use gtk::{
     MessageDialog,
     DialogFlags,
@@ -73,7 +76,7 @@ use crate::row_data::{
     DeviceRowData};
 use crate::util::{fmt_count, fmt_size};
 
-#[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
+#[cfg(any(test, feature="record-ui-test"))]
 use {
     std::rc::Rc,
     crate::record_ui::Recording,
@@ -269,7 +272,7 @@ pub struct UserInterface {
     capture_button: Button,
     stop_button: Button,
     status_label: Label,
-    #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
+    #[cfg(any(test, feature="record-ui-test"))]
     pub recording: Rc<RefCell<Recording>>,
 }
 
@@ -333,7 +336,7 @@ pub fn activate(application: &Application) -> Result<(), Error> {
     action_bar.pack_start(&stop_button);
     action_bar.pack_start(&selector.container);
 
-    #[cfg(not(feature="test-ui-replay"))]
+    #[cfg(not(test))]
     window.show();
     WINDOW.with(|win_opt| win_opt.replace(Some(window.clone())));
 
@@ -400,7 +403,7 @@ pub fn activate(application: &Application) -> Result<(), Error> {
     UI.with(|cell| {
         cell.borrow_mut().replace(
             UserInterface {
-                #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
+                #[cfg(any(test, feature="record-ui-test"))]
                 recording: Rc::new(RefCell::new(
                     Recording::new(capture.clone()))),
                 capture,
@@ -443,7 +446,7 @@ pub fn activate(application: &Application) -> Result<(), Error> {
 fn create_view<Item, Model, RowData>(
         title: &str,
         capture: &CaptureReader,
-        #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
+        #[cfg(any(test, feature="record-ui-test"))]
         recording_args: (&Rc<RefCell<Recording>>, &'static str))
     -> (Model, ColumnView)
     where
@@ -453,14 +456,14 @@ fn create_view<Item, Model, RowData>(
         CaptureReader: ItemSource<Item>,
         Object: ToGenericRowData<Item>
 {
-    #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
+    #[cfg(any(test, feature="record-ui-test"))]
     let (name, expand_rec, update_rec, changed_rec) = {
         let (recording, name) = recording_args;
         (name, recording.clone(), recording.clone(), recording.clone())
     };
     let model = Model::new(
         capture.clone(),
-        #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
+        #[cfg(any(test, feature="record-ui-test"))]
         Rc::new(
             RefCell::new(
                 move |position, summary|
@@ -502,13 +505,13 @@ fn create_view<Item, Model, RowData>(
                 let model = bind_model.clone();
                 let node_ref = node_ref.clone();
                 let list_item = list_item.clone();
-                #[cfg(any(feature="test-ui-replay",
+                #[cfg(any(test,
                           feature="record-ui-test"))]
                 let recording = expand_rec.clone();
                 let handler = expander.connect_expanded_notify(move |expander| {
                     let position = list_item.position();
                     let expanded = expander.is_expanded();
-                    #[cfg(any(feature="test-ui-replay",
+                    #[cfg(any(test,
                               feature="record-ui-test"))]
                     recording.borrow_mut().log_item_expanded(
                         name, position, expanded);
@@ -558,7 +561,7 @@ fn create_view<Item, Model, RowData>(
     view.append_column(&column);
     view.add_css_class("data-table");
 
-    #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
+    #[cfg(any(test, feature="record-ui-test"))]
     model.connect_items_changed(move |model, position, removed, added|
         changed_rec.borrow_mut().log_items_changed(
             name, model, position, removed, added));
@@ -573,14 +576,14 @@ pub fn reset_capture() -> Result<CaptureWriter, Error> {
             create_view::<TrafficItem, TrafficModel, TrafficRowData>(
                 "Traffic",
                 &reader,
-                #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
+                #[cfg(any(test, feature="record-ui-test"))]
                 (&ui.recording, "traffic")
             );
         let (device_model, device_view) =
             create_view::<DeviceItem, DeviceModel, DeviceRowData>(
                 "Devices",
                 &reader,
-                #[cfg(any(feature="test-ui-replay", feature="record-ui-test"))]
+                #[cfg(any(test, feature="record-ui-test"))]
                 (&ui.recording, "devices")
             );
         ui.capture = reader;
@@ -907,7 +910,7 @@ pub fn stop_cynthion() -> Result<(), Error> {
 }
 
 pub fn display_error(result: Result<(), Error>) {
-    #[cfg(not(feature="test-ui-replay"))]
+    #[cfg(not(test))]
     if let Err(e) = result {
         use std::fmt::Write;
         let mut message = format!("{e}");
@@ -940,6 +943,6 @@ pub fn display_error(result: Result<(), Error>) {
             });
         });
     }
-    #[cfg(feature="test-ui-replay")]
+    #[cfg(test)]
     result.unwrap();
 }
