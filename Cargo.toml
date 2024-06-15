@@ -8,7 +8,7 @@ rust-version = "1.57"
 
 [dependencies]
 bufreaderwriter = "0.2.4"
-bytemuck = { version = "1.14.1", features = ["extern_crate_alloc"] }
+bytemuck = "1.14.1"
 bytemuck_derive = "1.5.0"
 gtk = { version = "0.8.0", package = "gtk4" }
 num_enum = "0.7.2"
