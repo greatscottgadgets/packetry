@@ -1,8 +1,25 @@
 [package]
 name = "packetry"
 version = "0.1.0"
+authors = ["Great Scott Gadgets <dev@greatscottgadgets.com>"]
+license = "BSD-3-Clause"
+description = "A fast, intuitive USB 2.0 protocol analysis application for use with Cynthion."
+categories = ["visualization"]
+keywords = ["cynthion", "luna", "usb"]
+homepage = "https://github.com/greatscottgadgets/packetry"
+repository = "https://github.com/greatscottgadgets/packetry"
+documentation = "https://packetry.readthedocs.io"
 edition = "2021"
 rust-version = "1.57"
+
+include = [
+    "CHANGELOG.md",
+    "CODE_OF_CONDUCT.md",
+    "LICENSE",
+    "README.md",
+    "src/**/*",
+    "tests/**/*",
+]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
