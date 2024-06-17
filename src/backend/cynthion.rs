@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::collections::VecDeque;
 use std::thread::{spawn, sleep, JoinHandle};
 use std::time::Duration;
@@ -179,9 +180,13 @@ fn check_device(device_info: &DeviceInfo)
 
             // Check protocol version.
             let protocol = alt_setting.protocol();
-            if protocol != PROTOCOL {
-                bail!("Wrong protocol version: {} supported, {} found",
-                      PROTOCOL, protocol);
+            #[allow(clippy::absurd_extreme_comparisons)]
+            match PROTOCOL.cmp(&protocol) {
+                Ordering::Less =>
+                    bail!("Analyzer gateware is newer (v{}) than supported by this version of Packetry (v{}). Please update Packetry.", protocol, PROTOCOL),
+                Ordering::Greater =>
+                    bail!("Analyzer gateware is older (v{}) than supported by this version of Packetry (v{}). Please update gateware.", protocol, PROTOCOL),
+                Ordering::Equal => {}
             }
 
             // Try to claim the interface.

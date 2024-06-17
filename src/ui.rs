@@ -24,11 +24,14 @@ use gtk::{
     ApplicationWindow,
     Button,
     DropDown,
+    InfoBar,
     Label,
     ListItem,
     ColumnView,
     ColumnViewColumn,
+    MessageType,
     ProgressBar,
+    ResponseType,
     ScrolledWindow,
     Separator,
     SignalListItemFactory,
@@ -41,7 +44,6 @@ use gtk::{
 use gtk::{
     MessageDialog,
     DialogFlags,
-    MessageType,
     ButtonsType,
 };
 
@@ -159,6 +161,16 @@ impl DeviceSelector {
         }
     }
 
+    fn device_unusable(&self) -> Option<&str> {
+        match self.current_device() {
+            None => None,
+            Some(device) => match &device.usability {
+                Usable(..) => None,
+                Unusable(string) => Some(string),
+            }
+        }
+    }
+
     fn set_sensitive(&mut self, sensitive: bool) {
         if sensitive {
             self.dev_dropdown.set_sensitive(!self.devices.is_empty());
@@ -251,6 +263,41 @@ impl DeviceSelector {
     }
 }
 
+struct DeviceWarning {
+    info_bar: InfoBar,
+    label: Label,
+}
+
+impl DeviceWarning {
+    fn new() -> DeviceWarning {
+        let info_bar = InfoBar::new();
+        info_bar.set_show_close_button(true);
+        info_bar.connect_response(|info_bar, response| {
+            if response == ResponseType::Close {
+                info_bar.set_revealed(false);
+            }
+        });
+        let label = Label::new(None);
+        label.set_wrap(true);
+        info_bar.add_child(&label);
+        DeviceWarning {
+            info_bar,
+            label,
+        }
+    }
+
+    fn update(&self, warning: Option<&str>) {
+        if let Some(reason) = warning {
+            self.info_bar.set_message_type(MessageType::Warning);
+            self.label.set_text(&format!(
+                "This device is not usable because: {reason}"));
+            self.info_bar.set_revealed(true);
+        } else {
+            self.info_bar.set_revealed(false);
+        }
+    }
+}
+
 pub struct UserInterface {
     pub capture: CaptureReader,
     selector: DeviceSelector,
@@ -272,6 +319,7 @@ pub struct UserInterface {
     capture_button: Button,
     stop_button: Button,
     status_label: Label,
+    warning: DeviceWarning,
     #[cfg(any(test, feature="record-ui-test"))]
     pub recording: Rc<RefCell<Recording>>,
 }
@@ -336,6 +384,9 @@ pub fn activate(application: &Application) -> Result<(), Error> {
     action_bar.pack_start(&stop_button);
     action_bar.pack_start(&selector.container);
 
+    let warning = DeviceWarning::new();
+    warning.update(selector.device_unusable());
+
     #[cfg(not(test))]
     window.show();
     WINDOW.with(|win_opt| win_opt.replace(Some(window.clone())));
@@ -388,6 +439,8 @@ pub fn activate(application: &Application) -> Result<(), Error> {
 
     vbox.append(&action_bar);
     vbox.append(&gtk::Separator::new(Orientation::Horizontal));
+    vbox.append(&warning.info_bar);
+    vbox.append(&gtk::Separator::new(Orientation::Horizontal));
     vbox.append(&paned);
     vbox.append(&gtk::Separator::new(Orientation::Horizontal));
     vbox.append(&status_label);
@@ -426,6 +479,7 @@ pub fn activate(application: &Application) -> Result<(), Error> {
                 capture_button,
                 stop_button,
                 status_label,
+                warning,
             }
         )
     });
@@ -842,6 +896,7 @@ fn detect_hardware() -> Result<(), Error> {
     with_ui(|ui| {
         ui.selector.scan()?;
         ui.capture_button.set_sensitive(ui.selector.device_available());
+        ui.warning.update(ui.selector.device_unusable());
         Ok(())
     })
 }
@@ -849,6 +904,7 @@ fn detect_hardware() -> Result<(), Error> {
 fn device_selection_changed() -> Result<(), Error> {
     with_ui(|ui| {
         ui.capture_button.set_sensitive(ui.selector.device_available());
+        ui.warning.update(ui.selector.device_unusable());
         ui.selector.update_speeds();
         Ok(())
     })
