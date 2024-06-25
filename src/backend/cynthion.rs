@@ -29,7 +29,7 @@ const PID: u16 = 0x615b;
 
 const CLASS: u8 = 0xff;
 const SUBCLASS: u8 = 0x10;
-const PROTOCOL: u8 = 0x00;
+const PROTOCOL: u8 = 0x01;
 
 const ENDPOINT: u8 = 0x81;
 
