@@ -161,7 +161,7 @@ fn clk_to_ns(clk_cycles: u64) -> u64 {
     const TABLE: [u64; 3] = [0, 16, 33];
     let quotient = clk_cycles / 3;
     let remainder = clk_cycles % 3;
-    return quotient * 50 + TABLE[remainder as usize];
+    quotient * 50 + TABLE[remainder as usize]
 }
 
 /// Check whether a Cynthion device has an accessible analyzer interface.

@@ -871,7 +871,7 @@ impl CaptureReader {
     pub fn packet_time(&mut self, id: PacketId)
         -> Result<Timestamp, Error>
     {
-        Ok(self.packet_times.get(id)?)
+        self.packet_times.get(id)
     }
 
     fn packet_pid(&mut self, id: PacketId)

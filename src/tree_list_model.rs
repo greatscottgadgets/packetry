@@ -945,10 +945,7 @@ where Item: 'static + Copy + Debug,
 
     pub fn timestamp(&self, item: &Item) -> u64 {
         let mut cap = self.capture.borrow_mut();
-        match cap.timestamp(item) {
-            Ok(timestamp) => timestamp,
-            Err(_) => 0
-        }
+        cap.timestamp(item).unwrap_or(0)
     }
 
     pub fn summary(&self, item: &Item) -> String {
