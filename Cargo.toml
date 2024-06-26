@@ -60,7 +60,51 @@ rand_xorshift = "0.3.0"
 procspawn = "1.0.0"
 ctor = "0.2.8"
 
+# Note: All of the current features are for debugging purposes only!
+#
+# None of them should be enabled for normal builds of the application.
+#
 [features]
+
+# step-decoder:
+#
+# Used for debugging how transactions and transfers are interpreted
+# and displayed as their packets come in one by one.
+#
+# Listens on TCP port 46563 on 127.0.0.1 while loading a capture,
+# and feeds one packet to the decoder each time a byte is received
+# from a client connected to that port.
+#
+# To drive the single stepping, connect with a tool such as netcat,
+# i.e. 'nc 127.0.0.1 46563', and press enter to trigger each packet.
+#
 step-decoder = []
+
+# record-ui-test:
+#
+# Used to record test cases to be executed as part of UI testing.
+#
+# Writes 'actions.json' and 'output.txt' files in the working directory.
+# These files capture the actions taken by the user, and the outputs
+# presented by the UI in response.
+#
+# To add the resulting test case to the test suite, copy these files to
+# a new subdirectory of tests/ui, renaming output.txt to reference.txt,
+# then add the name of the subdirectory to tests/ui/tests.txt.
+#
+# The test suite will then repeat these actions and verify that the UI
+# responds in the same way as it did previously.
+#
+# May be used concurrently with step-decoder, in order to produce test
+# cases that depend on when the UI was updated in the decoding process.
+#
 record-ui-test = ["serde", "serde_json"]
+
+# debug-region-map:
+#
+# Used for debugging the TreeListModel implementation.
+#
+# Prints information to standard output about the region map data structure
+# that is used internally by the model, and the changes being made to it.
+#
 debug-region-map = []
