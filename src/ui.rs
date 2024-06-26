@@ -638,7 +638,7 @@ fn create_view<Item, Model, RowData>(
                 Ok(node_ref) => {
                     let node = node_ref.borrow();
                     let timestamp = model.timestamp(&node.item);
-                    label.set_text(&format!("{}.{:09}",
+                    label.set_markup(&format!("<tt><small>{}.{:09}</small></tt>",
                                            timestamp / 1_000_000_000,
                                            timestamp % 1_000_000_000));
                 },
