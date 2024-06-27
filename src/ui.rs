@@ -1,8 +1,7 @@
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::fs::File;
-use std::io::{BufReader, BufWriter, Write};
-use std::mem::size_of;
+use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::Duration;
@@ -49,7 +48,8 @@ use gtk::{
 
 use pcap_file::{
     DataLink,
-    pcap::{PcapReader, PcapWriter, PcapHeader, RawPcapPacket},
+    TsResolution,
+    pcap::{PcapWriter, PcapHeader, RawPcapPacket},
 };
 
 use crate::backend::cynthion::{
@@ -70,6 +70,7 @@ use crate::capture::{
 };
 use crate::decoder::Decoder;
 use crate::expander::ExpanderWrapper;
+use crate::loader::Loader;
 use crate::model::{GenericModel, TrafficModel, DeviceModel};
 use crate::row_data::{
     GenericRowData,
@@ -615,6 +616,46 @@ fn create_view<Item, Model, RowData>(
     view.append_column(&column);
     view.add_css_class("data-table");
 
+    if Model::HAS_TIMES {
+        let model = model.clone();
+        let factory = SignalListItemFactory::new();
+        factory.connect_setup(move |_, list_item| {
+            let label = Label::new(None);
+            list_item.set_child(Some(&label));
+        });
+        let bind = move |list_item: &ListItem| {
+            let row = list_item
+                .item()
+                .context("ListItem has no item")?
+                .downcast::<RowData>()
+                .or_else(|_| bail!("Item is not RowData"))?;
+            let label = list_item
+                .child()
+                .context("ListItem has no child widget")?
+                .downcast::<Label>()
+                .or_else(|_| bail!("Child widget is not a Label"))?;
+            match row.node() {
+                Ok(node_ref) => {
+                    let node = node_ref.borrow();
+                    let timestamp = model.timestamp(&node.item);
+                    label.set_markup(&format!("<tt><small>{}.{:09}</small></tt>",
+                                           timestamp / 1_000_000_000,
+                                           timestamp % 1_000_000_000));
+                },
+                Err(msg) => {
+                    label.set_text(&format!("Error: {msg}"));
+                }
+            }
+            Ok(())
+        };
+
+        factory.connect_bind(move |_, item| display_error(bind(item)));
+
+        let timestamp_column =
+            ColumnViewColumn::new(Some("Time"), Some(factory));
+        view.insert_column(0, &timestamp_column);
+    }
+
     #[cfg(any(test, feature="record-ui-test"))]
     model.connect_items_changed(move |model, position, removed, added|
         changed_rec.borrow_mut().log_items_changed(
@@ -788,30 +829,24 @@ fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), Error> {
         let mut capture = ui.capture.clone();
         let worker = move || match action {
             Load => {
-                let file = File::open(path)?;
-                let file_size = file.metadata()?.len();
-                TOTAL.store(file_size, Ordering::Relaxed);
-                let reader = BufReader::new(file);
-                let mut pcap = PcapReader::new(reader)?;
-                let mut bytes_read = size_of::<PcapHeader>() as u64;
+                let mut loader = Loader::open(path)?;
+                TOTAL.store(loader.file_size, Ordering::Relaxed);
                 let mut decoder = Decoder::new(writer.unwrap())?;
                 #[cfg(feature="step-decoder")]
                 let (mut client, _addr) =
                     TcpListener::bind("127.0.0.1:46563")?.accept()?;
-                while let Some(result) = pcap.next_raw_packet() {
+                while let Some(result) = loader.next() {
+                    let (packet, timestamp_ns) = result?;
                     #[cfg(feature="step-decoder")] {
                         let mut buf = [0; 1];
                         client.read(&mut buf).unwrap();
                     };
-                    let packet = result?;
                     #[cfg(feature="record-ui-test")]
                     let guard = UPDATE_LOCK.lock();
-                    decoder.handle_raw_packet(&packet.data)?;
+                    decoder.handle_raw_packet(&packet.data, timestamp_ns)?;
                     #[cfg(feature="record-ui-test")]
                     drop(guard);
-                    let size = 16 + packet.data.len();
-                    bytes_read += size as u64;
-                    CURRENT.store(bytes_read, Ordering::Relaxed);
+                    CURRENT.store(loader.bytes_read, Ordering::Relaxed);
                     if STOP.load(Ordering::Relaxed) {
                         break;
                     }
@@ -828,19 +863,21 @@ fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), Error> {
                 let writer = BufWriter::new(file);
                 let header = PcapHeader {
                     datalink: DataLink::USB_2_0,
+                    ts_resolution: TsResolution::NanoSecond,
                     .. PcapHeader::default()
                 };
                 let mut pcap = PcapWriter::with_header(writer, header)?;
                 for i in 0..packet_count {
                     let packet_id = PacketId::from(i);
                     let bytes = capture.packet(packet_id)?;
+                    let timestamp_ns = capture.packet_time(packet_id)?;
                     let length: u32 = bytes
                         .len()
                         .try_into()
                         .context("Packet too large for pcap file")?;
                     let packet = RawPcapPacket {
-                        ts_sec: 0,
-                        ts_frac: 0,
+                        ts_sec: (timestamp_ns / 1_000_000_000) as u32,
+                        ts_frac: (timestamp_ns % 1_000_000_000) as u32,
                         incl_len: length,
                         orig_len: length,
                         data: Cow::from(bytes)
@@ -927,7 +964,7 @@ pub fn start_cynthion() -> Result<(), Error> {
         let read_cynthion = move || {
             let mut decoder = Decoder::new(writer)?;
             for packet in stream_handle {
-                decoder.handle_raw_packet(&packet)?;
+                decoder.handle_raw_packet(&packet.bytes, packet.timestamp_ns)?;
             }
             decoder.finish()?;
             Ok(())

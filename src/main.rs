@@ -20,6 +20,7 @@ mod decoder;
 mod expander;
 mod id;
 mod index_stream;
+mod loader;
 mod model;
 mod rcu;
 mod row_data;
