@@ -20,6 +20,8 @@ To build, run `cargo build` after installing the necessary prerequisites (see be
 
 If you pass a capture filename as an argument, Packetry will attempt to load it. The current supported file format is a `.pcap` file with the `LINKTYPE_USB_2_0` link layer header type.
 
+Note: Do not build with `--all-features`. All the optional features currently in the package are for debug/test purposes only, and will prevent or degrade normal use of the application if enabled. See `Cargo.toml` for details.
+
 ### Installing prerequisites
 
 #### Linux
