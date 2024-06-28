@@ -1,3 +1,6 @@
+/assets/icon-generated/*
+# The generated icon at 512x512@2 is used in README.md
+!/assets/icon-generated/512x512@2
 /target
 /tests/*/output.txt
 /tests/ui/*/output.txt
