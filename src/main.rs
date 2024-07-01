@@ -47,9 +47,14 @@ use ui::{
     stop_cynthion
 };
 
+fn have_argument(name: &str) -> bool {
+    std::env::args().any(|arg| arg == name)
+}
+
 fn main() {
-    if std::env::args().any(|arg| arg == "--test-cynthion") {
-        test_cynthion::run_test();
+    if have_argument("--test-cynthion") {
+        let save_captures = have_argument("--save-captures");
+        test_cynthion::run_test(save_captures);
     } else {
         let application = gtk::Application::new(
             Some("com.greatscottgadgets.packetry"),
