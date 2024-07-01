@@ -1,7 +1,4 @@
-use std::borrow::Cow;
 use std::cell::RefCell;
-use std::fs::File;
-use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::Duration;
@@ -46,12 +43,6 @@ use gtk::{
     ButtonsType,
 };
 
-use pcap_file::{
-    DataLink,
-    TsResolution,
-    pcap::{PcapWriter, PcapHeader, RawPcapPacket},
-};
-
 use crate::backend::cynthion::{
     CynthionDevice,
     CynthionHandle,
@@ -70,7 +61,7 @@ use crate::capture::{
 };
 use crate::decoder::Decoder;
 use crate::expander::ExpanderWrapper;
-use crate::loader::Loader;
+use crate::pcap::{Loader, Writer};
 use crate::model::{GenericModel, TrafficModel, DeviceModel};
 use crate::row_data::{
     GenericRowData,
@@ -859,36 +850,18 @@ fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), Error> {
                 let packet_count = capture.packet_index.len();
                 TOTAL.store(packet_count, Ordering::Relaxed);
                 CURRENT.store(0, Ordering::Relaxed);
-                let file = File::create(path)?;
-                let writer = BufWriter::new(file);
-                let header = PcapHeader {
-                    datalink: DataLink::USB_2_0,
-                    ts_resolution: TsResolution::NanoSecond,
-                    .. PcapHeader::default()
-                };
-                let mut pcap = PcapWriter::with_header(writer, header)?;
+                let mut writer = Writer::open(path)?;
                 for i in 0..packet_count {
                     let packet_id = PacketId::from(i);
-                    let bytes = capture.packet(packet_id)?;
+                    let packet = capture.packet(packet_id)?;
                     let timestamp_ns = capture.packet_time(packet_id)?;
-                    let length: u32 = bytes
-                        .len()
-                        .try_into()
-                        .context("Packet too large for pcap file")?;
-                    let packet = RawPcapPacket {
-                        ts_sec: (timestamp_ns / 1_000_000_000) as u32,
-                        ts_frac: (timestamp_ns % 1_000_000_000) as u32,
-                        incl_len: length,
-                        orig_len: length,
-                        data: Cow::from(bytes)
-                    };
-                    pcap.write_raw_packet(&packet)?;
+                    writer.add_packet(&packet, timestamp_ns)?;
                     CURRENT.store(i + 1, Ordering::Relaxed);
                     if STOP.load(Ordering::Relaxed) {
                         break;
                     }
                 }
-                pcap.into_writer().flush()?;
+                writer.close()?;
                 Ok(())
             },
         };
