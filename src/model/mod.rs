@@ -25,6 +25,7 @@ glib::wrapper! {
 }
 
 pub trait GenericModel<Item> where Self: Sized {
+    const HAS_TIMES: bool;
     fn new(capture: CaptureReader,
            #[cfg(any(test, feature="record-ui-test"))]
            on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>)
@@ -36,10 +37,13 @@ pub trait GenericModel<Item> where Self: Sized {
         -> Result<(), Error>;
     fn update(&self) -> Result<bool, Error>;
     fn summary(&self, item: &Item) -> String;
+    fn timestamp(&self, item: &Item) -> u64;
     fn connectors(&self, item: &Item) -> String;
 }
 
 impl GenericModel<TrafficItem> for TrafficModel {
+    const HAS_TIMES: bool = true;
+
     fn new(capture: CaptureReader,
            #[cfg(any(test, feature="record-ui-test"))]
            on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>)
@@ -77,6 +81,12 @@ impl GenericModel<TrafficItem> for TrafficModel {
         tree.summary(item)
     }
 
+    fn timestamp(&self, item: &TrafficItem) -> u64 {
+        let tree_opt = self.imp().tree.borrow();
+        let tree = tree_opt.as_ref().unwrap();
+        tree.timestamp(item)
+    }
+
     fn connectors(&self, item: &TrafficItem) -> String {
         let tree_opt = self.imp().tree.borrow();
         let tree = tree_opt.as_ref().unwrap();
@@ -85,6 +95,8 @@ impl GenericModel<TrafficItem> for TrafficModel {
 }
 
 impl GenericModel<DeviceItem> for DeviceModel {
+    const HAS_TIMES: bool = false;
+
     fn new(capture: CaptureReader,
            #[cfg(any(test, feature="record-ui-test"))]
            on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>)
@@ -120,6 +132,10 @@ impl GenericModel<DeviceItem> for DeviceModel {
         let tree_opt = self.imp().tree.borrow();
         let tree = tree_opt.as_ref().unwrap();
         tree.summary(item)
+    }
+
+    fn timestamp(&self, _item: &DeviceItem) -> u64 {
+        unreachable!();
     }
 
     fn connectors(&self, item: &DeviceItem) -> String {
