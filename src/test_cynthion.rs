@@ -1,5 +1,12 @@
 use crate::backend::cynthion::{CynthionDevice, CynthionUsability, Speed};
-use crate::capture::{create_capture, CaptureReader, DeviceId, EndpointId, EndpointTransferId};
+use crate::capture::{
+    create_capture,
+    CaptureReader,
+    DeviceId,
+    EndpointId,
+    EndpointTransferId,
+    PacketId,
+};
 use crate::decoder::Decoder;
 
 use anyhow::{Context, Error};
@@ -10,16 +17,21 @@ use std::thread::sleep;
 use std::time::Duration;
 
 pub fn run_test() {
-    for (speed, ep_addr, length) in [
-        (Speed::High, 0x81, 4096),
-        (Speed::Full, 0x82, 512),
-        (Speed::Low,  0x83, 64)]
+    for (speed, ep_addr, length, sof) in [
+        (Speed::High, 0x81, 4096, Some((124500,  125500, 500))),
+        (Speed::Full, 0x82,  512, Some((995000, 1005000,  50))),
+        (Speed::Low,  0x83,   64, None)]
     {
-        test(speed, ep_addr, length).unwrap();
+        test(speed, ep_addr, length, sof).unwrap();
     }
 }
 
-fn test(speed: Speed, ep_addr: u8, length: usize) -> Result<(), Error> {
+fn test(speed: Speed,
+        ep_addr: u8,
+        length: usize,
+        sof: Option<(u64, u64, u64)>)
+    -> Result<(), Error>
+{
     let desc = speed.description();
     println!("\nTesting at {desc}:\n");
 
@@ -80,7 +92,7 @@ fn test(speed: Speed, ep_addr: u8, length: usize) -> Result<(), Error> {
 
     // Decode all packets that were received.
     for packet in packets {
-        decoder.handle_raw_packet(&packet)
+        decoder.handle_raw_packet(&packet.bytes, packet.timestamp_ns)
             .context("Error decoding packet")?;
     }
 
@@ -95,8 +107,50 @@ fn test(speed: Speed, ep_addr: u8, length: usize) -> Result<(), Error> {
         .context("Error counting captured bytes on endpoint")?;
     println!("Captured {}/{} bytes of data read from test device",
              bytes_captured.len(), length);
-    assert_eq!(bytes_captured, completion.data[0..bytes_captured.len()],
-                   "Captured data did not match received data");
+    assert_eq!(bytes_captured.len(), length,
+               "Not all data was captured");
+    assert_eq!(bytes_captured, completion.data,
+               "Captured data did not match received data");
+
+    if let Some((min_interval, max_interval, min_count)) = sof {
+        println!("Checking SOF timestamp intervals");
+        // Check SOF timestamps have the expected spacing.
+        // SOF packets are assigned to endpoint ID 1.
+        // We're looking for the first and only transfer on the endpoint.
+        let endpoint_id = EndpointId::from(1);
+        let ep_transfer_id = EndpointTransferId::from(0);
+        let ep_traf = reader.endpoint_traffic(endpoint_id)?;
+        let ep_transaction_ids = ep_traf.transfer_index
+            .target_range(ep_transfer_id, ep_traf.transaction_ids.len())?;
+        let mut sof_count = 0;
+        let mut last = None;
+        for transaction_id in ep_traf.transaction_ids
+            .get_range(&ep_transaction_ids)?
+        {
+            let range = reader.transaction_index
+                .target_range(transaction_id, reader.packet_index.len())?;
+            for id in range.start.value..range.end.value {
+                let packet_id = PacketId::from(id);
+                let timestamp = reader.packet_times.get(packet_id)?;
+                if let Some(prev) = last {
+                    let interval = timestamp - prev;
+                    if !(interval > min_interval && interval < max_interval) {
+                        if interval > 10000000 {
+                            // More than 10ms gap, assume host stopped sending.
+                            continue
+                        } else {
+                            panic!("SOF interval of {}ns is out of range",
+                                   interval);
+                        }
+                    }
+                }
+                sof_count += 1;
+                last = Some(timestamp);
+            }
+        }
+        println!("Found {} SOF packets with expected interval range", sof_count);
+        assert!(sof_count > min_count, "Not enough SOF packets captured");
+    }
 
     Ok(())
 }

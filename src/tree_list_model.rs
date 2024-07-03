@@ -943,6 +943,11 @@ where Item: 'static + Copy + Debug,
         Ok(node_rc)
     }
 
+    pub fn timestamp(&self, item: &Item) -> u64 {
+        let mut cap = self.capture.borrow_mut();
+        cap.timestamp(item).unwrap_or(0)
+    }
+
     pub fn summary(&self, item: &Item) -> String {
         let mut cap = self.capture.borrow_mut();
         match cap.summary(item) {

@@ -29,7 +29,7 @@ const PID: u16 = 0x615b;
 
 const CLASS: u8 = 0xff;
 const SUBCLASS: u8 = 0x10;
-const PROTOCOL: u8 = 0x00;
+const PROTOCOL: u8 = 0x01;
 
 const ENDPOINT: u8 = 0x81;
 
@@ -142,11 +142,26 @@ pub struct CynthionQueue {
 pub struct CynthionStream {
     receiver: mpsc::Receiver<Vec<u8>>,
     buffer: VecDeque<u8>,
+    padding_due: bool,
+    total_clk_cycles: u64,
 }
 
 pub struct CynthionStop {
     stop_request: oneshot::Sender<()>,
     worker: JoinHandle::<()>,
+}
+
+pub struct CynthionPacket {
+    pub timestamp_ns: u64,
+    pub bytes: Vec<u8>,
+}
+
+/// Convert 60MHz clock cycles to nanoseconds, rounding down.
+fn clk_to_ns(clk_cycles: u64) -> u64 {
+    const TABLE: [u64; 3] = [0, 16, 33];
+    let quotient = clk_cycles / 3;
+    let remainder = clk_cycles % 3;
+    quotient * 50 + TABLE[remainder as usize]
 }
 
 /// Check whether a Cynthion device has an accessible analyzer interface.
@@ -302,6 +317,8 @@ impl CynthionHandle {
             CynthionStream {
                 receiver: rx,
                 buffer: VecDeque::new(),
+                padding_due: false,
+                total_clk_cycles: 0,
             },
             CynthionStop {
                 stop_request: stop_tx,
@@ -437,9 +454,9 @@ impl CynthionQueue {
 }
 
 impl Iterator for CynthionStream {
-    type Item = Vec<u8>;
+    type Item = CynthionPacket;
 
-    fn next(&mut self) -> Option<Vec<u8>> {
+    fn next(&mut self) -> Option<CynthionPacket> {
         loop {
             // Do we have another packet already in the buffer?
             match self.next_buffered_packet() {
@@ -458,25 +475,71 @@ impl Iterator for CynthionStream {
 }
 
 impl CynthionStream {
-    fn next_buffered_packet(&mut self) -> Option<Vec<u8>> {
-        // Do we have the length header for the next packet?
-        let buffer_len = self.buffer.len();
-        if buffer_len <= 2 {
-            return None;
+    fn next_buffered_packet(&mut self) -> Option<CynthionPacket> {
+        // Are we waiting for a padding byte?
+        if self.padding_due {
+            if self.buffer.is_empty() {
+                return None;
+            } else {
+                self.buffer.pop_front();
+                self.padding_due= false;
+            }
+        }
+
+        // Loop over any non-packet events, until we get to a packet.
+        loop {
+            // Do we have the length and timestamp for the next packet/event?
+            if self.buffer.len() < 4 {
+                return None;
+            }
+
+            if self.buffer[0] == 0xFF {
+                // This is an event.
+                let _event_code = self.buffer[1];
+
+                // Update our cycle count.
+                self.update_cycle_count();
+
+                // Remove event from buffer.
+                self.buffer.drain(0..4);
+            } else {
+                // This is a packet, handle it below.
+                break;
+            }
         }
 
         // Do we have all the data for the next packet?
         let packet_len = u16::from_be_bytes(
             [self.buffer[0], self.buffer[1]]) as usize;
-        if buffer_len <= 2 + packet_len {
+        if self.buffer.len() <= 4 + packet_len {
             return None;
         }
 
-        // Remove the length header from the buffer.
-        self.buffer.drain(0..2);
+        // Update our cycle count.
+        self.update_cycle_count();
 
-        // Remove the packet from the buffer and return it.
-        Some(self.buffer.drain(0..packet_len).collect())
+        // Remove the length and timestamp from the buffer.
+        self.buffer.drain(0..4);
+
+        // If packet length is odd, we will need to skip a padding byte after.
+        if packet_len % 2 == 1 {
+            self.padding_due = true;
+        }
+
+        // Remove the rest of the packet from the buffer and return it.
+        Some(CynthionPacket {
+            timestamp_ns: clk_to_ns(self.total_clk_cycles),
+            bytes: self.buffer.drain(0..packet_len).collect()
+        })
+    }
+
+    fn update_cycle_count(&mut self) {
+        // Decode the cycle count.
+        let clk_cycles = u16::from_be_bytes(
+            [self.buffer[2], self.buffer[3]]);
+
+        // Update our running total.
+        self.total_clk_cycles += clk_cycles as u64;
     }
 }
 
