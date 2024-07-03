@@ -94,8 +94,10 @@ static UPDATE_INTERVAL: Duration = Duration::from_millis(10);
 static UPDATE_LOCK: Mutex<()> = Mutex::new(());
 
 thread_local!(
-    static WINDOW: RefCell<Option<ApplicationWindow>> = RefCell::new(None);
-    static UI: RefCell<Option<UserInterface>> = RefCell::new(None);
+    static WINDOW: RefCell<Option<ApplicationWindow>> =
+        const { RefCell::new(None) };
+    static UI: RefCell<Option<UserInterface>> =
+        const { RefCell::new(None) };
 );
 
 #[derive(Copy, Clone, PartialEq)]

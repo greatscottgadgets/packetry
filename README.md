@@ -10,7 +10,7 @@ Packetry is currently in active development and not yet ready for initial releas
 
 Packetry is written in [Rust](https://rust-lang.org/), with its GUI using [GTK 4](https://gtk.org) via the [gtk-rs](https://gtk-rs.org/) bindings.
 
-To build it, you need a working Rust development environment. The minimum supported Rust version is 1.57.
+To build it, you need a working Rust development environment. The minimum supported Rust version is 1.74.
 
 You must also have the GTK 4 headers installed and discoverable via `pkg-config`, as this is required for Rust to build the gtk-rs crates.
 
@@ -28,7 +28,7 @@ Note: Do not build with `--all-features`. All the optional features currently in
 
 Install the Rust build tools, other essential build tools, and GTK 4 headers.
 
-On Debian based systems it should be sufficient to use the command:
+On Debian based systems it may be sufficient to use the command:
 
 `apt install rustc cargo build-essential libgtk-4-dev`
 
@@ -38,7 +38,7 @@ For Fedora systems:
 
 For other distributions, a similar set of packages should be required.
 
-You can also omit Rust and Cargo and use [rustup](https://rustup.rs/) to get the latest Rust toolchain and manage your Rust installation.
+Note that Packetry requires a minimum Rust version of 1.74. If your distribution's packages are older than this, use [rustup](https://rustup.rs/) to get the latest Rust toolchain and manage your Rust installation.
 
 #### macOS
 
