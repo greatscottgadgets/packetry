@@ -1,0 +1,266 @@
+<?xml version='1.0' encoding='windows-1252'?>
+<?if $(sys.BUILDARCH) = x64 or $(sys.BUILDARCH) = arm64 ?>
+    <?define PlatformProgramFilesFolder = "ProgramFiles64Folder" ?>
+<?else ?>
+    <?define PlatformProgramFilesFolder = "ProgramFilesFolder" ?>
+<?endif ?>
+
+<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
+
+    <Product
+        Id='*'
+        Name='Packetry'
+        UpgradeCode='25E89D1B-8635-4B73-8865-3B1050282F7C'
+        Manufacturer='Great Scott Gadgets'
+        Language='1033'
+        Codepage='1252'
+        Version='$(var.Version)'>
+
+        <Package Id='*'
+            Keywords='Installer'
+            Description='A fast, intuitive USB 2.0 protocol analysis application for use with Cynthion.'
+            Manufacturer='Great Scott Gadgets'
+            InstallerVersion='450'
+            Languages='1033'
+            Compressed='yes'
+            InstallScope='perMachine'
+            SummaryCodepage='1252'
+            />
+
+        <MajorUpgrade
+            Schedule='afterInstallInitialize'
+            DowngradeErrorMessage='A newer version of [ProductName] is already installed. Setup will now exit.'/>
+
+        <Media Id='1' Cabinet='media1.cab' EmbedCab='yes' DiskPrompt='CD-ROM #1'/>
+        <Property Id='DiskPrompt' Value='Packetry Installation'/>
+
+        <Directory Id='TARGETDIR' Name='SourceDir'>
+            <Directory Id='$(var.PlatformProgramFilesFolder)' Name='PFiles'>
+                <Directory Id='APPLICATIONFOLDER' Name='Packetry'>
+
+                    <!--
+                      Enabling the license sidecar file in the installer is a four step process:
+
+                      1. Uncomment the `Component` tag and its contents.
+                      2. Change the value for the `Source` attribute in the `File` tag to a path
+                         to the file that should be included as the license sidecar file. The path
+                         can, and probably should be, relative to this file.
+                      3. Change the value for the `Name` attribute in the `File` tag to the
+                         desired name for the file when it is installed alongside the `bin` folder
+                         in the installation directory. This can be omitted if the desired name is
+                         the same as the file name.
+                      4. Uncomment the `ComponentRef` tag with the Id attribute value of "License"
+                         further down in this file.
+                    -->
+                    <!--
+                    <Component Id='License' Guid='*'>
+                        <File Id='LicenseFile' Name='ChangeMe' DiskId='1' Source='C:\Path\To\File' KeyPath='yes'/>
+                    </Component>
+                    -->
+
+                    <Directory Id='Bin' Name='bin'>
+                        <Component Id='Path' Guid='11E1B3A0-F153-41F2-8080-7225FB20816F' KeyPath='yes'>
+                            <Environment
+                                Id='PATH'
+                                Name='PATH'
+                                Value='[Bin]'
+                                Permanent='no'
+                                Part='last'
+                                Action='set'
+                                System='yes'/>
+                        </Component>
+                        <Component Id='binary0' Guid='*'>
+                            <File
+                                Id='exe0'
+                                Name='packetry.exe'
+                                DiskId='1'
+                                Source='$(var.CargoTargetBinDir)\packetry.exe'
+                                KeyPath='yes'/>
+                        </Component>
+
+                        <Component Id='atk_1.0_0.dll' Guid='5edbbda4-db12-4e43-8f0c-218ebab94d93'><File Id='atk_1.0_0.dll' Name='atk-1.0-0.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/atk-1.0-0.dll' /></Component>
+                        <Component Id='brotlicommon.dll' Guid='0be65eb3-8928-4817-925a-5550e666683b'><File Id='brotlicommon.dll' Name='brotlicommon.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/brotlicommon.dll' /></Component>
+                        <Component Id='brotlidec.dll' Guid='a1aa709a-a611-47bf-91d4-2f655270bec5'><File Id='brotlidec.dll' Name='brotlidec.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/brotlidec.dll' /></Component>
+                        <Component Id='brotlienc.dll' Guid='ef53d54e-d61b-4e7f-8a2b-c8347bd0884e'><File Id='brotlienc.dll' Name='brotlienc.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/brotlienc.dll' /></Component>
+                        <Component Id='bz2.dll' Guid='4a8a184b-11a9-4493-a709-7d0ec8614f14'><File Id='bz2.dll' Name='bz2.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/bz2.dll' /></Component>
+                        <Component Id='cairo_2.dll' Guid='d8ce6c10-20fc-4128-a9ac-6ef047cb96e2'><File Id='cairo_2.dll' Name='cairo-2.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/cairo-2.dll' /></Component>
+                        <Component Id='cairo_gobject_2.dll' Guid='9992fb8f-f693-4dcd-a387-1f86b4b41aac'><File Id='cairo_gobject_2.dll' Name='cairo-gobject-2.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/cairo-gobject-2.dll' /></Component>
+                        <Component Id='cairo_script_interpreter_2.dll' Guid='75cc1bb6-d916-4f82-aea3-1179f5eb7ba5'><File Id='cairo_script_interpreter_2.dll' Name='cairo-script-interpreter-2.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/cairo-script-interpreter-2.dll' /></Component>
+                        <Component Id='charset_1.dll' Guid='56827d0e-68e1-4e4b-8278-659184d9e570'><File Id='charset_1.dll' Name='charset-1.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/charset-1.dll' /></Component>
+                        <Component Id='epoxy_0.dll' Guid='9aeef0ec-6c93-480d-a44c-ced8dfabfb2f'><File Id='epoxy_0.dll' Name='epoxy-0.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/epoxy-0.dll' /></Component>
+                        <Component Id='ffi_8.dll' Guid='7c63276a-0848-4f46-96fa-8df568a2bb61'><File Id='ffi_8.dll' Name='ffi-8.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/ffi-8.dll' /></Component>
+                        <Component Id='fontconfig_1.dll' Guid='aa8ad7de-59cc-435c-97cb-e328bbff8460'><File Id='fontconfig_1.dll' Name='fontconfig-1.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/fontconfig-1.dll' /></Component>
+                        <Component Id='freetype.dll' Guid='74abc4a2-df13-48bb-8696-96f92a2c0be0'><File Id='freetype.dll' Name='freetype.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/freetype.dll' /></Component>
+                        <Component Id='fribidi_0.dll' Guid='e462dcd8-2226-4f73-9f7e-d2b3b58eba49'><File Id='fribidi_0.dll' Name='fribidi-0.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/fribidi-0.dll' /></Component>
+                        <Component Id='gdk_pixbuf_2.0_0.dll' Guid='c24a4c43-def6-4c24-8cb8-54ece1b6bb9c'><File Id='gdk_pixbuf_2.0_0.dll' Name='gdk_pixbuf-2.0-0.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/gdk_pixbuf-2.0-0.dll' /></Component>
+                        <Component Id='getopt.dll' Guid='f7d09e7c-fccc-4558-b478-5f8a3e88e4e4'><File Id='getopt.dll' Name='getopt.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/getopt.dll' /></Component>
+                        <Component Id='gio_2.0_0.dll' Guid='a91cae44-99b8-4d47-9682-7985abc3bbe1'><File Id='gio_2.0_0.dll' Name='gio-2.0-0.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/gio-2.0-0.dll' /></Component>
+                        <Component Id='glib_2.0_0.dll' Guid='9c81fa23-c96b-4802-aab0-3401300d7bc3'><File Id='glib_2.0_0.dll' Name='glib-2.0-0.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/glib-2.0-0.dll' /></Component>
+                        <Component Id='gmodule_2.0_0.dll' Guid='6bf333ce-3f3a-49ba-b035-fc952b63725b'><File Id='gmodule_2.0_0.dll' Name='gmodule-2.0-0.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/gmodule-2.0-0.dll' /></Component>
+                        <Component Id='gobject_2.0_0.dll' Guid='7bc6b550-918a-4d1b-91d9-358f02a242ba'><File Id='gobject_2.0_0.dll' Name='gobject-2.0-0.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/gobject-2.0-0.dll' /></Component>
+                        <Component Id='graphene_1.0_0.dll' Guid='2874cda9-9885-4495-9763-38a51a37b9d8'><File Id='graphene_1.0_0.dll' Name='graphene-1.0-0.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/graphene-1.0-0.dll' /></Component>
+                        <Component Id='gthread_2.0_0.dll' Guid='4c314fb1-7224-48e2-af39-81984fa6c19e'><File Id='gthread_2.0_0.dll' Name='gthread-2.0-0.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/gthread-2.0-0.dll' /></Component>
+                        <Component Id='gtk_4_1.dll' Guid='6fe10843-e106-4883-bf29-a6a94cd2b1cd'><File Id='gtk_4_1.dll' Name='gtk-4-1.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/gtk-4-1.dll' /></Component>
+                        <Component Id='harfbuzz.dll' Guid='a12abb2a-7edf-40d6-adb2-39cd5a9d8ef8'><File Id='harfbuzz.dll' Name='harfbuzz.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/harfbuzz.dll' /></Component>
+                        <Component Id='harfbuzz_gobject.dll' Guid='202cb447-b82f-47c0-9356-c353b675fd3d'><File Id='harfbuzz_gobject.dll' Name='harfbuzz-gobject.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/harfbuzz-gobject.dll' /></Component>
+                        <Component Id='harfbuzz_subset.dll' Guid='58296888-07a8-4258-9054-5fa089e3c855'><File Id='harfbuzz_subset.dll' Name='harfbuzz-subset.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/harfbuzz-subset.dll' /></Component>
+                        <Component Id='iconv_2.dll' Guid='18abffeb-462a-4186-8b8a-0149c8b9f062'><File Id='iconv_2.dll' Name='iconv-2.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/iconv-2.dll' /></Component>
+                        <Component Id='intl_8.dll' Guid='628852d1-0ccd-40cc-84f4-ae6fee75db16'><File Id='intl_8.dll' Name='intl-8.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/intl-8.dll' /></Component>
+                        <Component Id='jpeg62.dll' Guid='086f589c-d8af-474d-9564-8d65ef6f4401'><File Id='jpeg62.dll' Name='jpeg62.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/jpeg62.dll' /></Component>
+                        <Component Id='libexpat.dll' Guid='b7c975d0-6e53-49b4-b7ed-c75daad6616e'><File Id='libexpat.dll' Name='libexpat.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/libexpat.dll' /></Component>
+                        <Component Id='liblzma.dll' Guid='abd4caa2-4acd-4ec1-85a1-8d621c672529'><File Id='liblzma.dll' Name='liblzma.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/liblzma.dll' /></Component>
+                        <Component Id='libpng16.dll' Guid='b489d04b-74d9-4001-b185-0573968a6da2'><File Id='libpng16.dll' Name='libpng16.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/libpng16.dll' /></Component>
+                        <Component Id='pango_1.0_0.dll' Guid='9e6b8c45-d189-4b8a-aaa9-1f83c92421c2'><File Id='pango_1.0_0.dll' Name='pango-1.0-0.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/pango-1.0-0.dll' /></Component>
+                        <Component Id='pangocairo_1.0_0.dll' Guid='fde9897b-09a2-4201-94f7-2284dcc7246f'><File Id='pangocairo_1.0_0.dll' Name='pangocairo-1.0-0.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/pangocairo-1.0-0.dll' /></Component>
+                        <Component Id='pangoft2_1.0_0.dll' Guid='d1b0f76f-747a-4e81-9c98-24c91d7c7e21'><File Id='pangoft2_1.0_0.dll' Name='pangoft2-1.0-0.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/pangoft2-1.0-0.dll' /></Component>
+                        <Component Id='pangowin32_1.0_0.dll' Guid='1e350ffc-f0e7-4739-aeb4-2c0f93616259'><File Id='pangowin32_1.0_0.dll' Name='pangowin32-1.0-0.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/pangowin32-1.0-0.dll' /></Component>
+                        <Component Id='pcre2_16.dll' Guid='34b8d08a-979f-41be-a894-0ac7ec47e670'><File Id='pcre2_16.dll' Name='pcre2-16.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/pcre2-16.dll' /></Component>
+                        <Component Id='pcre2_32.dll' Guid='86190ec9-596b-412b-b005-d24256086457'><File Id='pcre2_32.dll' Name='pcre2-32.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/pcre2-32.dll' /></Component>
+                        <Component Id='pcre2_8.dll' Guid='32f1711c-a8f7-4f09-890e-eb3a69347b7d'><File Id='pcre2_8.dll' Name='pcre2-8.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/pcre2-8.dll' /></Component>
+                        <Component Id='pcre2_posix.dll' Guid='c153933b-e57e-432a-9a29-ff8a4889615e'><File Id='pcre2_posix.dll' Name='pcre2-posix.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/pcre2-posix.dll' /></Component>
+                        <Component Id='pixman_1_0.dll' Guid='1c88f629-1474-4dd5-9b23-7b6dcfb4143c'><File Id='pixman_1_0.dll' Name='pixman-1-0.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/pixman-1-0.dll' /></Component>
+                        <Component Id='pthreadVC3.dll' Guid='88992acc-c1bd-4d6c-8155-ce1e07cd66af'><File Id='pthreadVC3.dll' Name='pthreadVC3.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/pthreadVC3.dll' /></Component>
+                        <Component Id='pthreadVCE3.dll' Guid='efeab01d-ac1e-42be-8cb1-75b0a419503f'><File Id='pthreadVCE3.dll' Name='pthreadVCE3.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/pthreadVCE3.dll' /></Component>
+                        <Component Id='pthreadVSE3.dll' Guid='09cc7e5d-ebc3-42bb-9bd9-26a9bdac449e'><File Id='pthreadVSE3.dll' Name='pthreadVSE3.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/pthreadVSE3.dll' /></Component>
+                        <Component Id='sass_1.dll' Guid='e67bbd5b-edf9-4f2b-a04a-241e628ba95f'><File Id='sass_1.dll' Name='sass-1.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/sass-1.dll' /></Component>
+                        <Component Id='tiff.dll' Guid='f181c65d-b7fc-41ab-9fcf-49b3a5996ba3'><File Id='tiff.dll' Name='tiff.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/tiff.dll' /></Component>
+                        <Component Id='turbojpeg.dll' Guid='8cfa1139-79e4-4e80-9c76-fbe5d404d9c5'><File Id='turbojpeg.dll' Name='turbojpeg.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/turbojpeg.dll' /></Component>
+                        <Component Id='zlib1.dll' Guid='e10ca69b-ce5e-4368-bc78-5109ba0e6b75'><File Id='zlib1.dll' Name='zlib1.dll' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/bin/zlib1.dll' /></Component>
+                    </Directory>
+
+                    <Directory Id='share' Name='share'>
+                        <Directory Id='glib_2.0' Name='glib-2.0'>
+                            <Directory Id='schemas' Name='schemas'>
+                                <Component Id='gschemas.compiled' Guid='9cdd6a9f-813d-430e-a099-375f87603f84'>
+                                    <File Id='gschemas.compiled' Name='gschemas.compiled' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/share/glib-2.0/schemas/gschemas.compiled'/>
+                                </Component>
+                            </Directory>
+                        </Directory>
+                    </Directory>
+                </Directory>
+            </Directory>
+        </Directory>
+
+        <Feature
+            Id='Binaries'
+            Title='Application'
+            Description='Installs all binaries and the license.'
+            Level='1'
+            ConfigurableDirectory='APPLICATIONFOLDER'
+            AllowAdvertise='no'
+            Display='expand'
+            Absent='disallow'>
+
+            <!--
+              Uncomment the following `ComponentRef` tag to add the license
+              sidecar file to the installer.
+            -->
+            <!--<ComponentRef Id='License'/>-->
+
+            <ComponentRef Id='binary0'/>
+
+            <ComponentRef Id='atk_1.0_0.dll'/>
+            <ComponentRef Id='brotlicommon.dll'/>
+            <ComponentRef Id='brotlidec.dll'/>
+            <ComponentRef Id='brotlienc.dll'/>
+            <ComponentRef Id='bz2.dll'/>
+            <ComponentRef Id='cairo_2.dll'/>
+            <ComponentRef Id='cairo_gobject_2.dll'/>
+            <ComponentRef Id='cairo_script_interpreter_2.dll'/>
+            <ComponentRef Id='charset_1.dll'/>
+            <ComponentRef Id='epoxy_0.dll'/>
+            <ComponentRef Id='ffi_8.dll'/>
+            <ComponentRef Id='fontconfig_1.dll'/>
+            <ComponentRef Id='freetype.dll'/>
+            <ComponentRef Id='fribidi_0.dll'/>
+            <ComponentRef Id='gdk_pixbuf_2.0_0.dll'/>
+            <ComponentRef Id='getopt.dll'/>
+            <ComponentRef Id='gio_2.0_0.dll'/>
+            <ComponentRef Id='glib_2.0_0.dll'/>
+            <ComponentRef Id='gmodule_2.0_0.dll'/>
+            <ComponentRef Id='gobject_2.0_0.dll'/>
+            <ComponentRef Id='graphene_1.0_0.dll'/>
+            <ComponentRef Id='gthread_2.0_0.dll'/>
+            <ComponentRef Id='gtk_4_1.dll'/>
+            <ComponentRef Id='harfbuzz.dll'/>
+            <ComponentRef Id='harfbuzz_gobject.dll'/>
+            <ComponentRef Id='harfbuzz_subset.dll'/>
+            <ComponentRef Id='iconv_2.dll'/>
+            <ComponentRef Id='intl_8.dll'/>
+            <ComponentRef Id='jpeg62.dll'/>
+            <ComponentRef Id='libexpat.dll'/>
+            <ComponentRef Id='liblzma.dll'/>
+            <ComponentRef Id='libpng16.dll'/>
+            <ComponentRef Id='pango_1.0_0.dll'/>
+            <ComponentRef Id='pangocairo_1.0_0.dll'/>
+            <ComponentRef Id='pangoft2_1.0_0.dll'/>
+            <ComponentRef Id='pangowin32_1.0_0.dll'/>
+            <ComponentRef Id='pcre2_16.dll'/>
+            <ComponentRef Id='pcre2_32.dll'/>
+            <ComponentRef Id='pcre2_8.dll'/>
+            <ComponentRef Id='pcre2_posix.dll'/>
+            <ComponentRef Id='pixman_1_0.dll'/>
+            <ComponentRef Id='pthreadVC3.dll'/>
+            <ComponentRef Id='pthreadVCE3.dll'/>
+            <ComponentRef Id='pthreadVSE3.dll'/>
+            <ComponentRef Id='sass_1.dll'/>
+            <ComponentRef Id='tiff.dll'/>
+            <ComponentRef Id='turbojpeg.dll'/>
+            <ComponentRef Id='zlib1.dll'/>
+
+            <ComponentRef Id='gschemas.compiled'/>
+
+            <Feature
+                Id='Environment'
+                Title='Add to PATH'
+                Description='Add the location of the [ProductName] executable to the PATH system environment variable. This allows [ProductName] to be called from any location.'
+                Level='1'
+                Absent='allow'>
+                <ComponentRef Id='Path'/>
+            </Feature>
+        </Feature>
+
+        <SetProperty Id='ARPINSTALLLOCATION' Value='[APPLICATIONFOLDER]' After='CostFinalize'/>
+
+        <!--
+          Uncomment the following `Icon` and `Property` tags to change the product icon.
+
+          The product icon is the graphic that appears in the Add/Remove
+          Programs control panel for the application.
+        -->
+        <!--<Icon Id='ProductICO' SourceFile='wix\Product.ico'/>-->
+        <!--<Property Id='ARPPRODUCTICON' Value='ProductICO' />-->
+
+        <Property Id='ARPHELPLINK' Value='https://packetry.readthedocs.io'/>
+
+        <UI>
+            <UIRef Id='WixUI_FeatureTree'/>
+
+            <Publish Dialog='WelcomeDlg' Control='Next' Event='NewDialog' Value='CustomizeDlg' Order='99'>1</Publish>
+            <Publish Dialog='CustomizeDlg' Control='Back' Event='NewDialog' Value='WelcomeDlg' Order='99'>1</Publish>
+
+        </UI>
+
+        <!--
+          Uncomment the next `WixVariable` tag to customize the installer's
+          Graphical User Interface (GUI) and add a custom banner image across
+          the top of each screen. See the WiX Toolset documentation for details
+          about customization.
+
+          The banner BMP dimensions are 493 x 58 pixels.
+        -->
+        <!--<WixVariable Id='WixUIBannerBmp' Value='wix\Banner.bmp'/>-->
+
+        <!--
+          Uncomment the next `WixVariable` tag to customize the installer's
+          Graphical User Interface (GUI) and add a custom image to the first
+          dialog, or screen. See the WiX Toolset documentation for details about
+          customization.
+
+          The dialog BMP dimensions are 493 x 312 pixels.
+        -->
+        <!--<WixVariable Id='WixUIDialogBmp' Value='wix\Dialog.bmp'/>-->
+
+    </Product>
+
+</Wix>
