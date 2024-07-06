@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
@@ -52,7 +52,7 @@ jobs:
       VCPKG_INSTALLED_DIR: ${{ github.workspace }}/vcpkg/installed
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
@@ -135,19 +135,20 @@ jobs:
         if: matrix.os == 'windows-latest'
 
       - name: Upload binary
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: Binary for ${{ matrix.os }}
           path: |
             target/release/packetry
             target/release/packetry.exe
           if-no-files-found: error
+        if: matrix.rust == 'stable'
 
       - name: Upload installer (Windows)
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: Windows installer
           path: |
             target/wix/*.msi
           if-no-files-found: error
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && matrix.rust == 'stable'
