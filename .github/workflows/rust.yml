@@ -74,6 +74,12 @@ jobs:
           tool: cargo-wix
         if: matrix.os == 'windows-latest'
 
+      - name: Install cargo-license (Windows)
+        uses: taiki-e/cache-cargo-install-action@v2
+        with:
+          tool: cargo-license
+        if: matrix.os == 'windows-latest'
+
       - name: Install dependencies (Windows)
         uses: lukka/run-vcpkg@v11
         with:
@@ -108,6 +114,18 @@ jobs:
       - name: Compile glib schemas (Windows)
         run: |
           & "$env:VCPKG_INSTALLED_DIR/x64-windows/tools/glib/glib-compile-schemas.exe" "$env:VCPKG_INSTALLED_DIR/x64-windows/share/glib-2.0/schemas"
+        if: matrix.os == 'windows-latest'
+
+      - name: Gather licenses (Windows)
+        run: |
+          pip install license-expression
+          python wix/rust_licenses.py > wix/LICENSE-static-libraries.txt
+          python wix/vcpkg_licenses.py > wix/LICENSE-dynamic-libraries.txt
+        if: matrix.os == 'windows-latest'
+
+      - name: Generate components (Windows)
+        run: |
+          python wix/generate_components.py
         if: matrix.os == 'windows-latest'
 
       - name: Build installer (Windows)
