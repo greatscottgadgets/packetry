@@ -8,25 +8,29 @@ use crate::capture::{
     PacketId,
 };
 use crate::decoder::Decoder;
+use crate::pcap::Writer;
 
 use anyhow::{Context, Error};
 use futures_lite::future::block_on;
 use nusb::transfer::RequestBuffer;
 
+use std::path::PathBuf;
 use std::thread::sleep;
 use std::time::Duration;
 
-pub fn run_test() {
-    for (speed, ep_addr, length, sof) in [
-        (Speed::High, 0x81, 4096, Some((124500,  125500, 500))),
-        (Speed::Full, 0x82,  512, Some((995000, 1005000,  50))),
-        (Speed::Low,  0x83,   64, None)]
+pub fn run_test(save_captures: bool) {
+    for (name, speed, ep_addr, length, sof) in [
+        ("HS", Speed::High, 0x81, 4096, Some((124500,  125500, 500))),
+        ("FS", Speed::Full, 0x82,  512, Some((995000, 1005000,  50))),
+        ("LS", Speed::Low,  0x83,   64, None)]
     {
-        test(speed, ep_addr, length, sof).unwrap();
+        test(save_captures, name, speed, ep_addr, length, sof).unwrap();
     }
 }
 
-fn test(speed: Speed,
+fn test(save_capture: bool,
+        name: &str,
+        speed: Speed,
         ep_addr: u8,
         length: usize,
         sof: Option<(u64, u64, u64)>)
@@ -94,6 +98,19 @@ fn test(speed: Speed,
     for packet in packets {
         decoder.handle_raw_packet(&packet.bytes, packet.timestamp_ns)
             .context("Error decoding packet")?;
+    }
+
+    if save_capture {
+        // Write the capture to a file.
+        let path = PathBuf::from(format!("./HITL-{name}.pcap"));
+        let mut writer = Writer::open(path)?;
+        for i in 0..reader.packet_index.len() {
+            let packet_id = PacketId::from(i);
+            let packet = reader.packet(packet_id)?;
+            let timestamp_ns = reader.packet_time(packet_id)?;
+            writer.add_packet(&packet, timestamp_ns)?;
+        }
+        writer.close()?;
     }
 
     // Look for the test device in the capture.

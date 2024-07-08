@@ -8,7 +8,7 @@ use itertools::assert_equal;
 use serde_json::Deserializer;
 
 use crate::decoder::Decoder;
-use crate::loader::Loader;
+use crate::pcap::Loader;
 use crate::model::GenericModel;
 use crate::row_data::{GenericRowData, TrafficRowData, DeviceRowData};
 use crate::record_ui::UiAction;

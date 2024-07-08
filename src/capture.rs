@@ -1628,7 +1628,7 @@ mod tests {
     use std::io::{BufReader, BufWriter, BufRead, Write};
     use std::path::PathBuf;
     use crate::decoder::Decoder;
-    use crate::loader::Loader;
+    use crate::pcap::Loader;
     use itertools::Itertools;
 
     fn summarize_item(cap: &mut CaptureReader, item: &TrafficItem, depth: usize)
