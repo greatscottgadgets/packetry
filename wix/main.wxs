@@ -84,7 +84,47 @@
                     </Directory>
                 </Directory>
             </Directory>
+            <Directory Id="ProgramMenuFolder">
+              <Directory Id="ApplicationProgramsFolder" Name="Packetry"/>
+            </Directory>
+	    <Directory Id="DesktopFolder" Name="Desktop"/>
         </Directory>
+
+        <DirectoryRef Id='ApplicationProgramsFolder'>
+            <Component Id='AppStart' Guid='5e4f3323-9448-4272-83ce-4396021ab7cd'>
+                <Shortcut Id='AppStartShortcut'
+                    Name='Packetry'
+                    Description='A fast, intuitive USB 2.0 protocol analysis application for use with Cynthion.'
+                    Target='[APPLICATIONFOLDER]bin\packetry.exe'
+                    WorkingDirectory='APPLICATIONROOTDIRECTORY'/>
+                <RemoveFolder Id='ApplicationProgramsFolder' On='uninstall'/>
+                <RegistryValue
+                    Root='HKCU'
+                    Key='Software\greatscottgadgets\packetry'
+                    Name='StartShortcut'
+                    Type='integer'
+                    Value='1'
+                    KeyPath='yes'/>
+            </Component>
+        </DirectoryRef>
+
+        <DirectoryRef Id='DesktopFolder'>
+            <Component Id='AppDesk' Guid='af742564-506d-4eba-8ae9-3628369e4117'>
+                <Shortcut Id='AppDeskShortcut'
+                    Name='Packetry'
+                    Description='A fast, intuitive USB 2.0 protocol analysis application for use with Cynthion.'
+                    Target='[APPLICATIONFOLDER]bin\packetry.exe'
+                    WorkingDirectory='APPLICATIONROOTDIRECTORY'/>
+                <RemoveFolder Id='DesktopFolder' On='uninstall'/>
+                <RegistryValue
+                    Root='HKCU'
+                    Key='Software\greatscottgadgets\packetry'
+                    Name='DeskShortcut'
+                    Type='integer'
+                    Value='1'
+                    KeyPath='yes'/>
+            </Component>
+        </DirectoryRef>
 
         <Feature
             Id='Binaries'
@@ -113,6 +153,28 @@
                 Level='1'
                 Absent='allow'>
                 <ComponentRef Id='Path'/>
+            </Feature>
+
+            <Feature
+                Id='StartShort'
+                Title='Add to Start menu'
+                Description='Add a shortcut to the start menu'
+                Level='1'
+                AllowAdvertise='no'
+                Display='expand'
+                Absent='allow'>
+                <ComponentRef Id="AppStart"/>
+            </Feature>
+
+            <Feature
+                Id='DeskShort'
+                Title='Desktop shortcut'
+                Description='Add a shortcut to the desktop'
+                Level='1'
+                AllowAdvertise='no'
+                Display='expand'
+                Absent='allow'>
+                <ComponentRef Id="AppDesk"/>
             </Feature>
         </Feature>
 
