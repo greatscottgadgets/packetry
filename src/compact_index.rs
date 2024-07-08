@@ -7,7 +7,6 @@ use std::sync::atomic::{AtomicU64, Ordering::{Acquire, Release}};
 use std::sync::Arc;
 
 use anyhow::{Error, bail};
-use bisection::bisect_left;
 use itertools::multizip;
 
 use crate::data_stream::{data_stream, DataReader, DataWriter};
@@ -382,8 +381,17 @@ where
             values.push(base_value + delta);
         }
         // Bisect the values to find the position.
-        let offset = bisect_left(&values, value) as u64;
-        let position = delta_range.start + offset;
+        let mut lower_bound = 0;
+        let mut upper_bound = values.len();
+        while lower_bound < upper_bound {
+            let midpoint = (lower_bound + upper_bound) / 2;
+            if &values[midpoint] < value {
+                lower_bound = midpoint + 1;
+            } else {
+                upper_bound = midpoint;
+            }
+        }
+        let position = delta_range.start + lower_bound as u64;
         Ok(position)
     }
 }
