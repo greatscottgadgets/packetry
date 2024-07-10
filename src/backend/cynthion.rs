@@ -416,7 +416,7 @@ impl CynthionQueue {
     async fn process(&mut self, mut stop: oneshot::Receiver<()>)
         -> Result<(), Error>
     {
-        use TransferError::Cancelled;
+        use TransferError::{Cancelled, Unknown};
         loop {
             select_biased!(
                 _ = stop => {
@@ -434,7 +434,13 @@ impl CynthionQueue {
                                 self.queue.submit(RequestBuffer::new(READ_LEN));
                             }
                         },
-                        Err(Cancelled) if stop.is_terminated() => {
+                        //
+                        // As of nusb 0.1.9, TransferError::Unknown may be
+                        // returned instead of TransferError::Cancelled when
+                        // Windows returns ERROR_OPERATION_ABORTED. This should
+                        // be fixed in a future nusb release; see nusb PR #63.
+                        //
+                        Err(Cancelled | Unknown) if stop.is_terminated() => {
                             // Transfer cancelled during shutdown. Drop it.
                             drop(completion);
                             if self.queue.pending() == 0 {
