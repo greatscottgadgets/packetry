@@ -76,12 +76,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bisection"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "021e079a1bab0ecce6cf4b4b74c0c37afa4a697136eb3b127875c84a8f04a8c3"
-
-[[package]]
 name = "bitfield"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -98,12 +92,6 @@ name = "bitflags"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf4b9d6a944f767f8e5e0db018570623c85f3d925ac718db4e06d0187adb21c1"
-
-[[package]]
-name = "bufreaderwriter"
-version = "0.2.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ece5ad97cde626d9fb807bf2dd4b4c4d13d7317a93a2ee0f8f9ef6389850a49e"
 
 [[package]]
 name = "bytemuck"
@@ -969,9 +957,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "arc-swap",
- "bisection",
  "bitfield",
- "bufreaderwriter",
  "bytemuck",
  "bytemuck_derive",
  "ctor",

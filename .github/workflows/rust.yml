@@ -68,6 +68,18 @@ jobs:
         run: brew install gtk4 pkg-config
         if: matrix.os == 'macos-latest'
 
+      - name: Install cargo-wix (Windows)
+        uses: taiki-e/cache-cargo-install-action@v2
+        with:
+          tool: cargo-wix
+        if: matrix.os == 'windows-latest'
+
+      - name: Install cargo-license (Windows)
+        uses: taiki-e/cache-cargo-install-action@v2
+        with:
+          tool: cargo-license
+        if: matrix.os == 'windows-latest'
+
       - name: Install dependencies (Windows)
         uses: lukka/run-vcpkg@v11
         with:
@@ -99,10 +111,41 @@ jobs:
         with:
           run: cargo test
 
-      - uses: actions/upload-artifact@v2
+      - name: Compile glib schemas (Windows)
+        run: |
+          & "$env:VCPKG_INSTALLED_DIR/x64-windows/tools/glib/glib-compile-schemas.exe" "$env:VCPKG_INSTALLED_DIR/x64-windows/share/glib-2.0/schemas"
+        if: matrix.os == 'windows-latest'
+
+      - name: Gather licenses (Windows)
+        run: |
+          pip install license-expression
+          python wix/rust_licenses.py > wix/LICENSE-static-libraries.txt
+          python wix/vcpkg_licenses.py > wix/LICENSE-dynamic-libraries.txt
+        if: matrix.os == 'windows-latest'
+
+      - name: Generate components (Windows)
+        run: |
+          python wix/generate_components.py
+        if: matrix.os == 'windows-latest'
+
+      - name: Build installer (Windows)
+        run: cargo wix --no-build --nocapture -v
+        if: matrix.os == 'windows-latest'
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v2
         with:
-          name: Packetry ${{ matrix.os }}
+          name: Binary for ${{ matrix.os }}
           path: |
             target/release/packetry
             target/release/packetry.exe
+          if-no-files-found: error
 
+      - name: Upload installer (Windows)
+        uses: actions/upload-artifact@v2
+        with:
+          name: Windows installer
+          path: |
+            target/wix/*.msi
+          if-no-files-found: error
+        if: runner.os == 'Windows'

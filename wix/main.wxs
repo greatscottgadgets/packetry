@@ -1,0 +1,223 @@
+<?xml version='1.0' encoding='windows-1252'?>
+<?if $(sys.BUILDARCH) = x64 or $(sys.BUILDARCH) = arm64 ?>
+    <?define PlatformProgramFilesFolder = "ProgramFiles64Folder" ?>
+<?else ?>
+    <?define PlatformProgramFilesFolder = "ProgramFilesFolder" ?>
+<?endif ?>
+
+<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
+
+    <Product
+        Id='*'
+        Name='Packetry'
+        UpgradeCode='25E89D1B-8635-4B73-8865-3B1050282F7C'
+        Manufacturer='Great Scott Gadgets'
+        Language='1033'
+        Codepage='1252'
+        Version='$(var.Version)'>
+
+        <Package Id='*'
+            Keywords='Installer'
+            Description='A fast, intuitive USB 2.0 protocol analysis application for use with Cynthion.'
+            Manufacturer='Great Scott Gadgets'
+            InstallerVersion='450'
+            Languages='1033'
+            Compressed='yes'
+            InstallScope='perMachine'
+            SummaryCodepage='1252'
+            />
+
+        <MajorUpgrade
+            Schedule='afterInstallInitialize'
+            DowngradeErrorMessage='A newer version of [ProductName] is already installed. Setup will now exit.'/>
+
+        <Media Id='1' Cabinet='media1.cab' EmbedCab='yes' DiskPrompt='CD-ROM #1'/>
+        <Property Id='DiskPrompt' Value='Packetry Installation'/>
+
+        <Directory Id='TARGETDIR' Name='SourceDir'>
+            <Directory Id='$(var.PlatformProgramFilesFolder)' Name='PFiles'>
+                <Directory Id='APPLICATIONFOLDER' Name='Packetry'>
+                    <Component Id='LICENSE_packetry' Guid='25f09134-ab56-4028-ad5c-461edf5a850a'>
+                        <File Id='LICENSE_packetry' Name='LICENSE-packetry.txt' DiskId='1' Source='LICENSE'/>
+                    </Component>
+                    <Component Id='LICENSE_static_libraries' Guid='3ba11a89-de46-40c8-b2ca-68d4ea7257b1'>
+                        <File Id='LICENSE_static_libraries' Name='LICENSE-static-libraries.txt' DiskId='1' Source='wix/LICENSE-static-libraries.txt'/>
+                    </Component>
+                    <Component Id='LICENSE_dynamic_libraries' Guid='40f0f16e-e70f-4f16-af2a-d3e19413375c'>
+                        <File Id='LICENSE_dynamic_libraries' Name='LICENSE-dynamic-libraries.txt' DiskId='1' Source='wix/LICENSE-dynamic-libraries.txt'/>
+                    </Component>
+
+                    <Directory Id='full_licenses' Name='full-licenses'>
+                        <?include license-components.wxi ?>
+                    </Directory>
+
+                    <Directory Id='Bin' Name='bin'>
+                        <Component Id='Path' Guid='11E1B3A0-F153-41F2-8080-7225FB20816F' KeyPath='yes'>
+                            <Environment
+                                Id='PATH'
+                                Name='PATH'
+                                Value='[Bin]'
+                                Permanent='no'
+                                Part='last'
+                                Action='set'
+                                System='yes'/>
+                        </Component>
+                        <Component Id='binary0' Guid='*'>
+                            <File
+                                Id='exe0'
+                                Name='packetry.exe'
+                                DiskId='1'
+                                Source='$(var.CargoTargetBinDir)\packetry.exe'
+                                KeyPath='yes'/>
+                        </Component>
+                        <?include dll-components.wxi ?>
+                    </Directory>
+
+                    <Directory Id='share' Name='share'>
+                        <Directory Id='glib_2.0' Name='glib-2.0'>
+                            <Directory Id='schemas' Name='schemas'>
+                                <Component Id='gschemas.compiled' Guid='9cdd6a9f-813d-430e-a099-375f87603f84'>
+                                    <File Id='gschemas.compiled' Name='gschemas.compiled' DiskId='1' Source='$(env.VCPKG_INSTALLED_DIR)/x64-windows/share/glib-2.0/schemas/gschemas.compiled'/>
+                                </Component>
+                            </Directory>
+                        </Directory>
+                    </Directory>
+                </Directory>
+            </Directory>
+            <Directory Id="ProgramMenuFolder">
+              <Directory Id="ApplicationProgramsFolder" Name="Packetry"/>
+            </Directory>
+	    <Directory Id="DesktopFolder" Name="Desktop"/>
+        </Directory>
+
+        <DirectoryRef Id='ApplicationProgramsFolder'>
+            <Component Id='AppStart' Guid='5e4f3323-9448-4272-83ce-4396021ab7cd'>
+                <Shortcut Id='AppStartShortcut'
+                    Name='Packetry'
+                    Description='A fast, intuitive USB 2.0 protocol analysis application for use with Cynthion.'
+                    Target='[APPLICATIONFOLDER]bin\packetry.exe'
+                    WorkingDirectory='APPLICATIONROOTDIRECTORY'/>
+                <RemoveFolder Id='ApplicationProgramsFolder' On='uninstall'/>
+                <RegistryValue
+                    Root='HKCU'
+                    Key='Software\greatscottgadgets\packetry'
+                    Name='StartShortcut'
+                    Type='integer'
+                    Value='1'
+                    KeyPath='yes'/>
+            </Component>
+        </DirectoryRef>
+
+        <DirectoryRef Id='DesktopFolder'>
+            <Component Id='AppDesk' Guid='af742564-506d-4eba-8ae9-3628369e4117'>
+                <Shortcut Id='AppDeskShortcut'
+                    Name='Packetry'
+                    Description='A fast, intuitive USB 2.0 protocol analysis application for use with Cynthion.'
+                    Target='[APPLICATIONFOLDER]bin\packetry.exe'
+                    WorkingDirectory='APPLICATIONROOTDIRECTORY'/>
+                <RemoveFolder Id='DesktopFolder' On='uninstall'/>
+                <RegistryValue
+                    Root='HKCU'
+                    Key='Software\greatscottgadgets\packetry'
+                    Name='DeskShortcut'
+                    Type='integer'
+                    Value='1'
+                    KeyPath='yes'/>
+            </Component>
+        </DirectoryRef>
+
+        <Feature
+            Id='Binaries'
+            Title='Application'
+            Description='Installs all binaries and the license.'
+            Level='1'
+            ConfigurableDirectory='APPLICATIONFOLDER'
+            AllowAdvertise='no'
+            Display='expand'
+            Absent='disallow'>
+
+            <ComponentRef Id='LICENSE_packetry'/>
+            <ComponentRef Id='LICENSE_static_libraries'/>
+            <ComponentRef Id='LICENSE_dynamic_libraries'/>
+            <?include license-references.wxi ?>
+
+            <ComponentRef Id='binary0'/>
+            <?include dll-references.wxi ?>
+
+            <ComponentRef Id='gschemas.compiled'/>
+
+            <Feature
+                Id='Environment'
+                Title='Add to PATH'
+                Description='Add the location of the [ProductName] executable to the PATH system environment variable. This allows [ProductName] to be called from any location.'
+                Level='1'
+                Absent='allow'>
+                <ComponentRef Id='Path'/>
+            </Feature>
+
+            <Feature
+                Id='StartShort'
+                Title='Add to Start menu'
+                Description='Add a shortcut to the start menu'
+                Level='1'
+                AllowAdvertise='no'
+                Display='expand'
+                Absent='allow'>
+                <ComponentRef Id="AppStart"/>
+            </Feature>
+
+            <Feature
+                Id='DeskShort'
+                Title='Desktop shortcut'
+                Description='Add a shortcut to the desktop'
+                Level='1'
+                AllowAdvertise='no'
+                Display='expand'
+                Absent='allow'>
+                <ComponentRef Id="AppDesk"/>
+            </Feature>
+        </Feature>
+
+        <SetProperty Id='ARPINSTALLLOCATION' Value='[APPLICATIONFOLDER]' After='CostFinalize'/>
+
+        <!--
+          Uncomment the following `Icon` and `Property` tags to change the product icon.
+
+          The product icon is the graphic that appears in the Add/Remove
+          Programs control panel for the application.
+        -->
+        <!--<Icon Id='ProductICO' SourceFile='wix\Product.ico'/>-->
+        <!--<Property Id='ARPPRODUCTICON' Value='ProductICO' />-->
+
+        <Property Id='ARPHELPLINK' Value='https://packetry.readthedocs.io'/>
+
+        <UI>
+            <UIRef Id='WixUI_FeatureTree'/>
+            <Publish Dialog='WelcomeDlg' Control='Next' Event='NewDialog' Value='CustomizeDlg' Order='99'>1</Publish>
+            <Publish Dialog='CustomizeDlg' Control='Back' Event='NewDialog' Value='WelcomeDlg' Order='99'>1</Publish>
+
+        </UI>
+
+        <!--
+          Uncomment the next `WixVariable` tag to customize the installer's
+          Graphical User Interface (GUI) and add a custom banner image across
+          the top of each screen. See the WiX Toolset documentation for details
+          about customization.
+
+          The banner BMP dimensions are 493 x 58 pixels.
+        -->
+        <!--<WixVariable Id='WixUIBannerBmp' Value='wix\Banner.bmp'/>-->
+
+        <!--
+          Uncomment the next `WixVariable` tag to customize the installer's
+          Graphical User Interface (GUI) and add a custom image to the first
+          dialog, or screen. See the WiX Toolset documentation for details about
+          customization.
+
+          The dialog BMP dimensions are 493 x 312 pixels.
+        -->
+        <!--<WixVariable Id='WixUIDialogBmp' Value='wix\Dialog.bmp'/>-->
+
+    </Product>
+
+</Wix>

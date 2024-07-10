@@ -3,7 +3,6 @@ use std::marker::PhantomData;
 use std::ops::Range;
 
 use anyhow::Error;
-use bisection::{bisect_left, bisect_right};
 
 use crate::data_stream::{data_stream, DataReader, DataWriter};
 use crate::id::Id;
@@ -173,7 +172,17 @@ where Position: Copy + From<u64> + Into<u64>,
                     midpoint = (block_end + search_end) / 2
                 }
             } else {
-                break block_start + bisect_left(&block_values, &value) as u64;
+                let mut lower_bound = 0;
+                let mut upper_bound = block_values.len();
+                while lower_bound < upper_bound {
+                    let midpoint = (lower_bound + upper_bound) / 2;
+                    if block_values[midpoint] < value {
+                        lower_bound = midpoint + 1;
+                    } else {
+                        upper_bound = midpoint;
+                    }
+                }
+                break block_start + lower_bound as u64;
             };
         };
         Ok(Position::from(position))
@@ -217,7 +226,17 @@ where Position: Copy + From<u64> + Into<u64>,
                     midpoint = block_end + length_after / 2;
                 }
             } else {
-                break block_start + bisect_right(&block_values, &value) as u64;
+                let mut lower_bound = 0;
+                let mut upper_bound = block_values.len();
+                while lower_bound < upper_bound {
+                    let midpoint = (lower_bound + upper_bound) / 2;
+                    if value < block_values[midpoint] {
+                        upper_bound = midpoint;
+                    } else {
+                        lower_bound = midpoint + 1;
+                    }
+                }
+                break block_start + lower_bound as u64;
             };
         };
         Ok(Position::from(position))

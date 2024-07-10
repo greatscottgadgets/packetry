@@ -1,3 +1,12 @@
 /target
 /tests/*/output.txt
 /tests/ui/*/output.txt
+/wix/full-licenses
+/wix/dll-components.wxi
+/wix/dll-references.wxi
+/wix/license-components.wxi
+/wix/license-references.wxi
+/wix/LICENSE-packetry.txt
+/wix/LICENSE-static-libraries.txt
+/wix/LICENSE-dynamic-libraries.txt
+/vcpkg
