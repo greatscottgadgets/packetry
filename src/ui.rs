@@ -11,10 +11,11 @@ use std::sync::Mutex;
 
 use anyhow::{Context as ErrorContext, Error, bail};
 
-use gtk::gio::ListModel;
+use gtk::gio::{ActionEntry, ListModel, Menu, MenuItem, SimpleActionGroup};
 use gtk::glib::{Object, SignalHandlerId};
 use gtk::{
     prelude::*,
+    AboutDialog,
     Align,
     Application,
     ApplicationWindow,
@@ -22,9 +23,11 @@ use gtk::{
     DropDown,
     InfoBar,
     Label,
+    License,
     ListItem,
     ColumnView,
     ColumnViewColumn,
+    MenuButton,
     MessageType,
     ProgressBar,
     ResponseType,
@@ -370,6 +373,19 @@ pub fn activate(application: &Application) -> Result<(), Error> {
     let selector = DeviceSelector::new()?;
     capture_button.set_sensitive(selector.device_available());
 
+    let menu = Menu::new();
+    let about_item = MenuItem::new(Some("About..."), Some("actions.about"));
+    menu.append_item(&about_item);
+    let menu_button = MenuButton::builder()
+        .menu_model(&menu)
+        .build();
+    let action_group = SimpleActionGroup::new();
+    let action_about = ActionEntry::builder("about")
+        .activate(|_, _, _| display_error(show_about()))
+        .build();
+    action_group.add_action_entries([action_about]);
+    window.insert_action_group("actions", Some(&action_group));
+
     action_bar.pack_start(&open_button);
     action_bar.pack_start(&save_button);
     action_bar.pack_start(&gtk::Separator::new(Orientation::Vertical));
@@ -377,6 +393,7 @@ pub fn activate(application: &Application) -> Result<(), Error> {
     action_bar.pack_start(&capture_button);
     action_bar.pack_start(&stop_button);
     action_bar.pack_start(&selector.container);
+    action_bar.pack_end(&menu_button);
 
     let warning = DeviceWarning::new();
     warning.update(selector.device_unusable());
@@ -975,6 +992,32 @@ pub fn stop_cynthion() -> Result<(), Error> {
         ui.save_button.set_sensitive(true);
         Ok(())
     })
+}
+
+fn show_about() -> Result<(), Error> {
+    const GIT_VERSION: &str = git_version::git_version!();
+    const LICENSE: &str = include_str!("../LICENSE");
+    let about = AboutDialog::builder()
+        .program_name("Packetry")
+        .version(format!("Version: {GIT_VERSION}"))
+        .comments("A fast, intuitive USB 2.0 protocol analysis application")
+        .copyright("© 2022-2024 Great Scott Gadgets. All rights reserved.")
+        .license_type(License::Bsd3)
+        .license(LICENSE)
+        .website("https://github.com/greatscottgadgets/packetry/")
+        .website_label("https://github.com/greatscottgadgets/packetry/")
+        .system_information(format!(
+            "OS: {}\n\
+             Architecture: {}\n\
+             GTK version: {}.{}.{}",
+            std::env::consts::OS,
+            std::env::consts::ARCH,
+            gtk::major_version(),
+            gtk::minor_version(),
+            gtk::micro_version()))
+        .build();
+    about.present();
+    Ok(())
 }
 
 pub fn display_error(result: Result<(), Error>) {

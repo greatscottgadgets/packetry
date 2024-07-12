@@ -52,7 +52,9 @@ fn have_argument(name: &str) -> bool {
 }
 
 fn main() {
-    if have_argument("--test-cynthion") {
+    if have_argument("--version") {
+        println!("Packetry version {}", git_version::git_version!())
+    } else if have_argument("--test-cynthion") {
         let save_captures = have_argument("--save-captures");
         test_cynthion::run_test(save_captures);
     } else {
