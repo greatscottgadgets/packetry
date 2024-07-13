@@ -121,6 +121,7 @@ for line in cargo_result.stdout.decode().rstrip().split("\n"):
             'license-mit',
             'LICENSE',
             'LICENSE.md',
+            'COPYING',
         )
         src_dir = os.path.join(deps.name, f'{package}-{version}')
         src_files = os.listdir(src_dir)
