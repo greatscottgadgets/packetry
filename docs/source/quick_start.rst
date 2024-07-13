@@ -43,7 +43,7 @@ Install Packetry
 
         Note that Packetry requires a minimum Rust version of 1.74. If your distribution's packages are older than this, use `rustup <https://rustup.rs/>`__ to get the latest Rust toolchain and manage your Rust installation.
 
-        **Install Packetry**
+        **Download Packetry Source Code**
 
         Clone the Packetry repository:
 
@@ -51,12 +51,15 @@ Install Packetry
 
             git clone https://github.com/greatscottgadgets/packetry.git
 
-        **Build Packetry**
+        **Build and Install Packetry**
 
         .. code::
 
             cd packetry
-            cargo build
+            cargo build --release
+            sudo cp target/release/packetry /usr/local/bin
+
+        Hint: You can copy the ``packetry`` executable to any directory in your ``PATH`` instead of ``/usr/local/bin``. If you've used ``rustup`` and have ``~/.cargo/bin`` in your ``PATH``, ``~/.cargo/bin`` is a great choice!
 
         Note: Do not build with ``--all-features``. All the optional features currently in the package are for debug/test purposes only, and will prevent or degrade normal use of the application if enabled. See ``Cargo.toml`` for details.
 
@@ -64,7 +67,7 @@ Install Packetry
 
     .. tab:: Binary
 
-        Homebrew installation coming soon!
+        Homebrew installation coming soon! For now you can build and install with Cargo.
 
     .. tab:: Cargo
 
@@ -78,7 +81,7 @@ Install Packetry
 
             brew install gtk4
 
-        **Install Packetry**
+        **Download Packetry Source Code**
 
         Clone the Packetry repository:
 
@@ -86,12 +89,15 @@ Install Packetry
 
             git clone https://github.com/greatscottgadgets/packetry.git
 
-        **Build Packetry**
+        **Build and Install Packetry**
 
         .. code::
 
             cd packetry
-            cargo build
+            cargo build --release
+            cp target/release/packetry ~/.cargo/bin
+
+        Hint: You can copy the ``packetry`` executable to any directory in your ``PATH`` instead of ``~/.cargo/bin``. If you've used ``rustup``, ``~/.cargo/bin`` should be in your ``PATH``. Otherwise ``/usr/local/bin`` is a great choice!
 
         Note: Do not build with ``--all-features``. All the optional features currently in the package are for debug/test purposes only, and will prevent or degrade normal use of the application if enabled. See ``Cargo.toml`` for details.
 
@@ -115,17 +121,11 @@ You can connect Cynthion's TARGET A port to your target device at this time, but
 Launch Packetry
 ---------------
 
-.. tab:: Binary
+Run the Packetry executable:
 
-   Run the Packetry executable.
+.. code::
 
-.. tab:: Cargo
-
-   In the ``packetry`` directory run:
-
-    .. code::
-
-        cargo run
+    packetry
 
 The Packetry window should appear.
 
