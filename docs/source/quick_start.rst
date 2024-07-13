@@ -103,7 +103,56 @@ Install Packetry
 
 .. tab:: Windows
 
-   Download and run the Windows installer from the `latest release <https://github.com/greatscottgadgets/packetry/releases/latest>`__.
+    .. tab:: Binary
+
+        Download and run the Windows installer from the `latest release <https://github.com/greatscottgadgets/packetry/releases/latest>`__.
+
+    .. tab:: Cargo
+
+        **Install Prerequisites**
+
+        .. code:: bat
+
+            git clone https://github.com/microsoft/vcpkg.git
+            cd vcpkg
+            bootstrap-vcpkg.bat
+
+        This next step will take a while. It builds and installs GTK and all its dependencies from source:
+
+        .. code:: bat
+
+            vcpkg install gtk pkgconf
+
+        Set environment variables so that Packetry can find its dependencies:
+
+        .. code:: bat
+
+            set PKG_CONFIG=%CD%\installed\x64-windows\tools\pkgconf\pkgconf.exe
+            set PKG_CONFIG_PATH=%CD%\installed\x64-windows\lib\pkgconfig
+            set PATH=%PATH%;%CD%\installed\x64-windows\bin
+            cd ..
+
+        These environment variables will only persist for the lifetime of the current command window, so you may want to set them up elsewhere for future use.
+
+        **Download Packetry Source Code**
+
+        Clone the Packetry repository:
+
+        .. code:: bat
+
+            git clone https://github.com/greatscottgadgets/packetry.git
+
+        **Build and Install Packetry**
+
+        .. code:: bat
+
+            cd packetry
+            cargo build --release
+            set PATH=%PATH%;%CD%\target\release
+
+        This ``PATH`` modification will only persist for the lifetime of the current command window, so you may want to set it up elsewhere for future use. Alternatively you can copy ``target\release\packetry`` to a location already in your ``PATH``.
+
+        Note: Do not build with ``--all-features``. All the optional features currently in the package are for debug/test purposes only, and will prevent or degrade normal use of the application if enabled. See ``Cargo.toml`` for details.
 
 
 Connect Cynthion
