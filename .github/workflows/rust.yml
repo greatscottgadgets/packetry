@@ -100,9 +100,12 @@ jobs:
         run: cargo build --release
 
       - name: Test
-        uses: GabrielBB/xvfb-action@v1
-        with:
-          run: cargo test
+        run: cargo test
+        if: runner.os != 'Linux'
+
+      - name: Test under XVFB (Linux)
+        run: xvfb-run cargo test
+        if: runner.os == 'Linux'
 
       - name: Compile glib schemas (Windows)
         run: |
