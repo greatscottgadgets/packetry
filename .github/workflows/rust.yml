@@ -12,11 +12,11 @@ name: CI
 jobs:
   clippy:
     name: Clippy
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
@@ -25,25 +25,20 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Install stable components
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-          components: clippy
+      - name: Install toolchain
+        run: |
+          rustup toolchain install stable
+          rustup default stable
 
       - name: Run clippy
-        uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --verbose --release -- -D warnings
+        run: cargo clippy -- --deny warnings
 
   build_and_test:
     name: Build and test
     strategy:
       fail-fast: false
       matrix:
-        os: ['macos-latest', 'ubuntu-22.04', 'windows-latest']
+        os: ['macos-latest', 'ubuntu-latest', 'windows-latest']
         rust: ['stable', '1.74']
 
     runs-on: ${{ matrix.os }}
@@ -52,11 +47,12 @@ jobs:
       VCPKG_INSTALLED_DIR: ${{ github.workspace }}/vcpkg/installed
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{ matrix.rust }}
-          override: true
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: |
+          rustup toolchain install ${{ matrix.rust }}
+          rustup default ${{ matrix.rust }}
 
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
@@ -65,7 +61,7 @@ jobs:
         if: startsWith(matrix.os, 'ubuntu-')
 
       - name: Install dependencies (macOS)
-        run: brew install gtk4 pkg-config
+        run: brew install gtk4
         if: matrix.os == 'macos-latest'
 
       - name: Install cargo-wix (Windows)
@@ -101,15 +97,15 @@ jobs:
         if: matrix.os == 'windows-latest'
 
       - name: Build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release
+        run: cargo build --release
 
       - name: Test
-        uses: GabrielBB/xvfb-action@v1
-        with:
-          run: cargo test
+        run: cargo test
+        if: runner.os != 'Linux'
+
+      - name: Test under XVFB (Linux)
+        run: xvfb-run cargo test
+        if: runner.os == 'Linux'
 
       - name: Compile glib schemas (Windows)
         run: |
@@ -135,19 +131,20 @@ jobs:
         if: matrix.os == 'windows-latest'
 
       - name: Upload binary
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: Binary for ${{ matrix.os }}
           path: |
             target/release/packetry
             target/release/packetry.exe
           if-no-files-found: error
+        if: matrix.rust == 'stable'
 
       - name: Upload installer (Windows)
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: Windows installer
           path: |
             target/wix/*.msi
           if-no-files-found: error
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && matrix.rust == 'stable'
