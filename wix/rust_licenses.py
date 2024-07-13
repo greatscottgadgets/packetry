@@ -118,6 +118,7 @@ for line in cargo_result.stdout.decode().rstrip().split("\n"):
         # Look for a license file.
         src_filenames = (
             'LICENSE-MIT',
+            'LICENSE-MIT.md',
             'license-mit',
             'LICENSE',
             'LICENSE.md',

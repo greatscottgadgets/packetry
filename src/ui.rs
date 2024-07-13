@@ -72,6 +72,7 @@ use crate::row_data::{
     TrafficRowData,
     DeviceRowData};
 use crate::util::{fmt_count, fmt_size};
+use crate::version::{version, version_info};
 
 #[cfg(any(test, feature="record-ui-test"))]
 use {
@@ -995,26 +996,17 @@ pub fn stop_cynthion() -> Result<(), Error> {
 }
 
 fn show_about() -> Result<(), Error> {
-    const GIT_VERSION: &str = git_version::git_version!();
     const LICENSE: &str = include_str!("../LICENSE");
     let about = AboutDialog::builder()
         .program_name("Packetry")
-        .version(format!("Version: {GIT_VERSION}"))
+        .version(format!("Version: {}", version()))
         .comments("A fast, intuitive USB 2.0 protocol analysis application")
         .copyright("© 2022-2024 Great Scott Gadgets. All rights reserved.")
         .license_type(License::Bsd3)
         .license(LICENSE)
         .website("https://github.com/greatscottgadgets/packetry/")
         .website_label("https://github.com/greatscottgadgets/packetry/")
-        .system_information(format!(
-            "OS: {}\n\
-             Architecture: {}\n\
-             GTK version: {}.{}.{}",
-            std::env::consts::OS,
-            std::env::consts::ARCH,
-            gtk::major_version(),
-            gtk::minor_version(),
-            gtk::micro_version()))
+        .system_information(version_info(true))
         .build();
     about.present();
     Ok(())
