@@ -117,6 +117,8 @@ jobs:
         if: matrix.os == 'windows-latest'
 
       - name: Gather licenses (Windows)
+        # If the default shell is used, one command failing does not fail the action.
+        shell: bash
         run: |
           pip install license-expression
           python wix/rust_licenses.py > wix/LICENSE-static-libraries.txt

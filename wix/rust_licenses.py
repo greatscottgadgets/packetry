@@ -9,6 +9,7 @@ licensing = get_spdx_licensing()
 # We accept these licenses unconditionally.
 accepted_license_strings = (
     'MIT',
+    'BSD-2-Clause',
     'BSD-3-Clause',
     'BSL-1.0',
     'Unicode-DFS-2016',
@@ -120,6 +121,7 @@ for line in cargo_result.stdout.decode().rstrip().split("\n"):
             'license-mit',
             'LICENSE',
             'LICENSE.md',
+            'COPYING',
         )
         src_dir = os.path.join(deps.name, f'{package}-{version}')
         src_files = os.listdir(src_dir)
