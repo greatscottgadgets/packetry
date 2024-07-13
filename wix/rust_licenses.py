@@ -9,6 +9,7 @@ licensing = get_spdx_licensing()
 # We accept these licenses unconditionally.
 accepted_license_strings = (
     'MIT',
+    'BSD-2-Clause',
     'BSD-3-Clause',
     'BSL-1.0',
     'Unicode-DFS-2016',
