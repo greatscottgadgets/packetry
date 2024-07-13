@@ -12,7 +12,7 @@ name: CI
 jobs:
   clippy:
     name: Clippy
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
@@ -38,7 +38,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ['macos-latest', 'ubuntu-22.04', 'windows-latest']
+        os: ['macos-latest', 'ubuntu-latest', 'windows-latest']
         rust: ['stable', '1.74']
 
     runs-on: ${{ matrix.os }}
