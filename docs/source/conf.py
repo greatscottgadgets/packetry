@@ -7,7 +7,7 @@ extensions = [
 # -- Project information -----------------------------------------------------
 
 project = 'Packetry'
-copyright = '2023, Great Scott Gadgets'
+copyright = '2023-2024, Great Scott Gadgets'
 author = 'Great Scott Gadgets'
 
 version = ''
