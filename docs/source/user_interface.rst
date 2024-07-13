@@ -16,7 +16,7 @@ Across the top of the Packetry window is the Action Bar used to control Packetry
 - **Capture Button**: Starts capturing USB data with the connected capture device.
 - **Stop Button**: Stops capturing USB data.
 - **Device Drop-down**: Selects a capture device. If you don't see a device listed here, try using the Scan button.
-- **Speed Drop-down**: Selects the target device speed.
+- **Speed Drop-down**: Selects the target device speed for live capture.
 
 
 Traffic Pane
@@ -40,7 +40,7 @@ To the right of the Traffic Pane is the Device Pane. The Device Pane summarizes 
 .. image:: ../images/device-pane.png
   :alt: Device Pane
 
-Much of the information that can be displayed in the Device Pane is discovered only if Packetry observes the initial enumeration of a USB device by the target host. To allow this to take place, connect the target device after starting a capture, not before.
+Much of the information that can be displayed in the Device Pane is discovered only if Packetry observes the initial enumeration of a USB device by the target host. To allow this to take place in a live capture, connect the target device after starting a capture, not before.
 
 
 Status Bar

@@ -2,6 +2,8 @@
 Getting Started with Packetry
 =============================
 
+Follow these steps to start analyzing live USB traffic with Packetry and Cynthion. If you want to use Packetry only to view existing capture files, you can skip the Cynthion steps.
+
 Install Cynthion
 ----------------
 
