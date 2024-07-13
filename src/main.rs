@@ -11,6 +11,12 @@ extern crate bitfield;
 #[macro_use]
 extern crate ctor;
 
+// Include build-time info.
+pub mod built {
+   // The file has been placed there by the build script.
+   include!(concat!(env!("OUT_DIR"), "/built.rs"));
+}
+
 // Declare all modules used.
 mod backend;
 mod capture;
@@ -31,6 +37,7 @@ mod ui;
 mod usb;
 mod util;
 mod vec_map;
+mod version;
 
 // Declare optional modules.
 #[cfg(any(test, feature="record-ui-test"))]
@@ -46,6 +53,7 @@ use ui::{
     display_error,
     stop_cynthion
 };
+use version::{version, version_info};
 
 fn have_argument(name: &str) -> bool {
     std::env::args().any(|arg| arg == name)
@@ -53,7 +61,9 @@ fn have_argument(name: &str) -> bool {
 
 fn main() {
     if have_argument("--version") {
-        println!("Packetry version {}", git_version::git_version!())
+        println!("Packetry version {}\n\n{}",
+                 version(),
+                 version_info(have_argument("--dependencies")));
     } else if have_argument("--test-cynthion") {
         let save_captures = have_argument("--save-captures");
         test_cynthion::run_test(save_captures);
@@ -67,4 +77,3 @@ fn main() {
         display_error(stop_cynthion());
     }
 }
-
