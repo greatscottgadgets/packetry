@@ -61,7 +61,7 @@ jobs:
         if: startsWith(matrix.os, 'ubuntu-')
 
       - name: Install dependencies (macOS)
-        run: brew install gtk4 pkg-config
+        run: brew install gtk4
         if: matrix.os == 'macos-latest'
 
       - name: Install cargo-wix (Windows)
