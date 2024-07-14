@@ -19,11 +19,11 @@ Install Packetry
 
 .. tab:: Linux
 
-    .. tab:: Binary
+    .. tab:: Pre-built
 
-        AppImage coming soon! For now you can build and install with Cargo.
+        AppImage coming soon! For now you can build and install from source code.
 
-    .. tab:: Cargo
+    .. tab:: From source code
 
         **Install Prerequisites**
 
@@ -65,11 +65,11 @@ Install Packetry
 
 .. tab:: macOS
 
-    .. tab:: Binary
+    .. tab:: Pre-built
 
-        Homebrew installation coming soon! For now you can build and install with Cargo.
+        Homebrew installation coming soon! For now you can build and install from source code.
 
-    .. tab:: Cargo
+    .. tab:: From source code
 
         **Install Prerequisites**
 
@@ -103,11 +103,11 @@ Install Packetry
 
 .. tab:: Windows
 
-    .. tab:: Binary
+    .. tab:: Pre-built
 
         Download and run the Windows installer from the `latest release <https://github.com/greatscottgadgets/packetry/releases/latest>`__.
 
-    .. tab:: Cargo
+    .. tab:: From source code
 
         **Install Prerequisites**
 
