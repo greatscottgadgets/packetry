@@ -4,6 +4,7 @@ use crate::backend::{BackendHandle, TimestampedEvent, Speed};
 use crate::backend::cynthion::{CynthionDevice, CynthionHandle, VID_PID};
 use crate::capture::prelude::*;
 use crate::decoder::Decoder;
+use crate::event::EventType;
 use crate::file::{GenericSaver, PcapSaver};
 
 use anyhow::{Context, Error, bail, ensure};
@@ -117,6 +118,18 @@ fn test(save_capture: bool,
         }
         saver.close()?;
     }
+
+    // Look for the start event.
+    let start_item_id = TrafficItemId::from(0);
+    let start_group_id = reader.item_index.get(start_item_id)?;
+    let start_entry = reader.group_index.get(start_group_id)?;
+    let event_id = EventId::from(0);
+    assert!(start_entry.is_event());
+    assert_eq!(start_entry.event_type(), Some(EventType::CaptureStart(speed)));
+    assert_eq!(start_entry.event_id(), event_id);
+    let start_time = reader.event_times.get(event_id)?;
+    assert_eq!(start_time, 0);
+    println!("Found start event in capture");
 
     // Look for the test device in the capture.
     let device_id = DeviceId::from(1);
