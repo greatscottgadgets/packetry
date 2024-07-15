@@ -4,7 +4,7 @@ use crate::backend::{BackendHandle, TimestampedEvent, Speed};
 use crate::backend::cynthion::{CynthionDevice, CynthionHandle, VID_PID};
 use crate::capture::prelude::*;
 use crate::decoder::Decoder;
-use crate::event::EventType;
+use crate::event::{EventType, StopReason};
 use crate::file::{GenericSaver, PcapSaver};
 
 use anyhow::{Context, Error, bail, ensure};
@@ -40,6 +40,9 @@ fn test(save_capture: bool,
         sof: Option<(Duration, Duration)>)
     -> Result<(), Error>
 {
+    use EventType::*;
+    use StopReason::*;
+
     let desc = speed.description();
     println!("\nTesting at {desc}:\n");
 
@@ -125,7 +128,7 @@ fn test(save_capture: bool,
     let start_entry = reader.group_index.get(start_group_id)?;
     let event_id = EventId::from(0);
     assert!(start_entry.is_event());
-    assert_eq!(start_entry.event_type(), Some(EventType::CaptureStart(speed)));
+    assert_eq!(start_entry.event_type(), Some(CaptureStart(speed)));
     assert_eq!(start_entry.event_id(), event_id);
     let start_time = reader.event_times.get(event_id)?;
     assert_eq!(start_time, 0);
@@ -209,6 +212,15 @@ fn test(save_capture: bool,
         ensure!(sof_count >= min_count, "Not enough SOF packets captured");
         ensure!(sof_count <= max_count, "Too many SOF packets captured");
     }
+
+    // Look for the stop event.
+    let item_count = reader.item_index.len();
+    let stop_item_id = TrafficItemId::from(item_count - 1);
+    let stop_transfer_id = reader.item_index.get(stop_item_id)?;
+    let stop_entry = reader.group_index.get(stop_transfer_id)?;
+    assert!(stop_entry.is_event());
+    assert_eq!(stop_entry.event_type(), Some(CaptureStop(Requested)));
+    println!("Found stop event in capture");
 
     Ok(())
 }
