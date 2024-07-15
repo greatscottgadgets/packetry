@@ -4,7 +4,7 @@
 use crate::usb::Speed;
 
 /// Types of events that may occur.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum EventType {
     /// Capture started with the specified speed.
     CaptureStart(Speed),
@@ -25,7 +25,7 @@ pub enum EventType {
 }
 
 /// A reason for stopping the capture.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum StopReason {
     /// Requested by user.
     Requested,
