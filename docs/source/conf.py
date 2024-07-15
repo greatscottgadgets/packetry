@@ -7,7 +7,7 @@ extensions = [
 # -- Project information -----------------------------------------------------
 
 project = 'Packetry'
-copyright = '2023, Great Scott Gadgets'
+copyright = '2023-2024, Great Scott Gadgets'
 author = 'Great Scott Gadgets'
 
 version = ''
@@ -17,14 +17,15 @@ release = ''
 # -- General configuration ---------------------------------------------------
 
 extensions = [
-  'sphinx.ext.autodoc'
+    'sphinx.ext.autodoc',
+    'sphinx_inline_tabs',
 ]
 
 templates_path = ['_templates']
 exclude_patterns = ['_build']
 source_suffix = '.rst'
 master_doc = 'index'
-language = None
+language = 'en'
 exclude_patterns = []
 pygments_style = None
 

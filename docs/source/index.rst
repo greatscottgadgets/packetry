@@ -1,9 +1,16 @@
 ======================
-Documentation
+Packetry Documentation
 ======================
 
 .. toctree::
   :maxdepth: 2
-  :caption: User Documentation
+  :caption: Introduction
 
-  introToPacketry
+  what_is_packetry
+  user_interface
+
+.. toctree::
+  :maxdepth: 2
+  :caption: Quick Start
+
+  quick_start
