@@ -111,6 +111,8 @@ Install Packetry
 
         **Install Prerequisites**
 
+        Building Packetry requires that the GTK 4 libraries and header files are available and discoverable via the ``pkg-config`` mechanism. There are several ways you can arrange this; if in doubt we suggest using `vcpkg <https://vcpkg.io/en/>`__:
+
         .. code:: bat
 
             git clone https://github.com/microsoft/vcpkg.git
