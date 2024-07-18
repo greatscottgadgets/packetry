@@ -49,6 +49,7 @@ lrumap = "0.1.0"
 memmap2 = "0.9.4"
 page_size = "0.6.0"
 anyhow = { version = "1.0.79", features = ["backtrace"] }
+crc = "3.2.1"
 
 [dev-dependencies]
 serde = { version = "1.0.196", features = ["derive"] }

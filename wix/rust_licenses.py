@@ -116,19 +116,19 @@ for line in cargo_result.stdout.decode().rstrip().split("\n"):
         src_path = os.path.join(manual_dir, dest_filename)
     else:
         # Look for a license file.
-        src_filenames = (
-            'LICENSE-MIT',
-            'LICENSE-MIT.md',
-            'license-mit',
-            'LICENSE',
-            'LICENSE.md',
-            'COPYING',
+        file_paths = (
+            ['LICENSE-MIT'],
+            ['LICENSE-MIT.md'],
+            ['license-mit'],
+            ['LICENSES', 'MIT.txt'],
+            ['LICENSE'],
+            ['LICENSE.md'],
+            ['COPYING'],
         )
         src_dir = os.path.join(deps.name, f'{package}-{version}')
-        src_files = os.listdir(src_dir)
-        for filename in src_filenames:
-            if filename in src_files:
-                src_path = os.path.join(src_dir, filename)
+        for file_path in file_paths:
+            src_path = os.path.join(src_dir, *file_path)
+            if os.path.isfile(src_path):
                 break
         else:
             raise ValueError(
