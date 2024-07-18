@@ -1,6 +1,6 @@
 1 invalid groups
  1 malformed packets
-  Malformed packet: [FF]
+  Malformed packet (invalid PID) of 1 byte: [FF]
 Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
  SETUP transaction on 0.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 40, 00]
   SETUP packet on 0.0, CRC 02

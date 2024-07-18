@@ -12,7 +12,7 @@ use crate::data_stream::{
 use crate::compact_index::{compact_index, CompactWriter, CompactReader};
 use crate::rcu::SingleWriterRcu;
 use crate::vec_map::VecMap;
-use crate::usb::{self, prelude::*};
+use crate::usb::{self, prelude::*, validate_packet};
 use crate::util::{fmt_count, fmt_size};
 
 use anyhow::{Context, Error, bail};
@@ -1150,14 +1150,63 @@ impl ItemSource<TrafficItem> for CaptureReader {
     fn summary(&mut self, item: &TrafficItem)
         -> Result<String, Error>
     {
+        use PID::*;
         use TrafficItem::*;
         use usb::StartComplete::*;
         Ok(match item {
             Packet(.., packet_id) => {
                 let packet = self.packet(*packet_id)?;
-                let first_byte = *packet.first().with_context(|| format!(
-                    "Packet {packet_id} is empty, cannot retrieve PID"))?;
-                let pid = PID::from(first_byte);
+                let len = packet.len();
+                if len == 0 {
+                    return Ok("Malformed 0-byte packet".to_string())
+                }
+                let pid = PID::from(packet[0]);
+                if !validate_packet(&packet) {
+                    let too_long = len > 1027;
+                    return Ok(format!(
+                        "Malformed packet{} of {len} {}: {}",
+                        match pid {
+                            RSVD if too_long =>
+                                " (reserved PID, and too long)".to_string(),
+                            Malformed if too_long =>
+                                " (invalid PID, and too long)".to_string(),
+                            RSVD =>
+                                " (reserved PID)".to_string(),
+                            Malformed =>
+                                " (invalid PID)".to_string(),
+                            pid if too_long => format!(
+                                " (possibly {pid}, but too long)"),
+                            pid => format!(
+                                " (possibly {pid}, but {})",
+                                match pid {
+                                    SOF|SETUP|IN|OUT|PING => {
+                                        if len != 3 {
+                                            "wrong length"
+                                        } else {
+                                            "bad CRC"
+                                        }
+                                    },
+                                    SPLIT => {
+                                        if len != 4 {
+                                            "wrong length"
+                                        } else {
+                                            "bad CRC"
+                                        }
+                                    },
+                                    DATA0|DATA1|DATA2|MDATA => {
+                                        if len < 3 {
+                                            "too short"
+                                        } else {
+                                            "bad CRC"
+                                        }
+                                    },
+                                    ACK|NAK|NYET|STALL|ERR => "too long",
+                                    RSVD|Malformed => unreachable!(),
+                                }),
+                        },
+                        if len == 1 {"byte"} else {"bytes"},
+                        Bytes::first(100, &packet[0 .. packet.len()])))
+                }
                 format!("{pid} packet{}",
                     match PacketFields::from_packet(&packet) {
                         PacketFields::SOF(sof) => format!(
