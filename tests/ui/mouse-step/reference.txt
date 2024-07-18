@@ -4,8 +4,8 @@ At traffic row 0:
 + 1 invalid groups
 Expanding traffic view, row 0: 1 invalid groups
 At traffic row 1:
-+ 1 malformed packets
-Expanding traffic view, row 1: 1 malformed packets
++ 1 malformed packet
+Expanding traffic view, row 1: 1 malformed packet
 At traffic row 2:
 + Malformed packet (invalid PID) of 1 byte: [FF]
 Updating after 2 packets decoded
@@ -13,10 +13,10 @@ At traffic row 3:
 + Incomplete control transfer on device 0
 At traffic row 0:
 - 1 invalid groups
-- 1 malformed packets
+- 1 malformed packet
 - Malformed packet (invalid PID) of 1 byte: [FF]
 + 1 invalid groups
-+ 1 malformed packets
++ 1 malformed packet
 + Malformed packet (invalid PID) of 1 byte: [FF]
 Expanding traffic view, row 3: Incomplete control transfer on device 0
 At traffic row 4:
@@ -180,7 +180,7 @@ At traffic row 25:
 + Incomplete control transfer on device 4
 At traffic row 0:
 - 1 invalid groups
-- 1 malformed packets
+- 1 malformed packet
 - Malformed packet (invalid PID) of 1 byte: [FF]
 - Incomplete control transfer on device 0
 - SETUP transaction on 0.0
@@ -201,7 +201,7 @@ At traffic row 0:
 - OUT transaction on 0.0
 - Incomplete control transfer on device 0
 + 1 invalid groups
-+ 1 malformed packets
++ 1 malformed packet
 + Malformed packet (invalid PID) of 1 byte: [FF]
 + Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
 + SETUP transaction on 0.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 40, 00]
@@ -691,4 +691,4 @@ Collapsing traffic view, row 0: 1 invalid groups
 At traffic row 2:
 - Malformed packet (invalid PID) of 1 byte: [FF]
 At traffic row 1:
-- 1 malformed packets
+- 1 malformed packet

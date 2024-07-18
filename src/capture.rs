@@ -596,8 +596,6 @@ impl Transaction {
         Ok(match (self.start_pid, &self.split) {
             (SOF, _) => format!(
                 "{} SOF packets", self.packet_count()),
-            (Malformed, _) => format!(
-                "{} malformed packets", self.packet_count()),
             (SPLIT, Some((split_fields, token_pid))) => format!(
                 "{} {}",
                 match split_fields.sc() {
@@ -1246,8 +1244,19 @@ impl ItemSource<TrafficItem> for CaptureReader {
                 let entry = self.transfer_index.get(*transfer_id)?;
                 let endpoint_id = entry.endpoint_id();
                 let endpoint = self.endpoints.get(endpoint_id)?;
-                let transaction = self.transaction(*transaction_id)?;
-                transaction.description(self, &endpoint)?
+                let packet_id_range = self.transaction_index.target_range(
+                    *transaction_id, self.packet_index.len())?;
+                let start_packet_id = packet_id_range.start;
+                let start_packet = self.packet(start_packet_id)?;
+                if validate_packet(&start_packet) {
+                    let transaction = self.transaction(*transaction_id)?;
+                    transaction.description(self, &endpoint)?
+                } else {
+                    let packet_count = packet_id_range.len();
+                    format!("{} malformed {}",
+                        packet_count,
+                        if packet_count == 1 {"packet"} else {"packets"})
+                }
             },
             Transfer(transfer_id) => {
                 use EndpointType::*;
