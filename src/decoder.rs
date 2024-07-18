@@ -5,7 +5,7 @@ use anyhow::{Context, Error, bail};
 
 use crate::capture::prelude::*;
 use crate::rcu::SingleWriterRcu;
-use crate::usb::{self, prelude::*};
+use crate::usb::{self, prelude::*, validate_packet};
 use crate::vec_map::{VecMap, Key};
 
 impl PID {
@@ -97,12 +97,19 @@ struct TransactionState {
 fn transaction_status(state: &Option<TransactionState>, packet: &[u8])
     -> Result<TransactionStatus, Error>
 {
-    let next = PID::from_packet(packet)?;
     use PID::*;
     use TransactionStatus::*;
     use TransactionStyle::*;
     use StartComplete::*;
     use usb::EndpointType::*;
+
+    // First, check that this is a valid packet at all.
+    if !validate_packet(packet) {
+        return Ok(Invalid)
+    }
+
+    let next = PID::from_packet(packet)?;
+
     Ok(match state {
         None => match next {
             // Tokens may start a new transaction.
