@@ -103,12 +103,10 @@ fn transaction_status(state: &Option<TransactionState>, packet: &[u8])
     use StartComplete::*;
     use usb::EndpointType::*;
 
-    // First, check that this is a valid packet at all.
-    if !validate_packet(packet) {
-        return Ok(Invalid)
-    }
-
-    let next = PID::from_packet(packet)?;
+    let next = match validate_packet(packet) {
+        Err(_) => return Ok(Invalid),
+        Ok(pid) => pid,
+    };
 
     Ok(match state {
         None => match next {

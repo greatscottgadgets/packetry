@@ -1155,13 +1155,10 @@ impl ItemSource<TrafficItem> for CaptureReader {
             Packet(.., packet_id) => {
                 let packet = self.packet(*packet_id)?;
                 let len = packet.len();
-                if len == 0 {
-                    return Ok("Malformed 0-byte packet".to_string())
-                }
-                let pid = PID::from(packet[0]);
-                if !validate_packet(&packet) {
-                    let too_long = len > 1027;
-                    return Ok(format!(
+                let too_long = len > 1027;
+                match validate_packet(&packet) {
+                    Err(None) => "Malformed 0-byte packet".to_string(),
+                    Err(Some(pid)) => format!(
                         "Malformed packet{} of {len} {}: {}",
                         match pid {
                             RSVD if too_long =>
@@ -1203,42 +1200,45 @@ impl ItemSource<TrafficItem> for CaptureReader {
                                 }),
                         },
                         if len == 1 {"byte"} else {"bytes"},
-                        Bytes::first(100, &packet[0 .. packet.len()])))
-                }
-                format!("{pid} packet{}",
-                    match PacketFields::from_packet(&packet) {
-                        PacketFields::SOF(sof) => format!(
-                            " with frame number {}, CRC {:02X}",
-                            sof.frame_number(),
-                            sof.crc()),
-                        PacketFields::Token(token) => format!(
-                            " on {}.{}, CRC {:02X}",
-                            token.device_address(),
-                            token.endpoint_number(),
-                            token.crc()),
-                        PacketFields::Data(data) if packet.len() <= 3 => format!(
-                            " with CRC {:04X} and no data",
-                            data.crc),
-                        PacketFields::Data(data) => format!(
-                            " with CRC {:04X} and {} data bytes: {}",
-                            data.crc,
-                            packet.len() - 3,
-                            Bytes::first(100, &packet[1 .. packet.len() - 2])),
-                        PacketFields::Split(split) => format!(
-                            " {} {} speed {} transaction on hub {} port {}",
-                            match split.sc() {
-                                Start => "starting",
-                                Complete => "completing",
-                            },
-                            format!("{:?}", split.speed()).to_lowercase(),
-                            format!("{:?}", split.endpoint_type()).to_lowercase(),
-                            split.hub_address(),
-                            split.port()),
-                        PacketFields::None => match pid {
-                            PID::Malformed => format!(": {packet:02X?}"),
-                            _ => "".to_string()
+                        Bytes::first(100, &packet[0 .. len])
+                    ),
+                    Ok(pid) => format!(
+                        "{pid} packet{}",
+                        match PacketFields::from_packet(&packet) {
+                            PacketFields::SOF(sof) => format!(
+                                " with frame number {}, CRC {:02X}",
+                                sof.frame_number(),
+                                sof.crc()),
+                            PacketFields::Token(token) => format!(
+                                " on {}.{}, CRC {:02X}",
+                                token.device_address(),
+                                token.endpoint_number(),
+                                token.crc()),
+                            PacketFields::Data(data) if len <= 3 => format!(
+                                " with CRC {:04X} and no data",
+                                data.crc),
+                            PacketFields::Data(data) => format!(
+                                " with CRC {:04X} and {} data bytes: {}",
+                                data.crc,
+                                len - 3,
+                                Bytes::first(100, &packet[1 .. len - 2])),
+                            PacketFields::Split(split) => format!(
+                                " {} {} speed {} transaction on hub {} port {}",
+                                match split.sc() {
+                                    Start => "starting",
+                                    Complete => "completing",
+                                },
+                                format!("{:?}", split.speed()).to_lowercase(),
+                                format!("{:?}", split.endpoint_type()).to_lowercase(),
+                                split.hub_address(),
+                                split.port()),
+                            PacketFields::None => match pid {
+                                PID::Malformed => format!(": {packet:02X?}"),
+                                _ => "".to_string()
+                            }
                         }
-                    })
+                    )
+                }
             },
             Transaction(transfer_id, transaction_id) => {
                 let entry = self.transfer_index.get(*transfer_id)?;
@@ -1248,7 +1248,7 @@ impl ItemSource<TrafficItem> for CaptureReader {
                     *transaction_id, self.packet_index.len())?;
                 let start_packet_id = packet_id_range.start;
                 let start_packet = self.packet(start_packet_id)?;
-                if validate_packet(&start_packet) {
+                if validate_packet(&start_packet).is_ok() {
                     let transaction = self.transaction(*transaction_id)?;
                     transaction.description(self, &endpoint)?
                 } else {

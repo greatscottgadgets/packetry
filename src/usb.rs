@@ -66,45 +66,56 @@ impl From<&u8> for PID {
     }
 }
 
-pub fn validate_packet(packet: &[u8]) -> bool {
+pub fn validate_packet(packet: &[u8]) -> Result<PID, Option<PID>> {
     use PID::*;
 
-    let len = packet.len();
+    match packet.first().map(PID::from) {
+        // A zero-byte packet is always invalid, and has no PID.
+        None => Err(None),
 
-    if len == 0 {
-        return false;
-    }
+        // Otherwise, check validity according to PID.
+        Some(pid) => {
+            let len = packet.len();
+            let valid = match pid {
 
-    match PID::from(packet[0]) {
+                // SOF and tokens must be three bytes, with a valid CRC5.
+                SOF | SETUP | IN | OUT | PING if len == 3 => {
+                    let data = u32::from_le_bytes(
+                        [packet[1], packet[2] & 0x07, 0, 0]);
+                    let crc = packet[2] >> 3;
+                    crc == crc5(data, 11)
+                }
 
-        // SOF and tokens must be three bytes, with a valid CRC5.
-        SOF | SETUP | IN | OUT | PING if len == 3 => {
-            let data = u32::from_le_bytes(
-                [packet[1], packet[2] & 0x07, 0, 0]);
-            let crc = packet[2] >> 3;
-            crc == crc5(data, 11)
+                // SPLIT packets must be four bytes, with a valid CRC5.
+                SPLIT if len == 4 => {
+                    let data = u32::from_le_bytes(
+                        [packet[1], packet[2], packet[3] & 0x07, 0]);
+                    let crc = packet[3] >> 3;
+                    crc == crc5(data, 19)
+                },
+
+                // Data packets must be 3 to 1027 bytes, with a valid CRC16.
+                DATA0 | DATA1 | DATA2 | MDATA if (3..=1027).contains(&len) => {
+                    let data = &packet[1..(len - 2)];
+                    let crc = u16::from_le_bytes([packet[len - 2], packet[len - 1]]);
+                    crc == crc16(data)
+                }
+
+                // Handshake packets must be a single byte.
+                ACK | NAK | NYET | STALL | ERR if len == 1 => true,
+
+                // Anything else is invalid.
+                _ => false
+            };
+
+            if valid {
+                // Packet is valid.
+                Ok(pid)
+            } else {
+                // Invalid, but has a (possibly wrong or malformed) PID byte.
+                Err(Some(pid))
+            }
         }
-
-        // SPLIT packets must be four bytes, with a valid CRC5.
-        SPLIT if len == 4 => {
-            let data = u32::from_le_bytes(
-                [packet[1], packet[2], packet[3] & 0x07, 0]);
-            let crc = packet[3] >> 3;
-            crc == crc5(data, 19)
-        },
-
-        // Data packets must be 3 to 1027 bytes, with a valid CRC16.
-        DATA0 | DATA1 | DATA2 | MDATA if (3..=1027).contains(&len) => {
-            let data = &packet[1..(len - 2)];
-            let crc = u16::from_le_bytes([packet[len - 2], packet[len - 1]]);
-            crc == crc16(data)
-        }
-
-        // Handshake packets must be a single byte.
-        ACK | NAK | NYET | STALL | ERR if len == 1 => true,
-
-        // Anything else is invalid.
-        _ => false
     }
 }
 
@@ -942,7 +953,7 @@ mod tests {
     #[test]
     fn test_parse_setup() {
         let packet = vec![0x2d, 0x02, 0xa8];
-        assert!(validate_packet(&packet));
+        assert_eq!(validate_packet(&packet), Ok(PID::SETUP));
         let p = PacketFields::from_packet(&packet);
         if let PacketFields::Token(tok) = p {
             assert!(tok.device_address() == DeviceAddr(2));
@@ -957,7 +968,7 @@ mod tests {
     #[test]
     fn test_parse_in() {
         let packet = vec![0x69, 0x82, 0x18];
-        assert!(validate_packet(&packet));
+        assert_eq!(validate_packet(&packet), Ok(PID::IN));
         let p = PacketFields::from_packet(&packet);
         if let PacketFields::Token(tok) = p {
             assert!(tok.device_address() == DeviceAddr(2));
@@ -972,7 +983,7 @@ mod tests {
     #[test]
     fn test_parse_data() {
         let packet = &vec![0xc3, 0x40, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xaa, 0xd5];
-        assert!(validate_packet(&packet));
+        assert_eq!(validate_packet(&packet), Ok(PID::DATA0));
         let p = PacketFields::from_packet(&packet);
         if let PacketFields::Data(data) = p {
             assert!(data.crc == 0xd5aa);
