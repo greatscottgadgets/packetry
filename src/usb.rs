@@ -60,6 +60,12 @@ impl std::fmt::Display for PID {
     }
 }
 
+impl From<&u8> for PID {
+    fn from(byte: &u8) -> PID {
+        PID::from(*byte)
+    }
+}
+
 pub fn validate_packet(packet: &[u8]) -> bool {
     use PID::*;
 

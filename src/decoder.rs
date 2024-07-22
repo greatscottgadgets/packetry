@@ -13,7 +13,7 @@ impl PID {
         let first_byte = packet
             .first()
             .context("Packet is empty, cannot retrieve PID")?;
-        Ok(PID::from(*first_byte))
+        Ok(PID::from(first_byte))
     }
 }
 

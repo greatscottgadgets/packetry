@@ -797,7 +797,7 @@ impl CaptureReader {
                 match data_packet.first() {
                     None => bail!("Found empty packet instead of setup data"),
                     Some(byte) => {
-                        let pid = PID::from(*byte);
+                        let pid = PID::from(byte);
                         if pid != PID::DATA0 {
                             bail!("Found {pid} packet instead of setup data")
                         } else if data_packet.len() != 11 {
