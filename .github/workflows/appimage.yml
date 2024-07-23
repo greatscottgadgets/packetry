@@ -11,64 +11,6 @@ env:
   IMAGE_TAG:  ${{ github.ref_name }}
 
 jobs:
-  build-linux-appimage:
-    permissions:
-      contents: read
-
-    needs: create-docker-image
-
-    name: Build Linux AppImage
-    runs-on: ubuntu-latest
-
-    container:
-      image: ghcr.io/${{ needs.create-docker-image.outputs.NAME }}:${{ needs.create-docker-image.outputs.TAG }}
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.DOCKER_REGISTRY_TOKEN }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Workaround issues when GitHub does not respect the HOME env var
-        run: |
-          # GitHub Actions only supports containers running as root
-          # see: https://github.com/actions/checkout/issues/1014
-          mv /home/runner/.cargo   $HOME
-          mv /home/runner/.nvm     $HOME
-          mv /home/runner/.rustup  $HOME
-
-      - uses: Swatinem/rust-cache@v2
-
-      - name: Install toolchain
-        run: |
-          rustup toolchain install stable
-          rustup default stable
-
-      - name: Build packetry binary
-        run: |
-          cargo build --release
-
-      - name: Test under XVFB (Linux)
-        run: |
-          xvfb-run cargo test
-        if: runner.os == 'Linux'
-
-      - name: Run build appimage action (Linux)
-        uses: ./appimage/
-        with:
-          executable:   ./target/release/packetry
-          icon-file:    ./appimage/dist/icon.png
-          desktop-file: ./appimage/dist/packetry.desktop
-
-      - name: Upload AppImage binary (Linux)
-        uses: actions/upload-artifact@v4
-        with:
-          name: Linux AppImage binary
-          path: packetry-x86_64.AppImage
-          if-no-files-found: error
-
-
   create-docker-image:
     permissions:
       contents: read
@@ -141,3 +83,76 @@ jobs:
           subject-name: ghcr.io/${{ env.IMAGE_NAME }}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
+
+
+  build-linux-appimage:
+    permissions:
+      contents: read
+
+    needs: create-docker-image
+
+    name: Build Linux AppImage
+    runs-on: ubuntu-latest
+
+    container:
+      image: ghcr.io/${{ needs.create-docker-image.outputs.NAME }}:${{ needs.create-docker-image.outputs.TAG }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.DOCKER_REGISTRY_TOKEN }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Workaround issues when GitHub does not respect the HOME env var
+        run: |
+          # GitHub Actions only supports containers running as root
+          # see: https://github.com/actions/checkout/issues/1014
+          mv /home/runner/.cargo   $HOME
+          mv /home/runner/.nvm     $HOME
+          mv /home/runner/.rustup  $HOME
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install toolchain
+        run: |
+          rustup toolchain install stable
+          rustup default stable
+
+      - name: Build packetry binary
+        run: |
+          cargo build --release
+
+      - name: Test under XVFB (Linux)
+        run: |
+          xvfb-run cargo test
+        if: runner.os == 'Linux'
+
+      - name: Install cargo-license (Linux)
+        uses: taiki-e/cache-cargo-install-action@v2
+        with:
+          tool: cargo-license
+
+      - name: Gather licenses (Linux)
+        # If the default shell is used, one command failing does not fail the action.
+        shell: bash
+        run: |
+          pip install license-expression
+          python wix/rust_licenses.py > appimage/packetry.AppDir/usr/share/doc/LICENSE-static-libraries.txt
+          mv wix/full-licenses appimage/packetry.AppDir/usr/share/doc
+          cp LICENSE appimage/packetry.AppDir/usr/share/doc/LICENSE-packetry.txt
+
+      - name: Run build appimage action (Linux)
+        uses: ./appimage/
+        with:
+          executable:   target/release/packetry
+          icon-file:    appimage/dist/icon.png
+          desktop-file: appimage/dist/packetry.desktop
+          appdir:       appimage/packetry.AppDir
+
+      - name: Upload AppImage binary (Linux)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Linux AppImage binary
+          path: packetry-x86_64.AppImage
+          if-no-files-found: error

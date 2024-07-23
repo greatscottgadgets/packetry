@@ -2,15 +2,17 @@ name: "AppImage"
 description: "Builds a Linux AppImage on Debian 10 (Buster)"
 inputs:
   executable:
-    description: "Executable file"
+    description: "Executable file to package into an AppImage."
     required: true
   icon-file:
-    description: "Icon file to use for Executable"
+    description: "Icon file to use for the AppImage."
     required: true
   desktop-file:
-    description: "Desktop file to use for Executable"
+    description: "Desktop file to use for the AppImage."
     required: true
-
+  appdir:
+    description: "Path to use for the AppImage filesystem."
+    required: true
 
 runs:
   using: composite
@@ -21,7 +23,7 @@ runs:
       run: |
         DEPLOY_GTK_VERSION=4 linuxdeploy-x86_64.AppImage \
           --appimage-extract-and-run \
-          --appdir packetry.AppDir \
+          --appdir ${{ inputs.appdir }} \
           --executable=${{ inputs.executable }} \
           --icon-file ${{ inputs.icon-file }} \
           --plugin gtk \
@@ -31,7 +33,7 @@ runs:
       shell: bash
       run: |
         # cd to AppDir lib directory
-        cd $GITHUB_WORKSPACE/packetry.AppDir/usr/lib
+        cd $GITHUB_WORKSPACE/${{ inputs.appdir }}/usr/lib
 
         # fix symlinks
         rm libgdk_pixbuf-2.0.so
@@ -94,9 +96,38 @@ runs:
         # return to workspace directory
         cd $GITHUB_WORKSPACE
 
+    - name: Gather licenses (Linux)
+      shell: bash
+      run: |
+        # cd to AppDir /usr/share/doc directory
+        cd $GITHUB_WORKSPACE/${{ inputs.appdir }}/usr/share/doc
+
+        # remove any system licenses we don't actually link to
+        rm -rf libblkid1
+        rm -rf libbsd0
+        rm -rf libcroco3
+        rm -rf libicu63
+        rm -rf librsvg2-2
+        rm -rf libxau6
+        rm -rf libxcb-render0
+        rm -rf libxcursor1
+        rm -rf libxdamage1
+        rm -rf libxdmcp6
+        rm -rf libxext6
+        rm -rf libxfixes3
+        rm -rf libxi6
+        rm -rf libxinerama1
+        rm -rf libxml2
+        rm -rf libxrandr2
+        rm -rf libxrender1
+        rm -rf libzstd1
+
+        # Return to workspace directory
+        cd $GITHUB_WORKSPACE
+
     - name: Build packetry-x86_64.AppImage (Linux)
       shell: bash
       run: |
         appimagetool-x86_64.AppImage \
           --appimage-extract-and-run \
-          packetry.AppDir/
+          ${{ inputs.appdir }}/

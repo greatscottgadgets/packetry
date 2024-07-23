@@ -163,7 +163,6 @@ WORKDIR $HOME
 
 RUN rm -rf \
   .cache \
-  .pyenv \
   gtk-$GTK_VERSION
 
 
@@ -197,6 +196,10 @@ ENV APPIMAGE_EXTRACT_AND_RUN="1"
 ENV NVM_DIR="$HOME/.nvm"
 ENV NODE_PATH="$NVM_DIR/versions/node/$NODE_VERSION/bin"
 ENV PATH="$NVM_DIR:$NODE_PATH:$PATH"
+
+# pyenv
+ENV PYENV_ROOT="/home/runner/.pyenv"
+ENV PATH="$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH"
 
 # rust
 ENV PATH="$HOME/.cargo/bin:$PATH"
