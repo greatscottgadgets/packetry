@@ -1,0 +1,143 @@
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+name: CI
+
+env:
+  GTK_VERSION: 4.14.4
+  IMAGE_NAME: ${{ github.repository }}-gtk-4.14.4
+  IMAGE_TAG:  ${{ github.ref_name }}
+
+jobs:
+  build-linux-appimage:
+    permissions:
+      contents: read
+
+    needs: create-docker-image
+
+    name: Build Linux AppImage
+    runs-on: ubuntu-latest
+
+    container:
+      image: ghcr.io/${{ needs.create-docker-image.outputs.NAME }}:${{ needs.create-docker-image.outputs.TAG }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.DOCKER_REGISTRY_TOKEN }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Workaround issues when GitHub does not respect the HOME env var
+        run: |
+          # GitHub Actions only supports containers running as root
+          # see: https://github.com/actions/checkout/issues/1014
+          mv /home/runner/.cargo   $HOME
+          mv /home/runner/.nvm     $HOME
+          mv /home/runner/.rustup  $HOME
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install toolchain
+        run: |
+          rustup toolchain install stable
+          rustup default stable
+
+      - name: Build packetry binary
+        run: |
+          cargo build --release
+
+      - name: Test under XVFB (Linux)
+        run: |
+          xvfb-run cargo test
+        if: runner.os == 'Linux'
+
+      - name: Run build appimage action (Linux)
+        uses: ./appimage/
+        with:
+          executable:   ./target/release/packetry
+          icon-file:    ./appimage/dist/icon.png
+          desktop-file: ./appimage/dist/packetry.desktop
+
+      - name: Upload AppImage binary (Linux)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Linux AppImage binary
+          path: packetry-x86_64.AppImage
+          if-no-files-found: error
+
+
+  create-docker-image:
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+
+    name: Create Docker image
+    runs-on: ubuntu-latest
+    outputs:
+      NAME: ${{ env.IMAGE_NAME }}
+      TAG:  ${{ env.IMAGE_TAG }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Escape image tag
+        run: |
+          echo "IMAGE_TAG=$(echo ${{ env.IMAGE_TAG }} | sed -e 's/\//-/g')" >> $GITHUB_ENV
+
+      - name: Check if Dockerfile has changed
+        uses: dorny/paths-filter@v3
+        id: changed
+        with:
+          base: ${{ github.ref_name }}
+          filters: |
+            dockerfile:
+              - "appimage/docker/**"
+
+      - name: Check if Docker image exists
+        id: exists
+        shell: bash
+        run: |
+          declare -a HEADERS=(
+            '-H' "Accept: application/vnd.oci.image.manifest.v1+json"
+            '-H' "Accept: application/vnd.oci.image.index.v1+json"
+            '-H' "Authorization: Bearer $(echo ${{ secrets.DOCKER_REGISTRY_TOKEN }} | base64)"
+          )
+          RESULT=$(curl "${HEADERS[@]}" https://ghcr.io/v2/${IMAGE_NAME}/manifests/${IMAGE_TAG})
+          echo 'dockerimage<<EOF' >> $GITHUB_OUTPUT
+          echo ${RESULT} | jq 'has("manifests")' >> $GITHUB_OUTPUT
+          echo 'EOF' >> $GITHUB_OUTPUT
+
+      - name: Log in to the Container registry
+        if: ${{ steps.changed.outputs.dockerfile == 'true' || steps.exists.outputs.dockerimage == 'false' }}
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.DOCKER_REGISTRY_TOKEN }}
+
+      - name: Set up Docker Buildx
+        if: ${{ steps.changed.outputs.dockerfile == 'true' || steps.exists.outputs.dockerimage == 'false' }}
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        if: ${{ steps.changed.outputs.dockerfile == 'true' || steps.exists.outputs.dockerimage == 'false' }}
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: appimage/docker/
+          push: true
+          tags: ghcr.io/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+
+      - name: Generate artifact attestation
+        if: ${{ steps.changed.outputs.dockerfile == 'true' || steps.exists.outputs.dockerimage == 'false' }}
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ghcr.io/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
