@@ -12,7 +12,7 @@ use crate::data_stream::{
 use crate::compact_index::{compact_index, CompactWriter, CompactReader};
 use crate::rcu::SingleWriterRcu;
 use crate::vec_map::VecMap;
-use crate::usb::{self, prelude::*};
+use crate::usb::{self, prelude::*, validate_packet};
 use crate::util::{fmt_count, fmt_size};
 
 use anyhow::{Context, Error, bail};
@@ -596,8 +596,6 @@ impl Transaction {
         Ok(match (self.start_pid, &self.split) {
             (SOF, _) => format!(
                 "{} SOF packets", self.packet_count()),
-            (Malformed, _) => format!(
-                "{} malformed packets", self.packet_count()),
             (SPLIT, Some((split_fields, token_pid))) => format!(
                 "{} {}",
                 match split_fields.sc() {
@@ -799,7 +797,7 @@ impl CaptureReader {
                 match data_packet.first() {
                     None => bail!("Found empty packet instead of setup data"),
                     Some(byte) => {
-                        let pid = PID::from(*byte);
+                        let pid = PID::from(byte);
                         if pid != PID::DATA0 {
                             bail!("Found {pid} packet instead of setup data")
                         } else if data_packet.len() != 11 {
@@ -1150,55 +1148,115 @@ impl ItemSource<TrafficItem> for CaptureReader {
     fn summary(&mut self, item: &TrafficItem)
         -> Result<String, Error>
     {
+        use PID::*;
         use TrafficItem::*;
         use usb::StartComplete::*;
         Ok(match item {
             Packet(.., packet_id) => {
                 let packet = self.packet(*packet_id)?;
-                let first_byte = *packet.first().with_context(|| format!(
-                    "Packet {packet_id} is empty, cannot retrieve PID"))?;
-                let pid = PID::from(first_byte);
-                format!("{pid} packet{}",
-                    match PacketFields::from_packet(&packet) {
-                        PacketFields::SOF(sof) => format!(
-                            " with frame number {}, CRC {:02X}",
-                            sof.frame_number(),
-                            sof.crc()),
-                        PacketFields::Token(token) => format!(
-                            " on {}.{}, CRC {:02X}",
-                            token.device_address(),
-                            token.endpoint_number(),
-                            token.crc()),
-                        PacketFields::Data(data) if packet.len() <= 3 => format!(
-                            " with CRC {:04X} and no data",
-                            data.crc),
-                        PacketFields::Data(data) => format!(
-                            " with CRC {:04X} and {} data bytes: {}",
-                            data.crc,
-                            packet.len() - 3,
-                            Bytes::first(100, &packet[1 .. packet.len() - 2])),
-                        PacketFields::Split(split) => format!(
-                            " {} {} speed {} transaction on hub {} port {}",
-                            match split.sc() {
-                                Start => "starting",
-                                Complete => "completing",
-                            },
-                            format!("{:?}", split.speed()).to_lowercase(),
-                            format!("{:?}", split.endpoint_type()).to_lowercase(),
-                            split.hub_address(),
-                            split.port()),
-                        PacketFields::None => match pid {
-                            PID::Malformed => format!(": {packet:02X?}"),
-                            _ => "".to_string()
+                let len = packet.len();
+                let too_long = len > 1027;
+                match validate_packet(&packet) {
+                    Err(None) => "Malformed 0-byte packet".to_string(),
+                    Err(Some(pid)) => format!(
+                        "Malformed packet{} of {len} {}: {}",
+                        match pid {
+                            RSVD if too_long =>
+                                " (reserved PID, and too long)".to_string(),
+                            Malformed if too_long =>
+                                " (invalid PID, and too long)".to_string(),
+                            RSVD =>
+                                " (reserved PID)".to_string(),
+                            Malformed =>
+                                " (invalid PID)".to_string(),
+                            pid if too_long => format!(
+                                " (possibly {pid}, but too long)"),
+                            pid => format!(
+                                " (possibly {pid}, but {})",
+                                match pid {
+                                    SOF|SETUP|IN|OUT|PING => {
+                                        if len != 3 {
+                                            "wrong length"
+                                        } else {
+                                            "bad CRC"
+                                        }
+                                    },
+                                    SPLIT => {
+                                        if len != 4 {
+                                            "wrong length"
+                                        } else {
+                                            "bad CRC"
+                                        }
+                                    },
+                                    DATA0|DATA1|DATA2|MDATA => {
+                                        if len < 3 {
+                                            "too short"
+                                        } else {
+                                            "bad CRC"
+                                        }
+                                    },
+                                    ACK|NAK|NYET|STALL|ERR => "too long",
+                                    RSVD|Malformed => unreachable!(),
+                                }),
+                        },
+                        if len == 1 {"byte"} else {"bytes"},
+                        Bytes::first(100, &packet[0 .. len])
+                    ),
+                    Ok(pid) => format!(
+                        "{pid} packet{}",
+                        match PacketFields::from_packet(&packet) {
+                            PacketFields::SOF(sof) => format!(
+                                " with frame number {}, CRC {:02X}",
+                                sof.frame_number(),
+                                sof.crc()),
+                            PacketFields::Token(token) => format!(
+                                " on {}.{}, CRC {:02X}",
+                                token.device_address(),
+                                token.endpoint_number(),
+                                token.crc()),
+                            PacketFields::Data(data) if len <= 3 => format!(
+                                " with CRC {:04X} and no data",
+                                data.crc),
+                            PacketFields::Data(data) => format!(
+                                " with CRC {:04X} and {} data bytes: {}",
+                                data.crc,
+                                len - 3,
+                                Bytes::first(100, &packet[1 .. len - 2])),
+                            PacketFields::Split(split) => format!(
+                                " {} {} speed {} transaction on hub {} port {}",
+                                match split.sc() {
+                                    Start => "starting",
+                                    Complete => "completing",
+                                },
+                                format!("{:?}", split.speed()).to_lowercase(),
+                                format!("{:?}", split.endpoint_type()).to_lowercase(),
+                                split.hub_address(),
+                                split.port()),
+                            PacketFields::None => match pid {
+                                PID::Malformed => format!(": {packet:02X?}"),
+                                _ => "".to_string()
+                            }
                         }
-                    })
+                    )
+                }
             },
             Transaction(transfer_id, transaction_id) => {
                 let entry = self.transfer_index.get(*transfer_id)?;
                 let endpoint_id = entry.endpoint_id();
                 let endpoint = self.endpoints.get(endpoint_id)?;
-                let transaction = self.transaction(*transaction_id)?;
-                transaction.description(self, &endpoint)?
+                let packet_id_range = self.transaction_index.target_range(
+                    *transaction_id, self.packet_index.len())?;
+                let start_packet_id = packet_id_range.start;
+                let start_packet = self.packet(start_packet_id)?;
+                if validate_packet(&start_packet).is_ok() {
+                    let transaction = self.transaction(*transaction_id)?;
+                    transaction.description(self, &endpoint)?
+                } else {
+                    let packet_count = packet_id_range.len();
+                    format!("{} malformed {}",
+                        packet_count,
+                        if packet_count == 1 {"packet"} else {"packets"})
+                }
             },
             Transfer(transfer_id) => {
                 use EndpointType::*;

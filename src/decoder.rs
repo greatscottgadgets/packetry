@@ -5,17 +5,8 @@ use anyhow::{Context, Error, bail};
 
 use crate::capture::prelude::*;
 use crate::rcu::SingleWriterRcu;
-use crate::usb::{self, prelude::*};
+use crate::usb::{self, prelude::*, validate_packet};
 use crate::vec_map::{VecMap, Key};
-
-impl PID {
-    fn from_packet(packet: &[u8]) -> Result<PID, Error> {
-        let first_byte = packet
-            .first()
-            .context("Packet is empty, cannot retrieve PID")?;
-        Ok(PID::from(*first_byte))
-    }
-}
 
 struct EndpointData {
     device_id: DeviceId,
@@ -95,15 +86,20 @@ struct TransactionState {
 }
 
 fn transaction_status(state: &Option<TransactionState>, packet: &[u8])
-    -> Result<TransactionStatus, Error>
+    -> Result<(PID, TransactionStatus), Error>
 {
-    let next = PID::from_packet(packet)?;
     use PID::*;
     use TransactionStatus::*;
     use TransactionStyle::*;
     use StartComplete::*;
     use usb::EndpointType::*;
-    Ok(match state {
+
+    let next = match validate_packet(packet) {
+        Err(_) => return Ok((Malformed, Invalid)),
+        Ok(pid) => pid,
+    };
+
+    let status = match state {
         None => match next {
             // Tokens may start a new transaction.
             SOF | SETUP | IN | OUT | PING | SPLIT => New,
@@ -219,7 +215,9 @@ fn transaction_status(state: &Option<TransactionState>, packet: &[u8])
                 (..) => Invalid,
             }
         },
-    })
+    };
+
+    Ok((next, status))
 }
 
 impl TransactionState {
@@ -235,12 +233,12 @@ impl TransactionState {
         self.endpoint_id.context("Transaction state has no endpoint ID")
     }
 
-    fn extract_payload(&mut self, packet: &[u8]) {
+    fn extract_payload(&mut self, pid: PID, packet: &[u8]) {
         use PID::*;
         use TransactionStyle::*;
         use usb::EndpointType::*;
         use StartComplete::*;
-        match (&self.style, PID::from(packet[0])) {
+        match (&self.style, pid) {
             (Simple(SETUP), DATA0) |
             (Split(Start, Control, Some(SETUP)), DATA0) => {
                 self.setup = Some(SetupFields::from_data_packet(packet));
@@ -622,10 +620,9 @@ impl Decoder {
         })
     }
 
-    fn packet_endpoint(&mut self, packet: &[u8])
+    fn packet_endpoint(&mut self, pid: PID, packet: &[u8])
         -> Result<EndpointId, Error>
     {
-        let pid = PID::from_packet(packet)?;
         Ok(match PacketFields::from_packet(packet) {
             PacketFields::SOF(_) => FRAMING_EP_ID,
             PacketFields::Token(token) =>
@@ -640,7 +637,7 @@ impl Decoder {
         use TransactionStatus::*;
         use TransactionStyle::*;
         use StartComplete::*;
-        let status = transaction_status(&self.transaction_state, packet)?;
+        let (pid, status) = transaction_status(&self.transaction_state, packet)?;
         let success = status != Fail;
         let complete = match &self.transaction_state {
             None => false,
@@ -651,43 +648,45 @@ impl Decoder {
         };
         if status != Invalid {
             if let Some(state) = &mut self.transaction_state {
-                state.extract_payload(packet);
+                state.extract_payload(pid, packet);
             }
         }
         match status {
             New => {
                 self.transaction_end(false, false)?;
-                self.transaction_start(packet_id, packet)?;
+                self.transaction_start(packet_id, pid, packet)?;
                 self.transfer_early_append()?;
             },
             Continue => {
-                self.transaction_append(packet)?;
+                self.transaction_append(pid, packet)?;
                 self.transfer_early_append()?;
             },
             Done | Retry | Fail => {
-                self.transaction_append(packet)?;
+                self.transaction_append(pid, packet)?;
                 self.transaction_end(success, complete)?;
             },
             Invalid => {
-                self.transaction_start(packet_id, packet)?;
+                self.transaction_start(packet_id, pid, packet)?;
                 self.transaction_end(false, false)?;
             },
         };
         Ok(())
     }
 
-    fn transaction_start(&mut self, packet_id: PacketId, packet: &[u8])
+    fn transaction_start(&mut self,
+                         packet_id: PacketId,
+                         pid: PID,
+                         packet: &[u8])
         -> Result<(), Error>
     {
         use PID::*;
         use TransactionStyle::*;
-        let pid = PID::from_packet(packet)?;
         let transaction_id = self.capture.transaction_index.push(packet_id)?;
         let (style, endpoint_id) = if pid == SPLIT {
             let split = SplitFields::from_packet(packet);
             (Split(split.sc(), split.endpoint_type(), None), None)
         } else {
-            (Simple(pid), Some(self.packet_endpoint(packet)?))
+            (Simple(pid), Some(self.packet_endpoint(pid, packet)?))
         };
         let mut state = TransactionState {
             style,
@@ -704,15 +703,14 @@ impl Decoder {
         Ok(())
     }
 
-    fn transaction_append(&mut self, packet: &[u8])
+    fn transaction_append(&mut self, pid: PID, packet: &[u8])
         -> Result<(), Error>
     {
         use TransactionStyle::*;
-        let pid = PID::from_packet(packet)?;
         let update = match &self.transaction_state {
             Some(TransactionState { style: Split(sc, ep_type, None), ..}) => {
                 let (sc, ep_type) = (*sc, *ep_type);
-                let endpoint_id = self.packet_endpoint(packet)?;
+                let endpoint_id = self.packet_endpoint(pid, packet)?;
                 let ep_data = &self.endpoint_data[endpoint_id];
                 let ep_addr = ep_data.address;
                 let dev_data = self.capture.device_data(ep_data.device_id)?;

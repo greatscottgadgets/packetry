@@ -1,3 +1,4 @@
+analyzer-test-bad-cable
 emf2022-badge
 hackrf-connect
 hackrf-dfu-enum

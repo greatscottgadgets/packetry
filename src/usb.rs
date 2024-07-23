@@ -2,10 +2,33 @@ use std::mem::size_of;
 
 use bytemuck_derive::{Pod, Zeroable};
 use bytemuck::pod_read_unaligned;
+use crc::{Crc, CRC_16_USB};
 use num_enum::{IntoPrimitive, FromPrimitive};
 use derive_more::{From, Into, Display};
 
 use crate::vec_map::VecMap;
+
+fn crc16(bytes: &[u8]) -> u16 {
+    const CRC16: Crc<u16> = Crc::<u16>::new(&CRC_16_USB);
+    CRC16.checksum(bytes)
+}
+
+// We can't use the CRC_5_USB implementation, because we need to
+// compute the CRC over either 11 or 19 bits of data, rather than
+// over an integer number of bytes.
+
+fn crc5(mut input: u32, num_bits: u32) -> u8 {
+    let mut state: u32 = 0x1f;
+    for _ in 0..num_bits {
+        let cmp = input & 1 != state & 1;
+        input >>= 1;
+        state >>= 1;
+        if cmp {
+            state ^= 0x14;
+        }
+    }
+    (state ^ 0x1f) as u8
+}
 
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Copy, Clone, Debug, Default, IntoPrimitive, FromPrimitive, PartialEq, Eq)]
@@ -34,6 +57,65 @@ pub enum PID {
 impl std::fmt::Display for PID {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{self:?}")
+    }
+}
+
+impl From<&u8> for PID {
+    fn from(byte: &u8) -> PID {
+        PID::from(*byte)
+    }
+}
+
+pub fn validate_packet(packet: &[u8]) -> Result<PID, Option<PID>> {
+    use PID::*;
+
+    match packet.first().map(PID::from) {
+        // A zero-byte packet is always invalid, and has no PID.
+        None => Err(None),
+
+        // Otherwise, check validity according to PID.
+        Some(pid) => {
+            let len = packet.len();
+            let valid = match pid {
+
+                // SOF and tokens must be three bytes, with a valid CRC5.
+                SOF | SETUP | IN | OUT | PING if len == 3 => {
+                    let data = u32::from_le_bytes(
+                        [packet[1], packet[2] & 0x07, 0, 0]);
+                    let crc = packet[2] >> 3;
+                    crc == crc5(data, 11)
+                }
+
+                // SPLIT packets must be four bytes, with a valid CRC5.
+                SPLIT if len == 4 => {
+                    let data = u32::from_le_bytes(
+                        [packet[1], packet[2], packet[3] & 0x07, 0]);
+                    let crc = packet[3] >> 3;
+                    crc == crc5(data, 19)
+                },
+
+                // Data packets must be 3 to 1027 bytes, with a valid CRC16.
+                DATA0 | DATA1 | DATA2 | MDATA if (3..=1027).contains(&len) => {
+                    let data = &packet[1..(len - 2)];
+                    let crc = u16::from_le_bytes([packet[len - 2], packet[len - 1]]);
+                    crc == crc16(data)
+                }
+
+                // Handshake packets must be a single byte.
+                ACK | NAK | NYET | STALL | ERR if len == 1 => true,
+
+                // Anything else is invalid.
+                _ => false
+            };
+
+            if valid {
+                // Packet is valid.
+                Ok(pid)
+            } else {
+                // Invalid, but has a (possibly wrong or malformed) PID byte.
+                Err(Some(pid))
+            }
+        }
     }
 }
 
@@ -857,7 +939,8 @@ mod tests {
 
     #[test]
     fn test_parse_sof() {
-        let p = PacketFields::from_packet(&vec![0xa5, 0xde, 0x1e]);
+        let packet = vec![0xa5, 0xde, 0x1e];
+        let p = PacketFields::from_packet(&packet);
         if let PacketFields::SOF(sof) = p {
             assert!(sof.frame_number() == 1758);
             assert!(sof.crc() == 0x03);
@@ -869,7 +952,9 @@ mod tests {
 
     #[test]
     fn test_parse_setup() {
-        let p = PacketFields::from_packet(&vec![0x2d, 0x02, 0xa8]);
+        let packet = vec![0x2d, 0x02, 0xa8];
+        assert_eq!(validate_packet(&packet), Ok(PID::SETUP));
+        let p = PacketFields::from_packet(&packet);
         if let PacketFields::Token(tok) = p {
             assert!(tok.device_address() == DeviceAddr(2));
             assert!(tok.endpoint_number() == EndpointNum(0));
@@ -882,7 +967,9 @@ mod tests {
 
     #[test]
     fn test_parse_in() {
-        let p = PacketFields::from_packet(&vec![0x69, 0x82, 0x18]);
+        let packet = vec![0x69, 0x82, 0x18];
+        assert_eq!(validate_packet(&packet), Ok(PID::IN));
+        let p = PacketFields::from_packet(&packet);
         if let PacketFields::Token(tok) = p {
             assert!(tok.device_address() == DeviceAddr(2));
             assert!(tok.endpoint_number() == EndpointNum(1));
@@ -895,7 +982,9 @@ mod tests {
 
     #[test]
     fn test_parse_data() {
-        let p = PacketFields::from_packet(&vec![0xc3, 0x40, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xaa, 0xd5]);
+        let packet = &vec![0xc3, 0x40, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xaa, 0xd5];
+        assert_eq!(validate_packet(&packet), Ok(PID::DATA0));
+        let p = PacketFields::from_packet(&packet);
         if let PacketFields::Data(data) = p {
             assert!(data.crc == 0xd5aa);
         } else {
