@@ -1,0 +1,30 @@
+name: "Test Action"
+description: "Tests a composite action"
+inputs:
+  executable:
+    description: "Executable file"
+    required: true
+  icon-file:
+    description: "Icon file to use for Executable"
+    required: true
+  desktop-file:
+    description: "Desktop file to use for Executable"
+    required: true
+
+runs:
+  # the problem with this is that it does not actually run any steps, it just runs the docker image :-/
+  #using: "docker"
+  #image: ./docker/Dockerfile
+
+  using: "composite"
+
+  steps:
+    - name: Print the name
+      run: |
+        echo "Print the name of the executable: ${{ inputs.executable }}"
+      shell: bash
+
+    - name: Print docker env var
+      run: |
+        echo "Print the path for gtk4: $GTK4"
+      shell: bash
