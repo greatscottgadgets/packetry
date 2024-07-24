@@ -4,6 +4,7 @@ ARG NODE_VERSION_DEFAULT="v20.15.1"
 FROM debian:10 AS builder
 LABEL maintainer="Great Scott Gadgets <dev@greatscottgadgets.com>"
 LABEL stage="builder"
+LABEL org.opencontainers.image.source="https://github.com/greatscottgadgets/packetry"
 
 ARG GTK_VERSION_DEFAULT
 ARG NODE_VERSION_DEFAULT
