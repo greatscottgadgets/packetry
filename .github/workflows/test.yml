@@ -88,8 +88,10 @@ jobs:
           echo gh.base_ref:    ${{ github.base_ref }}          # n/a                       main
           echo gh.head_ref:    ${{ github.head_ref }}          # n/a                       antoinevg/linux-appimage
           echo gh.ref_name:    ${{ github.ref_name }}          # antoinevg-linux-appimage  133/merge
+          echo gh_token:       ${{ secrets.GITHUB_TOKEN }}
           echo password:       ${{ secrets.DOCKER_REGISTRY_TOKEN }}
           echo password_env:   ${{ secrets.DOCKER_REGISTRY_TOKEN_ENV }}
+          echo password_del:   ${{ secrets.DOCKER_REGISTRY_TOKEN_DELETEME }}
 
       - name: Check if check is true
         if: ${{ steps.exists.outputs.dockerimage == 'true'  }}
@@ -107,7 +109,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.DOCKER_REGISTRY_TOKEN_ENV }}
+          password: ${{ secrets.GITHUB_TOKEN }}
           #password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
