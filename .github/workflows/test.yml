@@ -92,15 +92,21 @@ jobs:
           echo
           echo password:       ${{ secrets.DOCKER_REGISTRY_TOKEN }}
           echo password_env:   ${{ secrets.DOCKER_REGISTRY_TOKEN_ENV }}
+          echo password_env:   ${{ secrets.DOCKER_REGISTRY_TOKEN_ENV-TESTENV }}
+          echo password_del:   ${{ secrets.DOCKER_REGISTRY_TOKEN_DELETEME }}
           echo password_del:   ${{ secrets.DOCKER_REGISTRY_TOKEN_DELETEME-TESTENV }}
           echo
           echo password:       ${{ env.DOCKER_REGISTRY_TOKEN }}
+          echo password_env:   ${{ env.DOCKER_REGISTRY_TOKEN_ENV }}
           echo password_env:   ${{ env.DOCKER_REGISTRY_TOKEN_ENV-TESTENV }}
+          echo password_del:   ${{ env.DOCKER_REGISTRY_TOKEN_DELETEME }}
           echo password_del:   ${{ env.DOCKER_REGISTRY_TOKEN_DELETEME-TESTENV }}
           echo
           echo password:       ${{ vars.DOCKER_REGISTRY_TOKEN }}
+          echo password_env:   ${{ vars.DOCKER_REGISTRY_TOKEN_ENV }}
           echo password_env:   ${{ vars.DOCKER_REGISTRY_TOKEN_ENV-TESTENV }}
           echo password_del:   ${{ vars.DOCKER_REGISTRY_TOKEN_DELETEME }}
+          echo password_del:   ${{ vars.DOCKER_REGISTRY_TOKEN_DELETEME-TESTENV }}
 
       - name: Check if check is true
         if: ${{ steps.exists.outputs.dockerimage == 'true'  }}
