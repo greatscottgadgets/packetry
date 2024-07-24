@@ -1,0 +1,729 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: GTK
+Source: https://download.gnome.org/sources/gtk/
+License: LGPL-2.1+
+Files-Excluded:
+ docs/reference/gdk/gdk4
+ docs/reference/gdk/gdk4-wayland
+ docs/reference/gdk/gdk4-x11
+ docs/reference/gsk/gsk4
+ docs/reference/gtk/gtk4
+ gtk/theme/Default/Default-*.css
+
+Files: *
+Copyright:
+ 2009-2010 A S Alam
+ 2001 Abel Cheung
+ 2004 Abigail Brady
+ 2004 Adam Weinberger
+ 2004-2005 Afonso Celso Medina
+ 2006 Ahmad Riza H Nst
+ 2002 Akira TAGOH
+ 2006 Alaksandar Navicki
+ 2005 Alan Horkan
+ 2005-2008 Alan Monfort
+ 2004 Alastair McKinstry
+ 2005 Albert Fazlí
+ 2001-2005 Ales Nyakhaychyk
+ 2003-2007 Alessio Dessì
+ 2004 Alex Camacho Castilho
+ 2003 Alex Graveley
+ 2006-2019 Alexander Larsson
+ 2020 Alexander Mikhaylenko
+ 2005-2010 Alexander Shopov
+ 2006 Alexander Sigachov
+ 2004-2009 Amanpreet Singh Alam
+ 2021 Amazon.com, Inc. and its affiliates
+ 2004 Amir Hedayaty
+ 2006-2009 Amitakhya Phukan
+ 2008 Anas Afif Emad
+ 2001-2004 Anders Carlsson
+ 2002 Andras Timar
+ 2008 Andre Klapper
+ 2003 Andrew W. Nosenko
+ 2009 André Gondim
+ 2006-2009 Ani Peter
+ 2005-2009 Ankit Patel
+ 2009 Anton Meixome
+ 2008 Anton Shestakov
+ 2007 Antono VASILJEV
+ 2009 Antón Méixome
+ 2003 Apple Computer, Inc.
+ 2003-2004 Arafat Medini
+ 2006-2007 Arangel Angov
+ 2001 Archaeopteryx Software Inc.
+ 2003 Arman Aksoy
+ 2007-2010 Ask Hjorth Larsen
+ 2006-2007 Async Open Source
+ 2004 Ayman Hourieh
+ 2008 BOSS GNU/Linux
+ 2006-2009 Baris Cicek
+ 2009 Bastien Nocera
+ 2016-2022 Benjamin Otte
+ 2006 Benoît Dejean
+ 2003 Besnik Bleta
+ 2002 Borislav Aleksandrov
+ 2009-2010 Bruce Cowan
+ 2004-2008 Canonical Ltd.
+ 2005-2019 Carlos Garnacho
+ 2002 Carlos Perelló Marín
+ 2004 Carole Karema
+ 1998 Cesar Miquel
+ 2002-2010 Changwod Ryu
+ 2000 Chih-Wei Huang
+ 2010 Christian Dywan
+ 2004-2006 Christian Hammond
+ 2015-2022 Christian Hergert
+ (unknown) Christian Kellner
+ 2009-2010 Christian Kirbach
+ 2002-2004 Christian Neumair
+ 2006-2010 Christian Persch
+ 2000-2005 Christian Rose
+ 20002 Christophe Fergeau
+ 2000-2006 Christophe Merlet
+ 2000-2002 Christopher Gabriel
+ 2007-2010 Claude Paroz
+ 2005-2010 Clytie Siddall
+ 2001 CodeFactory AB
+ 2010 Codethink Limited
+ 2007-2009 Cody Russell
+ 2012-2018 Collabora Ltd.
+ 2003-2007 Courtesy of Prevod.org team
+ 2003-2004 Dafydd Harries
+ 2010 Damyan Ivanov
+ 1999-2000 Dan Damian
+ 2006-2010 Daniel Nylander
+ 2007 Danishka Navin
+ 1998 David Abilleira Freijeiro
+ 2003 David Bellot
+ 2004 David Lodge
+ 2008-2010 David Planella
+ (unknown) David Zeuthen
+ 2003 Davide Libenzi
+ 2008-2009 Deng Xiyue
+ 2001-2003 Dinesh Nadarajah
+ 2002 Dirk-Jan C. Binnema
+ 2006 Djihed Afifi
+ 2002-2004 Dmitry Mastrukov
+ 2003-2004 Dom Lachowicz
+ 2001-2010 Duarte Loreto
+ 1998 Elliot Lee
+ 2005-2007 Emmanuele Bassi
+ 2016-2017 Endless
+ 2008-2009 Erdal Ronahi
+ 2008-2009 Eskild Hustvedt
+ 2008-2010 F Wolff
+ 2003 FSF-India
+ 1999-2001 Fatih Demir
+ (unknown) Federico Mena
+ 2006 Felix
+ 2009-2010 Fran Dieguez
+ 2003-2006 Francisco Javier F. Serrador
+ 1991-2023 Free Software Foundation, Inc.
+ 2003-2009 Funda Wang
+ 2008 Fábio Nogueira
+ 2003 G Karunakar
+ 2004-2010 Gabor Kelemen
+ 2005 Ganesh Ghimire
+ 2004 Gareth Owen
+ 2002 Ge'ez Frontier Foundation
+ 2000-2004 Gediminas Paulauskas
+ 2002 Germán Poo-Caamaño
+ 2009 Ghee Teo
+ 2005 Gia Shervashidze
+ 2002-2004 Gil 'Dolfin' Osher
+ 2007-2009 Gintautas Miliauskas
+ 2005 Gora Mohanty
+ 2007 Guillaume SAVATON
+ 2004 Gurban Mühemmet Tewekgeli
+ 2004 Gustavo Noronha Silva
+ 2001 Görkem Cetin
+ 2001-2005 Hans Breuer
+ 2008 Hari Vishnu
+ 2002 Hasbullah Bin Pit (sebol)
+ 2001 Havoc Pennington
+ 2001 He Qiangqiang
+ 2004-2005 Hendrik Brandt
+ 2004-2009 Hendrik Richter
+ 2008 Henrique P Machado
+ 2009-2010 Hinker
+ 2011 Hiroyuki Yamamoto
+ 2004 Hizkuntza Politikarako Sailburuordetza
+ 2000-2002 Hoang Ngoc Tu
+ 2006 Hong Jen Yee (PCMan)
+ 2009 I. Felix
+ 2009 Iestyn Pryce
+ 2009 Igalia S.L
+ 2005-2011 Ignacio Casal Quinteiro
+ 2005-2009 Ilkka Tuohela
+ 2005-2008 Imendio AB
+ 2010-2013 Intel Corporation
+ 2002 Isam Bayazidi
+ 2010 Israt Jahan
+ 2002 Ivan Stojmirov
+ 1999-2000 Ivan Vilata i Balaguer
+ 2005-2010 Ivar Smolin
+ 2004-2010 Iñaki Larrañaga Murgoitio
+ 2008 Jaap Haitsma
+ 2006 Jakub Friedl
+ 2002 James Henstridge
+ 2004 James Johnson
+ 2004 James M. Cape
+ 2005 Jamie McCracken
+ 2009 Jamy
+ 2006-2016 Jan Arne Petersen
+ (unknown) Javier Jardón
+ 2005 Jaydeep Bhusal
+ 2009 Jennie Petoumenou
+ 1999-2000 Jesus Bravo Alvarez
+ 2009 Jiri Grönroos
+ 2002 Jiří Lebl
+ 1998 Jiří Pavlovský
+ 2000-2002 Joern v. Kattchee
+ 2006 John (J5) Palmieri
+ 2004 John C Barstow
+ 2007 John Stowers-Neil Jagdish Patel
+ 2006-2007 Jonathan Ernst
+ 2009-2010 Jonh Wendell
+ 2002-2006 Jordi Mallach
+ 2007-2010 Jorge González
+ 1999-2000 Joseba Bidaurrazaga van Dierdonck
+ 2005-2006 Josep Puigdemont
+ 1995-2007 Josh MacDonald
+ 2001 José Antonio Salgueiro A.
+ 2006-2007 Jovan Naumovski
+ 2003 Juan Manuel García Molina
+ 2005 Jyotshna Shrestha
+ 2003 KAMAGASAKO Masatoshi
+ 2003-2004 Kazuki IWAMOTO
+ 2000-2002 Keith Packard
+ 2000 Keld Simonsen
+ 2004 Kenan Hadžiavdić
+ 1999-2000 Kenneth Christiansen
+ 2006-2010 Khaled Hosny
+ 2006-2010 Kibavuidi Nsiangani
+ 1998-2001 Kjartan Maraas
+ 2002-2007 Kostas Papadimas
+ 2008-2009 Krishna Babu K
+ 2001-2010 Kristian Rietveld
+ 1991-1998 LCS/Telegraphics
+ 1999 Larry Ewing
+ 1998 Lars Hamann
+ 2004-2005 Laszlo Dvornik
+ 2009 Laurent Coudeur
+ 2003-2009 Laurent Dhima
+ 2009 Lebedev Roman
+ 2006-2009 Leonardo Ferreira Fontenelle
+ 2004-2006 Leonid Kanter
+ 2005 Lilit Azizbekyan
+ 2005 Lilit Sargsyan
+ 2004 Lorenzo Gil Sanchez
+ 2007-2010 Luca Ferretti
+ 2009-2010 Lucian Adrian Grijincu
+ 2006 Lukas Novotny
+ 2004 MagNet
+ 2006 Mahesh subedi
+ 2009 Mancomún - Centro de Referencia e Servizos de Software Libre
+ 2008-2010 Manoj Kumar Giri
+ 2006 Mantas Kriaučiūnas
+ 2005-2008 Marcel Telka
+ 2005 Marie Lund
+ 2009-2010 Mario Blättermann
+ 2001-2002 Marius Andreiana
+ 1999 Mark Crichton
+ 2007 Martin Srebotnjak
+ 2005 Martin Willemoes Hansen
+ 2009 Maruf Ovee
+ 2003-2004 Mashrab Kuvatov
+ 2007 Matej Urbančič
+ 2003 Mathieu van Woerkom
+ 2006 Matic Žgur
+ 2015 Matthew Waters
+ 2003-2020 Matthias Clasen
+ 2001-2002 Matthias Warkus
+ 2009-2010 Mattias Põldaru
+ 2004-2010 Maxim Dziumanenko
+ 2005 Meelad Zakaria
+ 2007 Michael Terry
+ 1999 Michael Zucchi
+ 2002 Michal Bukovjan
+ 2018 Microsoft
+ 2011 Mike Krüger
+ 2003-2005 Miloslav Trmac
+ 2003 Mireia Farrús
+ 2003-2010 Mișu Moldovan
+ 2003 Mohammad DAMT
+ 2003-2004 Mətin Əmirov
+ 2002 Naba Kumar
+ 2002-2009 Nguyễn Thái Ngọc Duy
+ 2003-2008 Nikos Charonitakis
+ 2003 Nikos Kannelopoulos
+ 2001-2002 Nilgün Belma Bugüner
+ 2009 Nils-Christoph Fiedler
+ 2009-2010 Nishibori Kiyotaka
+ 2004-2010 Nokia Corporation
+ 2005 Norayr Chilingaryan
+ 2005-2010 Novell, Inc.
+ 2004 Noëlla Mupole
+ 2008 Nurali Abdurahmonov
+ 2007 Og Maciel
+ 2001-2004 Ole Laursen
+ 2003 OpenMN team
+ 2006-2010 Openismus GmbH
+ 1998-2002 Owen Taylor
+ 2002-2003 Pablo Gonzalo del Campo
+ 1998-2006 Pablo Saratxaga
+ 2003-2004 Paisa Seeluangsawat
+ 2004 Paolo Borelli
+ 2005 Paolo Maggi
+ 2000-2005 Pauli Virtanen
+ 2006-2010 Pavol Šimo
+ 2004 Pawan Chitrakar
+ 2007 Pedro Vaz Mello de Medeiros
+ 1995-2007 Peter Mattis
+ 2007-2010 Petr Kovar
+ 2004 Philibert Ndandali
+ 2021 Philip Zander
+ 2004 Pradeep Deshpande
+ 2005 Prajasakti Localisation Team
+ 2004-2005 Priit Laes
+ 2004-2005 Progga
+ 2018 Purism SPC
+ 2006 Rahul Bhalerao
+ 2006-2009 Raivis Dejus
+ 2005-2009 Rajesh Ranjan
+ 2003 Raphael Finkel
+ 2006 Raphael Higino <In Memoriam>
+ 2004 Ravishankar Shrivastava
+ 2003-2004 Raymond Penners
+ 1998-2022 Red Hat, Inc.
+ 2009 Reinout van Schouwen
+ 2009-2010 Reşat SABIQ
+ 2002 Rhoslyn Prys
+ 2004-2006 Rhys Jones
+ 2003 Ricardo Fernandez Pascual
+ 2003 Richard Allen
+ 2008 Richard Hughes
+ 2008-2010 Rimas Kudelis
+ 1993 Robert Nation
+ 2006-2008 Robert-André Mauchin
+ 2002 Ronald Hummelink
+ 2005 Ronald S. Bultje
+ 2000-2005 Roozbeh Pournader
+ 2004-2008 Rosetta Contributors
+ 2001-2002 Roy-Magne Mo
+ 2007-2010 Runa Bhattacharjee
+ 2009-2010 Russell Kyaw
+ 1995-2007 Ryan Lortie
+ 2010 Sadia Afroz
+ 2004 Sami Pesonen
+ 2008-2010 Sandeep Shedmake
+ 2003-2004 Sanlig Badral
+ 2006 Satoru SATOh
+ 2004 Sayamindu Dasgupta
+ 2002 Sayed Jaffer Al-Mosawi
+ 2006 Seba Barto
+ 2009 Sebastian Dröge
+ 2007-2010 Seán de Búrca
+ 2007-2010 Shankar Prasad
+ 2000-2005 Sharif FarsiWeb, Inc.
+ 1998 Shawn T. Amundson
+ 2006 Shiva Pokharel
+ 2006 Shyam Krishna Bal
+ 2016-2020 Simon McVittie
+ 1999-2009 Simos Xenitellis
+ 2003-2004 Soeren Sandmann
+ 2000-2002 Softcatala
+ 1995-2007 Spencer Kimball
+ 1998 Stanislav Brabec
+ 2001-2004 Stanislav Visnovsky
+ 1998 Stefan Jeske
+ 2001 Stefan Ondrejicka
+ 2009 Stefan Walter
+ 1995-1998 Steffen Beyer
+ 2004 Steve Murphy
+ 2007-2008 Stéphane Raimbault
+ 2000 SuSE Linux Ltd
+ 2006 Subhransu Behera
+ 2002 Sun G11n
+ 1994-2009 Sun Microsystems, Inc.
+ 2007 Sunil Mohan Adapa
+ 2003 Swapnil Hajare
+ 2008-2010 Sweta Kothari
+ 1999-2002 Szabolcs Ban
+ 2008 Tadej Borovšak
+ 2002-2010 Takayuki KUSANO
+ 2003-2009 Takeshi AIHANA
+ 2003 Takuro Ashie
+ 2005 Terance Edward Sola
+ 2012 The Chromium Authors
+ 2016-2020 The CRoaring authors
+ 2004-2020 The GNOME Foundation
+ 2007-2010 The GNOME Project
+ 1997-2022 The GTK Team
+ 1986-1998 The Open Group
+ 1992-1994 The Regents of the University of California.
+ 2005-2010 Theppitak Karoonboonyanan
+ 2004 Thierry Vignaud
+ 1998-2006 Tim Janik
+ 2017-2018 Timm Bäder
+ 2002-2010 Tino Meinen
+ 2004 Tomas Kuliavas
+ 2004 Tomislav Markovski
+ 2009-2010 Tommi Vainikainen
+ 1998-2004 Tor Lillqvist
+ 2005 Translation World CC in South Africa
+ 2008 Tristan Van Berkom
+ 2000 Tzafrir Cohen
+ 2002-2004 Tõivo Leedjärv
+ 2000-2002 Valek Filippov
+ 2000 Vasif Ismailoglu MD
+ 2007 Vasiliy Faronov
+ 2004 Viateur MUGENZI
+ 2005-2007 Vincent Untz
+ 2005 Vital Khilko
+ 2007-2008 Vladimer Sichinava ვლადიმერ სიჭინავა
+ 2009 Vladimir Melo
+ 2004-2005 Vladimir Petkov
+ 2010 Xandru Armesto
+ 2007 Xose S. Puente
+ 2006 Yair Hershkovitz
+ 2007 Yang Zhang
+ 2002 Yanko Kaneti
+ 2008 Yannick Tailliez
+ 2006-2008 Yannig Marchegay (Kokoyaya)
+ 2000-2001 Yukihiro Nakai
+ 1999-2004 Yuri Syrota
+ 2019 Zander Brown
+ 2004 Zuza Software Foundation
+ 2009 wanderlust
+ 2003-2009 Åsmund Skjæveland
+ 2002 Ömer Fadıl USTA
+ 2008 Ömerjan Tursunqasim
+ 2004-2010 Žygimantas Beručka
+ 2005 Арангел Ангов
+ 2017-2019 Руслан Ижбулатов (LRN)
+ 2000 辛立仁
+License: LGPL-2+ and LGPL-2.1+ and sun-permissive and lcs-telegraphics-permissive and X11R5-permissive and Expat and BSD-3-clause-Google and Apache-2.0 and CC0-1.0 and ZPL-2.1
+
+Files:
+ debian/missing-sources/unicode.org-*
+Copyright: 1991-2022 Unicode, Inc.
+License: Unicode-DFS-2016
+
+Files: debian/tests/run-with-display
+Copyright: 2021 Marco Trevisan
+License: GPL-3+
+
+Files:
+ .gitlab-ci/clang-format-diff.py
+Copyright: unspecified, originating from LLVM
+License: Apache-2.0 with LLVM exception
+
+Files:
+ gsk/gl/stb_rect_pack.*
+Copyright:
+ 2017 Sean Barrett
+License: Expat or unlicense
+
+Files:
+ demos/gtk-demo/org.gtk.Demo4.appdata.xml.in
+ demos/icon-browser/org.gtk.IconBrowser4.appdata.xml.in
+ demos/print-editor/org.gtk.PrintEditor4.appdata.xml
+ demos/widget-factory/org.gtk.WidgetFactory4.appdata.xml.in
+Copyright: unspecified
+License: CC0-1.0
+
+License: Apache-2.0
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+ .
+      http://www.apache.org/licenses/LICENSE-2.0
+ .
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ .
+ On Debian systems, a copy of the Apache License version 2.0
+ can be found in /usr/share/common-licenses/Apache-2.0.
+
+License: Apache-2.0 with LLVM exception
+ On Debian systems the full text of the Apache Software License 2.0 can be
+ found in the `/usr/share/common-licenses/Apache-2.0' file.
+ .
+ ---- LLVM Exceptions to the Apache 2.0 License ----
+ .
+ As an exception, if, as a result of your compiling your source code, portions
+ of this Software are embedded into an Object form of such source code, you
+ may redistribute such embedded portions in such Object form without complying
+ with the conditions of Sections 4(a), 4(b) and 4(d) of the License.
+ .
+ In addition, if you combine or link compiled forms of this Software with
+ software that is licensed under the GPLv2 ("Combined Software") and if a
+ court of competent jurisdiction determines that the patent provision (Section
+ 3), the indemnity provision (Section 9) or other Section of the License
+ conflicts with the conditions of the GPLv2, you may retroactively and
+ prospectively choose to deem waived or otherwise exclude such Section(s) of
+ the License, but only in their entirety and only with respect to the Combined
+ Software.
+
+License: BSD-3-clause-Google
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions are
+ met:
+ .
+    * Redistributions of source code must retain the above copyright
+ notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above
+ copyright notice, this list of conditions and the following disclaimer
+ in the documentation and/or other materials provided with the
+ distribution.
+    * Neither the name of Google Inc. nor the names of its
+ contributors may be used to endorse or promote products derived from
+ this software without specific prior written permission.
+ .
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+License: CC0-1.0
+ On Debian systems, a copy of the Creative Commons Zero license, version 1.0
+ can be found in /usr/share/common-licenses/CC0-1.0.
+
+License: Expat
+ Permission is hereby granted, free of charge, to any person obtaining a copy
+ of this software and associated documentation files (the "Software"), to deal
+ in the Software without restriction, including without limitation the rights
+ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ copies of the Software, and to permit persons to whom the Software is
+ furnished to do so, subject to the following conditions:
+ .
+ The above copyright notice and this permission notice shall be included in
+ all copies or substantial portions of the Software.
+ .
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ THE SOFTWARE.
+
+License: GPL-3+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+ .
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+Comment:
+ On Debian systems, a copy of the GNU General Public License version 3
+ can be found in /usr/share/common-licenses/GPL-3.
+
+License: LGPL-2+
+ This library is free software; you can redistribute it and/or modify it
+ under the terms of the GNU Lesser General Public License as published by the
+ Free Software Foundation; either version 2 of the License, or (at your
+ option) any later version.
+ .
+ This library is distributed in the hope that it will be useful, but WITHOUT
+ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+ for more details.
+ .
+ You should have received a copy of the GNU Lesser General Public
+ License along with this library; if not, write to the
+ Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+ 02110-1301  USA.
+ .
+ See /usr/share/common-licenses/LGPL-2 on your debian system.
+
+License: LGPL-2.1+
+ This library is free software; you can redistribute it and/or modify it
+ under the terms of the GNU Lesser General Public License as published by the
+ Free Software Foundation; either version 2.1 of the License, or (at your
+ option) any later version.
+ .
+ This library is distributed in the hope that it will be useful, but WITHOUT
+ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+ for more details.
+ .
+ You should have received a copy of the GNU Lesser General Public
+ License along with this library; if not, write to the
+ Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+ 02110-1301  USA.
+ .
+ See /usr/share/common-licenses/LGPL-2.1 on your debian system.
+
+License: lcs-telegraphics-permissive
+ The text and information contained in this file may be freely used,
+ copied, or distributed without compensation or licensing restrictions.
+
+License: sun-permissive
+ This software is copyrighted by the Regents of the University of
+ California, Sun Microsystems, Inc., and other parties.  The
+ following terms apply to all files associated with the software
+ unless explicitly disclaimed in individual files.
+ .
+ The authors hereby grant permission to use, copy, modify,
+ distribute, and license this software and its documentation for any
+ purpose, provided that existing copyright notices are retained in
+ all copies and that this notice is included verbatim in any
+ distributions. No written agreement, license, or royalty fee is
+ required for any of the authorized uses.  Modifications to this
+ software may be copyrighted by their authors and need not follow
+ the licensing terms described here, provided that the new terms are
+ clearly indicated on the first page of each file where they apply.
+ .
+ IN NO EVENT SHALL THE AUTHORS OR DISTRIBUTORS BE LIABLE TO ANY
+ PARTY FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
+ DAMAGES ARISING OUT OF THE USE OF THIS SOFTWARE, ITS DOCUMENTATION,
+ OR ANY DERIVATIVES THEREOF, EVEN IF THE AUTHORS HAVE BEEN ADVISED
+ OF THE POSSIBILITY OF SUCH DAMAGE.
+ .
+ THE AUTHORS AND DISTRIBUTORS SPECIFICALLY DISCLAIM ANY WARRANTIES,
+ INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
+ NON-INFRINGEMENT.  THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+ AND THE AUTHORS AND DISTRIBUTORS HAVE NO OBLIGATION TO PROVIDE
+ MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+ .
+ GOVERNMENT USE: If you are acquiring this software on behalf of the
+ U.S. government, the Government shall have only "Restricted Rights"
+ in the software and related documentation as defined in the Federal
+ Acquisition Regulations (FARs) in Clause 52.227.19 (c) (2).  If you
+ are acquiring the software on behalf of the Department of Defense,
+ the software shall be classified as "Commercial Computer Software"
+ and the Government shall have only "Restricted Rights" as defined
+ in Clause 252.227-7013 (c) (1) of DFARs.  Notwithstanding the
+ foregoing, the authors grant the U.S. Government and others acting
+ in its behalf permission to use and distribute the software in
+ accordance with the terms specified in this license.
+
+License: unlicense
+ Public Domain (www.unlicense.org)
+ .
+ This is free and unencumbered software released into the public domain.
+ Anyone is free to copy, modify, publish, use, compile, sell, or distribute this
+ software, either in source code form or as a compiled binary, for any purpose,
+ commercial or non-commercial, and by any means.
+ .
+ In jurisdictions that recognize copyright laws, the author or authors of this
+ software dedicate any and all copyright interest in the software to the public
+ domain. We make this dedication for the benefit of the public at large and to
+ the detriment of our heirs and successors. We intend this dedication to be an
+ overt act of relinquishment in perpetuity of all present and future rights to
+ this software under copyright law.
+ .
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+License: X11R5-permissive
+ Permission to use, copy, modify, distribute, and sell this
+ software and its documentation for any purpose is hereby granted
+ without fee, provided that the above copyright notice appear in
+ all copies and that both that copyright notice and this permission
+ notice appear in supporting documentation, and that the name of
+ the copyright holders not be used in advertising or publicity
+ pertaining to distribution of the software without specific,
+ written prior permission.  The copyright holders make no
+ representations about the suitability of this software for any
+ purpose.  It is provided "as is" without express or implied
+ warranty.
+ .
+ THE COPYRIGHT HOLDERS DISCLAIM ALL WARRANTIES WITH REGARD TO THIS
+ SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+ FITNESS, IN NO EVENT SHALL THE COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,
+ ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
+ THIS SOFTWARE.
+
+License: Unicode-DFS-2016
+ UNICODE, INC. LICENSE AGREEMENT - DATA FILES AND SOFTWARE
+ .
+ See Terms of Use <https://www.unicode.org/copyright.html>
+ for definitions of Unicode Inc.’s Data Files and Software.
+ .
+ NOTICE TO USER: Carefully read the following legal agreement.
+ BY DOWNLOADING, INSTALLING, COPYING OR OTHERWISE USING UNICODE INC.'S
+ DATA FILES ("DATA FILES"), AND/OR SOFTWARE ("SOFTWARE"),
+ YOU UNEQUIVOCALLY ACCEPT, AND AGREE TO BE BOUND BY, ALL OF THE
+ TERMS AND CONDITIONS OF THIS AGREEMENT.
+ IF YOU DO NOT AGREE, DO NOT DOWNLOAD, INSTALL, COPY, DISTRIBUTE OR USE
+ THE DATA FILES OR SOFTWARE.
+ .
+ COPYRIGHT AND PERMISSION NOTICE
+ .
+ Copyright © 1991-2022 Unicode, Inc. All rights reserved.
+ Distributed under the Terms of Use in https://www.unicode.org/copyright.html.
+ .
+ Permission is hereby granted, free of charge, to any person obtaining
+ a copy of the Unicode data files and any associated documentation
+ (the "Data Files") or Unicode software and any associated documentation
+ (the "Software") to deal in the Data Files or Software
+ without restriction, including without limitation the rights to use,
+ copy, modify, merge, publish, distribute, and/or sell copies of
+ the Data Files or Software, and to permit persons to whom the Data Files
+ or Software are furnished to do so, provided that either
+ (a) this copyright and permission notice appear with all copies
+ of the Data Files or Software, or
+ (b) this copyright and permission notice appear in associated
+ Documentation.
+ .
+ THE DATA FILES AND SOFTWARE ARE PROVIDED "AS IS", WITHOUT WARRANTY OF
+ ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ NONINFRINGEMENT OF THIRD PARTY RIGHTS.
+ IN NO EVENT SHALL THE COPYRIGHT HOLDER OR HOLDERS INCLUDED IN THIS
+ NOTICE BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL
+ DAMAGES, OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+ DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ PERFORMANCE OF THE DATA FILES OR SOFTWARE.
+ .
+ Except as contained in this notice, the name of a copyright holder
+ shall not be used in advertising or otherwise to promote the sale,
+ use or other dealings in these Data Files or Software without prior
+ written authorization of the copyright holder.
+
+License: ZPL-2.1
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions are met:
+ .
+    1. Redistributions in source code must retain the accompanying copyright
+       notice, this list of conditions, and the following disclaimer.
+    2. Redistributions in binary form must reproduce the accompanying
+       copyright notice, this list of conditions, and the following disclaimer
+       in the documentation and/or other materials provided with the
+       distribution.
+    3. Names of the copyright holders must not be used to endorse or promote
+       products derived from this software without prior written permission
+       from the copyright holders.
+    4. The right to distribute this software or to use it for any purpose does
+       not give you the right to use Servicemarks (sm) or Trademarks (tm) of
+       the copyright holders.  Use of them is covered by separate agreement
+       with the copyright holders.
+    5. If any files are modified, you must cause the modified files to carry
+       prominent notices stating that you changed the files and the date of
+       any change.
