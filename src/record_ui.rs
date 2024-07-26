@@ -149,7 +149,7 @@ impl Recording {
         }
     }
 
-    pub fn log_items_changed<Model, Item>(
+    pub fn log_items_changed<Model, Item, ViewMode>(
         &mut self,
         name: &str,
         model: &Model,
@@ -157,10 +157,11 @@ impl Recording {
         removed: u32,
         added: u32)
     where
-        Model: ListModelExt + GenericModel<Item>,
-        CaptureReader: ItemSource<Item>,
+        Model: ListModelExt + GenericModel<Item, ViewMode>,
+        CaptureReader: ItemSource<Item, ViewMode>,
         Object: ToGenericRowData<Item>,
-        Item: Copy
+        Item: Copy,
+        ViewMode: Copy,
     {
         if (removed, added) == (0, 0) {
             return;
@@ -195,13 +196,16 @@ impl Recording {
         }
     }
 
-    fn item_text<Model, Item>(&mut self,
-                              model: &Model,
-                              position: u32) -> String
-        where Model: ListModelExt + GenericModel<Item>,
-              CaptureReader: ItemSource<Item>,
+    fn item_text<Model, Item, ViewMode>(
+        &mut self,
+        model: &Model,
+        position: u32
+    ) -> String
+        where Model: ListModelExt + GenericModel<Item, ViewMode>,
+              CaptureReader: ItemSource<Item, ViewMode>,
               Object: ToGenericRowData<Item>,
-              Item: Copy
+              Item: Copy,
+              ViewMode: Copy
     {
         let item = model
             .item(position)
