@@ -174,6 +174,7 @@ pub enum DeviceItemContent {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum TrafficViewMode {
     Hierarchical,
+    Interleaved,
     Transactions,
     Packets,
 }
@@ -183,6 +184,7 @@ impl TrafficViewMode {
         use TrafficViewMode::*;
         match self {
             Hierarchical => "Hierarchical",
+            Interleaved  => "Interleaved",
             Transactions => "Transactions",
             Packets      => "Packets",
         }
@@ -193,6 +195,7 @@ impl TrafficViewMode {
         use TrafficViewMode::*;
         match self {
             Hierarchical => "traffic-hierarchical",
+            Interleaved  => "traffic-interleaved",
             Transactions => "traffic-transactions",
             Packets      => "traffic-packets",
         }
@@ -203,6 +206,7 @@ impl TrafficViewMode {
         use TrafficViewMode::*;
         match log_name {
             "traffic-hierarchical" => Hierarchical,
+            "traffic-interleaved"  => Interleaved,
             "traffic-transactions" => Transactions,
             "traffic-packets"      => Packets,
             _ => panic!("Unrecognised log name '{log_name}'")
@@ -223,7 +227,7 @@ impl<T: CaptureReaderOps> ItemSource<TrafficItem, TrafficViewMode> for T {
         use TrafficViewMode::*;
         match parent {
             None => Ok(match view_mode {
-                Hierarchical => {
+                Hierarchical | Interleaved => {
                     let item_id = TrafficItemId::from(index);
                     let group_id = self.item_index().get(item_id)?;
                     TransactionGroup(group_id)
@@ -283,7 +287,7 @@ impl<T: CaptureReaderOps> ItemSource<TrafficItem, TrafficViewMode> for T {
                     Ongoing
                 };
                 (completion, match view_mode {
-                    Hierarchical => self.item_index().len(),
+                    Hierarchical | Interleaved => self.item_index().len(),
                     Transactions => self.transaction_index().len(),
                     Packets => self.packet_index().len(),
                 })
@@ -295,11 +299,19 @@ impl<T: CaptureReaderOps> ItemSource<TrafficItem, TrafficViewMode> for T {
                 }
                 let transaction_count = self.group_range(&entry)?.len();
                 let ep_traf = self.endpoint_traffic(entry.endpoint_id())?;
-                if entry.group_id().value >= ep_traf.end_index().len() {
-                    (Ongoing, transaction_count)
-                } else {
-                    (Complete, transaction_count)
-                }
+                let ep_group_id = entry.group_id();
+                let ongoing = ep_group_id.value >= ep_traf.end_index().len();
+                let status = match (view_mode, ongoing) {
+                    (Hierarchical, true) => Ongoing,
+                    (Hierarchical, false) => Complete,
+                    (Interleaved, true) => InterleavedOngoing,
+                    (Interleaved, false) => {
+                        let end = ep_traf.end_index().get(ep_group_id)?;
+                        InterleavedComplete(end.value)
+                    }
+                    (Transactions | Packets, _) => unreachable!(),
+                };
+                (status, transaction_count)
             },
             Some(Transaction(_, transaction_id)) => {
                 let total_packets = self.packet_index().len();
