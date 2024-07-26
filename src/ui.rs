@@ -722,8 +722,8 @@ pub fn update_view() -> Result<(), Error> {
         } else {
             let (devices, endpoints, transactions, packets) = {
                 let cap = &ui.capture;
-                let devices = cap.devices.len() - 1;
-                let endpoints = cap.endpoints.len() - 2;
+                let devices = cap.devices.len().saturating_sub(1);
+                let endpoints = cap.endpoints.len().saturating_sub(2);
                 let transactions = cap.transaction_index.len();
                 let packets = cap.packet_index.len();
                 (devices, endpoints, transactions, packets)
