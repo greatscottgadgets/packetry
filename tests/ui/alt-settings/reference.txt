@@ -1,6 +1,6 @@
 Opening file tests/ksolti-core-enum/capture.pcap
 Updating after 212 packets decoded
-At traffic row 0:
+At traffic-hierarchical row 0:
 + 9 SOF groups
 + Setting address to 27 for device 0
 + Getting device descriptor #0 for device 27, reading 8 bytes
