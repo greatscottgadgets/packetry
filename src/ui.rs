@@ -70,7 +70,9 @@ use crate::capture::{
     CaptureWriter,
     ItemSource,
     TrafficItem,
+    TrafficViewMode,
     DeviceItem,
+    DeviceViewMode,
 };
 use crate::decoder::Decoder;
 use crate::item_widget::ItemWidget;
@@ -588,17 +590,19 @@ pub fn open(file: &gio::File) -> Result<(), Error> {
     start_pcap(FileAction::Load, file.clone())
 }
 
-fn create_view<Item, Model, RowData>(
+fn create_view<Item, Model, RowData, ViewMode>(
         title: &str,
         capture: &CaptureReader,
+        view_mode: ViewMode,
         #[cfg(any(test, feature="record-ui-test"))]
         recording_args: (&Rc<RefCell<Recording>>, &'static str))
     -> (Model, SingleSelection, ColumnView)
     where
         Item: Copy + 'static,
-        Model: GenericModel<Item> + IsA<ListModel> + IsA<Object>,
+        ViewMode: Copy,
+        Model: GenericModel<Item, ViewMode> + IsA<ListModel> + IsA<Object>,
         RowData: GenericRowData<Item> + IsA<Object>,
-        CaptureReader: ItemSource<Item>,
+        CaptureReader: ItemSource<Item, ViewMode>,
         Object: ToGenericRowData<Item>
 {
     #[cfg(any(test, feature="record-ui-test"))]
@@ -608,6 +612,7 @@ fn create_view<Item, Model, RowData>(
     };
     let model = Model::new(
         capture.clone(),
+        view_mode,
         #[cfg(any(test, feature="record-ui-test"))]
         Rc::new(
             RefCell::new(
@@ -758,16 +763,28 @@ pub fn reset_capture() -> Result<CaptureWriter, Error> {
     let (writer, reader) = create_capture()?;
     with_ui(|ui| {
         let (traffic_model, traffic_selection, traffic_view) =
-            create_view::<TrafficItem, TrafficModel, TrafficRowData>(
+            create_view::<
+                TrafficItem,
+                TrafficModel,
+                TrafficRowData,
+                TrafficViewMode
+            >(
                 "Traffic",
                 &reader,
+                TrafficViewMode::Hierarchical,
                 #[cfg(any(test, feature="record-ui-test"))]
                 (&ui.recording, "traffic")
             );
         let (device_model, _device_selection, device_view) =
-            create_view::<DeviceItem, DeviceModel, DeviceRowData>(
+            create_view::<
+                DeviceItem,
+                DeviceModel,
+                DeviceRowData,
+                DeviceViewMode
+            >(
                 "Devices",
                 &reader,
+                (),
                 #[cfg(any(test, feature="record-ui-test"))]
                 (&ui.recording, "devices")
             );

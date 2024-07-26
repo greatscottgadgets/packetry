@@ -11,16 +11,23 @@ use gtk::{gio, glib};
 
 use anyhow::Error;
 
-use crate::capture::{CaptureReader, TrafficItem, DeviceItem};
+use crate::capture::{
+    CaptureReader,
+    TrafficItem,
+    TrafficViewMode,
+    DeviceItem,
+    DeviceViewMode,
+};
 use crate::tree_list_model::{TreeListModel, ItemNodeRc};
 
 /// Trait implemented by each of our ListModel implementations.
-pub trait GenericModel<Item> where Self: Sized {
+pub trait GenericModel<Item, ViewMode> where Self: Sized {
     /// Whether this model has timestamps.
     const HAS_TIMES: bool;
 
     /// Create a new model instance for the given capture.
     fn new(capture: CaptureReader,
+           view_mode: ViewMode,
            #[cfg(any(test, feature="record-ui-test"))]
            on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>)
         -> Result<Self, Error>;
@@ -49,17 +56,18 @@ pub trait GenericModel<Item> where Self: Sized {
 
 /// Define the outer type exposed to our Rust code.
 macro_rules! model {
-    ($model: ident, $item: ident, $has_times: literal) => {
+    ($model: ident, $item: ident, $view_mode: ident, $has_times: literal) => {
 
         glib::wrapper! {
             pub struct $model(ObjectSubclass<imp::$model>)
                 @implements gio::ListModel;
         }
 
-        impl GenericModel<$item> for $model {
+        impl GenericModel<$item, $view_mode> for $model {
             const HAS_TIMES: bool = $has_times;
 
             fn new(capture: CaptureReader,
+                   view_mode: $view_mode,
                    #[cfg(any(test, feature="record-ui-test"))]
                    on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>)
                 -> Result<Self, Error>
@@ -67,6 +75,7 @@ macro_rules! model {
                 let model: $model = glib::Object::new::<$model>();
                 let tree = TreeListModel::new(
                     capture,
+                    view_mode,
                     #[cfg(any(test, feature="record-ui-test"))]
                     on_item_update)?;
                 model.imp().tree.replace(Some(tree));
@@ -112,8 +121,8 @@ macro_rules! model {
 }
 
 // Repeat the above boilerplate for each model.
-model!(TrafficModel, TrafficItem, true);
-model!(DeviceModel, DeviceItem, false);
+model!(TrafficModel, TrafficItem, TrafficViewMode, true);
+model!(DeviceModel, DeviceItem, DeviceViewMode, false);
 
 /// The internal implementation module.
 mod imp {
@@ -121,17 +130,17 @@ mod imp {
     use gtk::{gio, glib, prelude::*};
 
     use std::cell::RefCell;
-    use crate::capture::{TrafficItem, DeviceItem};
+    use crate::capture::{TrafficItem, TrafficViewMode, DeviceItem, DeviceViewMode};
     use crate::row_data::{TrafficRowData, DeviceRowData};
     use crate::tree_list_model::TreeListModel;
 
     /// Define the inner type to be used in the GObject type system.
     macro_rules! model {
-        ($model:ident, $item:ident, $row_data:ident) => {
+        ($model:ident, $item:ident, $row_data:ident, $view_mode: ident) => {
             #[derive(Default)]
             pub struct $model {
                 pub(super) tree: RefCell<Option<
-                    TreeListModel<$item, super::$model, $row_data>>>,
+                    TreeListModel<$item, super::$model, $row_data, $view_mode>>>,
             }
 
             #[glib::object_subclass]
@@ -168,6 +177,6 @@ mod imp {
     }
 
     // Repeat the above boilerplate for each model.
-    model!(TrafficModel, TrafficItem, TrafficRowData);
-    model!(DeviceModel, DeviceItem, DeviceRowData);
+    model!(TrafficModel, TrafficItem, TrafficRowData, TrafficViewMode);
+    model!(DeviceModel, DeviceItem, DeviceRowData, DeviceViewMode);
 }

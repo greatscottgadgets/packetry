@@ -221,6 +221,13 @@ pub enum TrafficItem {
 }
 
 #[derive(Copy, Clone, Debug)]
+pub enum TrafficViewMode {
+    Hierarchical,
+}
+
+pub type DeviceViewMode = ();
+
+#[derive(Copy, Clone, Debug)]
 pub enum DeviceItem {
     Device(DeviceId, DeviceVersion),
     DeviceDescriptor(DeviceId),
@@ -1149,14 +1156,16 @@ impl CompletionStatus {
     }
 }
 
-pub trait ItemSource<Item> {
+pub trait ItemSource<Item, ViewMode> {
     fn item(&mut self, parent: Option<&Item>, index: u64)
         -> Result<Item, Error>;
     fn item_update(&mut self, item: &Item)
         -> Result<Option<Item>, Error>;
     fn child_item(&mut self, parent: &Item, index: u64)
         -> Result<Item, Error>;
-    fn item_children(&mut self, parent: Option<&Item>)
+    fn item_children(&mut self,
+                     parent: Option<&Item>,
+                     view_mode: ViewMode)
         -> Result<(CompletionStatus, u64), Error>;
     fn description(&mut self,
                    item: &Item,
@@ -1166,7 +1175,7 @@ pub trait ItemSource<Item> {
     fn timestamp(&mut self, item: &Item) -> Result<Timestamp, Error>;
 }
 
-impl ItemSource<TrafficItem> for CaptureReader {
+impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
     fn item(&mut self, parent: Option<&TrafficItem>, index: u64)
         -> Result<TrafficItem, Error>
     {
@@ -1207,7 +1216,9 @@ impl ItemSource<TrafficItem> for CaptureReader {
         })
     }
 
-    fn item_children(&mut self, parent: Option<&TrafficItem>)
+    fn item_children(&mut self,
+                     parent: Option<&TrafficItem>,
+                     _view_mode: TrafficViewMode)
         -> Result<(CompletionStatus, u64), Error>
     {
         use TrafficItem::*;
@@ -1643,7 +1654,7 @@ impl ItemSource<TrafficItem> for CaptureReader {
     }
 }
 
-impl ItemSource<DeviceItem> for CaptureReader {
+impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
     fn item(&mut self, parent: Option<&DeviceItem>, index: u64)
         -> Result<DeviceItem, Error>
     {
@@ -1730,7 +1741,9 @@ impl ItemSource<DeviceItem> for CaptureReader {
         })
     }
 
-    fn item_children(&mut self, parent: Option<&DeviceItem>)
+    fn item_children(&mut self,
+                     parent: Option<&DeviceItem>,
+                     _view_mode: DeviceViewMode)
         -> Result<(CompletionStatus, u64), Error>
     {
         use DeviceItem::*;
@@ -1890,7 +1903,7 @@ mod tests {
     {
         let mut summary = cap.description(item, false).unwrap();
         let (_completion, num_children) =
-            cap.item_children(Some(item)).unwrap();
+            cap.item_children(Some(item), TrafficViewMode::Hierarchical).unwrap();
         let child_ids = 0..num_children;
         for (n, child_summary) in child_ids
             .map(|child_id| {
