@@ -197,7 +197,9 @@ ENV NODE_VERSION="$NODE_VERSION_DEFAULT"
 
 ENV RUNNER="root"
 ENV HOME="/github/home"
-COPY files/etc/passwd /etc/passwd
+
+# Assuage GitHub Actions by setting root user home directory to /github/home
+RUN sed -i'' 's@root:x:0:0:root:/root:/bin/bash@root:x:0:0:root:/github/home:/bin/bash@g' /etc/passwd
 
 USER $RUNNER
 WORKDIR $HOME
