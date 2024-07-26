@@ -1,184 +1,184 @@
 Opening file tests/mouse/capture.pcap
 Updating after 1 packets decoded
-At traffic row 0:
+At traffic-hierarchical row 0:
 + 1 invalid groups
-Expanding traffic view, row 0: 1 invalid groups
-At traffic row 1:
+Expanding traffic-hierarchical view, row 0: 1 invalid groups
+At traffic-hierarchical row 1:
 + 1 malformed packet
-Expanding traffic view, row 1: 1 malformed packet
-At traffic row 2:
+Expanding traffic-hierarchical view, row 1: 1 malformed packet
+At traffic-hierarchical row 2:
 + Malformed packet (invalid PID) of 1 byte: [FF]
 Updating after 2 packets decoded
-At traffic row 3:
+At traffic-hierarchical row 3:
 + Incomplete control transfer on device 0
-At traffic row 0:
+At traffic-hierarchical row 0:
 - 1 invalid groups
 - 1 malformed packet
 - Malformed packet (invalid PID) of 1 byte: [FF]
 + 1 invalid groups
 + 1 malformed packet
 + Malformed packet (invalid PID) of 1 byte: [FF]
-Expanding traffic view, row 3: Incomplete control transfer on device 0
-At traffic row 4:
+Expanding traffic-hierarchical view, row 3: Incomplete control transfer on device 0
+At traffic-hierarchical row 4:
 + SETUP transaction on 0.0
-Expanding traffic view, row 4: SETUP transaction on 0.0
-At traffic row 5:
+Expanding traffic-hierarchical view, row 4: SETUP transaction on 0.0
+At traffic-hierarchical row 5:
 + SETUP packet on 0.0, CRC 02
 Updating after 3 packets decoded
-At traffic row 4:
+At traffic-hierarchical row 4:
 - SETUP transaction on 0.0
 + SETUP transaction on 0.0 with 8 data bytes: [80, 06, 00, 01, 00, 00, 40, 00]
-At traffic row 6:
+At traffic-hierarchical row 6:
 + DATA0 packet with CRC 94DD and 8 data bytes: [80, 06, 00, 01, 00, 00, 40, 00]
 Updating after 4 packets decoded
-At traffic row 4:
+At traffic-hierarchical row 4:
 - SETUP transaction on 0.0
 + SETUP transaction on 0.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 40, 00]
-At traffic row 7:
+At traffic-hierarchical row 7:
 + ACK packet
 Updating after 5 packets decoded
-At traffic row 3:
+At traffic-hierarchical row 3:
 - Incomplete control transfer on device 0
 + Getting device descriptor #0 for device 0, reading 0 of 64 requested bytes, incomplete
-At traffic row 8:
+At traffic-hierarchical row 8:
 + IN transaction on 0.0
-Expanding traffic view, row 8: IN transaction on 0.0
-At traffic row 9:
+Expanding traffic-hierarchical view, row 8: IN transaction on 0.0
+At traffic-hierarchical row 9:
 + IN packet on 0.0, CRC 02
 Updating after 6 packets decoded
-At traffic row 8:
+At traffic-hierarchical row 8:
 - IN transaction on 0.0
 + IN transaction on 0.0, NAK
-At traffic row 10:
+At traffic-hierarchical row 10:
 + NAK packet
 Updating after 7 packets decoded
-At traffic row 3:
+At traffic-hierarchical row 3:
 - Incomplete control transfer on device 0
 + Getting device descriptor #0 for device 0, reading 0 of 64 requested bytes, incomplete
-At traffic row 11:
+At traffic-hierarchical row 11:
 + IN transaction on 0.0
-Expanding traffic view, row 11: IN transaction on 0.0
-At traffic row 12:
+Expanding traffic-hierarchical view, row 11: IN transaction on 0.0
+At traffic-hierarchical row 12:
 + IN packet on 0.0, CRC 02
 Updating after 8 packets decoded
-At traffic row 11:
+At traffic-hierarchical row 11:
 - IN transaction on 0.0
 + IN transaction on 0.0, NAK
-At traffic row 13:
+At traffic-hierarchical row 13:
 + NAK packet
 Updating after 9 packets decoded
-At traffic row 3:
+At traffic-hierarchical row 3:
 - Incomplete control transfer on device 0
 + Getting device descriptor #0 for device 0, reading 0 of 64 requested bytes, incomplete
-At traffic row 14:
+At traffic-hierarchical row 14:
 + IN transaction on 0.0
-Expanding traffic view, row 14: IN transaction on 0.0
-At traffic row 15:
+Expanding traffic-hierarchical view, row 14: IN transaction on 0.0
+At traffic-hierarchical row 15:
 + IN packet on 0.0, CRC 02
 Updating after 10 packets decoded
-At traffic row 14:
+At traffic-hierarchical row 14:
 - IN transaction on 0.0
 + IN transaction on 0.0 with 8 data bytes: [12, 01, 00, 02, 00, 00, 00, 08]
-At traffic row 16:
+At traffic-hierarchical row 16:
 + DATA1 packet with CRC E757 and 8 data bytes: [12, 01, 00, 02, 00, 00, 00, 08]
 Updating after 11 packets decoded
-At traffic row 14:
+At traffic-hierarchical row 14:
 - IN transaction on 0.0
 + IN transaction on 0.0 with 8 data bytes, ACK: [12, 01, 00, 02, 00, 00, 00, 08]
-At traffic row 17:
+At traffic-hierarchical row 17:
 + ACK packet
 Updating after 12 packets decoded
-At traffic row 3:
+At traffic-hierarchical row 3:
 - Incomplete control transfer on device 0
 + Getting device descriptor #0 for device 0, reading 8 of 64 requested bytes, incomplete
-At traffic row 18:
+At traffic-hierarchical row 18:
 + IN transaction on 0.0
 Updating after 13 packets decoded
-At traffic row 18:
+At traffic-hierarchical row 18:
 - IN transaction on 0.0
 + IN transaction on 0.0, NAK
 Updating after 14 packets decoded
-At traffic row 3:
+At traffic-hierarchical row 3:
 - Incomplete control transfer on device 0
 + Getting device descriptor #0 for device 0, reading 8 of 64 requested bytes, incomplete
-At traffic row 19:
+At traffic-hierarchical row 19:
 + IN transaction on 0.0
 Updating after 15 packets decoded
-At traffic row 19:
+At traffic-hierarchical row 19:
 - IN transaction on 0.0
 + IN transaction on 0.0, NAK
 Updating after 16 packets decoded
-At traffic row 3:
+At traffic-hierarchical row 3:
 - Incomplete control transfer on device 0
 + Getting device descriptor #0 for device 0, reading 8 of 64 requested bytes, incomplete
-At traffic row 20:
+At traffic-hierarchical row 20:
 + IN transaction on 0.0
 Updating after 17 packets decoded
-At traffic row 20:
+At traffic-hierarchical row 20:
 - IN transaction on 0.0
 + IN transaction on 0.0 with 8 data bytes: [CF, 1B, 05, 00, 14, 00, 00, 02]
 Updating after 18 packets decoded
-At traffic row 20:
+At traffic-hierarchical row 20:
 - IN transaction on 0.0
 + IN transaction on 0.0 with 8 data bytes, ACK: [CF, 1B, 05, 00, 14, 00, 00, 02]
 Updating after 19 packets decoded
-At traffic row 3:
+At traffic-hierarchical row 3:
 - Incomplete control transfer on device 0
 + Getting device descriptor #0 for device 0, reading 16 of 64 requested bytes, incomplete
-At traffic row 21:
+At traffic-hierarchical row 21:
 + IN transaction on 0.0
 Updating after 20 packets decoded
-At traffic row 21:
+At traffic-hierarchical row 21:
 - IN transaction on 0.0
 + IN transaction on 0.0, NAK
 Updating after 21 packets decoded
-At traffic row 3:
+At traffic-hierarchical row 3:
 - Incomplete control transfer on device 0
 + Getting device descriptor #0 for device 0, reading 16 of 64 requested bytes, incomplete
-At traffic row 22:
+At traffic-hierarchical row 22:
 + IN transaction on 0.0
 Updating after 22 packets decoded
-At traffic row 22:
+At traffic-hierarchical row 22:
 - IN transaction on 0.0
 + IN transaction on 0.0 with 2 data bytes: [00, 01]
 Updating after 23 packets decoded
-At traffic row 22:
+At traffic-hierarchical row 22:
 - IN transaction on 0.0
 + IN transaction on 0.0 with 2 data bytes, ACK: [00, 01]
 Updating after 24 packets decoded
-At traffic row 3:
+At traffic-hierarchical row 3:
 - Incomplete control transfer on device 0
 + Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes, incomplete
-At traffic row 23:
+At traffic-hierarchical row 23:
 + OUT transaction on 0.0
 Updating after 25 packets decoded
-At traffic row 23:
+At traffic-hierarchical row 23:
 - OUT transaction on 0.0
 + OUT transaction on 0.0 with no data
 Updating after 26 packets decoded
-At traffic row 23:
+At traffic-hierarchical row 23:
 - OUT transaction on 0.0
 + OUT transaction on 0.0 with no data, ACK
 Updating after 27 packets decoded
-At traffic row 24:
+At traffic-hierarchical row 24:
 + Incomplete control transfer on device 0
 Updating after 28 packets decoded
 Updating after 29 packets decoded
 Updating after 30 packets decoded
-At traffic row 24:
+At traffic-hierarchical row 24:
 - Incomplete control transfer on device 0
 + Setting address to 4 for device 0, incomplete
 Updating after 31 packets decoded
 Updating after 32 packets decoded
-At traffic row 24:
+At traffic-hierarchical row 24:
 - Incomplete control transfer on device 0
 + Setting address to 4 for device 0, incomplete
 Updating after 33 packets decoded
 Updating after 34 packets decoded
 Updating after 35 packets decoded
-At traffic row 25:
+At traffic-hierarchical row 25:
 + Incomplete control transfer on device 4
-At traffic row 0:
+At traffic-hierarchical row 0:
 - 1 invalid groups
 - 1 malformed packet
 - Malformed packet (invalid PID) of 1 byte: [FF]
@@ -232,50 +232,50 @@ At devices row 1:
 Updating after 36 packets decoded
 Updating after 37 packets decoded
 Updating after 38 packets decoded
-At traffic row 25:
+At traffic-hierarchical row 25:
 - Incomplete control transfer on device 4
 + Getting device descriptor #0 for device 4, reading 0 of 18 requested bytes, incomplete
 Updating after 39 packets decoded
 Updating after 40 packets decoded
-At traffic row 25:
+At traffic-hierarchical row 25:
 - Incomplete control transfer on device 4
 + Getting device descriptor #0 for device 4, reading 0 of 18 requested bytes, incomplete
 Updating after 41 packets decoded
 Updating after 42 packets decoded
-At traffic row 25:
+At traffic-hierarchical row 25:
 - Incomplete control transfer on device 4
 + Getting device descriptor #0 for device 4, reading 0 of 18 requested bytes, incomplete
 Updating after 43 packets decoded
 Updating after 44 packets decoded
 Updating after 45 packets decoded
-At traffic row 25:
+At traffic-hierarchical row 25:
 - Incomplete control transfer on device 4
 + Getting device descriptor #0 for device 4, reading 8 of 18 requested bytes, incomplete
 Updating after 46 packets decoded
 Updating after 47 packets decoded
-At traffic row 25:
+At traffic-hierarchical row 25:
 - Incomplete control transfer on device 4
 + Getting device descriptor #0 for device 4, reading 8 of 18 requested bytes, incomplete
 Updating after 48 packets decoded
 Updating after 49 packets decoded
-At traffic row 25:
+At traffic-hierarchical row 25:
 - Incomplete control transfer on device 4
 + Getting device descriptor #0 for device 4, reading 8 of 18 requested bytes, incomplete
 Updating after 50 packets decoded
 Updating after 51 packets decoded
 Updating after 52 packets decoded
-At traffic row 25:
+At traffic-hierarchical row 25:
 - Incomplete control transfer on device 4
 + Getting device descriptor #0 for device 4, reading 16 of 18 requested bytes, incomplete
 Updating after 53 packets decoded
 Updating after 54 packets decoded
-At traffic row 25:
+At traffic-hierarchical row 25:
 - Incomplete control transfer on device 4
 + Getting device descriptor #0 for device 4, reading 16 of 18 requested bytes, incomplete
 Updating after 55 packets decoded
 Updating after 56 packets decoded
 Updating after 57 packets decoded
-At traffic row 25:
+At traffic-hierarchical row 25:
 - Incomplete control transfer on device 4
 + Getting device descriptor #0 for device 4, reading 18 bytes, incomplete
 Updating after 58 packets decoded
@@ -302,39 +302,39 @@ At devices row 2:
 + Product string: #2 (not seen)
 + Serial string: (none)
 Updating after 60 packets decoded
-At traffic row 26:
+At traffic-hierarchical row 26:
 + Incomplete control transfer on device 4
 Updating after 61 packets decoded
 Updating after 62 packets decoded
 Updating after 63 packets decoded
-At traffic row 26:
+At traffic-hierarchical row 26:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 0 of 9 requested bytes, incomplete
 Updating after 64 packets decoded
 Updating after 65 packets decoded
-At traffic row 26:
+At traffic-hierarchical row 26:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 0 of 9 requested bytes, incomplete
 Updating after 66 packets decoded
 Updating after 67 packets decoded
-At traffic row 26:
+At traffic-hierarchical row 26:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 0 of 9 requested bytes, incomplete
 Updating after 68 packets decoded
 Updating after 69 packets decoded
 Updating after 70 packets decoded
-At traffic row 26:
+At traffic-hierarchical row 26:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 8 of 9 requested bytes, incomplete
 Updating after 71 packets decoded
 Updating after 72 packets decoded
-At traffic row 26:
+At traffic-hierarchical row 26:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 8 of 9 requested bytes, incomplete
 Updating after 73 packets decoded
 Updating after 74 packets decoded
 Updating after 75 packets decoded
-At traffic row 26:
+At traffic-hierarchical row 26:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 9 bytes, incomplete
 Updating after 76 packets decoded
@@ -358,7 +358,7 @@ At devices row 17:
 + Attributes: 0xA0
 + Max power: 98mA
 Updating after 78 packets decoded
-At traffic row 27:
+At traffic-hierarchical row 27:
 + Incomplete control transfer on device 4
 At devices row 0:
 - Device 4: Unknown
@@ -366,82 +366,82 @@ At devices row 0:
 Updating after 79 packets decoded
 Updating after 80 packets decoded
 Updating after 81 packets decoded
-At traffic row 27:
+At traffic-hierarchical row 27:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 0 of 34 requested bytes, incomplete
 Updating after 82 packets decoded
 Updating after 83 packets decoded
-At traffic row 27:
+At traffic-hierarchical row 27:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 0 of 34 requested bytes, incomplete
 Updating after 84 packets decoded
 Updating after 85 packets decoded
-At traffic row 27:
+At traffic-hierarchical row 27:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 0 of 34 requested bytes, incomplete
 Updating after 86 packets decoded
 Updating after 87 packets decoded
 Updating after 88 packets decoded
-At traffic row 27:
+At traffic-hierarchical row 27:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 8 of 34 requested bytes, incomplete
 Updating after 89 packets decoded
 Updating after 90 packets decoded
-At traffic row 27:
+At traffic-hierarchical row 27:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 8 of 34 requested bytes, incomplete
 Updating after 91 packets decoded
 Updating after 92 packets decoded
-At traffic row 27:
+At traffic-hierarchical row 27:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 8 of 34 requested bytes, incomplete
 Updating after 93 packets decoded
 Updating after 94 packets decoded
 Updating after 95 packets decoded
-At traffic row 27:
+At traffic-hierarchical row 27:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 16 of 34 requested bytes, incomplete
 Updating after 96 packets decoded
 Updating after 97 packets decoded
-At traffic row 27:
+At traffic-hierarchical row 27:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 16 of 34 requested bytes, incomplete
 Updating after 98 packets decoded
 Updating after 99 packets decoded
-At traffic row 27:
+At traffic-hierarchical row 27:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 16 of 34 requested bytes, incomplete
 Updating after 100 packets decoded
 Updating after 101 packets decoded
 Updating after 102 packets decoded
-At traffic row 27:
+At traffic-hierarchical row 27:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 24 of 34 requested bytes, incomplete
 Updating after 103 packets decoded
 Updating after 104 packets decoded
-At traffic row 27:
+At traffic-hierarchical row 27:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 24 of 34 requested bytes, incomplete
 Updating after 105 packets decoded
 Updating after 106 packets decoded
-At traffic row 27:
+At traffic-hierarchical row 27:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 24 of 34 requested bytes, incomplete
 Updating after 107 packets decoded
 Updating after 108 packets decoded
 Updating after 109 packets decoded
-At traffic row 27:
+At traffic-hierarchical row 27:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 32 of 34 requested bytes, incomplete
 Updating after 110 packets decoded
 Updating after 111 packets decoded
-At traffic row 27:
+At traffic-hierarchical row 27:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 32 of 34 requested bytes, incomplete
 Updating after 112 packets decoded
 Updating after 113 packets decoded
 Updating after 114 packets decoded
-At traffic row 27:
+At traffic-hierarchical row 27:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 34 bytes, incomplete
 Updating after 115 packets decoded
@@ -475,28 +475,28 @@ At devices row 37:
 + Max packet size: 7 bytes
 + Interval: 0x0A
 Updating after 117 packets decoded
-At traffic row 28:
+At traffic-hierarchical row 28:
 + Incomplete control transfer on device 4
 Updating after 118 packets decoded
 Updating after 119 packets decoded
 Updating after 120 packets decoded
-At traffic row 28:
+At traffic-hierarchical row 28:
 - Incomplete control transfer on device 4
 + Getting string descriptor #0 for device 4, reading 0 of 255 requested bytes, incomplete
 Updating after 121 packets decoded
 Updating after 122 packets decoded
-At traffic row 28:
+At traffic-hierarchical row 28:
 - Incomplete control transfer on device 4
 + Getting string descriptor #0 for device 4, reading 0 of 255 requested bytes, incomplete
 Updating after 123 packets decoded
 Updating after 124 packets decoded
-At traffic row 28:
+At traffic-hierarchical row 28:
 - Incomplete control transfer on device 4
 + Getting string descriptor #0 for device 4, reading 0 of 255 requested bytes, incomplete
 Updating after 125 packets decoded
 Updating after 126 packets decoded
 Updating after 127 packets decoded
-At traffic row 28:
+At traffic-hierarchical row 28:
 - Incomplete control transfer on device 4
 + Getting string descriptor #0 for device 4, reading 4 of 255 requested bytes, incomplete
 Updating after 128 packets decoded
@@ -505,77 +505,77 @@ At devices row 0:
 - Device 4: Unknown
 + Device 4: 1BCF:0005
 Updating after 130 packets decoded
-At traffic row 29:
+At traffic-hierarchical row 29:
 + Incomplete control transfer on device 4
 Updating after 131 packets decoded
 Updating after 132 packets decoded
 Updating after 133 packets decoded
-At traffic row 29:
+At traffic-hierarchical row 29:
 - Incomplete control transfer on device 4
 + Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 0 of 255 requested bytes, incomplete
 Updating after 134 packets decoded
 Updating after 135 packets decoded
-At traffic row 29:
+At traffic-hierarchical row 29:
 - Incomplete control transfer on device 4
 + Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 0 of 255 requested bytes, incomplete
 Updating after 136 packets decoded
 Updating after 137 packets decoded
-At traffic row 29:
+At traffic-hierarchical row 29:
 - Incomplete control transfer on device 4
 + Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 0 of 255 requested bytes, incomplete
 Updating after 138 packets decoded
 Updating after 139 packets decoded
 Updating after 140 packets decoded
-At traffic row 29:
+At traffic-hierarchical row 29:
 - Incomplete control transfer on device 4
 + Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 8 of 255 requested bytes: 'USB', incomplete
 Updating after 141 packets decoded
 Updating after 142 packets decoded
 Updating after 143 packets decoded
-At traffic row 29:
+At traffic-hierarchical row 29:
 - Incomplete control transfer on device 4
 + Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 16 of 255 requested bytes: 'USB Opt', incomplete
 Updating after 144 packets decoded
 Updating after 145 packets decoded
-At traffic row 29:
+At traffic-hierarchical row 29:
 - Incomplete control transfer on device 4
 + Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 16 of 255 requested bytes: 'USB Opt', incomplete
 Updating after 146 packets decoded
 Updating after 147 packets decoded
-At traffic row 29:
+At traffic-hierarchical row 29:
 - Incomplete control transfer on device 4
 + Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 16 of 255 requested bytes: 'USB Opt', incomplete
 Updating after 148 packets decoded
 Updating after 149 packets decoded
 Updating after 150 packets decoded
-At traffic row 29:
+At traffic-hierarchical row 29:
 - Incomplete control transfer on device 4
 + Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 24 of 255 requested bytes: 'USB Optical', incomplete
 Updating after 151 packets decoded
 Updating after 152 packets decoded
-At traffic row 29:
+At traffic-hierarchical row 29:
 - Incomplete control transfer on device 4
 + Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 24 of 255 requested bytes: 'USB Optical', incomplete
 Updating after 153 packets decoded
 Updating after 154 packets decoded
-At traffic row 29:
+At traffic-hierarchical row 29:
 - Incomplete control transfer on device 4
 + Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 24 of 255 requested bytes: 'USB Optical', incomplete
 Updating after 155 packets decoded
 Updating after 156 packets decoded
 Updating after 157 packets decoded
-At traffic row 29:
+At traffic-hierarchical row 29:
 - Incomplete control transfer on device 4
 + Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 32 of 255 requested bytes: 'USB Optical Mou', incomplete
 Updating after 158 packets decoded
 Updating after 159 packets decoded
-At traffic row 29:
+At traffic-hierarchical row 29:
 - Incomplete control transfer on device 4
 + Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 32 of 255 requested bytes: 'USB Optical Mou', incomplete
 Updating after 160 packets decoded
 Updating after 161 packets decoded
 Updating after 162 packets decoded
-At traffic row 29:
+At traffic-hierarchical row 29:
 - Incomplete control transfer on device 4
 + Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 36 of 255 requested bytes: 'USB Optical Mouse', incomplete
 Updating after 163 packets decoded
@@ -586,8 +586,8 @@ At devices row 0:
 At devices row 13:
 - Product string: #2 (not seen)
 + Product string: #2 'USB Optical Mouse'
-Expanding traffic view, row 29: Incomplete control transfer on device 4
-At traffic row 30:
+Expanding traffic-hierarchical view, row 29: Incomplete control transfer on device 4
+At traffic-hierarchical row 30:
 + SETUP transaction on 4.0 with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, FF, 00]
 + 2 times: IN transaction on 4.0, NAK
 + IN transaction on 4.0 with 8 data bytes, ACK: [24, 03, 55, 00, 53, 00, 42, 00]
@@ -650,8 +650,8 @@ At devices row 2:
 At devices row 1:
 - No device descriptor
 - Configuration 1
-Collapsing traffic view, row 29: Incomplete control transfer on device 4
-At traffic row 30:
+Collapsing traffic-hierarchical view, row 29: Incomplete control transfer on device 4
+At traffic-hierarchical row 30:
 - SETUP transaction on 4.0 with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, FF, 00]
 - 2 times: IN transaction on 4.0, NAK
 - IN transaction on 4.0 with 8 data bytes, ACK: [24, 03, 55, 00, 53, 00, 42, 00]
@@ -663,22 +663,22 @@ At traffic row 30:
 - IN transaction on 4.0, NAK
 - IN transaction on 4.0 with 4 data bytes, ACK: [73, 00, 65, 00]
 - OUT transaction on 4.0 with no data, ACK
-Collapsing traffic view, row 3: Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
-At traffic row 5:
+Collapsing traffic-hierarchical view, row 3: Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
+At traffic-hierarchical row 5:
 - SETUP packet on 0.0, CRC 02
 - DATA0 packet with CRC 94DD and 8 data bytes: [80, 06, 00, 01, 00, 00, 40, 00]
 - ACK packet
-At traffic row 6:
+At traffic-hierarchical row 6:
 - IN packet on 0.0, CRC 02
 - NAK packet
-At traffic row 7:
+At traffic-hierarchical row 7:
 - IN packet on 0.0, CRC 02
 - NAK packet
-At traffic row 8:
+At traffic-hierarchical row 8:
 - IN packet on 0.0, CRC 02
 - DATA1 packet with CRC E757 and 8 data bytes: [12, 01, 00, 02, 00, 00, 00, 08]
 - ACK packet
-At traffic row 4:
+At traffic-hierarchical row 4:
 - SETUP transaction on 0.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 40, 00]
 - 2 times: IN transaction on 0.0, NAK
 - IN transaction on 0.0 with 8 data bytes, ACK: [12, 01, 00, 02, 00, 00, 00, 08]
@@ -687,8 +687,8 @@ At traffic row 4:
 - IN transaction on 0.0, NAK
 - IN transaction on 0.0 with 2 data bytes, ACK: [00, 01]
 - OUT transaction on 0.0 with no data, ACK
-Collapsing traffic view, row 0: 1 invalid groups
-At traffic row 2:
+Collapsing traffic-hierarchical view, row 0: 1 invalid groups
+At traffic-hierarchical row 2:
 - Malformed packet (invalid PID) of 1 byte: [FF]
-At traffic row 1:
+At traffic-hierarchical row 1:
 - 1 malformed packet

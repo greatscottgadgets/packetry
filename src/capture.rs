@@ -218,9 +218,33 @@ pub enum TrafficItem {
     Packet(TransferId, TransactionId, PacketId),
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum TrafficViewMode {
     Hierarchical,
+}
+
+impl TrafficViewMode {
+    pub const fn display_name(&self) -> &'static str {
+        use TrafficViewMode::*;
+        match self {
+            Hierarchical => "Hierarchical",
+        }
+    }
+
+    pub const fn log_name(&self) -> &'static str {
+        use TrafficViewMode::*;
+        match self {
+            Hierarchical => "traffic-hierarchical",
+        }
+    }
+
+    pub fn from_log_name(log_name: &str) -> TrafficViewMode {
+        use TrafficViewMode::*;
+        match log_name {
+            "traffic-hierarchical" => Hierarchical,
+            _ => panic!("Unrecognised log name '{log_name}'")
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug)]

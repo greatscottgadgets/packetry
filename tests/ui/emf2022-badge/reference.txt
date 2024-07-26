@@ -1,6 +1,6 @@
 Opening file tests/emf2022-badge/capture.pcap
 Updating after 3710 packets decoded
-At traffic row 0:
+At traffic-hierarchical row 0:
 + 209 SOF groups
 + Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
 + Setting address to 1 for device 0
@@ -37,10 +37,10 @@ At devices row 0:
 + Device 1: USB JTAG/serial debug unit\u{0}
 + Device 2: TiDAL
 Updating after 4406 packets decoded
-At traffic row 0:
+At traffic-hierarchical row 0:
 - 209 SOF groups
 + 278 SOF groups
-At traffic row 35:
+At traffic-hierarchical row 35:
 - Polling 194 times for interrupt transfer on endpoint 2.3 IN
 + Polling 263 times for interrupt transfer on endpoint 2.3 IN
 Expanding devices view, row 0: Device 1: USB JTAG/serial debug unit\u{0}
@@ -152,62 +152,62 @@ At devices row 2:
 At devices row 1:
 - Device descriptor
 - Configuration 1
-Expanding traffic view, row 10: Getting string descriptor #2, language 0x0409 (English/US) for device 1, reading 56 of 255 requested bytes: 'USB JTAG/serial debug unit\u{0}'
-At traffic row 11:
+Expanding traffic-hierarchical view, row 10: Getting string descriptor #2, language 0x0409 (English/US) for device 1, reading 56 of 255 requested bytes: 'USB JTAG/serial debug unit\u{0}'
+At traffic-hierarchical row 11:
 + SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, FF, 00]
 + IN transaction on 1.0 with 56 data bytes, ACK: [38, 03, 55, 00, 53, 00, 42, 00, 20, 00, 4A, 00, 54, 00, 41, 00, 47, 00, 2F, 00, 73, 00, 65, 00, 72, 00, 69, 00, 61, 00, 6C, 00, 20, 00, 64, 00, 65, 00, 62, 00, 75, 00, 67, 00, 20, 00, 75, 00, 6E, 00, 69, 00, 74, 00, 00, 00]
 + OUT transaction on 1.0 with no data, ACK
-Expanding traffic view, row 12: IN transaction on 1.0 with 56 data bytes, ACK: [38, 03, 55, 00, 53, 00, 42, 00, 20, 00, 4A, 00, 54, 00, 41, 00, 47, 00, 2F, 00, 73, 00, 65, 00, 72, 00, 69, 00, 61, 00, 6C, 00, 20, 00, 64, 00, 65, 00, 62, 00, 75, 00, 67, 00, 20, 00, 75, 00, 6E, 00, 69, 00, 74, 00, 00, 00]
-At traffic row 13:
+Expanding traffic-hierarchical view, row 12: IN transaction on 1.0 with 56 data bytes, ACK: [38, 03, 55, 00, 53, 00, 42, 00, 20, 00, 4A, 00, 54, 00, 41, 00, 47, 00, 2F, 00, 73, 00, 65, 00, 72, 00, 69, 00, 61, 00, 6C, 00, 20, 00, 64, 00, 65, 00, 62, 00, 75, 00, 67, 00, 20, 00, 75, 00, 6E, 00, 69, 00, 74, 00, 00, 00]
+At traffic-hierarchical row 13:
 + IN packet on 1.0, CRC 1D
 + DATA1 packet with CRC 5EC0 and 56 data bytes: [38, 03, 55, 00, 53, 00, 42, 00, 20, 00, 4A, 00, 54, 00, 41, 00, 47, 00, 2F, 00, 73, 00, 65, 00, 72, 00, 69, 00, 61, 00, 6C, 00, 20, 00, 64, 00, 65, 00, 62, 00, 75, 00, 67, 00, 20, 00, 75, 00, 6E, 00, 69, 00, 74, 00, 00, 00]
 + ACK packet
-Expanding traffic view, row 33: Setting configuration 1 for device 2
-At traffic row 34:
+Expanding traffic-hierarchical view, row 33: Setting configuration 1 for device 2
+At traffic-hierarchical row 34:
 + SETUP transaction on 2.0 with 8 data bytes, ACK: [00, 09, 01, 00, 00, 00, 00, 00]
 + 4 times: IN transaction on 2.0, NAK
 + IN transaction on 2.0 with no data, ACK
-Expanding traffic view, row 39: IN transaction on 2.0 with no data, ACK
-At traffic row 40:
+Expanding traffic-hierarchical view, row 39: IN transaction on 2.0 with no data, ACK
+At traffic-hierarchical row 40:
 + IN packet on 2.0, CRC 15
 + DATA1 packet with CRC 0000 and no data
 + ACK packet
-Expanding traffic view, row 44: Class request #32, index 0, value 0 for interface 2.0, writing 7 bytes
-At traffic row 45:
+Expanding traffic-hierarchical view, row 44: Class request #32, index 0, value 0 for interface 2.0, writing 7 bytes
+At traffic-hierarchical row 45:
 + SETUP transaction on 2.0 with 8 data bytes, ACK: [21, 20, 00, 00, 00, 00, 07, 00]
 + OUT transaction on 2.0 with 7 data bytes, NAK: [80, 25, 00, 00, 00, 00, 08]
 + OUT transaction on 2.0 with 7 data bytes, ACK: [80, 25, 00, 00, 00, 00, 08]
 + IN transaction on 2.0, NAK
 + IN transaction on 2.0 with no data, ACK
-Expanding traffic view, row 46: OUT transaction on 2.0 with 7 data bytes, NAK: [80, 25, 00, 00, 00, 00, 08]
-At traffic row 47:
+Expanding traffic-hierarchical view, row 46: OUT transaction on 2.0 with 7 data bytes, NAK: [80, 25, 00, 00, 00, 00, 08]
+At traffic-hierarchical row 47:
 + OUT packet on 2.0, CRC 15
 + DATA1 packet with CRC C463 and 7 data bytes: [80, 25, 00, 00, 00, 00, 08]
 + NAK packet
-Collapsing traffic view, row 33: Setting configuration 1 for device 2
-At traffic row 40:
+Collapsing traffic-hierarchical view, row 33: Setting configuration 1 for device 2
+At traffic-hierarchical row 40:
 - IN packet on 2.0, CRC 15
 - DATA1 packet with CRC 0000 and no data
 - ACK packet
-At traffic row 34:
+At traffic-hierarchical row 34:
 - SETUP transaction on 2.0 with 8 data bytes, ACK: [00, 09, 01, 00, 00, 00, 00, 00]
 - 4 times: IN transaction on 2.0, NAK
 - IN transaction on 2.0 with no data, ACK
-Collapsing traffic view, row 10: Getting string descriptor #2, language 0x0409 (English/US) for device 1, reading 56 of 255 requested bytes: 'USB JTAG/serial debug unit\u{0}'
-At traffic row 13:
+Collapsing traffic-hierarchical view, row 10: Getting string descriptor #2, language 0x0409 (English/US) for device 1, reading 56 of 255 requested bytes: 'USB JTAG/serial debug unit\u{0}'
+At traffic-hierarchical row 13:
 - IN packet on 1.0, CRC 1D
 - DATA1 packet with CRC 5EC0 and 56 data bytes: [38, 03, 55, 00, 53, 00, 42, 00, 20, 00, 4A, 00, 54, 00, 41, 00, 47, 00, 2F, 00, 73, 00, 65, 00, 72, 00, 69, 00, 61, 00, 6C, 00, 20, 00, 64, 00, 65, 00, 62, 00, 75, 00, 67, 00, 20, 00, 75, 00, 6E, 00, 69, 00, 74, 00, 00, 00]
 - ACK packet
-At traffic row 11:
+At traffic-hierarchical row 11:
 - SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, FF, 00]
 - IN transaction on 1.0 with 56 data bytes, ACK: [38, 03, 55, 00, 53, 00, 42, 00, 20, 00, 4A, 00, 54, 00, 41, 00, 47, 00, 2F, 00, 73, 00, 65, 00, 72, 00, 69, 00, 61, 00, 6C, 00, 20, 00, 64, 00, 65, 00, 62, 00, 75, 00, 67, 00, 20, 00, 75, 00, 6E, 00, 69, 00, 74, 00, 00, 00]
 - OUT transaction on 1.0 with no data, ACK
-Collapsing traffic view, row 29: Class request #32, index 0, value 0 for interface 2.0, writing 7 bytes
-At traffic row 32:
+Collapsing traffic-hierarchical view, row 29: Class request #32, index 0, value 0 for interface 2.0, writing 7 bytes
+At traffic-hierarchical row 32:
 - OUT packet on 2.0, CRC 15
 - DATA1 packet with CRC C463 and 7 data bytes: [80, 25, 00, 00, 00, 00, 08]
 - NAK packet
-At traffic row 30:
+At traffic-hierarchical row 30:
 - SETUP transaction on 2.0 with 8 data bytes, ACK: [21, 20, 00, 00, 00, 00, 07, 00]
 - OUT transaction on 2.0 with 7 data bytes, NAK: [80, 25, 00, 00, 00, 00, 08]
 - OUT transaction on 2.0 with 7 data bytes, ACK: [80, 25, 00, 00, 00, 00, 08]
