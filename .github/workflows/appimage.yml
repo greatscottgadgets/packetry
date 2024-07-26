@@ -59,20 +59,6 @@ jobs:
           echo
           echo exists:        ${{ steps.changed.outputs.dockerfile }}
 
-      - name: Debug Check
-        shell: bash
-        run: |
-          echo IMAGE_NAME:     ${{ env.IMAGE_NAME }}           # <repo-owner>/<repo>-test
-          echo IMAGE_TAG:      ${{ env.IMAGE_TAG }}            # <gh.ref_name>
-          echo
-          echo gh.actor:       ${{ github.actor }}             # antoinevg                 antoinevg
-          echo gh.trig_actor:  ${{ github.triggering_actor }}  # antoinevg                 antoinevg
-          echo gh.repo:        ${{ github.repository }}        # antoinevg/packetry        greatscottgadgets/packetry
-          echo gh.repo_owner:  ${{ github.repository_owner }}  # antoinevg                 greatscottgadgets
-          echo gh.base_ref:    ${{ github.base_ref }}          # n/a                       main
-          echo gh.head_ref:    ${{ github.head_ref }}          # n/a                       antoinevg/linux-appimage
-          echo gh.ref_name:    ${{ github.ref_name }}          # antoinevg-linux-appimage  133/merge
-
       - name: Log in to the Container registry
         if: ${{ steps.changed.outputs.dockerfile == 'true' || steps.exists.outputs.dockerimage == 'false' }}
         uses: docker/login-action@v3
