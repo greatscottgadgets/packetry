@@ -35,7 +35,8 @@ runs:
         # cd to AppDir lib directory
         cd $GITHUB_WORKSPACE/${{ inputs.appdir }}/usr/lib
 
-        # remove any system libraries we don't need
+        # remove any system libraries we don't want to include in case
+        # of conflicts with a user's system
         rm -f libX*
         rm -f libblkid*
         rm -f libbsd*
@@ -65,7 +66,7 @@ runs:
         # cd to AppDir /usr/share/doc directory
         cd $GITHUB_WORKSPACE/${{ inputs.appdir }}/usr/share/doc
 
-        # remove any system licenses for libraries we don't actually link to
+        # remove any licenses for system libraries we don't distribute
         rm -rf libblkid1
         rm -rf libbsd0
         rm -rf libxau6

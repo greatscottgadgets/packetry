@@ -233,7 +233,7 @@ The appimage custom action lives inside the [`action.yml`](action.yml) file.
 
 The [`linuxdeply-plugin-gtk`](https://github.com/linuxdeploy/linuxdeploy-plugin-gtk) plugin does a good job of making sure everything we need to run a gtk app is bundled but we can still reduce the image size significantly:
 
-1. Remove any system libraries we don't actually link to.
+1. Remove any system libraries we don't actually want to distribute as they could cause conflicts if users have different versions installed.
 2. The plugin, for some reason, dereferences the library files when copying them over resulting in a massive size increase to the binary. Ordinarily one would just delete the dupes and run ldconfig but, for reasons (*'file is truncated'* - don't ask!), this doesn't work with the gtk libraries. So we do a simple little bash script instead to delete dupes and replace them with symlinks.
 3. Finally, all libraries are stripped of all debug information.
 
