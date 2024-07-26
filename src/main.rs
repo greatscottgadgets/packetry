@@ -47,6 +47,7 @@ mod test_replay;
 
 use gtk::prelude::*;
 use gtk::gio::ApplicationFlags;
+use gtk::glib::{self, OptionArg, OptionFlags};
 
 use ui::{
     activate,
@@ -74,6 +75,16 @@ fn main() {
             ApplicationFlags::NON_UNIQUE |
             ApplicationFlags::HANDLES_OPEN
         );
+        application.set_option_context_parameter_string(
+           Some("[filename.pcap]"));
+        application.add_main_option(
+           "version", glib::Char::from(0),
+           OptionFlags::NONE, OptionArg::None,
+           "Print version information", None);
+        application.add_main_option(
+           "test-cynthion", glib::Char::from(0),
+           OptionFlags::NONE, OptionArg::None,
+           "Test an attached Cynthion USB analyzer", None);
         application.connect_activate(|app| display_error(activate(app)));
         application.connect_open(|app, files, _hint| {
            app.activate();
