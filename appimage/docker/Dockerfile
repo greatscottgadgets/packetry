@@ -2,12 +2,11 @@ ARG GTK_VERSION_DEFAULT="4.14.4"
 ARG NODE_VERSION_DEFAULT="v20.15.1"
 
 FROM debian:10 AS builder
-LABEL maintainer="Great Scott Gadgets <dev@greatscottgadgets.com>"
-LABEL stage="builder"
 LABEL org.opencontainers.image.source=https://github.com/greatscottgadgets/packetry
 LABEL org.opencontainers.image.description="GSG Packetry AppImage Builder"
 LABEL org.opencontainers.image.licenses=BSD-3-Clause
-
+LABEL maintainer="Great Scott Gadgets <dev@greatscottgadgets.com>"
+LABEL stage="builder"
 
 ARG GTK_VERSION_DEFAULT
 ARG NODE_VERSION_DEFAULT
@@ -28,6 +27,7 @@ RUN apt update && apt upgrade -y && apt install -y \
     cmake \
     curl \
     desktop-file-utils \
+    fdupes \
     flex \
     git \
     libbz2-dev \
@@ -59,6 +59,9 @@ RUN apt update && apt upgrade -y && apt install -y \
     xvfb \
     xz-utils \
     zlib1g-dev
+
+# remove libharfbuzz0b
+RUN apt remove -y libharfbuzz0b
 
 # add user
 RUN useradd -ms /bin/bash runner
@@ -173,7 +176,12 @@ RUN rm -rf \
 # - squish --------------------------------------------------------------------
 
 FROM debian:10
+LABEL org.opencontainers.image.source=https://github.com/greatscottgadgets/packetry
+LABEL org.opencontainers.image.description="GSG Packetry AppImage Builder"
+LABEL org.opencontainers.image.licenses=BSD-3-Clause
+LABEL maintainer="Great Scott Gadgets <dev@greatscottgadgets.com>"
 LABEL stage="squish"
+
 COPY --from=builder / /
 
 ARG GTK_VERSION_DEFAULT
