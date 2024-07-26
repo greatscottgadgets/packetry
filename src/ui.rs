@@ -11,7 +11,7 @@ use std::sync::Mutex;
 
 use anyhow::{Context as ErrorContext, Error, bail};
 
-use gtk::gio::{ActionEntry, ListModel, Menu, MenuItem, SimpleActionGroup};
+use gtk::gio::{self, ActionEntry, ListModel, Menu, MenuItem, SimpleActionGroup};
 use gtk::glib::{Object, SignalHandlerId};
 use gtk::{
     prelude::*,
@@ -403,7 +403,6 @@ pub fn activate(application: &Application) -> Result<(), Error> {
     window.show();
     WINDOW.with(|win_opt| win_opt.replace(Some(window.clone())));
 
-    let args: Vec<_> = std::env::args().collect();
     let (_, capture) = create_capture()?;
 
     let traffic_window = gtk::ScrolledWindow::builder()
@@ -498,15 +497,17 @@ pub fn activate(application: &Application) -> Result<(), Error> {
 
     reset_capture()?;
 
-    if args.len() > 1 {
-        let filename = args[1].clone();
-        let path = PathBuf::from(filename);
-        start_pcap(Load, path)?;
-    }
-
     gtk::glib::idle_add_once(|| display_error(detect_hardware()));
 
     Ok(())
+}
+
+pub fn open(file: &gio::File) -> Result<(), Error> {
+    if let Some(path) = file.path() {
+        start_pcap(FileAction::Load, path)
+    } else {
+        bail!("Unable to open {}: not a local path", file.uri());
+    }
 }
 
 fn create_view<Item, Model, RowData>(

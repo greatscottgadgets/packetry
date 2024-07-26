@@ -51,6 +51,7 @@ use gtk::gio::ApplicationFlags;
 use ui::{
     activate,
     display_error,
+    open,
     stop_cynthion
 };
 use version::{version, version_info};
@@ -70,10 +71,17 @@ fn main() {
     } else {
         let application = gtk::Application::new(
             Some("com.greatscottgadgets.packetry"),
-            ApplicationFlags::NON_UNIQUE
+            ApplicationFlags::NON_UNIQUE |
+            ApplicationFlags::HANDLES_OPEN
         );
         application.connect_activate(|app| display_error(activate(app)));
-        application.run_with_args::<&str>(&[]);
+        application.connect_open(|app, files, _hint| {
+           app.activate();
+           if let Some(file) = files.first() {
+              display_error(open(file));
+           }
+        });
+        application.run();
         display_error(stop_cynthion());
     }
 }
