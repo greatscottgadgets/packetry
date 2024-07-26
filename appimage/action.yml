@@ -35,63 +35,26 @@ runs:
         # cd to AppDir lib directory
         cd $GITHUB_WORKSPACE/${{ inputs.appdir }}/usr/lib
 
-        # fix symlinks
-        rm libgdk_pixbuf-2.0.so
-        rm libgdk_pixbuf-2.0.so.0
-        ln -s libgdk_pixbuf-2.0.so.0.4200.11 libgdk_pixbuf-2.0.so
-        ln -s libgdk_pixbuf-2.0.so.0.4200.11 libgdk_pixbuf-2.0.so.0
-        rm libgio-2.0.so
-        rm libgio-2.0.so.0
-        ln -s libgio-2.0.so.0.7600.0 libgio-2.0.so
-        ln -s libgio-2.0.so.0.7600.0 libgio-2.0.so.0
-        rm libgobject-2.0.so
-        rm libgobject-2.0.so.0
-        ln -s libgobject-2.0.so.0.7600.0 libgobject-2.0.so
-        ln -s libgobject-2.0.so.0.7600.0 libgobject-2.0.so.0
-        rm libpango-1.0.so
-        rm libpango-1.0.so.0
-        ln -s libpango-1.0.so.0.5400.0 libpango-1.0.so
-        ln -s libpango-1.0.so.0.5400.0 libpango-1.0.so.0
-        rm libpangocairo-1.0.so
-        rm libpangocairo-1.0.so.0
-        ln -s libpangocairo-1.0.so.0.5400.0 libpangocairo-1.0.so
-        ln -s libpangocairo-1.0.so.0.5400.0 libpangocairo-1.0.so.0
-        rm libpangoft2-1.0.so
-        rm libpangoft2-1.0.so.0
-        ln -s libpangoft2-1.0.so.0.5400.0 libpangoft2-1.0.so
-        ln -s libpangoft2-1.0.so.0.5400.0 libpangoft2-1.0.so.0
+        # remove any system libraries we don't need
+        rm -f libX*
+        rm -f libblkid*
+        rm -f libbsd*
+        rm -f libpixman*
+        rm -f libxcb-render*
+        rm -f libzstd*
 
-        # remove some libraries we don't need
-        rm libX*
-        rm libblkid*
-        rm libbsd*
-        rm libcroco*
-        rm libicu*
-        rm libpixbufloader*
-        rm libpixman*
-        rm librsvg*
-        rm libxcb-render*
-        rm libxml*
-        rm libzstd*
-
-        # add some libraries we do need
-        #
-        # NB: $GTK4 is defined by the Dockerfile
-        cp $GTK4/lib/x86_64-linux-gnu/libharfbuzz-gobject.so.0.40000.0 .
-        ln -s libharfbuzz-gobject.so.0.40000.0 libharfbuzz-gobject.so.0
-        ln -s libharfbuzz-gobject.so.0.40000.0 libharfbuzz-gobject.so
-        cp $GTK4/lib/x86_64-linux-gnu/libharfbuzz-icu.so.0.40000.0 .
-        ln -s libharfbuzz-icu.so.0.40000.0 libharfbuzz-icu.so.0
-        ln -s libharfbuzz-icu.so.0.40000.0 libharfbuzz-icu.so
-        cp $GTK4/lib/x86_64-linux-gnu/libharfbuzz.so.0.40000.0 .
-        ln -s libharfbuzz.so.0.40000.0 libharfbuzz.so.0
-        ln -s libharfbuzz.so.0.40000.0 libharfbuzz.so
-        cp $GTK4/lib/x86_64-linux-gnu/libharfbuzz-subset.so.0.40000.0 .
-        ln -s libharfbuzz-subset.so.0.40000.0 libharfbuzz-subset.so.0
-        ln -s libharfbuzz-subset.so.0.40000.0 libharfbuzz-subset.so
+        # remove duplicate library files and replace with symlinks
+        fdupes --sameline --order=name . | while read -r lib ; do
+            src=$(echo $lib | rev | cut -d' ' -f1 | rev)
+            dupes=$(echo $lib | rev | cut -d' ' -f2- | rev)
+            rm $dupes
+            for dst in $dupes ; do
+                ln -s $src $dst
+            done
+        done
 
         # strip all libraries
-        strip lib*.so.*
+        strip ./lib*.*
 
         # return to workspace directory
         cd $GITHUB_WORKSPACE
@@ -102,12 +65,9 @@ runs:
         # cd to AppDir /usr/share/doc directory
         cd $GITHUB_WORKSPACE/${{ inputs.appdir }}/usr/share/doc
 
-        # remove any system licenses we don't actually link to
+        # remove any system licenses for libraries we don't actually link to
         rm -rf libblkid1
         rm -rf libbsd0
-        rm -rf libcroco3
-        rm -rf libicu63
-        rm -rf librsvg2-2
         rm -rf libxau6
         rm -rf libxcb-render0
         rm -rf libxcursor1
@@ -117,7 +77,6 @@ runs:
         rm -rf libxfixes3
         rm -rf libxi6
         rm -rf libxinerama1
-        rm -rf libxml2
         rm -rf libxrandr2
         rm -rf libxrender1
         rm -rf libzstd1
