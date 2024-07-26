@@ -1,5 +1,4 @@
 use std::cell::RefCell;
-use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::Duration;
 
@@ -11,7 +10,17 @@ use std::sync::Mutex;
 
 use anyhow::{Context as ErrorContext, Error, bail};
 
-use gtk::gio::{self, ActionEntry, ListModel, Menu, MenuItem, SimpleActionGroup};
+use gtk::gio::{
+    self,
+    ActionEntry,
+    Cancellable,
+    FileCreateFlags,
+    FileQueryInfoFlags,
+    ListModel,
+    Menu,
+    MenuItem,
+    SimpleActionGroup
+};
 use gtk::glib::{Object, SignalHandlerId};
 use gtk::{
     prelude::*,
@@ -503,11 +512,7 @@ pub fn activate(application: &Application) -> Result<(), Error> {
 }
 
 pub fn open(file: &gio::File) -> Result<(), Error> {
-    if let Some(path) = file.path() {
-        start_pcap(FileAction::Load, path)
-    } else {
-        bail!("Unable to open {}: not a local path", file.uri());
-    }
+    start_pcap(FileAction::Load, file.clone())
 }
 
 fn create_view<Item, Model, RowData>(
@@ -803,9 +808,7 @@ fn choose_file(action: FileAction) -> Result<(), Error> {
     chooser.connect_response(move |dialog, response| {
         if response == gtk::ResponseType::Accept {
             if let Some(file) = dialog.file() {
-                if let Some(path) = file.path() {
-                    display_error(start_pcap(action, path));
-                }
+                display_error(start_pcap(action, file));
             }
             dialog.destroy();
         }
@@ -814,7 +817,7 @@ fn choose_file(action: FileAction) -> Result<(), Error> {
     Ok(())
 }
 
-fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), Error> {
+fn start_pcap(action: FileAction, file: gio::File) -> Result<(), Error> {
     use FileAction::*;
     let writer = if action == Load {
         Some(reset_capture()?)
@@ -823,10 +826,12 @@ fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), Error> {
     };
     with_ui(|ui| {
         #[cfg(feature="record-ui-test")]
-        ui.recording.borrow_mut().log_open_file(&path, &ui.capture);
-        ui.file_name = path
-            .file_name()
-            .map(|path| path.to_string_lossy().to_string());
+        ui.recording.borrow_mut().log_open_file(&file.uri(), &ui.capture);
+        let info = file.query_info("standard::*",
+                                   FileQueryInfoFlags::NONE,
+                                   Cancellable::NONE)?;
+        let file_size = info.size() as u64;
+        ui.file_name = Some(info.name().to_string_lossy().to_string());
         ui.open_button.set_sensitive(false);
         ui.save_button.set_sensitive(false);
         ui.scan_button.set_sensitive(false);
@@ -841,8 +846,9 @@ fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), Error> {
         let mut capture = ui.capture.clone();
         let worker = move || match action {
             Load => {
-                let mut loader = Loader::open(path)?;
-                TOTAL.store(loader.file_size, Ordering::Relaxed);
+                let source = file.read(Cancellable::NONE)?.into_read();
+                let mut loader = Loader::open(source)?;
+                TOTAL.store(file_size, Ordering::Relaxed);
                 let mut decoder = Decoder::new(writer.unwrap())?;
                 #[cfg(feature="step-decoder")]
                 let (mut client, _addr) =
@@ -871,7 +877,10 @@ fn start_pcap(action: FileAction, path: PathBuf) -> Result<(), Error> {
                 let packet_count = capture.packet_index.len();
                 TOTAL.store(packet_count, Ordering::Relaxed);
                 CURRENT.store(0, Ordering::Relaxed);
-                let mut writer = Writer::open(path)?;
+                let dest = file
+                    .create(FileCreateFlags::NONE, Cancellable::NONE)?
+                    .into_write();
+                let mut writer = Writer::open(dest)?;
                 for i in 0..packet_count {
                     let packet_id = PacketId::from(i);
                     let packet = capture.packet(packet_id)?;
