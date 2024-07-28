@@ -1183,7 +1183,10 @@ impl CompletionStatus {
 }
 
 pub trait ItemSource<Item, ViewMode> {
-    fn item(&mut self, parent: Option<&Item>, index: u64)
+    fn item(&mut self,
+            parent: Option<&Item>,
+            view_mode: ViewMode,
+            index: u64)
         -> Result<Item, Error>;
     fn item_update(&mut self, item: &Item)
         -> Result<Option<Item>, Error>;
@@ -1202,15 +1205,22 @@ pub trait ItemSource<Item, ViewMode> {
 }
 
 impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
-    fn item(&mut self, parent: Option<&TrafficItem>, index: u64)
+    fn item(&mut self,
+            parent: Option<&TrafficItem>,
+            view_mode: TrafficViewMode,
+            index: u64)
         -> Result<TrafficItem, Error>
     {
+        use TrafficItem::*;
+        use TrafficViewMode::*;
         match parent {
-            None => {
-                let item_id = TrafficItemId::from(index);
-                let transfer_id = self.item_index.get(item_id)?;
-                Ok(TrafficItem::Transfer(transfer_id))
-            },
+            None => Ok(match view_mode {
+                Hierarchical => {
+                    let item_id = TrafficItemId::from(index);
+                    let transfer_id = self.item_index.get(item_id)?;
+                    Transfer(transfer_id)
+                },
+            }),
             Some(item) => self.child_item(item, index)
         }
     }
@@ -1244,14 +1254,17 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
 
     fn item_children(&mut self,
                      parent: Option<&TrafficItem>,
-                     _view_mode: TrafficViewMode)
+                     view_mode: TrafficViewMode)
         -> Result<(CompletionStatus, u64), Error>
     {
         use TrafficItem::*;
+        use TrafficViewMode::*;
         use CompletionStatus::*;
         Ok(match parent {
             None => {
-                (self.completion(), self.item_index.len())
+                (self.completion(), match view_mode {
+                    Hierarchical => self.item_index.len(),
+                })
             },
             Some(Transfer(transfer_id)) => {
                 let entry = self.transfer_index.get(*transfer_id)?;
@@ -1681,7 +1694,10 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
 }
 
 impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
-    fn item(&mut self, parent: Option<&DeviceItem>, index: u64)
+    fn item(&mut self,
+            parent: Option<&DeviceItem>,
+            _view_mode: DeviceViewMode,
+            index: u64)
         -> Result<DeviceItem, Error>
     {
         match parent {
@@ -1991,7 +2007,8 @@ mod tests {
                 let mut out_writer = BufWriter::new(out_file);
                 let num_items = reader.item_index.len();
                 for item_id in 0 .. num_items {
-                    let item = reader.item(None, item_id).unwrap();
+                    let item = reader.item(
+                        None, TrafficViewMode::Hierarchical, item_id).unwrap();
                     write_item(&mut reader, &item, 0, &mut out_writer);
                 }
             }

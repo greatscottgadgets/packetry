@@ -931,7 +931,8 @@ where Item: 'static + Copy + Debug,
         // Otherwise, fetch it from the database.
         let mut cap = self.capture.borrow_mut();
         let mut parent = parent_ref.borrow_mut();
-        let item = cap.item(parent.item(), relative_position)?;
+        let item =
+            cap.item(parent.item(), self.view_mode, relative_position)?;
         let (completion, child_count) =
             cap.item_children(Some(&item), self.view_mode)?;
         let node = ItemNode {
