@@ -579,44 +579,18 @@ impl Decoder {
         Ok(self.capture)
     }
 
-    pub fn token_endpoint(&mut self, pid: PID, token: &TokenFields)
+    fn packet_endpoint(&mut self, pid: PID, packet: &[u8])
         -> Result<EndpointId, Error>
     {
-        let dev_addr = token.device_address();
-        let ep_num = token.endpoint_number();
-        let direction = match (ep_num.0, pid) {
-            (0, _)          => Direction::Out,
-            (_, PID::SETUP) => Direction::Out,
-            (_, PID::IN)    => Direction::In,
-            (_, PID::OUT)   => Direction::Out,
-            (_, PID::PING)  => Direction::Out,
-            _ => bail!("PID {pid} does not indicate a direction")
-        };
-        let key = EndpointKey {
-            dev_addr,
-            ep_num,
-            direction
-        };
-        Ok(match self.capture.shared.endpoint_index.load().get(key) {
-            Some(id) => *id,
-            None => {
+        Ok(match self.capture.shared.packet_endpoint(pid, packet) {
+            Ok(id) => id,
+            Err(key) => {
                 let id = self.add_endpoint(
                     key.dev_addr, key.ep_num, key.direction)?;
                 self.capture.shared.endpoint_index
                     .update(|map| map.set(key, id));
                 id
             }
-        })
-    }
-
-    fn packet_endpoint(&mut self, pid: PID, packet: &[u8])
-        -> Result<EndpointId, Error>
-    {
-        Ok(match PacketFields::from_packet(packet) {
-            PacketFields::SOF(_) => FRAMING_EP_ID,
-            PacketFields::Token(token) =>
-                self.token_endpoint(pid, &token)?,
-            _ => INVALID_EP_ID,
         })
     }
 

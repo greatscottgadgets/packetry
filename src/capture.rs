@@ -829,6 +829,38 @@ impl std::fmt::Display for Bytes<'_> {
     }
 }
 
+impl CaptureShared {
+    pub fn packet_endpoint(&self, pid: PID, packet: &[u8])
+        -> Result<EndpointId, EndpointKey>
+    {
+        match PacketFields::from_packet(packet) {
+            PacketFields::SOF(_) => Ok(FRAMING_EP_ID),
+            PacketFields::Token(token) => {
+                let dev_addr = token.device_address();
+                let ep_num = token.endpoint_number();
+                let direction = match (ep_num.0, pid) {
+                    (0, _)          => Direction::Out,
+                    (_, PID::SETUP) => Direction::Out,
+                    (_, PID::IN)    => Direction::In,
+                    (_, PID::OUT)   => Direction::Out,
+                    (_, PID::PING)  => Direction::Out,
+                    _ => panic!("PID {pid} does not indicate a direction")
+                };
+                let key = EndpointKey {
+                    dev_addr,
+                    ep_num,
+                    direction
+                };
+                match self.endpoint_index.load().get(key) {
+                    Some(id) => Ok(*id),
+                    None => Err(key),
+                }
+            },
+            _ => Ok(INVALID_EP_ID),
+        }
+    }
+}
+
 impl CaptureWriter {
     pub fn device_data(&self, id: DeviceId)
         -> Result<Arc<DeviceData>, Error>
