@@ -12,7 +12,7 @@ use crate::data_stream::{
     data_stream, data_stream_with_block_size, DataWriter, DataReader};
 use crate::compact_index::{compact_index, CompactWriter, CompactReader};
 use crate::rcu::SingleWriterRcu;
-use crate::vec_map::VecMap;
+use crate::vec_map::{Key, VecMap};
 use crate::usb::{self, prelude::*, validate_packet};
 use crate::util::{fmt_count, fmt_size};
 
@@ -28,6 +28,7 @@ const PACKET_DATA_BLOCK_SIZE: usize = 0x200000;
 /// Capture state shared between readers and writers.
 pub struct CaptureShared {
     pub device_data: ArcSwap<VecMap<DeviceId, Arc<DeviceData>>>,
+    pub endpoint_index: ArcSwap<VecMap<EndpointKey, EndpointId>>,
     pub endpoint_readers: ArcSwap<VecMap<EndpointId, Arc<EndpointReader>>>,
     pub complete: AtomicBool,
 }
@@ -89,6 +90,7 @@ pub fn create_capture()
     // Create the state shared by readers and writer.
     let shared = Arc::new(CaptureShared {
         device_data: ArcSwap::new(Arc::new(VecMap::new())),
+        endpoint_index: ArcSwap::new(Arc::new(VecMap::new())),
         endpoint_readers: ArcSwap::new(Arc::new(VecMap::new())),
         complete: AtomicBool::from(false),
     });
@@ -355,6 +357,29 @@ impl std::fmt::Display for EndpointType {
 }
 
 type EndpointDetails = (usb::EndpointType, Option<usize>);
+
+#[derive(Copy, Clone)]
+pub struct EndpointKey {
+    pub dev_addr: DeviceAddr,
+    pub direction: Direction,
+    pub ep_num: EndpointNum,
+}
+
+impl Key for EndpointKey {
+    fn id(self) -> usize {
+        self.dev_addr.0 as usize * 32 +
+            self.direction as usize * 16 +
+                self.ep_num.0 as usize
+    }
+
+    fn key(id: usize) -> EndpointKey {
+        EndpointKey {
+            dev_addr: DeviceAddr((id / 32) as u8),
+            direction: Direction::from(((id / 16) % 2) as u8),
+            ep_num: EndpointNum((id % 16) as u8),
+        }
+    }
+}
 
 #[derive(Default)]
 pub struct DeviceData {
@@ -2038,6 +2063,7 @@ pub mod prelude {
         DeviceData,
         Endpoint,
         EndpointId,
+        EndpointKey,
         EndpointType,
         EndpointState,
         EndpointReader,
