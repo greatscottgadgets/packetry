@@ -291,12 +291,12 @@ At devices row 2:
 + Length: 18 bytes
 + Type: 0x01
 + USB Version: 2.00
-+ Class: 0x00
++ Class: 0x00: (Defined at Interface level)
 + Subclass: 0x00
 + Protocol: 0x00
 + Max EP0 packet size: 8 bytes
-+ Vendor ID: 0x1BCF
-+ Product ID: 0x0005
++ Vendor ID: 0x1BCF: Sunplus Innovation Technology Inc.
++ Product ID: 0x0005: Optical Mouse
 + Version: 0.14
 + Manufacturer string: (none)
 + Product string: #2 (not seen)
@@ -462,9 +462,9 @@ At devices row 27:
 + Interface number: 0
 + Alternate setting: 0
 + Number of endpoints: 1
-+ Class: 0x03
-+ Subclass: 0x01
-+ Protocol: 0x02
++ Class: 0x03: Human Interface Device
++ Subclass: 0x01: Boot Interface Subclass
++ Protocol: 0x02: Mouse
 + Interface string: (none)
 Expanding devices view, row 36: Endpoint 1 IN
 At devices row 37:
@@ -615,9 +615,9 @@ At devices row 19:
 - Interface number: 0
 - Alternate setting: 0
 - Number of endpoints: 1
-- Class: 0x03
-- Subclass: 0x01
-- Protocol: 0x02
+- Class: 0x03: Human Interface Device
+- Subclass: 0x01: Boot Interface Subclass
+- Protocol: 0x02: Mouse
 - Interface string: (none)
 At devices row 20:
 - Length: 7 bytes
@@ -637,12 +637,12 @@ At devices row 2:
 - Length: 18 bytes
 - Type: 0x01
 - USB Version: 2.00
-- Class: 0x00
+- Class: 0x00: (Defined at Interface level)
 - Subclass: 0x00
 - Protocol: 0x00
 - Max EP0 packet size: 8 bytes
-- Vendor ID: 0x1BCF
-- Product ID: 0x0005
+- Vendor ID: 0x1BCF: Sunplus Innovation Technology Inc.
+- Product ID: 0x0005: Optical Mouse
 - Version: 0.14
 - Manufacturer string: (none)
 - Product string: #2 (not seen)

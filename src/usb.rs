@@ -5,6 +5,7 @@ use bytemuck::pod_read_unaligned;
 use crc::{Crc, CRC_16_USB};
 use num_enum::{IntoPrimitive, FromPrimitive};
 use derive_more::{From, Into, Display};
+use usb_ids::FromId;
 
 use crate::vec_map::VecMap;
 
@@ -561,12 +562,25 @@ impl DeviceDescriptor {
         0  => format!("Length: {} bytes", self.length),
         1  => format!("Type: 0x{:02X}", self.descriptor_type),
         2  => format!("USB Version: {}", self.usb_version),
-        3  => format!("Class: 0x{:02X}", self.device_class),
-        4  => format!("Subclass: 0x{:02X}", self.device_subclass),
-        5  => format!("Protocol: 0x{:02X}", self.device_protocol),
+        3  => format!("Class: 0x{:02X}{}", self.device_class,
+            usb_ids::Class::from_id(self.device_class)
+                .map_or_else(String::new, |c| format!(": {}", c.name()))),
+        4  => format!("Subclass: 0x{:02X}{}", self.device_subclass,
+            usb_ids::SubClass::from_cid_scid(
+                    self.device_class, self.device_subclass)
+                .map_or_else(String::new, |s| format!(": {}", s.name()))),
+        5  => format!("Protocol: 0x{:02X}{}", self.device_protocol,
+            usb_ids::Protocol::from_cid_scid_pid(
+                    self.device_class, self.device_subclass,
+                    self.device_protocol)
+                .map_or_else(String::new, |p| format!(": {}", p.name()))),
         6  => format!("Max EP0 packet size: {} bytes", self.max_packet_size_0),
-        7  => format!("Vendor ID: 0x{:04X}", self.vendor_id),
-        8  => format!("Product ID: 0x{:04X}", self.product_id),
+        7  => format!("Vendor ID: 0x{:04X}{}", self.vendor_id,
+            usb_ids::Vendor::from_id(self.vendor_id)
+                .map_or_else(String::new, |v| format!(": {}", v.name()))),
+        8  => format!("Product ID: 0x{:04X}{}", self.product_id,
+            usb_ids::Device::from_vid_pid(self.vendor_id, self.product_id)
+                .map_or_else(String::new, |d| format!(": {}", d.name()))),
         9  => format!("Version: {}", self.device_version),
         10 => format!("Manufacturer string: {}",
                       fmt_str_id(strings, self.manufacturer_str_id)),
@@ -644,9 +658,18 @@ impl InterfaceDescriptor {
         2 => format!("Interface number: {}", self.interface_number),
         3 => format!("Alternate setting: {}", self.alternate_setting),
         4 => format!("Number of endpoints: {}", self.num_endpoints),
-        5 => format!("Class: 0x{:02X}", self.interface_class),
-        6 => format!("Subclass: 0x{:02X}", self.interface_subclass),
-        7 => format!("Protocol: 0x{:02X}", self.interface_protocol),
+        5 => format!("Class: 0x{:02X}{}", self.interface_class,
+            usb_ids::Class::from_id(self.interface_class)
+                .map_or_else(String::new, |c| format!(": {}", c.name()))),
+        6  => format!("Subclass: 0x{:02X}{}", self.interface_subclass,
+            usb_ids::SubClass::from_cid_scid(
+                    self.interface_class, self.interface_subclass)
+                .map_or_else(String::new, |s| format!(": {}", s.name()))),
+        7  => format!("Protocol: 0x{:02X}{}", self.interface_protocol,
+            usb_ids::Protocol::from_cid_scid_pid(
+                    self.interface_class, self.interface_subclass,
+                    self.interface_protocol)
+                .map_or_else(String::new, |p| format!(": {}", p.name()))),
         8 => format!("Interface string: {}",
                       fmt_str_id(strings, self.interface_str_id)),
         i => format!("Error: Invalid field ID {i}")

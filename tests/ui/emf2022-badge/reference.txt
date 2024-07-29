@@ -52,9 +52,9 @@ At devices row 2:
 + Length: 18 bytes
 + Type: 0x01
 + USB Version: 2.00
-+ Class: 0xEF
-+ Subclass: 0x02
-+ Protocol: 0x01
++ Class: 0xEF: Miscellaneous Device
++ Subclass: 0x02: ?
++ Protocol: 0x01: Interface Association
 + Max EP0 packet size: 64 bytes
 + Vendor ID: 0x303A
 + Product ID: 0x1001
@@ -139,9 +139,9 @@ At devices row 2:
 - Length: 18 bytes
 - Type: 0x01
 - USB Version: 2.00
-- Class: 0xEF
-- Subclass: 0x02
-- Protocol: 0x01
+- Class: 0xEF: Miscellaneous Device
+- Subclass: 0x02: ?
+- Protocol: 0x01: Interface Association
 - Max EP0 packet size: 64 bytes
 - Vendor ID: 0x303A
 - Product ID: 0x1001
