@@ -2,6 +2,10 @@ Opening file tests/mouse/capture.pcap
 Updating after 1 packets decoded
 At traffic-hierarchical row 0:
 + 1 invalid groups
+At traffic-transactions row 0:
++ 1 malformed packet
+At traffic-packets row 0:
++ Malformed packet (invalid PID) of 1 byte: [FF]
 Expanding traffic-hierarchical view, row 0: 1 invalid groups
 At traffic-hierarchical row 1:
 + 1 malformed packet
@@ -18,6 +22,10 @@ At traffic-hierarchical row 0:
 + 1 invalid groups
 + 1 malformed packet
 + Malformed packet (invalid PID) of 1 byte: [FF]
+At traffic-transactions row 1:
++ SETUP transaction on 0.0
+At traffic-packets row 1:
++ SETUP packet on 0.0, CRC 02
 Expanding traffic-hierarchical view, row 3: Incomplete control transfer on device 0
 At traffic-hierarchical row 4:
 + SETUP transaction on 0.0
@@ -30,11 +38,21 @@ At traffic-hierarchical row 4:
 + SETUP transaction on 0.0 with 8 data bytes: [80, 06, 00, 01, 00, 00, 40, 00]
 At traffic-hierarchical row 6:
 + DATA0 packet with CRC 94DD and 8 data bytes: [80, 06, 00, 01, 00, 00, 40, 00]
+At traffic-transactions row 1:
+- SETUP transaction on 0.0
++ SETUP transaction on 0.0 with 8 data bytes: [80, 06, 00, 01, 00, 00, 40, 00]
+At traffic-packets row 2:
++ DATA0 packet with CRC 94DD and 8 data bytes: [80, 06, 00, 01, 00, 00, 40, 00]
 Updating after 4 packets decoded
 At traffic-hierarchical row 4:
 - SETUP transaction on 0.0
 + SETUP transaction on 0.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 40, 00]
 At traffic-hierarchical row 7:
++ ACK packet
+At traffic-transactions row 1:
+- SETUP transaction on 0.0
++ SETUP transaction on 0.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 40, 00]
+At traffic-packets row 3:
 + ACK packet
 Updating after 5 packets decoded
 At traffic-hierarchical row 3:
@@ -42,6 +60,10 @@ At traffic-hierarchical row 3:
 + Getting device descriptor #0 for device 0, reading 0 of 64 requested bytes, incomplete
 At traffic-hierarchical row 8:
 + IN transaction on 0.0
+At traffic-transactions row 2:
++ IN transaction on 0.0
+At traffic-packets row 4:
++ IN packet on 0.0, CRC 02
 Expanding traffic-hierarchical view, row 8: IN transaction on 0.0
 At traffic-hierarchical row 9:
 + IN packet on 0.0, CRC 02
@@ -51,12 +73,21 @@ At traffic-hierarchical row 8:
 + IN transaction on 0.0, NAK
 At traffic-hierarchical row 10:
 + NAK packet
+At traffic-transactions row 2:
+- IN transaction on 0.0
++ IN transaction on 0.0, NAK
+At traffic-packets row 5:
++ NAK packet
 Updating after 7 packets decoded
 At traffic-hierarchical row 3:
 - Incomplete control transfer on device 0
 + Getting device descriptor #0 for device 0, reading 0 of 64 requested bytes, incomplete
 At traffic-hierarchical row 11:
 + IN transaction on 0.0
+At traffic-transactions row 3:
++ IN transaction on 0.0
+At traffic-packets row 6:
++ IN packet on 0.0, CRC 02
 Expanding traffic-hierarchical view, row 11: IN transaction on 0.0
 At traffic-hierarchical row 12:
 + IN packet on 0.0, CRC 02
@@ -66,12 +97,21 @@ At traffic-hierarchical row 11:
 + IN transaction on 0.0, NAK
 At traffic-hierarchical row 13:
 + NAK packet
+At traffic-transactions row 3:
+- IN transaction on 0.0
++ IN transaction on 0.0, NAK
+At traffic-packets row 7:
++ NAK packet
 Updating after 9 packets decoded
 At traffic-hierarchical row 3:
 - Incomplete control transfer on device 0
 + Getting device descriptor #0 for device 0, reading 0 of 64 requested bytes, incomplete
 At traffic-hierarchical row 14:
 + IN transaction on 0.0
+At traffic-transactions row 4:
++ IN transaction on 0.0
+At traffic-packets row 8:
++ IN packet on 0.0, CRC 02
 Expanding traffic-hierarchical view, row 14: IN transaction on 0.0
 At traffic-hierarchical row 15:
 + IN packet on 0.0, CRC 02
@@ -81,11 +121,21 @@ At traffic-hierarchical row 14:
 + IN transaction on 0.0 with 8 data bytes: [12, 01, 00, 02, 00, 00, 00, 08]
 At traffic-hierarchical row 16:
 + DATA1 packet with CRC E757 and 8 data bytes: [12, 01, 00, 02, 00, 00, 00, 08]
+At traffic-transactions row 4:
+- IN transaction on 0.0
++ IN transaction on 0.0 with 8 data bytes: [12, 01, 00, 02, 00, 00, 00, 08]
+At traffic-packets row 9:
++ DATA1 packet with CRC E757 and 8 data bytes: [12, 01, 00, 02, 00, 00, 00, 08]
 Updating after 11 packets decoded
 At traffic-hierarchical row 14:
 - IN transaction on 0.0
 + IN transaction on 0.0 with 8 data bytes, ACK: [12, 01, 00, 02, 00, 00, 00, 08]
 At traffic-hierarchical row 17:
++ ACK packet
+At traffic-transactions row 4:
+- IN transaction on 0.0
++ IN transaction on 0.0 with 8 data bytes, ACK: [12, 01, 00, 02, 00, 00, 00, 08]
+At traffic-packets row 10:
 + ACK packet
 Updating after 12 packets decoded
 At traffic-hierarchical row 3:
@@ -93,88 +143,194 @@ At traffic-hierarchical row 3:
 + Getting device descriptor #0 for device 0, reading 8 of 64 requested bytes, incomplete
 At traffic-hierarchical row 18:
 + IN transaction on 0.0
+At traffic-transactions row 5:
++ IN transaction on 0.0
+At traffic-packets row 11:
++ IN packet on 0.0, CRC 02
 Updating after 13 packets decoded
 At traffic-hierarchical row 18:
 - IN transaction on 0.0
 + IN transaction on 0.0, NAK
+At traffic-transactions row 5:
+- IN transaction on 0.0
++ IN transaction on 0.0, NAK
+At traffic-packets row 12:
++ NAK packet
 Updating after 14 packets decoded
 At traffic-hierarchical row 3:
 - Incomplete control transfer on device 0
 + Getting device descriptor #0 for device 0, reading 8 of 64 requested bytes, incomplete
 At traffic-hierarchical row 19:
 + IN transaction on 0.0
+At traffic-transactions row 6:
++ IN transaction on 0.0
+At traffic-packets row 13:
++ IN packet on 0.0, CRC 02
 Updating after 15 packets decoded
 At traffic-hierarchical row 19:
 - IN transaction on 0.0
 + IN transaction on 0.0, NAK
+At traffic-transactions row 6:
+- IN transaction on 0.0
++ IN transaction on 0.0, NAK
+At traffic-packets row 14:
++ NAK packet
 Updating after 16 packets decoded
 At traffic-hierarchical row 3:
 - Incomplete control transfer on device 0
 + Getting device descriptor #0 for device 0, reading 8 of 64 requested bytes, incomplete
 At traffic-hierarchical row 20:
 + IN transaction on 0.0
+At traffic-transactions row 7:
++ IN transaction on 0.0
+At traffic-packets row 15:
++ IN packet on 0.0, CRC 02
 Updating after 17 packets decoded
 At traffic-hierarchical row 20:
 - IN transaction on 0.0
 + IN transaction on 0.0 with 8 data bytes: [CF, 1B, 05, 00, 14, 00, 00, 02]
+At traffic-transactions row 7:
+- IN transaction on 0.0
++ IN transaction on 0.0 with 8 data bytes: [CF, 1B, 05, 00, 14, 00, 00, 02]
+At traffic-packets row 16:
++ DATA0 packet with CRC 81DC and 8 data bytes: [CF, 1B, 05, 00, 14, 00, 00, 02]
 Updating after 18 packets decoded
 At traffic-hierarchical row 20:
 - IN transaction on 0.0
 + IN transaction on 0.0 with 8 data bytes, ACK: [CF, 1B, 05, 00, 14, 00, 00, 02]
+At traffic-transactions row 7:
+- IN transaction on 0.0
++ IN transaction on 0.0 with 8 data bytes, ACK: [CF, 1B, 05, 00, 14, 00, 00, 02]
+At traffic-packets row 17:
++ ACK packet
 Updating after 19 packets decoded
 At traffic-hierarchical row 3:
 - Incomplete control transfer on device 0
 + Getting device descriptor #0 for device 0, reading 16 of 64 requested bytes, incomplete
 At traffic-hierarchical row 21:
 + IN transaction on 0.0
+At traffic-transactions row 8:
++ IN transaction on 0.0
+At traffic-packets row 18:
++ IN packet on 0.0, CRC 02
 Updating after 20 packets decoded
 At traffic-hierarchical row 21:
 - IN transaction on 0.0
 + IN transaction on 0.0, NAK
+At traffic-transactions row 8:
+- IN transaction on 0.0
++ IN transaction on 0.0, NAK
+At traffic-packets row 19:
++ NAK packet
 Updating after 21 packets decoded
 At traffic-hierarchical row 3:
 - Incomplete control transfer on device 0
 + Getting device descriptor #0 for device 0, reading 16 of 64 requested bytes, incomplete
 At traffic-hierarchical row 22:
 + IN transaction on 0.0
+At traffic-transactions row 9:
++ IN transaction on 0.0
+At traffic-packets row 20:
++ IN packet on 0.0, CRC 02
 Updating after 22 packets decoded
 At traffic-hierarchical row 22:
 - IN transaction on 0.0
 + IN transaction on 0.0 with 2 data bytes: [00, 01]
+At traffic-transactions row 9:
+- IN transaction on 0.0
++ IN transaction on 0.0 with 2 data bytes: [00, 01]
+At traffic-packets row 21:
++ DATA1 packet with CRC 8F3F and 2 data bytes: [00, 01]
 Updating after 23 packets decoded
 At traffic-hierarchical row 22:
 - IN transaction on 0.0
 + IN transaction on 0.0 with 2 data bytes, ACK: [00, 01]
+At traffic-transactions row 9:
+- IN transaction on 0.0
++ IN transaction on 0.0 with 2 data bytes, ACK: [00, 01]
+At traffic-packets row 22:
++ ACK packet
 Updating after 24 packets decoded
 At traffic-hierarchical row 3:
 - Incomplete control transfer on device 0
 + Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes, incomplete
 At traffic-hierarchical row 23:
 + OUT transaction on 0.0
+At traffic-transactions row 10:
++ OUT transaction on 0.0
+At traffic-packets row 23:
++ OUT packet on 0.0, CRC 02
 Updating after 25 packets decoded
 At traffic-hierarchical row 23:
 - OUT transaction on 0.0
 + OUT transaction on 0.0 with no data
+At traffic-transactions row 10:
+- OUT transaction on 0.0
++ OUT transaction on 0.0 with no data
+At traffic-packets row 24:
++ DATA1 packet with CRC 0000 and no data
 Updating after 26 packets decoded
 At traffic-hierarchical row 23:
 - OUT transaction on 0.0
 + OUT transaction on 0.0 with no data, ACK
+At traffic-transactions row 10:
+- OUT transaction on 0.0
++ OUT transaction on 0.0 with no data, ACK
+At traffic-packets row 25:
++ ACK packet
 Updating after 27 packets decoded
 At traffic-hierarchical row 24:
 + Incomplete control transfer on device 0
+At traffic-transactions row 11:
++ SETUP transaction on 0.0
+At traffic-packets row 26:
++ SETUP packet on 0.0, CRC 02
 Updating after 28 packets decoded
+At traffic-transactions row 11:
+- SETUP transaction on 0.0
++ SETUP transaction on 0.0 with 8 data bytes: [00, 05, 04, 00, 00, 00, 00, 00]
+At traffic-packets row 27:
++ DATA0 packet with CRC 70EB and 8 data bytes: [00, 05, 04, 00, 00, 00, 00, 00]
 Updating after 29 packets decoded
+At traffic-transactions row 11:
+- SETUP transaction on 0.0
++ SETUP transaction on 0.0 with 8 data bytes, ACK: [00, 05, 04, 00, 00, 00, 00, 00]
+At traffic-packets row 28:
++ ACK packet
 Updating after 30 packets decoded
 At traffic-hierarchical row 24:
 - Incomplete control transfer on device 0
 + Setting address to 4 for device 0, incomplete
+At traffic-transactions row 12:
++ IN transaction on 0.0
+At traffic-packets row 29:
++ IN packet on 0.0, CRC 02
 Updating after 31 packets decoded
+At traffic-transactions row 12:
+- IN transaction on 0.0
++ IN transaction on 0.0, NAK
+At traffic-packets row 30:
++ NAK packet
 Updating after 32 packets decoded
 At traffic-hierarchical row 24:
 - Incomplete control transfer on device 0
 + Setting address to 4 for device 0, incomplete
+At traffic-transactions row 13:
++ IN transaction on 0.0
+At traffic-packets row 31:
++ IN packet on 0.0, CRC 02
 Updating after 33 packets decoded
+At traffic-transactions row 13:
+- IN transaction on 0.0
++ IN transaction on 0.0 with no data
+At traffic-packets row 32:
++ DATA1 packet with CRC 0000 and no data
 Updating after 34 packets decoded
+At traffic-transactions row 13:
+- IN transaction on 0.0
++ IN transaction on 0.0 with no data, ACK
+At traffic-packets row 33:
++ ACK packet
 Updating after 35 packets decoded
 At traffic-hierarchical row 25:
 + Incomplete control transfer on device 4
@@ -224,62 +380,177 @@ At traffic-hierarchical row 0:
 + IN transaction on 0.0 with 2 data bytes, ACK: [00, 01]
 + OUT transaction on 0.0 with no data, ACK
 + Setting address to 4 for device 0
+At traffic-transactions row 14:
++ SETUP transaction on 4.0
+At traffic-packets row 34:
++ SETUP packet on 4.0, CRC 05
 At devices row 0:
 + Device 4: Unknown
 Expanding devices view, row 0: Device 4: Unknown
 At devices row 1:
 + No device descriptor
 Updating after 36 packets decoded
+At traffic-transactions row 14:
+- SETUP transaction on 4.0
++ SETUP transaction on 4.0 with 8 data bytes: [80, 06, 00, 01, 00, 00, 12, 00]
+At traffic-packets row 35:
++ DATA0 packet with CRC F4E0 and 8 data bytes: [80, 06, 00, 01, 00, 00, 12, 00]
 Updating after 37 packets decoded
+At traffic-transactions row 14:
+- SETUP transaction on 4.0
++ SETUP transaction on 4.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 12, 00]
+At traffic-packets row 36:
++ ACK packet
 Updating after 38 packets decoded
 At traffic-hierarchical row 25:
 - Incomplete control transfer on device 4
 + Getting device descriptor #0 for device 4, reading 0 of 18 requested bytes, incomplete
+At traffic-transactions row 15:
++ IN transaction on 4.0
+At traffic-packets row 37:
++ IN packet on 4.0, CRC 05
 Updating after 39 packets decoded
+At traffic-transactions row 15:
+- IN transaction on 4.0
++ IN transaction on 4.0, NAK
+At traffic-packets row 38:
++ NAK packet
 Updating after 40 packets decoded
 At traffic-hierarchical row 25:
 - Incomplete control transfer on device 4
 + Getting device descriptor #0 for device 4, reading 0 of 18 requested bytes, incomplete
+At traffic-transactions row 16:
++ IN transaction on 4.0
+At traffic-packets row 39:
++ IN packet on 4.0, CRC 05
 Updating after 41 packets decoded
+At traffic-transactions row 16:
+- IN transaction on 4.0
++ IN transaction on 4.0, NAK
+At traffic-packets row 40:
++ NAK packet
 Updating after 42 packets decoded
 At traffic-hierarchical row 25:
 - Incomplete control transfer on device 4
 + Getting device descriptor #0 for device 4, reading 0 of 18 requested bytes, incomplete
+At traffic-transactions row 17:
++ IN transaction on 4.0
+At traffic-packets row 41:
++ IN packet on 4.0, CRC 05
 Updating after 43 packets decoded
+At traffic-transactions row 17:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 8 data bytes: [12, 01, 00, 02, 00, 00, 00, 08]
+At traffic-packets row 42:
++ DATA1 packet with CRC E757 and 8 data bytes: [12, 01, 00, 02, 00, 00, 00, 08]
 Updating after 44 packets decoded
+At traffic-transactions row 17:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 8 data bytes, ACK: [12, 01, 00, 02, 00, 00, 00, 08]
+At traffic-packets row 43:
++ ACK packet
 Updating after 45 packets decoded
 At traffic-hierarchical row 25:
 - Incomplete control transfer on device 4
 + Getting device descriptor #0 for device 4, reading 8 of 18 requested bytes, incomplete
+At traffic-transactions row 18:
++ IN transaction on 4.0
+At traffic-packets row 44:
++ IN packet on 4.0, CRC 05
 Updating after 46 packets decoded
+At traffic-transactions row 18:
+- IN transaction on 4.0
++ IN transaction on 4.0, NAK
+At traffic-packets row 45:
++ NAK packet
 Updating after 47 packets decoded
 At traffic-hierarchical row 25:
 - Incomplete control transfer on device 4
 + Getting device descriptor #0 for device 4, reading 8 of 18 requested bytes, incomplete
+At traffic-transactions row 19:
++ IN transaction on 4.0
+At traffic-packets row 46:
++ IN packet on 4.0, CRC 05
 Updating after 48 packets decoded
+At traffic-transactions row 19:
+- IN transaction on 4.0
++ IN transaction on 4.0, NAK
+At traffic-packets row 47:
++ NAK packet
 Updating after 49 packets decoded
 At traffic-hierarchical row 25:
 - Incomplete control transfer on device 4
 + Getting device descriptor #0 for device 4, reading 8 of 18 requested bytes, incomplete
+At traffic-transactions row 20:
++ IN transaction on 4.0
+At traffic-packets row 48:
++ IN packet on 4.0, CRC 05
 Updating after 50 packets decoded
+At traffic-transactions row 20:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 8 data bytes: [CF, 1B, 05, 00, 14, 00, 00, 02]
+At traffic-packets row 49:
++ DATA0 packet with CRC 81DC and 8 data bytes: [CF, 1B, 05, 00, 14, 00, 00, 02]
 Updating after 51 packets decoded
+At traffic-transactions row 20:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 8 data bytes, ACK: [CF, 1B, 05, 00, 14, 00, 00, 02]
+At traffic-packets row 50:
++ ACK packet
 Updating after 52 packets decoded
 At traffic-hierarchical row 25:
 - Incomplete control transfer on device 4
 + Getting device descriptor #0 for device 4, reading 16 of 18 requested bytes, incomplete
+At traffic-transactions row 21:
++ IN transaction on 4.0
+At traffic-packets row 51:
++ IN packet on 4.0, CRC 05
 Updating after 53 packets decoded
+At traffic-transactions row 21:
+- IN transaction on 4.0
++ IN transaction on 4.0, NAK
+At traffic-packets row 52:
++ NAK packet
 Updating after 54 packets decoded
 At traffic-hierarchical row 25:
 - Incomplete control transfer on device 4
 + Getting device descriptor #0 for device 4, reading 16 of 18 requested bytes, incomplete
+At traffic-transactions row 22:
++ IN transaction on 4.0
+At traffic-packets row 53:
++ IN packet on 4.0, CRC 05
 Updating after 55 packets decoded
+At traffic-transactions row 22:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 2 data bytes: [00, 01]
+At traffic-packets row 54:
++ DATA1 packet with CRC 8F3F and 2 data bytes: [00, 01]
 Updating after 56 packets decoded
+At traffic-transactions row 22:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 2 data bytes, ACK: [00, 01]
+At traffic-packets row 55:
++ ACK packet
 Updating after 57 packets decoded
 At traffic-hierarchical row 25:
 - Incomplete control transfer on device 4
 + Getting device descriptor #0 for device 4, reading 18 bytes, incomplete
+At traffic-transactions row 23:
++ OUT transaction on 4.0
+At traffic-packets row 56:
++ OUT packet on 4.0, CRC 05
 Updating after 58 packets decoded
+At traffic-transactions row 23:
+- OUT transaction on 4.0
++ OUT transaction on 4.0 with no data
+At traffic-packets row 57:
++ DATA1 packet with CRC 0000 and no data
 Updating after 59 packets decoded
+At traffic-transactions row 23:
+- OUT transaction on 4.0
++ OUT transaction on 4.0 with no data, ACK
+At traffic-packets row 58:
++ ACK packet
 At devices row 0:
 - Device 4: Unknown
 + Device 4: 1BCF:0005
@@ -304,41 +575,124 @@ At devices row 2:
 Updating after 60 packets decoded
 At traffic-hierarchical row 26:
 + Incomplete control transfer on device 4
+At traffic-transactions row 24:
++ SETUP transaction on 4.0
+At traffic-packets row 59:
++ SETUP packet on 4.0, CRC 05
 Updating after 61 packets decoded
+At traffic-transactions row 24:
+- SETUP transaction on 4.0
++ SETUP transaction on 4.0 with 8 data bytes: [80, 06, 00, 02, 00, 00, 09, 00]
+At traffic-packets row 60:
++ DATA0 packet with CRC 04AE and 8 data bytes: [80, 06, 00, 02, 00, 00, 09, 00]
 Updating after 62 packets decoded
+At traffic-transactions row 24:
+- SETUP transaction on 4.0
++ SETUP transaction on 4.0 with 8 data bytes, ACK: [80, 06, 00, 02, 00, 00, 09, 00]
+At traffic-packets row 61:
++ ACK packet
 Updating after 63 packets decoded
 At traffic-hierarchical row 26:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 0 of 9 requested bytes, incomplete
+At traffic-transactions row 25:
++ IN transaction on 4.0
+At traffic-packets row 62:
++ IN packet on 4.0, CRC 05
 Updating after 64 packets decoded
+At traffic-transactions row 25:
+- IN transaction on 4.0
++ IN transaction on 4.0, NAK
+At traffic-packets row 63:
++ NAK packet
 Updating after 65 packets decoded
 At traffic-hierarchical row 26:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 0 of 9 requested bytes, incomplete
+At traffic-transactions row 26:
++ IN transaction on 4.0
+At traffic-packets row 64:
++ IN packet on 4.0, CRC 05
 Updating after 66 packets decoded
+At traffic-transactions row 26:
+- IN transaction on 4.0
++ IN transaction on 4.0, NAK
+At traffic-packets row 65:
++ NAK packet
 Updating after 67 packets decoded
 At traffic-hierarchical row 26:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 0 of 9 requested bytes, incomplete
+At traffic-transactions row 27:
++ IN transaction on 4.0
+At traffic-packets row 66:
++ IN packet on 4.0, CRC 05
 Updating after 68 packets decoded
+At traffic-transactions row 27:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 8 data bytes: [09, 02, 22, 00, 01, 01, 00, A0]
+At traffic-packets row 67:
++ DATA1 packet with CRC 980A and 8 data bytes: [09, 02, 22, 00, 01, 01, 00, A0]
 Updating after 69 packets decoded
+At traffic-transactions row 27:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 8 data bytes, ACK: [09, 02, 22, 00, 01, 01, 00, A0]
+At traffic-packets row 68:
++ ACK packet
 Updating after 70 packets decoded
 At traffic-hierarchical row 26:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 8 of 9 requested bytes, incomplete
+At traffic-transactions row 28:
++ IN transaction on 4.0
+At traffic-packets row 69:
++ IN packet on 4.0, CRC 05
 Updating after 71 packets decoded
+At traffic-transactions row 28:
+- IN transaction on 4.0
++ IN transaction on 4.0, NAK
+At traffic-packets row 70:
++ NAK packet
 Updating after 72 packets decoded
 At traffic-hierarchical row 26:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 8 of 9 requested bytes, incomplete
+At traffic-transactions row 29:
++ IN transaction on 4.0
+At traffic-packets row 71:
++ IN packet on 4.0, CRC 05
 Updating after 73 packets decoded
+At traffic-transactions row 29:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 1 data bytes: '1'
+At traffic-packets row 72:
++ DATA0 packet with CRC 6B81 and 1 data bytes: '1'
 Updating after 74 packets decoded
+At traffic-transactions row 29:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 1 data bytes, ACK: '1'
+At traffic-packets row 73:
++ ACK packet
 Updating after 75 packets decoded
 At traffic-hierarchical row 26:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 9 bytes, incomplete
+At traffic-transactions row 30:
++ OUT transaction on 4.0
+At traffic-packets row 74:
++ OUT packet on 4.0, CRC 05
 Updating after 76 packets decoded
+At traffic-transactions row 30:
+- OUT transaction on 4.0
++ OUT transaction on 4.0 with no data
+At traffic-packets row 75:
++ DATA1 packet with CRC 0000 and no data
 Updating after 77 packets decoded
+At traffic-transactions row 30:
+- OUT transaction on 4.0
++ OUT transaction on 4.0 with no data, ACK
+At traffic-packets row 76:
++ ACK packet
 At devices row 0:
 - Device 4: Unknown
 + Device 4: 1BCF:0005
@@ -360,92 +714,271 @@ At devices row 17:
 Updating after 78 packets decoded
 At traffic-hierarchical row 27:
 + Incomplete control transfer on device 4
+At traffic-transactions row 31:
++ SETUP transaction on 4.0
+At traffic-packets row 77:
++ SETUP packet on 4.0, CRC 05
 At devices row 0:
 - Device 4: Unknown
 + Device 4: 1BCF:0005
 Updating after 79 packets decoded
+At traffic-transactions row 31:
+- SETUP transaction on 4.0
++ SETUP transaction on 4.0 with 8 data bytes: [80, 06, 00, 02, 00, 00, 22, 00]
+At traffic-packets row 78:
++ DATA0 packet with CRC F4B0 and 8 data bytes: [80, 06, 00, 02, 00, 00, 22, 00]
 Updating after 80 packets decoded
+At traffic-transactions row 31:
+- SETUP transaction on 4.0
++ SETUP transaction on 4.0 with 8 data bytes, ACK: [80, 06, 00, 02, 00, 00, 22, 00]
+At traffic-packets row 79:
++ ACK packet
 Updating after 81 packets decoded
 At traffic-hierarchical row 27:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 0 of 34 requested bytes, incomplete
+At traffic-transactions row 32:
++ IN transaction on 4.0
+At traffic-packets row 80:
++ IN packet on 4.0, CRC 05
 Updating after 82 packets decoded
+At traffic-transactions row 32:
+- IN transaction on 4.0
++ IN transaction on 4.0, NAK
+At traffic-packets row 81:
++ NAK packet
 Updating after 83 packets decoded
 At traffic-hierarchical row 27:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 0 of 34 requested bytes, incomplete
+At traffic-transactions row 33:
++ IN transaction on 4.0
+At traffic-packets row 82:
++ IN packet on 4.0, CRC 05
 Updating after 84 packets decoded
+At traffic-transactions row 33:
+- IN transaction on 4.0
++ IN transaction on 4.0, NAK
+At traffic-packets row 83:
++ NAK packet
 Updating after 85 packets decoded
 At traffic-hierarchical row 27:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 0 of 34 requested bytes, incomplete
+At traffic-transactions row 34:
++ IN transaction on 4.0
+At traffic-packets row 84:
++ IN packet on 4.0, CRC 05
 Updating after 86 packets decoded
+At traffic-transactions row 34:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 8 data bytes: [09, 02, 22, 00, 01, 01, 00, A0]
+At traffic-packets row 85:
++ DATA1 packet with CRC 980A and 8 data bytes: [09, 02, 22, 00, 01, 01, 00, A0]
 Updating after 87 packets decoded
+At traffic-transactions row 34:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 8 data bytes, ACK: [09, 02, 22, 00, 01, 01, 00, A0]
+At traffic-packets row 86:
++ ACK packet
 Updating after 88 packets decoded
 At traffic-hierarchical row 27:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 8 of 34 requested bytes, incomplete
+At traffic-transactions row 35:
++ IN transaction on 4.0
+At traffic-packets row 87:
++ IN packet on 4.0, CRC 05
 Updating after 89 packets decoded
+At traffic-transactions row 35:
+- IN transaction on 4.0
++ IN transaction on 4.0, NAK
+At traffic-packets row 88:
++ NAK packet
 Updating after 90 packets decoded
 At traffic-hierarchical row 27:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 8 of 34 requested bytes, incomplete
+At traffic-transactions row 36:
++ IN transaction on 4.0
+At traffic-packets row 89:
++ IN packet on 4.0, CRC 05
 Updating after 91 packets decoded
+At traffic-transactions row 36:
+- IN transaction on 4.0
++ IN transaction on 4.0, NAK
+At traffic-packets row 90:
++ NAK packet
 Updating after 92 packets decoded
 At traffic-hierarchical row 27:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 8 of 34 requested bytes, incomplete
+At traffic-transactions row 37:
++ IN transaction on 4.0
+At traffic-packets row 91:
++ IN packet on 4.0, CRC 05
 Updating after 93 packets decoded
+At traffic-transactions row 37:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 8 data bytes: [31, 09, 04, 00, 00, 01, 03, 01]
+At traffic-packets row 92:
++ DATA0 packet with CRC 5875 and 8 data bytes: [31, 09, 04, 00, 00, 01, 03, 01]
 Updating after 94 packets decoded
+At traffic-transactions row 37:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 8 data bytes, ACK: [31, 09, 04, 00, 00, 01, 03, 01]
+At traffic-packets row 93:
++ ACK packet
 Updating after 95 packets decoded
 At traffic-hierarchical row 27:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 16 of 34 requested bytes, incomplete
+At traffic-transactions row 38:
++ IN transaction on 4.0
+At traffic-packets row 94:
++ IN packet on 4.0, CRC 05
 Updating after 96 packets decoded
+At traffic-transactions row 38:
+- IN transaction on 4.0
++ IN transaction on 4.0, NAK
+At traffic-packets row 95:
++ NAK packet
 Updating after 97 packets decoded
 At traffic-hierarchical row 27:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 16 of 34 requested bytes, incomplete
+At traffic-transactions row 39:
++ IN transaction on 4.0
+At traffic-packets row 96:
++ IN packet on 4.0, CRC 05
 Updating after 98 packets decoded
+At traffic-transactions row 39:
+- IN transaction on 4.0
++ IN transaction on 4.0, NAK
+At traffic-packets row 97:
++ NAK packet
 Updating after 99 packets decoded
 At traffic-hierarchical row 27:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 16 of 34 requested bytes, incomplete
+At traffic-transactions row 40:
++ IN transaction on 4.0
+At traffic-packets row 98:
++ IN packet on 4.0, CRC 05
 Updating after 100 packets decoded
+At traffic-transactions row 40:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 8 data bytes: [02, 00, 09, 21, 10, 01, 00, 01]
+At traffic-packets row 99:
++ DATA1 packet with CRC 7316 and 8 data bytes: [02, 00, 09, 21, 10, 01, 00, 01]
 Updating after 101 packets decoded
+At traffic-transactions row 40:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 8 data bytes, ACK: [02, 00, 09, 21, 10, 01, 00, 01]
+At traffic-packets row 100:
++ ACK packet
 Updating after 102 packets decoded
 At traffic-hierarchical row 27:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 24 of 34 requested bytes, incomplete
+At traffic-transactions row 41:
++ IN transaction on 4.0
+At traffic-packets row 101:
++ IN packet on 4.0, CRC 05
 Updating after 103 packets decoded
+At traffic-transactions row 41:
+- IN transaction on 4.0
++ IN transaction on 4.0, NAK
+At traffic-packets row 102:
++ NAK packet
 Updating after 104 packets decoded
 At traffic-hierarchical row 27:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 24 of 34 requested bytes, incomplete
+At traffic-transactions row 42:
++ IN transaction on 4.0
+At traffic-packets row 103:
++ IN packet on 4.0, CRC 05
 Updating after 105 packets decoded
+At traffic-transactions row 42:
+- IN transaction on 4.0
++ IN transaction on 4.0, NAK
+At traffic-packets row 104:
++ NAK packet
 Updating after 106 packets decoded
 At traffic-hierarchical row 27:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 24 of 34 requested bytes, incomplete
+At traffic-transactions row 43:
++ IN transaction on 4.0
+At traffic-packets row 105:
++ IN packet on 4.0, CRC 05
 Updating after 107 packets decoded
+At traffic-transactions row 43:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 8 data bytes: [22, 4B, 00, 07, 05, 81, 03, 07]
+At traffic-packets row 106:
++ DATA0 packet with CRC 2763 and 8 data bytes: [22, 4B, 00, 07, 05, 81, 03, 07]
 Updating after 108 packets decoded
+At traffic-transactions row 43:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 8 data bytes, ACK: [22, 4B, 00, 07, 05, 81, 03, 07]
+At traffic-packets row 107:
++ ACK packet
 Updating after 109 packets decoded
 At traffic-hierarchical row 27:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 32 of 34 requested bytes, incomplete
+At traffic-transactions row 44:
++ IN transaction on 4.0
+At traffic-packets row 108:
++ IN packet on 4.0, CRC 05
 Updating after 110 packets decoded
+At traffic-transactions row 44:
+- IN transaction on 4.0
++ IN transaction on 4.0, NAK
+At traffic-packets row 109:
++ NAK packet
 Updating after 111 packets decoded
 At traffic-hierarchical row 27:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 32 of 34 requested bytes, incomplete
+At traffic-transactions row 45:
++ IN transaction on 4.0
+At traffic-packets row 110:
++ IN packet on 4.0, CRC 05
 Updating after 112 packets decoded
+At traffic-transactions row 45:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 2 data bytes: [00, 0A]
+At traffic-packets row 111:
++ DATA1 packet with CRC 487E and 2 data bytes: [00, 0A]
 Updating after 113 packets decoded
+At traffic-transactions row 45:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 2 data bytes, ACK: [00, 0A]
+At traffic-packets row 112:
++ ACK packet
 Updating after 114 packets decoded
 At traffic-hierarchical row 27:
 - Incomplete control transfer on device 4
 + Getting configuration descriptor #0 for device 4, reading 34 bytes, incomplete
+At traffic-transactions row 46:
++ OUT transaction on 4.0
+At traffic-packets row 113:
++ OUT packet on 4.0, CRC 05
 Updating after 115 packets decoded
+At traffic-transactions row 46:
+- OUT transaction on 4.0
++ OUT transaction on 4.0 with no data
+At traffic-packets row 114:
++ DATA1 packet with CRC 0000 and no data
 Updating after 116 packets decoded
+At traffic-transactions row 46:
+- OUT transaction on 4.0
++ OUT transaction on 4.0 with no data, ACK
+At traffic-packets row 115:
++ ACK packet
 At devices row 0:
 - Device 4: Unknown
 + Device 4: 1BCF:0005
@@ -477,109 +1010,330 @@ At devices row 37:
 Updating after 117 packets decoded
 At traffic-hierarchical row 28:
 + Incomplete control transfer on device 4
+At traffic-transactions row 47:
++ SETUP transaction on 4.0
+At traffic-packets row 116:
++ SETUP packet on 4.0, CRC 05
 Updating after 118 packets decoded
+At traffic-transactions row 47:
+- SETUP transaction on 4.0
++ SETUP transaction on 4.0 with 8 data bytes: [80, 06, 00, 03, 00, 00, FF, 00]
+At traffic-packets row 117:
++ DATA0 packet with CRC 64D4 and 8 data bytes: [80, 06, 00, 03, 00, 00, FF, 00]
 Updating after 119 packets decoded
+At traffic-transactions row 47:
+- SETUP transaction on 4.0
++ SETUP transaction on 4.0 with 8 data bytes, ACK: [80, 06, 00, 03, 00, 00, FF, 00]
+At traffic-packets row 118:
++ ACK packet
 Updating after 120 packets decoded
 At traffic-hierarchical row 28:
 - Incomplete control transfer on device 4
 + Getting string descriptor #0 for device 4, reading 0 of 255 requested bytes, incomplete
+At traffic-transactions row 48:
++ IN transaction on 4.0
+At traffic-packets row 119:
++ IN packet on 4.0, CRC 05
 Updating after 121 packets decoded
+At traffic-transactions row 48:
+- IN transaction on 4.0
++ IN transaction on 4.0, NAK
+At traffic-packets row 120:
++ NAK packet
 Updating after 122 packets decoded
 At traffic-hierarchical row 28:
 - Incomplete control transfer on device 4
 + Getting string descriptor #0 for device 4, reading 0 of 255 requested bytes, incomplete
+At traffic-transactions row 49:
++ IN transaction on 4.0
+At traffic-packets row 121:
++ IN packet on 4.0, CRC 05
 Updating after 123 packets decoded
+At traffic-transactions row 49:
+- IN transaction on 4.0
++ IN transaction on 4.0, NAK
+At traffic-packets row 122:
++ NAK packet
 Updating after 124 packets decoded
 At traffic-hierarchical row 28:
 - Incomplete control transfer on device 4
 + Getting string descriptor #0 for device 4, reading 0 of 255 requested bytes, incomplete
+At traffic-transactions row 50:
++ IN transaction on 4.0
+At traffic-packets row 123:
++ IN packet on 4.0, CRC 05
 Updating after 125 packets decoded
+At traffic-transactions row 50:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 4 data bytes: [04, 03, 09, 04]
+At traffic-packets row 124:
++ DATA1 packet with CRC 7809 and 4 data bytes: [04, 03, 09, 04]
 Updating after 126 packets decoded
+At traffic-transactions row 50:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 4 data bytes, ACK: [04, 03, 09, 04]
+At traffic-packets row 125:
++ ACK packet
 Updating after 127 packets decoded
 At traffic-hierarchical row 28:
 - Incomplete control transfer on device 4
 + Getting string descriptor #0 for device 4, reading 4 of 255 requested bytes, incomplete
+At traffic-transactions row 51:
++ OUT transaction on 4.0
+At traffic-packets row 126:
++ OUT packet on 4.0, CRC 05
 Updating after 128 packets decoded
+At traffic-transactions row 51:
+- OUT transaction on 4.0
++ OUT transaction on 4.0 with no data
+At traffic-packets row 127:
++ DATA1 packet with CRC 0000 and no data
 Updating after 129 packets decoded
+At traffic-transactions row 51:
+- OUT transaction on 4.0
++ OUT transaction on 4.0 with no data, ACK
+At traffic-packets row 128:
++ ACK packet
 At devices row 0:
 - Device 4: Unknown
 + Device 4: 1BCF:0005
 Updating after 130 packets decoded
 At traffic-hierarchical row 29:
 + Incomplete control transfer on device 4
+At traffic-transactions row 52:
++ SETUP transaction on 4.0
+At traffic-packets row 129:
++ SETUP packet on 4.0, CRC 05
 Updating after 131 packets decoded
+At traffic-transactions row 52:
+- SETUP transaction on 4.0
++ SETUP transaction on 4.0 with 8 data bytes: [80, 06, 02, 03, 09, 04, FF, 00]
+At traffic-packets row 130:
++ DATA0 packet with CRC DB97 and 8 data bytes: [80, 06, 02, 03, 09, 04, FF, 00]
 Updating after 132 packets decoded
+At traffic-transactions row 52:
+- SETUP transaction on 4.0
++ SETUP transaction on 4.0 with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, FF, 00]
+At traffic-packets row 131:
++ ACK packet
 Updating after 133 packets decoded
 At traffic-hierarchical row 29:
 - Incomplete control transfer on device 4
 + Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 0 of 255 requested bytes, incomplete
+At traffic-transactions row 53:
++ IN transaction on 4.0
+At traffic-packets row 132:
++ IN packet on 4.0, CRC 05
 Updating after 134 packets decoded
+At traffic-transactions row 53:
+- IN transaction on 4.0
++ IN transaction on 4.0, NAK
+At traffic-packets row 133:
++ NAK packet
 Updating after 135 packets decoded
 At traffic-hierarchical row 29:
 - Incomplete control transfer on device 4
 + Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 0 of 255 requested bytes, incomplete
+At traffic-transactions row 54:
++ IN transaction on 4.0
+At traffic-packets row 134:
++ IN packet on 4.0, CRC 05
 Updating after 136 packets decoded
+At traffic-transactions row 54:
+- IN transaction on 4.0
++ IN transaction on 4.0, NAK
+At traffic-packets row 135:
++ NAK packet
 Updating after 137 packets decoded
 At traffic-hierarchical row 29:
 - Incomplete control transfer on device 4
 + Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 0 of 255 requested bytes, incomplete
+At traffic-transactions row 55:
++ IN transaction on 4.0
+At traffic-packets row 136:
++ IN packet on 4.0, CRC 05
 Updating after 138 packets decoded
+At traffic-transactions row 55:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 8 data bytes: [24, 03, 55, 00, 53, 00, 42, 00]
+At traffic-packets row 137:
++ DATA1 packet with CRC FEA2 and 8 data bytes: [24, 03, 55, 00, 53, 00, 42, 00]
 Updating after 139 packets decoded
+At traffic-transactions row 55:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 8 data bytes, ACK: [24, 03, 55, 00, 53, 00, 42, 00]
+At traffic-packets row 138:
++ ACK packet
 Updating after 140 packets decoded
 At traffic-hierarchical row 29:
 - Incomplete control transfer on device 4
 + Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 8 of 255 requested bytes: 'USB', incomplete
+At traffic-transactions row 56:
++ IN transaction on 4.0
+At traffic-packets row 139:
++ IN packet on 4.0, CRC 05
 Updating after 141 packets decoded
+At traffic-transactions row 56:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 8 data bytes: [20, 00, 4F, 00, 70, 00, 74, 00]
+At traffic-packets row 140:
++ DATA0 packet with CRC 138E and 8 data bytes: [20, 00, 4F, 00, 70, 00, 74, 00]
 Updating after 142 packets decoded
+At traffic-transactions row 56:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 8 data bytes, ACK: [20, 00, 4F, 00, 70, 00, 74, 00]
+At traffic-packets row 141:
++ ACK packet
 Updating after 143 packets decoded
 At traffic-hierarchical row 29:
 - Incomplete control transfer on device 4
 + Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 16 of 255 requested bytes: 'USB Opt', incomplete
+At traffic-transactions row 57:
++ IN transaction on 4.0
+At traffic-packets row 142:
++ IN packet on 4.0, CRC 05
 Updating after 144 packets decoded
+At traffic-transactions row 57:
+- IN transaction on 4.0
++ IN transaction on 4.0, NAK
+At traffic-packets row 143:
++ NAK packet
 Updating after 145 packets decoded
 At traffic-hierarchical row 29:
 - Incomplete control transfer on device 4
 + Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 16 of 255 requested bytes: 'USB Opt', incomplete
+At traffic-transactions row 58:
++ IN transaction on 4.0
+At traffic-packets row 144:
++ IN packet on 4.0, CRC 05
 Updating after 146 packets decoded
+At traffic-transactions row 58:
+- IN transaction on 4.0
++ IN transaction on 4.0, NAK
+At traffic-packets row 145:
++ NAK packet
 Updating after 147 packets decoded
 At traffic-hierarchical row 29:
 - Incomplete control transfer on device 4
 + Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 16 of 255 requested bytes: 'USB Opt', incomplete
+At traffic-transactions row 59:
++ IN transaction on 4.0
+At traffic-packets row 146:
++ IN packet on 4.0, CRC 05
 Updating after 148 packets decoded
+At traffic-transactions row 59:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 8 data bytes: [69, 00, 63, 00, 61, 00, 6C, 00]
+At traffic-packets row 147:
++ DATA1 packet with CRC D942 and 8 data bytes: [69, 00, 63, 00, 61, 00, 6C, 00]
 Updating after 149 packets decoded
+At traffic-transactions row 59:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 8 data bytes, ACK: [69, 00, 63, 00, 61, 00, 6C, 00]
+At traffic-packets row 148:
++ ACK packet
 Updating after 150 packets decoded
 At traffic-hierarchical row 29:
 - Incomplete control transfer on device 4
 + Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 24 of 255 requested bytes: 'USB Optical', incomplete
+At traffic-transactions row 60:
++ IN transaction on 4.0
+At traffic-packets row 149:
++ IN packet on 4.0, CRC 05
 Updating after 151 packets decoded
+At traffic-transactions row 60:
+- IN transaction on 4.0
++ IN transaction on 4.0, NAK
+At traffic-packets row 150:
++ NAK packet
 Updating after 152 packets decoded
 At traffic-hierarchical row 29:
 - Incomplete control transfer on device 4
 + Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 24 of 255 requested bytes: 'USB Optical', incomplete
+At traffic-transactions row 61:
++ IN transaction on 4.0
+At traffic-packets row 151:
++ IN packet on 4.0, CRC 05
 Updating after 153 packets decoded
+At traffic-transactions row 61:
+- IN transaction on 4.0
++ IN transaction on 4.0, NAK
+At traffic-packets row 152:
++ NAK packet
 Updating after 154 packets decoded
 At traffic-hierarchical row 29:
 - Incomplete control transfer on device 4
 + Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 24 of 255 requested bytes: 'USB Optical', incomplete
+At traffic-transactions row 62:
++ IN transaction on 4.0
+At traffic-packets row 153:
++ IN packet on 4.0, CRC 05
 Updating after 155 packets decoded
+At traffic-transactions row 62:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 8 data bytes: [20, 00, 4D, 00, 6F, 00, 75, 00]
+At traffic-packets row 154:
++ DATA0 packet with CRC B589 and 8 data bytes: [20, 00, 4D, 00, 6F, 00, 75, 00]
 Updating after 156 packets decoded
+At traffic-transactions row 62:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 8 data bytes, ACK: [20, 00, 4D, 00, 6F, 00, 75, 00]
+At traffic-packets row 155:
++ ACK packet
 Updating after 157 packets decoded
 At traffic-hierarchical row 29:
 - Incomplete control transfer on device 4
 + Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 32 of 255 requested bytes: 'USB Optical Mou', incomplete
+At traffic-transactions row 63:
++ IN transaction on 4.0
+At traffic-packets row 156:
++ IN packet on 4.0, CRC 05
 Updating after 158 packets decoded
+At traffic-transactions row 63:
+- IN transaction on 4.0
++ IN transaction on 4.0, NAK
+At traffic-packets row 157:
++ NAK packet
 Updating after 159 packets decoded
 At traffic-hierarchical row 29:
 - Incomplete control transfer on device 4
 + Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 32 of 255 requested bytes: 'USB Optical Mou', incomplete
+At traffic-transactions row 64:
++ IN transaction on 4.0
+At traffic-packets row 158:
++ IN packet on 4.0, CRC 05
 Updating after 160 packets decoded
+At traffic-transactions row 64:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 4 data bytes: [73, 00, 65, 00]
+At traffic-packets row 159:
++ DATA1 packet with CRC 0FCE and 4 data bytes: [73, 00, 65, 00]
 Updating after 161 packets decoded
+At traffic-transactions row 64:
+- IN transaction on 4.0
++ IN transaction on 4.0 with 4 data bytes, ACK: [73, 00, 65, 00]
+At traffic-packets row 160:
++ ACK packet
 Updating after 162 packets decoded
 At traffic-hierarchical row 29:
 - Incomplete control transfer on device 4
 + Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 36 of 255 requested bytes: 'USB Optical Mouse', incomplete
+At traffic-transactions row 65:
++ OUT transaction on 4.0
+At traffic-packets row 161:
++ OUT packet on 4.0, CRC 05
 Updating after 163 packets decoded
+At traffic-transactions row 65:
+- OUT transaction on 4.0
++ OUT transaction on 4.0 with no data
+At traffic-packets row 162:
++ DATA1 packet with CRC 0000 and no data
 Updating after 164 packets decoded
+At traffic-transactions row 65:
+- OUT transaction on 4.0
++ OUT transaction on 4.0 with no data, ACK
+At traffic-packets row 163:
++ ACK packet
 At devices row 0:
 - Device 4: Unknown
 + Device 4: USB Optical Mouse

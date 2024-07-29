@@ -95,7 +95,8 @@ use {
     crate::record_ui::Recording,
 };
 
-const TRAFFIC_MODES: [TrafficViewMode; 1] = [Hierarchical];
+const TRAFFIC_MODES: [TrafficViewMode; 3] =
+    [Hierarchical, Transactions, Packets];
 
 static TOTAL: AtomicU64 = AtomicU64::new(0);
 static CURRENT: AtomicU64 = AtomicU64::new(0);
