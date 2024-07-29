@@ -966,7 +966,7 @@ where Item: 'static + Copy + Debug,
 
     pub fn connectors(&self, item: &Item) -> String {
         let mut cap = self.capture.borrow_mut();
-        match cap.connectors(item) {
+        match cap.connectors(self.view_mode, item) {
             Ok(string) => string,
             Err(e) => format!("Error: {e:?}")
         }

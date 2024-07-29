@@ -1155,7 +1155,10 @@ pub trait ItemSource<Item, ViewMode> {
                      view_mode: ViewMode)
         -> Result<(CompletionStatus, u64), Error>;
     fn summary(&mut self, item: &Item) -> Result<String, Error>;
-    fn connectors(&mut self, item: &Item) -> Result<String, Error>;
+    fn connectors(&mut self,
+                  view_mode: ViewMode,
+                  item: &Item)
+        -> Result<String, Error>;
     fn timestamp(&mut self, item: &Item) -> Result<Timestamp, Error>;
 }
 
@@ -1466,7 +1469,7 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
         })
     }
 
-    fn connectors(&mut self, item: &TrafficItem)
+    fn connectors(&mut self, _view_mode: TrafficViewMode, item: &TrafficItem)
         -> Result<String, Error>
     {
         use EndpointState::*;
@@ -1788,7 +1791,9 @@ impl ItemSource<DeviceItem, ()> for CaptureReader {
         })
     }
 
-    fn connectors(&mut self, item: &DeviceItem) -> Result<String, Error> {
+    fn connectors(&mut self, _view_mode: (), item: &DeviceItem)
+        -> Result<String, Error>
+    {
         use DeviceItem::*;
         let depth = match item {
             Device(..) => 0,
