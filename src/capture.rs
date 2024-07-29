@@ -223,6 +223,8 @@ pub enum TrafficItem {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum TrafficViewMode {
     Hierarchical,
+    Transactions,
+    Packets,
 }
 
 impl TrafficViewMode {
@@ -230,6 +232,8 @@ impl TrafficViewMode {
         use TrafficViewMode::*;
         match self {
             Hierarchical => "Hierarchical",
+            Transactions => "Transactions",
+            Packets      => "Packets",
         }
     }
 
@@ -237,6 +241,8 @@ impl TrafficViewMode {
         use TrafficViewMode::*;
         match self {
             Hierarchical => "traffic-hierarchical",
+            Transactions => "traffic-transactions",
+            Packets      => "traffic-packets",
         }
     }
 
@@ -244,6 +250,8 @@ impl TrafficViewMode {
         use TrafficViewMode::*;
         match log_name {
             "traffic-hierarchical" => Hierarchical,
+            "traffic-transactions" => Transactions,
+            "traffic-packets"      => Packets,
             _ => panic!("Unrecognised log name '{log_name}'")
         }
     }
@@ -1178,6 +1186,10 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                     let transfer_id = self.item_index.get(item_id)?;
                     Transfer(transfer_id)
                 },
+                Transactions =>
+                    Transaction(None, TransactionId::from(index)),
+                Packets =>
+                    Packet(None, None, PacketId::from(index)),
             }),
             Some(item) => self.child_item(item, index)
         }
@@ -1222,6 +1234,8 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
             None => {
                 (self.completion(), match view_mode {
                     Hierarchical => self.item_index.len(),
+                    Transactions => self.transaction_index.len(),
+                    Packets => self.packet_index.len(),
                 })
             },
             Some(Transfer(transfer_id)) => {
@@ -1469,11 +1483,30 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
         })
     }
 
-    fn connectors(&mut self, _view_mode: TrafficViewMode, item: &TrafficItem)
+    fn connectors(&mut self, view_mode: TrafficViewMode, item: &TrafficItem)
         -> Result<String, Error>
     {
         use EndpointState::*;
         use TrafficItem::*;
+        use TrafficViewMode::*;
+        if view_mode == Packets {
+            return Ok(String::from(""));
+        }
+        let last_packet = match item {
+            Packet(_, Some(transaction_id), packet_id) => {
+                let range = self.transaction_index.target_range(
+                    *transaction_id, self.packet_index.len())?;
+                *packet_id == range.end - 1
+            }, _ => false
+        };
+        if view_mode == Transactions {
+            return Ok(String::from(match (item, last_packet) {
+                (Transfer(_), _)     => unreachable!(),
+                (Transaction(..), _) => "○",
+                (Packet(..), false)  => "├──",
+                (Packet(..), true )  => "└──",
+            }));
+        }
         let endpoint_count = self.endpoints.len() as usize;
         let max_string_length = endpoint_count + "    └──".len();
         let mut connectors = String::with_capacity(max_string_length);
@@ -1494,13 +1527,6 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                 let last_transaction_id =
                     ep_traf.transaction_ids.get(range.end - 1)?;
                 *transaction_id == last_transaction_id
-            }, _ => false
-        };
-        let last_packet = match item {
-            Packet(_, Some(transaction_id), packet_id) => {
-                let range = self.transaction_index.target_range(
-                    *transaction_id, self.packet_index.len())?;
-                *packet_id == range.end - 1
             }, _ => false
         };
         let last = last_transaction && !extended;
