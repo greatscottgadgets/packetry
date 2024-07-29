@@ -218,8 +218,8 @@ pub type DeviceVersion = u32;
 #[derive(Copy, Clone, Debug)]
 pub enum TrafficItem {
     Transfer(TransferId),
-    Transaction(TransferId, TransactionId),
-    Packet(TransferId, TransactionId, PacketId),
+    Transaction(Option<TransferId>, TransactionId),
+    Packet(Option<TransferId>, Option<TransactionId>, PacketId),
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
@@ -1294,7 +1294,7 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
         use TrafficItem::*;
         Ok(match parent {
             Transfer(transfer_id) =>
-                Transaction(*transfer_id, {
+                Transaction(Some(*transfer_id), {
                     let entry = self.transfer_index.get(*transfer_id)?;
                     let endpoint_id = entry.endpoint_id();
                     let ep_transfer_id = entry.transfer_id();
@@ -1302,8 +1302,8 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                     let offset = ep_traf.transfer_index.get(ep_transfer_id)?;
                     ep_traf.transaction_ids.get(offset + index)?
                 }),
-            Transaction(transfer_id, transaction_id) =>
-                Packet(*transfer_id, *transaction_id, {
+            Transaction(transfer_id_opt, transaction_id) =>
+                Packet(*transfer_id_opt, Some(*transaction_id), {
                     self.transaction_index.get(*transaction_id)? + index}),
             Packet(..) => bail!("Packets have no child items")
         })
@@ -1476,12 +1476,10 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                 }
                 s
             },
-            Transaction(transfer_id, transaction_id) => {
-                let entry = self.transfer_index.get(*transfer_id)?;
-                let endpoint_id = entry.endpoint_id();
-                let endpoint = self.endpoints.get(endpoint_id)?;
+            Transaction(transfer_id_opt, transaction_id) => {
+                let num_packets = self.packet_index.len();
                 let packet_id_range = self.transaction_index.target_range(
-                    *transaction_id, self.packet_index.len())?;
+                    *transaction_id, num_packets)?;
                 let start_packet_id = packet_id_range.start;
                 let start_packet = self.packet(start_packet_id)?;
                 let packet_count = packet_id_range.len();
@@ -1498,7 +1496,34 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                     }
                     writeln!(s)?;
                 }
-                if validate_packet(&start_packet).is_ok() {
+                if let Ok(pid) = validate_packet(&start_packet) {
+                    if pid == SPLIT && start_packet_id.value + 1 == num_packets {
+                        // We can't know the endpoint yet.
+                        let split = SplitFields::from_packet(&start_packet);
+                        return Ok(format!(
+                            "{} {} speed {} transaction on hub {} port {}",
+                            match split.sc() {
+                                Start => "Starting",
+                                Complete => "Completing",
+                            },
+                            format!("{:?}", split.speed()).to_lowercase(),
+                            format!("{:?}", split.endpoint_type()).to_lowercase(),
+                            split.hub_address(),
+                            split.port()))
+                    }
+                    let endpoint_id = match transfer_id_opt {
+                        Some(transfer_id) => {
+                            let entry = self.transfer_index.get(*transfer_id)?;
+                            entry.endpoint_id()
+                        },
+                        None => match self.shared.packet_endpoint(
+                            pid, &start_packet)
+                        {
+                            Ok(endpoint_id) => endpoint_id,
+                            Err(_) => INVALID_EP_ID
+                        }
+                    };
+                    let endpoint = self.endpoints.get(endpoint_id)?;
                     let transaction = self.transaction(*transaction_id)?;
                     s += &transaction.description(self, &endpoint, detail)?
                 } else {
@@ -1643,7 +1668,8 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
         let max_string_length = endpoint_count + "    └──".len();
         let mut connectors = String::with_capacity(max_string_length);
         let transfer_id = match item {
-            Transfer(i) | Transaction(i, _) | Packet(i, ..) => *i
+            Transfer(i) | Transaction(Some(i), _) | Packet(Some(i), ..) => *i,
+            _ => unreachable!()
         };
         let entry = self.transfer_index.get(transfer_id)?;
         let endpoint_id = entry.endpoint_id();
@@ -1651,7 +1677,8 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
         let extended = self.transfer_extended(endpoint_id, transfer_id)?;
         let ep_traf = self.endpoint_traffic(endpoint_id)?;
         let last_transaction = match item {
-            Transaction(_, transaction_id) | Packet(_, transaction_id, _) => {
+            Transaction(_, transaction_id) |
+            Packet(_, Some(transaction_id), _) => {
                 let range = ep_traf.transfer_index.target_range(
                     entry.transfer_id(), ep_traf.transaction_ids.len())?;
                 let last_transaction_id =
@@ -1660,7 +1687,7 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
             }, _ => false
         };
         let last_packet = match item {
-            Packet(_, transaction_id, packet_id) => {
+            Packet(_, Some(transaction_id), packet_id) => {
                 let range = self.transaction_index.target_range(
                     *transaction_id, self.packet_index.len())?;
                 *packet_id == range.end - 1
