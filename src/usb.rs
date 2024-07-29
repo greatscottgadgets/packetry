@@ -440,7 +440,11 @@ impl StandardRequest {
                     fields.value & 0xFF,
                     match (descriptor_type, fields.index) {
                         (DescriptorType::String, language) if language > 0 =>
-                            format!(", language 0x{language:04x}"),
+                            format!(", language 0x{language:04x}{}",
+                                language_name(language)
+                                    .map_or_else(
+                                        String::new,
+                                        |l| format!(" ({l})"))),
                         (..) => format!(""),
                     }
                 )
@@ -453,6 +457,20 @@ impl StandardRequest {
             SynchFrame => format!("Synchronising frame"),
             Unknown => format!("Unknown standard request"),
         }
+    }
+}
+
+fn language_name(code: u16) -> Option<String> {
+    let language_id = code & 0x3ff;
+    let dialect_id = (code >> 10) as u8;
+    let language = usb_ids::Language::from_id(language_id);
+    let dialect = usb_ids::Dialect::from_lid_did(language_id, dialect_id);
+    match (language, dialect) {
+        (Some(language), Some(dialect)) =>
+            Some(format!("{}/{}", language.name(), dialect.name())),
+        (Some(language), None) =>
+            Some(language.name().to_string()),
+        _ => None
     }
 }
 

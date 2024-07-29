@@ -109,7 +109,7 @@ Getting string descriptor #0 for device 11, reading 4 of 255 requested bytes
   OUT packet on 11.0, CRC 04
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Getting string descriptor #2, language 0x0409 for device 11, reading 8 of 255 requested bytes: 'LPC'
+Getting string descriptor #2, language 0x0409 (English/US) for device 11, reading 8 of 255 requested bytes: 'LPC'
  SETUP transaction on 11.0 with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, FF, 00]
   SETUP packet on 11.0, CRC 04
   DATA0 packet with CRC DB97 and 8 data bytes: [80, 06, 02, 03, 09, 04, FF, 00]
@@ -132,7 +132,7 @@ Getting string descriptor #2, language 0x0409 for device 11, reading 8 of 255 re
   OUT packet on 11.0, CRC 04
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Getting string descriptor #1, language 0x0409 for device 11, reading 8 of 255 requested bytes: 'NXP'
+Getting string descriptor #1, language 0x0409 (English/US) for device 11, reading 8 of 255 requested bytes: 'NXP'
  SETUP transaction on 11.0 with 8 data bytes, ACK: [80, 06, 01, 03, 09, 04, FF, 00]
   SETUP packet on 11.0, CRC 04
   DATA0 packet with CRC E897 and 8 data bytes: [80, 06, 01, 03, 09, 04, FF, 00]
@@ -155,7 +155,7 @@ Getting string descriptor #1, language 0x0409 for device 11, reading 8 of 255 re
   OUT packet on 11.0, CRC 04
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Getting string descriptor #3, language 0x0409 for device 11, reading 10 of 255 requested bytes: 'ABCD'
+Getting string descriptor #3, language 0x0409 (English/US) for device 11, reading 10 of 255 requested bytes: 'ABCD'
  SETUP transaction on 11.0 with 8 data bytes, ACK: [80, 06, 03, 03, 09, 04, FF, 00]
   SETUP packet on 11.0, CRC 04
   DATA0 packet with CRC 0A96 and 8 data bytes: [80, 06, 03, 03, 09, 04, FF, 00]
@@ -190,7 +190,7 @@ Setting configuration 1 for device 11
   IN packet on 11.0, CRC 04
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Getting string descriptor #4, language 0x0409 for device 11, reading 8 of 255 requested bytes: 'DFU'
+Getting string descriptor #4, language 0x0409 (English/US) for device 11, reading 8 of 255 requested bytes: 'DFU'
  SETUP transaction on 11.0 with 8 data bytes, ACK: [80, 06, 04, 03, 09, 04, FF, 00]
   SETUP packet on 11.0, CRC 04
   DATA0 packet with CRC BD97 and 8 data bytes: [80, 06, 04, 03, 09, 04, FF, 00]
