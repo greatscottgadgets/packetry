@@ -877,7 +877,8 @@ fn start_pcap(action: FileAction, file: gio::File) -> Result<(), Error> {
                 TOTAL.store(packet_count, Ordering::Relaxed);
                 CURRENT.store(0, Ordering::Relaxed);
                 let dest = file
-                    .create(FileCreateFlags::NONE, Cancellable::NONE)?
+                    .replace(
+                        None, false, FileCreateFlags::NONE, Cancellable::NONE)?
                     .into_write();
                 let mut writer = Writer::open(dest)?;
                 for i in 0..packet_count {
