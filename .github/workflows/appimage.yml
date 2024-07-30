@@ -150,6 +150,7 @@ jobs:
           cp LICENSE appimage/packetry.AppDir/usr/share/doc/LICENSE-packetry.txt
 
       - name: Run build appimage action (Linux)
+        # NB: The full path to the action is: ./appimage/action.yml
         uses: ./appimage/
         with:
           executable:   target/release/packetry
