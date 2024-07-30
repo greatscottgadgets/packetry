@@ -14,6 +14,7 @@ use anyhow::{Context, Error};
 use futures_lite::future::block_on;
 use nusb::transfer::RequestBuffer;
 
+use std::fs::File;
 use std::path::PathBuf;
 use std::thread::sleep;
 use std::time::Duration;
@@ -103,7 +104,8 @@ fn test(save_capture: bool,
     if save_capture {
         // Write the capture to a file.
         let path = PathBuf::from(format!("./HITL-{name}.pcap"));
-        let mut writer = Writer::open(path)?;
+        let file = File::open(path)?;
+        let mut writer = Writer::open(file)?;
         for i in 0..reader.packet_index.len() {
             let packet_id = PacketId::from(i);
             let packet = reader.packet(packet_id)?;

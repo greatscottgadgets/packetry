@@ -1741,7 +1741,8 @@ mod tests {
             ref_path.push("reference.txt");
             out_path.push("output.txt");
             {
-                let mut loader = Loader::open(cap_path).unwrap();
+                let file = File::open(cap_path).unwrap();
+                let mut loader = Loader::open(file).unwrap();
                 let (writer, mut reader) = create_capture().unwrap();
                 let mut decoder = Decoder::new(writer).unwrap();
                 while let Some(result) = loader.next() {

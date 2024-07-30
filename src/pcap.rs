@@ -1,8 +1,6 @@
 use std::borrow::Cow;
-use std::fs::File;
-use std::io::{BufReader, BufWriter, Write};
+use std::io::{BufReader, BufWriter, Read, Write};
 use std::mem::size_of;
-use std::path::PathBuf;
 
 use pcap_file::{
     pcap::{PcapReader, PcapWriter, PcapHeader, RawPcapPacket},
@@ -12,23 +10,22 @@ use pcap_file::{
 
 use anyhow::{Context, Error};
 
-pub struct Loader {
-    pcap: PcapReader<BufReader<File>>,
-    pub file_size: u64,
+pub struct Loader<Source: Read> {
+    pcap: PcapReader<BufReader<Source>>,
     pub bytes_read: u64,
     frac_ns: u64,
     start_time: Option<u64>,
 }
 
-pub struct Writer {
-    pcap: PcapWriter<BufWriter<File>>,
+pub struct Writer<Dest: Write> {
+    pcap: PcapWriter<BufWriter<Dest>>,
 }
 
-impl Loader {
-    pub fn open(path: PathBuf) -> Result<Loader, Error> {
-        let file = File::open(path)?;
-        let file_size = file.metadata()?.len();
-        let reader = BufReader::new(file);
+impl<Source> Loader<Source> where Source: Read {
+    pub fn open(source: Source)
+        -> Result<Loader<Source>, Error>
+    {
+        let reader = BufReader::new(source);
         let pcap = PcapReader::new(reader)?;
         let header = pcap.header();
         let bytes_read = size_of::<PcapHeader>() as u64;
@@ -37,7 +34,7 @@ impl Loader {
             TsResolution::NanoSecond => 1,
         };
         let start_time = None;
-        Ok(Loader{pcap, file_size, bytes_read, frac_ns, start_time})
+        Ok(Loader{pcap, bytes_read, frac_ns, start_time})
     }
 
     pub fn next(&mut self) -> Option<Result<(RawPcapPacket, u64), Error>> {
@@ -62,10 +59,9 @@ impl Loader {
     }
 }
 
-impl Writer {
-    pub fn open(path: PathBuf) -> Result<Writer, Error> {
-        let file = File::create(path)?;
-        let writer = BufWriter::new(file);
+impl<Dest> Writer<Dest> where Dest: Write {
+    pub fn open(dest: Dest) -> Result<Writer<Dest>, Error> {
+        let writer = BufWriter::new(dest);
         let header = PcapHeader {
             datalink: DataLink::USB_2_0,
             ts_resolution: TsResolution::NanoSecond,

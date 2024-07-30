@@ -112,8 +112,10 @@ fn check_replays() {
                         Ok(())
                     }).unwrap();
                     if let Some(capture) = capture {
-                        let loader = Loader::open(path)
+                        let file = File::open(path)
                             .expect("Failed to open pcap file");
+                        let loader = Loader::open(file)
+                            .expect("Failed to create pcap loader");
                         let decoder = Decoder::new(writer)
                             .expect("Failed to create decoder");
                         replay = Some((loader, decoder, capture));
