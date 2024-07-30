@@ -291,12 +291,12 @@ At devices row 2:
 + Length: 18 bytes
 + Type: 0x01
 + USB Version: 2.00
-+ Class: 0x00
++ Class: 0x00: (Defined at Interface level)
 + Subclass: 0x00
 + Protocol: 0x00
 + Max EP0 packet size: 8 bytes
-+ Vendor ID: 0x1BCF
-+ Product ID: 0x0005
++ Vendor ID: 0x1BCF: Sunplus Innovation Technology Inc.
++ Product ID: 0x0005: Optical Mouse
 + Version: 0.14
 + Manufacturer string: (none)
 + Product string: #2 (not seen)
@@ -462,9 +462,9 @@ At devices row 27:
 + Interface number: 0
 + Alternate setting: 0
 + Number of endpoints: 1
-+ Class: 0x03
-+ Subclass: 0x01
-+ Protocol: 0x02
++ Class: 0x03: Human Interface Device
++ Subclass: 0x01: Boot Interface Subclass
++ Protocol: 0x02: Mouse
 + Interface string: (none)
 Expanding devices view, row 36: Endpoint 1 IN
 At devices row 37:
@@ -512,72 +512,72 @@ Updating after 132 packets decoded
 Updating after 133 packets decoded
 At traffic row 29:
 - Incomplete control transfer on device 4
-+ Getting string descriptor #2, language 0x0409 for device 4, reading 0 of 255 requested bytes, incomplete
++ Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 0 of 255 requested bytes, incomplete
 Updating after 134 packets decoded
 Updating after 135 packets decoded
 At traffic row 29:
 - Incomplete control transfer on device 4
-+ Getting string descriptor #2, language 0x0409 for device 4, reading 0 of 255 requested bytes, incomplete
++ Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 0 of 255 requested bytes, incomplete
 Updating after 136 packets decoded
 Updating after 137 packets decoded
 At traffic row 29:
 - Incomplete control transfer on device 4
-+ Getting string descriptor #2, language 0x0409 for device 4, reading 0 of 255 requested bytes, incomplete
++ Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 0 of 255 requested bytes, incomplete
 Updating after 138 packets decoded
 Updating after 139 packets decoded
 Updating after 140 packets decoded
 At traffic row 29:
 - Incomplete control transfer on device 4
-+ Getting string descriptor #2, language 0x0409 for device 4, reading 8 of 255 requested bytes: 'USB', incomplete
++ Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 8 of 255 requested bytes: 'USB', incomplete
 Updating after 141 packets decoded
 Updating after 142 packets decoded
 Updating after 143 packets decoded
 At traffic row 29:
 - Incomplete control transfer on device 4
-+ Getting string descriptor #2, language 0x0409 for device 4, reading 16 of 255 requested bytes: 'USB Opt', incomplete
++ Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 16 of 255 requested bytes: 'USB Opt', incomplete
 Updating after 144 packets decoded
 Updating after 145 packets decoded
 At traffic row 29:
 - Incomplete control transfer on device 4
-+ Getting string descriptor #2, language 0x0409 for device 4, reading 16 of 255 requested bytes: 'USB Opt', incomplete
++ Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 16 of 255 requested bytes: 'USB Opt', incomplete
 Updating after 146 packets decoded
 Updating after 147 packets decoded
 At traffic row 29:
 - Incomplete control transfer on device 4
-+ Getting string descriptor #2, language 0x0409 for device 4, reading 16 of 255 requested bytes: 'USB Opt', incomplete
++ Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 16 of 255 requested bytes: 'USB Opt', incomplete
 Updating after 148 packets decoded
 Updating after 149 packets decoded
 Updating after 150 packets decoded
 At traffic row 29:
 - Incomplete control transfer on device 4
-+ Getting string descriptor #2, language 0x0409 for device 4, reading 24 of 255 requested bytes: 'USB Optical', incomplete
++ Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 24 of 255 requested bytes: 'USB Optical', incomplete
 Updating after 151 packets decoded
 Updating after 152 packets decoded
 At traffic row 29:
 - Incomplete control transfer on device 4
-+ Getting string descriptor #2, language 0x0409 for device 4, reading 24 of 255 requested bytes: 'USB Optical', incomplete
++ Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 24 of 255 requested bytes: 'USB Optical', incomplete
 Updating after 153 packets decoded
 Updating after 154 packets decoded
 At traffic row 29:
 - Incomplete control transfer on device 4
-+ Getting string descriptor #2, language 0x0409 for device 4, reading 24 of 255 requested bytes: 'USB Optical', incomplete
++ Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 24 of 255 requested bytes: 'USB Optical', incomplete
 Updating after 155 packets decoded
 Updating after 156 packets decoded
 Updating after 157 packets decoded
 At traffic row 29:
 - Incomplete control transfer on device 4
-+ Getting string descriptor #2, language 0x0409 for device 4, reading 32 of 255 requested bytes: 'USB Optical Mou', incomplete
++ Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 32 of 255 requested bytes: 'USB Optical Mou', incomplete
 Updating after 158 packets decoded
 Updating after 159 packets decoded
 At traffic row 29:
 - Incomplete control transfer on device 4
-+ Getting string descriptor #2, language 0x0409 for device 4, reading 32 of 255 requested bytes: 'USB Optical Mou', incomplete
++ Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 32 of 255 requested bytes: 'USB Optical Mou', incomplete
 Updating after 160 packets decoded
 Updating after 161 packets decoded
 Updating after 162 packets decoded
 At traffic row 29:
 - Incomplete control transfer on device 4
-+ Getting string descriptor #2, language 0x0409 for device 4, reading 36 of 255 requested bytes: 'USB Optical Mouse', incomplete
++ Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 36 of 255 requested bytes: 'USB Optical Mouse', incomplete
 Updating after 163 packets decoded
 Updating after 164 packets decoded
 At devices row 0:
@@ -615,9 +615,9 @@ At devices row 19:
 - Interface number: 0
 - Alternate setting: 0
 - Number of endpoints: 1
-- Class: 0x03
-- Subclass: 0x01
-- Protocol: 0x02
+- Class: 0x03: Human Interface Device
+- Subclass: 0x01: Boot Interface Subclass
+- Protocol: 0x02: Mouse
 - Interface string: (none)
 At devices row 20:
 - Length: 7 bytes
@@ -637,12 +637,12 @@ At devices row 2:
 - Length: 18 bytes
 - Type: 0x01
 - USB Version: 2.00
-- Class: 0x00
+- Class: 0x00: (Defined at Interface level)
 - Subclass: 0x00
 - Protocol: 0x00
 - Max EP0 packet size: 8 bytes
-- Vendor ID: 0x1BCF
-- Product ID: 0x0005
+- Vendor ID: 0x1BCF: Sunplus Innovation Technology Inc.
+- Product ID: 0x0005: Optical Mouse
 - Version: 0.14
 - Manufacturer string: (none)
 - Product string: #2 (not seen)

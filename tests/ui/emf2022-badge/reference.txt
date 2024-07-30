@@ -9,9 +9,9 @@ At traffic row 0:
 + Getting configuration descriptor #0 for device 1, reading 9 bytes
 + Getting configuration descriptor #0 for device 1, reading 98 bytes
 + Getting string descriptor #0 for device 1, reading 4 of 255 requested bytes
-+ Getting string descriptor #2, language 0x0409 for device 1, reading 56 of 255 requested bytes: 'USB JTAG/serial debug unit\u{0}'
-+ Getting string descriptor #1, language 0x0409 for device 1, reading 22 of 255 requested bytes: 'Espressif\u{0}'
-+ Getting string descriptor #3, language 0x0409 for device 1, reading 36 of 255 requested bytes: 'F4:12:FA:4D:F1:7C'
++ Getting string descriptor #2, language 0x0409 (English/US) for device 1, reading 56 of 255 requested bytes: 'USB JTAG/serial debug unit\u{0}'
++ Getting string descriptor #1, language 0x0409 (English/US) for device 1, reading 22 of 255 requested bytes: 'Espressif\u{0}'
++ Getting string descriptor #3, language 0x0409 (English/US) for device 1, reading 36 of 255 requested bytes: 'F4:12:FA:4D:F1:7C'
 + Setting configuration 1 for device 1
 + Class request #32, index 0, value 0 for interface 1.0, writing 7 bytes
 + Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
@@ -21,14 +21,14 @@ At traffic row 0:
 + Getting configuration descriptor #0 for device 2, reading 9 bytes
 + Getting configuration descriptor #0 for device 2, reading 100 bytes
 + Getting string descriptor #0 for device 2, reading 4 of 255 requested bytes
-+ Getting string descriptor #2, language 0x0409 for device 2, reading 12 of 255 requested bytes: 'TiDAL'
-+ Getting string descriptor #1, language 0x0409 for device 2, reading 44 of 255 requested bytes: 'Electromagnetic Field'
-+ Getting string descriptor #3, language 0x0409 for device 2, reading 14 of 255 requested bytes: '123456'
++ Getting string descriptor #2, language 0x0409 (English/US) for device 2, reading 12 of 255 requested bytes: 'TiDAL'
++ Getting string descriptor #1, language 0x0409 (English/US) for device 2, reading 44 of 255 requested bytes: 'Electromagnetic Field'
++ Getting string descriptor #3, language 0x0409 (English/US) for device 2, reading 14 of 255 requested bytes: '123456'
 + Setting configuration 1 for device 2
-+ Getting string descriptor #4, language 0x0409 for device 2, reading 42 of 255 requested bytes: 'Espressif CDC Device'
++ Getting string descriptor #4, language 0x0409 (English/US) for device 2, reading 42 of 255 requested bytes: 'Espressif CDC Device'
 + Class request #32, index 0, value 0 for interface 2.0, writing 7 bytes
-+ Getting string descriptor #5, language 0x0409 for device 2, reading 24 of 255 requested bytes: 'TiDAL badge'
-+ Getting string descriptor #3, language 0x0409 for device 2, reading 14 of 255 requested bytes: '123456'
++ Getting string descriptor #5, language 0x0409 (English/US) for device 2, reading 24 of 255 requested bytes: 'TiDAL badge'
++ Getting string descriptor #3, language 0x0409 (English/US) for device 2, reading 14 of 255 requested bytes: '123456'
 + Class request #10, index 0, value 0 for interface 2.2
 + Getting unknown descriptor #0 for interface 2.2, reading 144 bytes
 + Class request #9, index 0, value 513 for interface 2.2, writing 2 bytes
@@ -52,9 +52,9 @@ At devices row 2:
 + Length: 18 bytes
 + Type: 0x01
 + USB Version: 2.00
-+ Class: 0xEF
-+ Subclass: 0x02
-+ Protocol: 0x01
++ Class: 0xEF: Miscellaneous Device
++ Subclass: 0x02: ?
++ Protocol: 0x01: Interface Association
 + Max EP0 packet size: 64 bytes
 + Vendor ID: 0x303A
 + Product ID: 0x1001
@@ -139,9 +139,9 @@ At devices row 2:
 - Length: 18 bytes
 - Type: 0x01
 - USB Version: 2.00
-- Class: 0xEF
-- Subclass: 0x02
-- Protocol: 0x01
+- Class: 0xEF: Miscellaneous Device
+- Subclass: 0x02: ?
+- Protocol: 0x01: Interface Association
 - Max EP0 packet size: 64 bytes
 - Vendor ID: 0x303A
 - Product ID: 0x1001
@@ -152,7 +152,7 @@ At devices row 2:
 At devices row 1:
 - Device descriptor
 - Configuration 1
-Expanding traffic view, row 10: Getting string descriptor #2, language 0x0409 for device 1, reading 56 of 255 requested bytes: 'USB JTAG/serial debug unit\u{0}'
+Expanding traffic view, row 10: Getting string descriptor #2, language 0x0409 (English/US) for device 1, reading 56 of 255 requested bytes: 'USB JTAG/serial debug unit\u{0}'
 At traffic row 11:
 + SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, FF, 00]
 + IN transaction on 1.0 with 56 data bytes, ACK: [38, 03, 55, 00, 53, 00, 42, 00, 20, 00, 4A, 00, 54, 00, 41, 00, 47, 00, 2F, 00, 73, 00, 65, 00, 72, 00, 69, 00, 61, 00, 6C, 00, 20, 00, 64, 00, 65, 00, 62, 00, 75, 00, 67, 00, 20, 00, 75, 00, 6E, 00, 69, 00, 74, 00, 00, 00]
@@ -193,7 +193,7 @@ At traffic row 34:
 - SETUP transaction on 2.0 with 8 data bytes, ACK: [00, 09, 01, 00, 00, 00, 00, 00]
 - 4 times: IN transaction on 2.0, NAK
 - IN transaction on 2.0 with no data, ACK
-Collapsing traffic view, row 10: Getting string descriptor #2, language 0x0409 for device 1, reading 56 of 255 requested bytes: 'USB JTAG/serial debug unit\u{0}'
+Collapsing traffic view, row 10: Getting string descriptor #2, language 0x0409 (English/US) for device 1, reading 56 of 255 requested bytes: 'USB JTAG/serial debug unit\u{0}'
 At traffic row 13:
 - IN packet on 1.0, CRC 1D
 - DATA1 packet with CRC 5EC0 and 56 data bytes: [38, 03, 55, 00, 53, 00, 42, 00, 20, 00, 4A, 00, 54, 00, 41, 00, 47, 00, 2F, 00, 73, 00, 65, 00, 72, 00, 69, 00, 61, 00, 6C, 00, 20, 00, 64, 00, 65, 00, 62, 00, 75, 00, 67, 00, 20, 00, 75, 00, 6E, 00, 69, 00, 74, 00, 00, 00]

@@ -156,7 +156,7 @@ Getting string descriptor #0 for device 4, reading 4 of 255 requested bytes
   OUT packet on 4.0, CRC 05
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Getting string descriptor #2, language 0x0409 for device 4, reading 36 of 255 requested bytes: 'USB Optical Mouse'
+Getting string descriptor #2, language 0x0409 (English/US) for device 4, reading 36 of 255 requested bytes: 'USB Optical Mouse'
  SETUP transaction on 4.0 with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, FF, 00]
   SETUP packet on 4.0, CRC 05
   DATA0 packet with CRC DB97 and 8 data bytes: [80, 06, 02, 03, 09, 04, FF, 00]

@@ -192,7 +192,7 @@ Getting string descriptor #0 for device 29, reading 4 of 255 requested bytes
   OUT packet on 29.0, CRC 08
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Getting string descriptor #2, language 0x0409 for device 29, reading 22 of 255 requested bytes: 'HackRF One'
+Getting string descriptor #2, language 0x0409 (English/US) for device 29, reading 22 of 255 requested bytes: 'HackRF One'
  SETUP transaction on 29.0 with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, FF, 00]
   SETUP packet on 29.0, CRC 08
   DATA0 packet with CRC DB97 and 8 data bytes: [80, 06, 02, 03, 09, 04, FF, 00]
@@ -205,7 +205,7 @@ Getting string descriptor #2, language 0x0409 for device 29, reading 22 of 255 r
   OUT packet on 29.0, CRC 08
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Getting string descriptor #1, language 0x0409 for device 29, reading 40 of 255 requested bytes: 'Great Scott Gadgets'
+Getting string descriptor #1, language 0x0409 (English/US) for device 29, reading 40 of 255 requested bytes: 'Great Scott Gadgets'
  SETUP transaction on 29.0 with 8 data bytes, ACK: [80, 06, 01, 03, 09, 04, FF, 00]
   SETUP packet on 29.0, CRC 08
   DATA0 packet with CRC E897 and 8 data bytes: [80, 06, 01, 03, 09, 04, FF, 00]
@@ -221,7 +221,7 @@ Getting string descriptor #1, language 0x0409 for device 29, reading 40 of 255 r
   OUT packet on 29.0, CRC 08
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Getting string descriptor #4, language 0x0409 for device 29, reading 66 of 255 requested bytes: '0000000000000000325866e6215c4023'
+Getting string descriptor #4, language 0x0409 (English/US) for device 29, reading 66 of 255 requested bytes: '0000000000000000325866e6215c4023'
  SETUP transaction on 29.0 with 8 data bytes, ACK: [80, 06, 04, 03, 09, 04, FF, 00]
   SETUP packet on 29.0, CRC 08
   DATA0 packet with CRC BD97 and 8 data bytes: [80, 06, 04, 03, 09, 04, FF, 00]
@@ -250,7 +250,7 @@ Setting configuration 1 for device 29
   IN packet on 29.0, CRC 08
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Getting string descriptor #3, language 0x0409 for device 29, reading 24 of 255 requested bytes: 'Transceiver'
+Getting string descriptor #3, language 0x0409 (English/US) for device 29, reading 24 of 255 requested bytes: 'Transceiver'
  SETUP transaction on 29.0 with 8 data bytes, ACK: [80, 06, 03, 03, 09, 04, FF, 00]
   SETUP packet on 29.0, CRC 08
   DATA0 packet with CRC 0A96 and 8 data bytes: [80, 06, 03, 03, 09, 04, FF, 00]

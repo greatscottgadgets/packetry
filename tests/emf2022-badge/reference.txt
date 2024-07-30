@@ -3881,7 +3881,7 @@ Getting string descriptor #0 for device 1, reading 4 of 255 requested bytes
   OUT packet on 1.0, CRC 1D
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Getting string descriptor #2, language 0x0409 for device 1, reading 56 of 255 requested bytes: 'USB JTAG/serial debug unit\u{0}'
+Getting string descriptor #2, language 0x0409 (English/US) for device 1, reading 56 of 255 requested bytes: 'USB JTAG/serial debug unit\u{0}'
  SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, FF, 00]
   SETUP packet on 1.0, CRC 1D
   DATA0 packet with CRC DB97 and 8 data bytes: [80, 06, 02, 03, 09, 04, FF, 00]
@@ -3894,7 +3894,7 @@ Getting string descriptor #2, language 0x0409 for device 1, reading 56 of 255 re
   OUT packet on 1.0, CRC 1D
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Getting string descriptor #1, language 0x0409 for device 1, reading 22 of 255 requested bytes: 'Espressif\u{0}'
+Getting string descriptor #1, language 0x0409 (English/US) for device 1, reading 22 of 255 requested bytes: 'Espressif\u{0}'
  SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 01, 03, 09, 04, FF, 00]
   SETUP packet on 1.0, CRC 1D
   DATA0 packet with CRC E897 and 8 data bytes: [80, 06, 01, 03, 09, 04, FF, 00]
@@ -3907,7 +3907,7 @@ Getting string descriptor #1, language 0x0409 for device 1, reading 22 of 255 re
   OUT packet on 1.0, CRC 1D
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Getting string descriptor #3, language 0x0409 for device 1, reading 36 of 255 requested bytes: 'F4:12:FA:4D:F1:7C'
+Getting string descriptor #3, language 0x0409 (English/US) for device 1, reading 36 of 255 requested bytes: 'F4:12:FA:4D:F1:7C'
  SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 03, 03, 09, 04, FF, 00]
   SETUP packet on 1.0, CRC 1D
   DATA0 packet with CRC 0A96 and 8 data bytes: [80, 06, 03, 03, 09, 04, FF, 00]
@@ -4090,7 +4090,7 @@ Getting string descriptor #0 for device 2, reading 4 of 255 requested bytes
   OUT packet on 2.0, CRC 15
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Getting string descriptor #2, language 0x0409 for device 2, reading 12 of 255 requested bytes: 'TiDAL'
+Getting string descriptor #2, language 0x0409 (English/US) for device 2, reading 12 of 255 requested bytes: 'TiDAL'
  SETUP transaction on 2.0 with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, FF, 00]
   SETUP packet on 2.0, CRC 15
   DATA0 packet with CRC DB97 and 8 data bytes: [80, 06, 02, 03, 09, 04, FF, 00]
@@ -4110,7 +4110,7 @@ Getting string descriptor #2, language 0x0409 for device 2, reading 12 of 255 re
   OUT packet on 2.0, CRC 15
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Getting string descriptor #1, language 0x0409 for device 2, reading 44 of 255 requested bytes: 'Electromagnetic Field'
+Getting string descriptor #1, language 0x0409 (English/US) for device 2, reading 44 of 255 requested bytes: 'Electromagnetic Field'
  SETUP transaction on 2.0 with 8 data bytes, ACK: [80, 06, 01, 03, 09, 04, FF, 00]
   SETUP packet on 2.0, CRC 15
   DATA0 packet with CRC E897 and 8 data bytes: [80, 06, 01, 03, 09, 04, FF, 00]
@@ -4126,7 +4126,7 @@ Getting string descriptor #1, language 0x0409 for device 2, reading 44 of 255 re
   OUT packet on 2.0, CRC 15
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Getting string descriptor #3, language 0x0409 for device 2, reading 14 of 255 requested bytes: '123456'
+Getting string descriptor #3, language 0x0409 (English/US) for device 2, reading 14 of 255 requested bytes: '123456'
  SETUP transaction on 2.0 with 8 data bytes, ACK: [80, 06, 03, 03, 09, 04, FF, 00]
   SETUP packet on 2.0, CRC 15
   DATA0 packet with CRC 0A96 and 8 data bytes: [80, 06, 03, 03, 09, 04, FF, 00]
@@ -4154,7 +4154,7 @@ Setting configuration 1 for device 2
   IN packet on 2.0, CRC 15
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Getting string descriptor #4, language 0x0409 for device 2, reading 42 of 255 requested bytes: 'Espressif CDC Device'
+Getting string descriptor #4, language 0x0409 (English/US) for device 2, reading 42 of 255 requested bytes: 'Espressif CDC Device'
  SETUP transaction on 2.0 with 8 data bytes, ACK: [80, 06, 04, 03, 09, 04, FF, 00]
   SETUP packet on 2.0, CRC 15
   DATA0 packet with CRC BD97 and 8 data bytes: [80, 06, 04, 03, 09, 04, FF, 00]
@@ -4194,7 +4194,7 @@ Class request #32, index 0, value 0 for interface 2.0, writing 7 bytes
   IN packet on 2.0, CRC 15
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Getting string descriptor #5, language 0x0409 for device 2, reading 24 of 255 requested bytes: 'TiDAL badge'
+Getting string descriptor #5, language 0x0409 (English/US) for device 2, reading 24 of 255 requested bytes: 'TiDAL badge'
  SETUP transaction on 2.0 with 8 data bytes, ACK: [80, 06, 05, 03, 09, 04, FF, 00]
   SETUP packet on 2.0, CRC 15
   DATA0 packet with CRC 6C96 and 8 data bytes: [80, 06, 05, 03, 09, 04, FF, 00]
@@ -4214,7 +4214,7 @@ Getting string descriptor #5, language 0x0409 for device 2, reading 24 of 255 re
   OUT packet on 2.0, CRC 15
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Getting string descriptor #3, language 0x0409 for device 2, reading 14 of 255 requested bytes: '123456'
+Getting string descriptor #3, language 0x0409 (English/US) for device 2, reading 14 of 255 requested bytes: '123456'
  SETUP transaction on 2.0 with 8 data bytes, ACK: [80, 06, 03, 03, 09, 04, FF, 00]
   SETUP packet on 2.0, CRC 15
   DATA0 packet with CRC 0A96 and 8 data bytes: [80, 06, 03, 03, 09, 04, FF, 00]

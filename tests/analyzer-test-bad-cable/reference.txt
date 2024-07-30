@@ -1879,7 +1879,7 @@ Getting device descriptor #0 for device 1, reading 18 bytes
   OUT packet on 1.0, CRC 1D
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Getting string descriptor #2, language 0x0409 for device 1, reading 2 bytes
+Getting string descriptor #2, language 0x0409 (English/US) for device 1, reading 2 bytes
  SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, 02, 00]
   SETUP packet on 1.0, CRC 1D
   DATA0 packet with CRC 4BD7 and 8 data bytes: [80, 06, 02, 03, 09, 04, 02, 00]
@@ -1892,7 +1892,7 @@ Getting string descriptor #2, language 0x0409 for device 1, reading 2 bytes
   OUT packet on 1.0, CRC 1D
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Getting string descriptor #2, language 0x0409 for device 1, reading 50 bytes: 'USB Analyzer Test Device'
+Getting string descriptor #2, language 0x0409 (English/US) for device 1, reading 50 bytes: 'USB Analyzer Test Device'
  SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, 32, 00]
   SETUP packet on 1.0, CRC 1D
   DATA0 packet with CRC 4BC3 and 8 data bytes: [80, 06, 02, 03, 09, 04, 32, 00]
@@ -1905,7 +1905,7 @@ Getting string descriptor #2, language 0x0409 for device 1, reading 50 bytes: 'U
   OUT packet on 1.0, CRC 1D
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Getting string descriptor #1, language 0x0409 for device 1, reading 2 bytes
+Getting string descriptor #1, language 0x0409 (English/US) for device 1, reading 2 bytes
  SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 01, 03, 09, 04, 02, 00]
   SETUP packet on 1.0, CRC 1D
   DATA0 packet with CRC 78D7 and 8 data bytes: [80, 06, 01, 03, 09, 04, 02, 00]
@@ -1918,7 +1918,7 @@ Getting string descriptor #1, language 0x0409 for device 1, reading 2 bytes
   OUT packet on 1.0, CRC 1D
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Getting string descriptor #1, language 0x0409 for device 1, reading 34 bytes: 'Cynthion Project'
+Getting string descriptor #1, language 0x0409 (English/US) for device 1, reading 34 bytes: 'Cynthion Project'
  SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 01, 03, 09, 04, 22, 00]
   SETUP packet on 1.0, CRC 1D
   DATA0 packet with CRC B8CE and 8 data bytes: [80, 06, 01, 03, 09, 04, 22, 00]

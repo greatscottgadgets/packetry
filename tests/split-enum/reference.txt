@@ -655,7 +655,7 @@ Getting string descriptor #0 for device 14, reading 4 of 255 requested bytes
   SPLIT packet completing low speed control transaction on hub 12 port 2
   OUT packet on 14.0, CRC 1C
   ACK packet
-Getting string descriptor #2, language 0x0409 for device 14, reading 22 of 255 requested bytes: 'USB Device'
+Getting string descriptor #2, language 0x0409 (English/US) for device 14, reading 22 of 255 requested bytes: 'USB Device'
  Starting SETUP transaction on 14.0 with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, FF, 00]
   SPLIT packet starting low speed control transaction on hub 12 port 2
   SETUP packet on 14.0, CRC 1C
