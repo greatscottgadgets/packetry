@@ -43,6 +43,12 @@ For Linux AppImage builds we are using Debian 10 ("Buster") which was released o
 
 The image itself is based off the official [`debian:10`](https://hub.docker.com/_/debian) image. Other versions can be explored by simply setting the tag to the version required.
 
+> **Note:** Whenever bumping either the gtk source release version or the version of debian it's important to double check that there are _no_ debian packages containing gtk4 libraries installed on the system as the gtk4 build-system will prefer them over compiling newer versions from the source code distribution.
+>
+> If the debian packages are used this can cause both runtime problems as well as conflicts between the gtk4 licenses we retrieve manually and the licenses that ship with the distribution.
+>
+> At the time the only package that needs pruning is `libharfbuzz`, which is done in the `Dockerfile` after installing the base set of dependencies.
+
 
 ### Metadata
 
