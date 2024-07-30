@@ -827,11 +827,6 @@ fn start_pcap(action: FileAction, file: gio::File) -> Result<(), Error> {
     with_ui(|ui| {
         #[cfg(feature="record-ui-test")]
         ui.recording.borrow_mut().log_open_file(&file.uri(), &ui.capture);
-        let info = file.query_info("standard::*",
-                                   FileQueryInfoFlags::NONE,
-                                   Cancellable::NONE)?;
-        let file_size = info.size() as u64;
-        ui.file_name = Some(info.name().to_string_lossy().to_string());
         ui.open_button.set_sensitive(false);
         ui.save_button.set_sensitive(false);
         ui.scan_button.set_sensitive(false);
@@ -846,6 +841,10 @@ fn start_pcap(action: FileAction, file: gio::File) -> Result<(), Error> {
         let mut capture = ui.capture.clone();
         let worker = move || match action {
             Load => {
+                let info = file.query_info("standard::*",
+                                           FileQueryInfoFlags::NONE,
+                                           Cancellable::NONE)?;
+                let file_size = info.size() as u64;
                 let source = file.read(Cancellable::NONE)?.into_read();
                 let mut loader = Loader::open(source)?;
                 TOTAL.store(file_size, Ordering::Relaxed);
