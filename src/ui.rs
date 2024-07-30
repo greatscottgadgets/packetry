@@ -838,6 +838,9 @@ fn start_pcap(action: FileAction, file: gio::File) -> Result<(), Error> {
         ui.vbox.insert_child_after(&ui.separator, Some(&ui.paned));
         ui.vbox.insert_child_after(&ui.progress_bar, Some(&ui.separator));
         ui.show_progress = Some(action);
+        ui.file_name = file
+            .basename()
+            .map(|path| path.to_string_lossy().to_string());
         let capture = ui.capture.clone();
         std::thread::spawn(move || {
             display_error(match action {
