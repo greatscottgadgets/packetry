@@ -1044,9 +1044,9 @@ dependencies = [
 
 [[package]]
 name = "nusb"
-version = "0.1.9"
+version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "66354494bb95f979c053fd988dfeb7c9f1cc8c91544139bce2b3d1765be9571a"
+checksum = "2d8beeee5c0ad012e1eaca540f5610d09a3af58ec435537d511b67e0be36ea66"
 dependencies = [
  "atomic-waker",
  "core-foundation",
