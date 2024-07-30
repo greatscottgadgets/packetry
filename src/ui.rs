@@ -838,65 +838,12 @@ fn start_pcap(action: FileAction, file: gio::File) -> Result<(), Error> {
         ui.vbox.insert_child_after(&ui.separator, Some(&ui.paned));
         ui.vbox.insert_child_after(&ui.progress_bar, Some(&ui.separator));
         ui.show_progress = Some(action);
-        let mut capture = ui.capture.clone();
-        let worker = move || match action {
-            Load => {
-                let info = file.query_info("standard::*",
-                                           FileQueryInfoFlags::NONE,
-                                           Cancellable::NONE)?;
-                let file_size = info.size() as u64;
-                let source = file.read(Cancellable::NONE)?.into_read();
-                let mut loader = Loader::open(source)?;
-                TOTAL.store(file_size, Ordering::Relaxed);
-                let mut decoder = Decoder::new(writer.unwrap())?;
-                #[cfg(feature="step-decoder")]
-                let (mut client, _addr) =
-                    TcpListener::bind("127.0.0.1:46563")?.accept()?;
-                while let Some(result) = loader.next() {
-                    let (packet, timestamp_ns) = result?;
-                    #[cfg(feature="step-decoder")] {
-                        let mut buf = [0; 1];
-                        client.read(&mut buf).unwrap();
-                    };
-                    #[cfg(feature="record-ui-test")]
-                    let guard = UPDATE_LOCK.lock();
-                    decoder.handle_raw_packet(&packet.data, timestamp_ns)?;
-                    #[cfg(feature="record-ui-test")]
-                    drop(guard);
-                    CURRENT.store(loader.bytes_read, Ordering::Relaxed);
-                    if STOP.load(Ordering::Relaxed) {
-                        break;
-                    }
-                }
-                let writer = decoder.finish()?;
-                writer.print_storage_summary();
-                Ok(())
-            },
-            Save => {
-                let packet_count = capture.packet_index.len();
-                TOTAL.store(packet_count, Ordering::Relaxed);
-                CURRENT.store(0, Ordering::Relaxed);
-                let dest = file
-                    .replace(
-                        None, false, FileCreateFlags::NONE, Cancellable::NONE)?
-                    .into_write();
-                let mut writer = Writer::open(dest)?;
-                for i in 0..packet_count {
-                    let packet_id = PacketId::from(i);
-                    let packet = capture.packet(packet_id)?;
-                    let timestamp_ns = capture.packet_time(packet_id)?;
-                    writer.add_packet(&packet, timestamp_ns)?;
-                    CURRENT.store(i + 1, Ordering::Relaxed);
-                    if STOP.load(Ordering::Relaxed) {
-                        break;
-                    }
-                }
-                writer.close()?;
-                Ok(())
-            },
-        };
+        let capture = ui.capture.clone();
         std::thread::spawn(move || {
-            display_error(worker());
+            display_error(match action {
+                Load => load_pcap(file, writer.unwrap()),
+                Save => save_pcap(file, capture),
+            });
             gtk::glib::idle_add_once(|| {
                 STOP.store(false, Ordering::Relaxed);
                 display_error(
@@ -921,6 +868,62 @@ fn start_pcap(action: FileAction, file: gio::File) -> Result<(), Error> {
             || display_error(update_view()));
         Ok(())
     })
+}
+
+fn load_pcap(file: gio::File, writer: CaptureWriter) -> Result<(), Error> {
+    let info = file.query_info("standard::*",
+                               FileQueryInfoFlags::NONE,
+                               Cancellable::NONE)?;
+    let file_size = info.size() as u64;
+    let source = file.read(Cancellable::NONE)?.into_read();
+    let mut loader = Loader::open(source)?;
+    TOTAL.store(file_size, Ordering::Relaxed);
+    let mut decoder = Decoder::new(writer)?;
+    #[cfg(feature="step-decoder")]
+    let (mut client, _addr) =
+        TcpListener::bind("127.0.0.1:46563")?.accept()?;
+    while let Some(result) = loader.next() {
+        let (packet, timestamp_ns) = result?;
+        #[cfg(feature="step-decoder")] {
+            let mut buf = [0; 1];
+            client.read(&mut buf).unwrap();
+        };
+        #[cfg(feature="record-ui-test")]
+        let guard = UPDATE_LOCK.lock();
+        decoder.handle_raw_packet(&packet.data, timestamp_ns)?;
+        #[cfg(feature="record-ui-test")]
+        drop(guard);
+        CURRENT.store(loader.bytes_read, Ordering::Relaxed);
+        if STOP.load(Ordering::Relaxed) {
+            break;
+        }
+    }
+    let writer = decoder.finish()?;
+    writer.print_storage_summary();
+    Ok(())
+}
+
+fn save_pcap(file: gio::File, mut capture: CaptureReader) -> Result<(), Error> {
+    let packet_count = capture.packet_index.len();
+    TOTAL.store(packet_count, Ordering::Relaxed);
+    CURRENT.store(0, Ordering::Relaxed);
+    let dest = file
+        .replace(
+            None, false, FileCreateFlags::NONE, Cancellable::NONE)?
+        .into_write();
+    let mut writer = Writer::open(dest)?;
+    for i in 0..packet_count {
+        let packet_id = PacketId::from(i);
+        let packet = capture.packet(packet_id)?;
+        let timestamp_ns = capture.packet_time(packet_id)?;
+        writer.add_packet(&packet, timestamp_ns)?;
+        CURRENT.store(i + 1, Ordering::Relaxed);
+        if STOP.load(Ordering::Relaxed) {
+            break;
+        }
+    }
+    writer.close()?;
+    Ok(())
 }
 
 pub fn stop_pcap() -> Result<(), Error> {
