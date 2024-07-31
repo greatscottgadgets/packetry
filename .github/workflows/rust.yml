@@ -133,10 +133,12 @@ jobs:
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
-          name: Binary for ${{ matrix.os }}
+          name: Binaries for ${{ matrix.os }}
           path: |
             target/release/packetry
             target/release/packetry.exe
+            target/release/packetry-cli
+            target/release/packetry-cli.exe
           if-no-files-found: error
         if: matrix.rust == 'stable'
 

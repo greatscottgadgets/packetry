@@ -1108,6 +1108,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "usb-ids",
+ "winapi 0.3.9",
 ]
 
 [[package]]
