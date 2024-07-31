@@ -21,7 +21,7 @@ use gtk::gio::{
     MenuItem,
     SimpleActionGroup
 };
-use gtk::glib::{Object, SignalHandlerId};
+use gtk::glib::{self, Object, SignalHandlerId};
 use gtk::{
     prelude::*,
     AboutDialog,
@@ -316,6 +316,7 @@ pub struct UserInterface {
     pub device_model: Option<DeviceModel>,
     endpoint_count: u16,
     show_progress: Option<FileAction>,
+    cancel_handle: Cancellable,
     progress_bar: ProgressBar,
     separator: Separator,
     vbox: gtk::Box,
@@ -489,6 +490,7 @@ pub fn activate(application: &Application) -> Result<(), Error> {
                 device_model: None,
                 endpoint_count: 2,
                 show_progress: None,
+                cancel_handle: Cancellable::new(),
                 progress_bar,
                 separator,
                 vbox,
@@ -763,15 +765,21 @@ pub fn update_view() -> Result<(), Error> {
         if let Some(action) = ui.show_progress {
             let total = TOTAL.load(Ordering::Relaxed);
             let current = CURRENT.load(Ordering::Relaxed);
-            let fraction = (current as f64) / (total as f64);
+            let (fraction, text_count) = if total == 0 {
+                (None, fmt_size(current))
+            } else {
+                (Some((current as f64) / (total as f64)),
+                    format!("{} / {}", fmt_size(current), fmt_size(total)))
+            };
             let text = match action {
-                Load => format!("Loaded {} / {}",
-                                fmt_size(current), fmt_size(total)),
-                Save => format!("Saved {} / {} packets",
-                                fmt_count(current), fmt_count(total)),
+                Load => format!("Loaded {text_count} bytes"),
+                Save => format!("Saved {text_count} packets"),
             };
             ui.progress_bar.set_text(Some(&text));
-            ui.progress_bar.set_fraction(fraction);
+            match fraction {
+                Some(fraction) => ui.progress_bar.set_fraction(fraction),
+                None => ui.progress_bar.pulse()
+            };
         }
         if more_updates {
             gtk::glib::timeout_add_once(
@@ -838,68 +846,27 @@ fn start_pcap(action: FileAction, file: gio::File) -> Result<(), Error> {
         ui.vbox.insert_child_after(&ui.separator, Some(&ui.paned));
         ui.vbox.insert_child_after(&ui.progress_bar, Some(&ui.separator));
         ui.show_progress = Some(action);
-        let mut capture = ui.capture.clone();
-        let worker = move || match action {
-            Load => {
-                let info = file.query_info("standard::*",
-                                           FileQueryInfoFlags::NONE,
-                                           Cancellable::NONE)?;
-                let file_size = info.size() as u64;
-                let source = file.read(Cancellable::NONE)?.into_read();
-                let mut loader = Loader::open(source)?;
-                TOTAL.store(file_size, Ordering::Relaxed);
-                let mut decoder = Decoder::new(writer.unwrap())?;
-                #[cfg(feature="step-decoder")]
-                let (mut client, _addr) =
-                    TcpListener::bind("127.0.0.1:46563")?.accept()?;
-                while let Some(result) = loader.next() {
-                    let (packet, timestamp_ns) = result?;
-                    #[cfg(feature="step-decoder")] {
-                        let mut buf = [0; 1];
-                        client.read(&mut buf).unwrap();
-                    };
-                    #[cfg(feature="record-ui-test")]
-                    let guard = UPDATE_LOCK.lock();
-                    decoder.handle_raw_packet(&packet.data, timestamp_ns)?;
-                    #[cfg(feature="record-ui-test")]
-                    drop(guard);
-                    CURRENT.store(loader.bytes_read, Ordering::Relaxed);
-                    if STOP.load(Ordering::Relaxed) {
-                        break;
-                    }
-                }
-                let writer = decoder.finish()?;
-                writer.print_storage_summary();
-                Ok(())
-            },
-            Save => {
-                let packet_count = capture.packet_index.len();
-                TOTAL.store(packet_count, Ordering::Relaxed);
-                CURRENT.store(0, Ordering::Relaxed);
-                let dest = file
-                    .create(FileCreateFlags::NONE, Cancellable::NONE)?
-                    .into_write();
-                let mut writer = Writer::open(dest)?;
-                for i in 0..packet_count {
-                    let packet_id = PacketId::from(i);
-                    let packet = capture.packet(packet_id)?;
-                    let timestamp_ns = capture.packet_time(packet_id)?;
-                    writer.add_packet(&packet, timestamp_ns)?;
-                    CURRENT.store(i + 1, Ordering::Relaxed);
-                    if STOP.load(Ordering::Relaxed) {
-                        break;
-                    }
-                }
-                writer.close()?;
-                Ok(())
-            },
-        };
+        ui.file_name = file
+            .basename()
+            .map(|path| path.to_string_lossy().to_string());
+        let capture = ui.capture.clone();
+        let cancel_handle = ui.cancel_handle.clone();
+        let packet_count = capture.packet_index.len();
+        CURRENT.store(0, Ordering::Relaxed);
+        TOTAL.store(match action {
+            Load => 0,
+            Save => packet_count,
+        }, Ordering::Relaxed);
         std::thread::spawn(move || {
-            display_error(worker());
+            display_error(match action {
+                Load => load_pcap(file, writer.unwrap(), cancel_handle),
+                Save => save_pcap(file, capture, cancel_handle),
+            });
             gtk::glib::idle_add_once(|| {
                 STOP.store(false, Ordering::Relaxed);
                 display_error(
                     with_ui(|ui| {
+                        ui.cancel_handle = Cancellable::new();
                         ui.show_progress = None;
                         ui.vbox.remove(&ui.separator);
                         ui.vbox.remove(&ui.progress_bar);
@@ -922,9 +889,73 @@ fn start_pcap(action: FileAction, file: gio::File) -> Result<(), Error> {
     })
 }
 
+fn load_pcap(file: gio::File,
+             writer: CaptureWriter,
+             cancel_handle: Cancellable)
+    -> Result<(), Error>
+{
+    let info = file.query_info("standard::*",
+                               FileQueryInfoFlags::NONE,
+                               Some(&cancel_handle))?;
+    if info.has_attribute(gio::FILE_ATTRIBUTE_STANDARD_SIZE) {
+        let file_size = info.size() as u64;
+        TOTAL.store(file_size, Ordering::Relaxed);
+    }
+    let source = file.read(Some(&cancel_handle))?.into_read();
+    let mut loader = Loader::open(source)?;
+    let mut decoder = Decoder::new(writer)?;
+    #[cfg(feature="step-decoder")]
+    let (mut client, _addr) =
+        TcpListener::bind("127.0.0.1:46563")?.accept()?;
+    while let Some(result) = loader.next() {
+        let (packet, timestamp_ns) = result?;
+        #[cfg(feature="step-decoder")] {
+            let mut buf = [0; 1];
+            client.read(&mut buf).unwrap();
+        };
+        #[cfg(feature="record-ui-test")]
+        let guard = UPDATE_LOCK.lock();
+        decoder.handle_raw_packet(&packet.data, timestamp_ns)?;
+        #[cfg(feature="record-ui-test")]
+        drop(guard);
+        CURRENT.store(loader.bytes_read, Ordering::Relaxed);
+        if STOP.load(Ordering::Relaxed) {
+            break;
+        }
+    }
+    let writer = decoder.finish()?;
+    writer.print_storage_summary();
+    Ok(())
+}
+
+fn save_pcap(file: gio::File,
+             mut capture: CaptureReader,
+             cancel_handle: Cancellable)
+    -> Result<(), Error>
+{
+    let packet_count = capture.packet_index.len();
+    let dest = file
+        .replace(None, false, FileCreateFlags::NONE, Some(&cancel_handle))?
+        .into_write();
+    let mut writer = Writer::open(dest)?;
+    for i in 0..packet_count {
+        let packet_id = PacketId::from(i);
+        let packet = capture.packet(packet_id)?;
+        let timestamp_ns = capture.packet_time(packet_id)?;
+        writer.add_packet(&packet, timestamp_ns)?;
+        CURRENT.store(i + 1, Ordering::Relaxed);
+        if STOP.load(Ordering::Relaxed) {
+            break;
+        }
+    }
+    writer.close()?;
+    Ok(())
+}
+
 pub fn stop_pcap() -> Result<(), Error> {
     STOP.store(true, Ordering::Relaxed);
     with_ui(|ui| {
+        ui.cancel_handle.cancel();
         ui.scan_button.set_sensitive(true);
         ui.stop_button.set_sensitive(false);
         Ok(())
@@ -1024,6 +1055,12 @@ fn show_about() -> Result<(), Error> {
 pub fn display_error(result: Result<(), Error>) {
     #[cfg(not(test))]
     if let Err(e) = result {
+        if let Some(g_error) = e.downcast_ref::<glib::Error>() {
+            if g_error.matches(gio::IOErrorEnum::Cancelled) {
+                // We cancelled a load/save operation. This isn't an error.
+                return;
+            }
+        }
         use std::fmt::Write;
         let mut message = format!("{e}");
         for cause in e.chain().skip(1) {
