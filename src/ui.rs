@@ -763,15 +763,21 @@ pub fn update_view() -> Result<(), Error> {
         if let Some(action) = ui.show_progress {
             let total = TOTAL.load(Ordering::Relaxed);
             let current = CURRENT.load(Ordering::Relaxed);
-            let fraction = (current as f64) / (total as f64);
+            let (fraction, text_count) = if total == 0 {
+                (None, fmt_size(current))
+            } else {
+                (Some((current as f64) / (total as f64)),
+                    format!("{} / {}", fmt_size(current), fmt_size(total)))
+            };
             let text = match action {
-                Load => format!("Loaded {} / {}",
-                                fmt_size(current), fmt_size(total)),
-                Save => format!("Saved {} / {} packets",
-                                fmt_count(current), fmt_count(total)),
+                Load => format!("Loaded {text_count} bytes"),
+                Save => format!("Saved {text_count} packets"),
             };
             ui.progress_bar.set_text(Some(&text));
-            ui.progress_bar.set_fraction(fraction);
+            match fraction {
+                Some(fraction) => ui.progress_bar.set_fraction(fraction),
+                None => ui.progress_bar.pulse()
+            };
         }
         if more_updates {
             gtk::glib::timeout_add_once(
@@ -842,6 +848,12 @@ fn start_pcap(action: FileAction, file: gio::File) -> Result<(), Error> {
             .basename()
             .map(|path| path.to_string_lossy().to_string());
         let capture = ui.capture.clone();
+        let packet_count = capture.packet_index.len();
+        CURRENT.store(0, Ordering::Relaxed);
+        TOTAL.store(match action {
+            Load => 0,
+            Save => packet_count,
+        }, Ordering::Relaxed);
         std::thread::spawn(move || {
             display_error(match action {
                 Load => load_pcap(file, writer.unwrap()),
@@ -908,8 +920,6 @@ fn load_pcap(file: gio::File, writer: CaptureWriter) -> Result<(), Error> {
 
 fn save_pcap(file: gio::File, mut capture: CaptureReader) -> Result<(), Error> {
     let packet_count = capture.packet_index.len();
-    TOTAL.store(packet_count, Ordering::Relaxed);
-    CURRENT.store(0, Ordering::Relaxed);
     let dest = file
         .replace(
             None, false, FileCreateFlags::NONE, Cancellable::NONE)?
