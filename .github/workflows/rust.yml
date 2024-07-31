@@ -23,12 +23,12 @@ jobs:
           packages: libgtk-4-dev build-essential
           version: 2
 
-      - uses: Swatinem/rust-cache@v2
-
       - name: Install toolchain
         run: |
           rustup toolchain install stable
           rustup default stable
+
+      - uses: Swatinem/rust-cache@v2
 
       - name: Run clippy
         run: cargo clippy -- --deny warnings
