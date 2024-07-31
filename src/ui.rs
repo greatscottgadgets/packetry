@@ -889,10 +889,12 @@ fn load_pcap(file: gio::File, writer: CaptureWriter) -> Result<(), Error> {
     let info = file.query_info("standard::*",
                                FileQueryInfoFlags::NONE,
                                Cancellable::NONE)?;
-    let file_size = info.size() as u64;
+    if info.has_attribute(gio::FILE_ATTRIBUTE_STANDARD_SIZE) {
+        let file_size = info.size() as u64;
+        TOTAL.store(file_size, Ordering::Relaxed);
+    }
     let source = file.read(Cancellable::NONE)?.into_read();
     let mut loader = Loader::open(source)?;
-    TOTAL.store(file_size, Ordering::Relaxed);
     let mut decoder = Decoder::new(writer)?;
     #[cfg(feature="step-decoder")]
     let (mut client, _addr) =
