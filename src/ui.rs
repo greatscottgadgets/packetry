@@ -21,7 +21,7 @@ use gtk::gio::{
     MenuItem,
     SimpleActionGroup
 };
-use gtk::glib::{Object, SignalHandlerId};
+use gtk::glib::{self, Object, SignalHandlerId};
 use gtk::{
     prelude::*,
     AboutDialog,
@@ -316,6 +316,7 @@ pub struct UserInterface {
     pub device_model: Option<DeviceModel>,
     endpoint_count: u16,
     show_progress: Option<FileAction>,
+    cancel_handle: Cancellable,
     progress_bar: ProgressBar,
     separator: Separator,
     vbox: gtk::Box,
@@ -489,6 +490,7 @@ pub fn activate(application: &Application) -> Result<(), Error> {
                 device_model: None,
                 endpoint_count: 2,
                 show_progress: None,
+                cancel_handle: Cancellable::new(),
                 progress_bar,
                 separator,
                 vbox,
@@ -848,6 +850,7 @@ fn start_pcap(action: FileAction, file: gio::File) -> Result<(), Error> {
             .basename()
             .map(|path| path.to_string_lossy().to_string());
         let capture = ui.capture.clone();
+        let cancel_handle = ui.cancel_handle.clone();
         let packet_count = capture.packet_index.len();
         CURRENT.store(0, Ordering::Relaxed);
         TOTAL.store(match action {
@@ -856,13 +859,14 @@ fn start_pcap(action: FileAction, file: gio::File) -> Result<(), Error> {
         }, Ordering::Relaxed);
         std::thread::spawn(move || {
             display_error(match action {
-                Load => load_pcap(file, writer.unwrap()),
-                Save => save_pcap(file, capture),
+                Load => load_pcap(file, writer.unwrap(), cancel_handle),
+                Save => save_pcap(file, capture, cancel_handle),
             });
             gtk::glib::idle_add_once(|| {
                 STOP.store(false, Ordering::Relaxed);
                 display_error(
                     with_ui(|ui| {
+                        ui.cancel_handle = Cancellable::new();
                         ui.show_progress = None;
                         ui.vbox.remove(&ui.separator);
                         ui.vbox.remove(&ui.progress_bar);
@@ -885,15 +889,19 @@ fn start_pcap(action: FileAction, file: gio::File) -> Result<(), Error> {
     })
 }
 
-fn load_pcap(file: gio::File, writer: CaptureWriter) -> Result<(), Error> {
+fn load_pcap(file: gio::File,
+             writer: CaptureWriter,
+             cancel_handle: Cancellable)
+    -> Result<(), Error>
+{
     let info = file.query_info("standard::*",
                                FileQueryInfoFlags::NONE,
-                               Cancellable::NONE)?;
+                               Some(&cancel_handle))?;
     if info.has_attribute(gio::FILE_ATTRIBUTE_STANDARD_SIZE) {
         let file_size = info.size() as u64;
         TOTAL.store(file_size, Ordering::Relaxed);
     }
-    let source = file.read(Cancellable::NONE)?.into_read();
+    let source = file.read(Some(&cancel_handle))?.into_read();
     let mut loader = Loader::open(source)?;
     let mut decoder = Decoder::new(writer)?;
     #[cfg(feature="step-decoder")]
@@ -920,11 +928,14 @@ fn load_pcap(file: gio::File, writer: CaptureWriter) -> Result<(), Error> {
     Ok(())
 }
 
-fn save_pcap(file: gio::File, mut capture: CaptureReader) -> Result<(), Error> {
+fn save_pcap(file: gio::File,
+             mut capture: CaptureReader,
+             cancel_handle: Cancellable)
+    -> Result<(), Error>
+{
     let packet_count = capture.packet_index.len();
     let dest = file
-        .replace(
-            None, false, FileCreateFlags::NONE, Cancellable::NONE)?
+        .replace(None, false, FileCreateFlags::NONE, Some(&cancel_handle))?
         .into_write();
     let mut writer = Writer::open(dest)?;
     for i in 0..packet_count {
@@ -944,6 +955,7 @@ fn save_pcap(file: gio::File, mut capture: CaptureReader) -> Result<(), Error> {
 pub fn stop_pcap() -> Result<(), Error> {
     STOP.store(true, Ordering::Relaxed);
     with_ui(|ui| {
+        ui.cancel_handle.cancel();
         ui.scan_button.set_sensitive(true);
         ui.stop_button.set_sensitive(false);
         Ok(())
@@ -1043,6 +1055,12 @@ fn show_about() -> Result<(), Error> {
 pub fn display_error(result: Result<(), Error>) {
     #[cfg(not(test))]
     if let Err(e) = result {
+        if let Some(g_error) = e.downcast_ref::<glib::Error>() {
+            if g_error.matches(gio::IOErrorEnum::Cancelled) {
+                // We cancelled a load/save operation. This isn't an error.
+                return;
+            }
+        }
         use std::fmt::Write;
         let mut message = format!("{e}");
         for cause in e.chain().skip(1) {
