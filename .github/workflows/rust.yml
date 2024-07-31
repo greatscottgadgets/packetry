@@ -23,12 +23,12 @@ jobs:
           packages: libgtk-4-dev build-essential
           version: 2
 
-      - uses: Swatinem/rust-cache@v2
-
       - name: Install toolchain
         run: |
           rustup toolchain install stable
           rustup default stable
+
+      - uses: Swatinem/rust-cache@v2
 
       - name: Run clippy
         run: cargo clippy -- --deny warnings
@@ -44,6 +44,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     env:
+      VCPKG_COMMIT: 01f602195983451bc83e72f4214af2cbc495aa94 # 2024.05.24 release
       VCPKG_INSTALLED_DIR: ${{ github.workspace }}/vcpkg/installed
 
     steps:
@@ -53,6 +54,11 @@ jobs:
         run: |
           rustup toolchain install ${{ matrix.rust }}
           rustup default ${{ matrix.rust }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          env-vars: VCPKG_COMMIT
+        if: runner.os == 'Windows'
 
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
@@ -79,7 +85,7 @@ jobs:
       - name: Install dependencies (Windows)
         uses: lukka/run-vcpkg@v11
         with:
-          vcpkgGitCommitId: 01f602195983451bc83e72f4214af2cbc495aa94 # 2024.05.24 release
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT }}
           runVcpkgInstall: true
           doNotCache: false
         if: matrix.os == 'windows-latest'
