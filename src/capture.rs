@@ -1,5 +1,5 @@
 use std::cmp::min;
-use std::fmt::Debug;
+use std::fmt::{Debug, Write};
 use std::ops::Range;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64};
 use std::sync::atomic::Ordering::{Acquire, Release};
@@ -588,7 +588,8 @@ impl Transaction {
 
     fn description(&self,
                    capture: &mut CaptureReader,
-                   endpoint: &Endpoint)
+                   endpoint: &Endpoint,
+                   detail: bool)
         -> Result<String, Error>
     {
         use PID::*;
@@ -602,40 +603,53 @@ impl Transaction {
                     Start => "Starting",
                     Complete => "Completing",
                 },
-                self.inner_description(capture, endpoint, *token_pid)?
+                self.inner_description(capture, endpoint, *token_pid, detail)?
             ),
-            (pid, _) => self.inner_description(capture, endpoint, pid)?
+            (pid, _) => self.inner_description(capture, endpoint, pid, detail)?
         })
     }
 
     fn inner_description(&self,
                          capture: &mut CaptureReader,
                          endpoint: &Endpoint,
-                         pid: PID)
+                         pid: PID,
+                         detail: bool)
         -> Result<String, Error>
     {
-        Ok(format!(
-            "{} transaction on {}.{}{}",
-            pid,
-            endpoint.device_address(),
-            endpoint.number(),
-            match (self.payload_size(), self.outcome()) {
-                (None, None) =>
-                    String::from(""),
-                (None, Some(outcome)) =>
-                    format!(", {outcome}"),
-                (Some(0), None) =>
-                    String::from(" with no data"),
-                (Some(0), Some(outcome)) =>
-                    format!(" with no data, {outcome}"),
-                (Some(size), None) => format!(
-                    " with {size} data bytes: {}",
-                    Bytes::first(100, &capture.transaction_bytes(self)?)),
-                (Some(size), Some(outcome)) => format!(
-                    " with {size} data bytes, {outcome}: {}",
-                    Bytes::first(100, &capture.transaction_bytes(self)?)),
-            }
-        ))
+        let mut s = String::new();
+        if detail {
+            write!(s, "{} transaction on device {}, endpoint {}",
+                pid, endpoint.device_address(), endpoint.number())
+        } else {
+            write!(s, "{} transaction on {}.{}",
+                pid, endpoint.device_address(), endpoint.number())
+        }?;
+        match (self.payload_size(), self.outcome(), detail) {
+            (None, None, _) => Ok(()),
+            (None, Some(outcome), false) => write!(s,
+                ", {outcome}"),
+            (None, Some(outcome), true) => write!(s,
+                ", {outcome} response"),
+            (Some(0), None, _) => write!(s,
+                " with no data"),
+            (Some(0), Some(outcome), false) => write!(s,
+                " with no data, {outcome}"),
+            (Some(0), Some(outcome), true) => write!(s,
+                " with no data, {outcome} response"),
+            (Some(size), None, false) => write!(s,
+                " with {size} data bytes: {}",
+                Bytes::first(100, &capture.transaction_bytes(self)?)),
+            (Some(size), None, true) => write!(s,
+                " with {size} data bytes\nPayload: {}",
+                Bytes::first(1024, &capture.transaction_bytes(self)?)),
+            (Some(size), Some(outcome), false) => write!(s,
+                " with {size} data bytes, {outcome}: {}",
+                Bytes::first(100, &capture.transaction_bytes(self)?)),
+            (Some(size), Some(outcome), true) => write!(s,
+                " with {size} data bytes, {outcome} response\nPayload: {}",
+                Bytes::first(1024, &capture.transaction_bytes(self)?)),
+        }?;
+        Ok(s)
     }
 }
 
@@ -1148,33 +1162,42 @@ impl ItemSource<TrafficItem> for CaptureReader {
         })
     }
 
-    fn description(&mut self, item: &TrafficItem, _detail: bool)
+    fn description(&mut self, item: &TrafficItem, detail: bool)
         -> Result<String, Error>
     {
         use PID::*;
         use TrafficItem::*;
         use usb::StartComplete::*;
+        let mut s = String::new();
         Ok(match item {
             Packet(.., packet_id) => {
                 let packet = self.packet(*packet_id)?;
                 let len = packet.len();
                 let too_long = len > 1027;
+                if detail {
+                    writeln!(s, "Packet #{} with {len} bytes",
+                        packet_id.value + 1)?;
+                    writeln!(s, "Timestamp: {} ns from capture start",
+                        fmt_count(self.packet_time(*packet_id)?))?;
+                }
                 match validate_packet(&packet) {
-                    Err(None) => "Malformed 0-byte packet".to_string(),
-                    Err(Some(pid)) => format!(
-                        "Malformed packet{} of {len} {}: {}",
+                    Err(None) => {
+                        write!(s, "Malformed 0-byte packet")?;
+                    },
+                    Err(Some(pid)) => {
+                        write!(s, "Malformed packet")?;
                         match pid {
-                            RSVD if too_long =>
-                                " (reserved PID, and too long)".to_string(),
-                            Malformed if too_long =>
-                                " (invalid PID, and too long)".to_string(),
-                            RSVD =>
-                                " (reserved PID)".to_string(),
-                            Malformed =>
-                                " (invalid PID)".to_string(),
-                            pid if too_long => format!(
+                            RSVD if too_long => write!(s,
+                                " (reserved PID, and too long)"),
+                            Malformed if too_long => write!(s,
+                                " (invalid PID, and too long)"),
+                            RSVD => write!(s,
+                                " (reserved PID)"),
+                            Malformed => write!(s,
+                                " (invalid PID)"),
+                            pid if too_long => write!(s,
                                 " (possibly {pid}, but too long)"),
-                            pid => format!(
+                            pid => write!(s,
                                 " (possibly {pid}, but {})",
                                 match pid {
                                     SOF|SETUP|IN|OUT|PING => {
@@ -1200,48 +1223,71 @@ impl ItemSource<TrafficItem> for CaptureReader {
                                     },
                                     ACK|NAK|NYET|STALL|ERR => "too long",
                                     RSVD|Malformed => unreachable!(),
-                                }),
-                        },
-                        if len == 1 {"byte"} else {"bytes"},
-                        Bytes::first(100, &packet[0 .. len])
-                    ),
-                    Ok(pid) => format!(
-                        "{pid} packet{}",
-                        match PacketFields::from_packet(&packet) {
-                            PacketFields::SOF(sof) => format!(
+                                }
+                            ),
+                        }?;
+                        if len == 1 {
+                            write!(s, " of 1 byte")
+                        } else {
+                            write!(s, " of {len} bytes")
+                        }?;
+                        if detail {
+                            write!(s, "\nHex bytes: {}", Bytes::first(1024, &packet))
+                        } else {
+                            write!(s, ": {}", Bytes::first(100, &packet))
+                        }?;
+                    },
+                    Ok(pid) => {
+                        write!(s, "{pid} packet")?;
+                        let fields = PacketFields::from_packet(&packet);
+                        match &fields {
+                            PacketFields::SOF(sof) => write!(s,
                                 " with frame number {}, CRC {:02X}",
                                 sof.frame_number(),
                                 sof.crc()),
-                            PacketFields::Token(token) => format!(
+                            PacketFields::Token(token) => write!(s,
                                 " on {}.{}, CRC {:02X}",
                                 token.device_address(),
                                 token.endpoint_number(),
                                 token.crc()),
-                            PacketFields::Data(data) if len <= 3 => format!(
+                            PacketFields::Data(data) if len <= 3 => write!(s,
                                 " with CRC {:04X} and no data",
                                 data.crc),
-                            PacketFields::Data(data) => format!(
-                                " with CRC {:04X} and {} data bytes: {}",
+                            PacketFields::Data(data) => write!(s,
+                                " with CRC {:04X} and {} data bytes",
                                 data.crc,
-                                len - 3,
-                                Bytes::first(100, &packet[1 .. len - 2])),
-                            PacketFields::Split(split) => format!(
+                                len - 3),
+                            PacketFields::Split(split) => write!(s,
                                 " {} {} speed {} transaction on hub {} port {}",
                                 match split.sc() {
                                     Start => "starting",
                                     Complete => "completing",
                                 },
-                                format!("{:?}", split.speed()).to_lowercase(),
-                                format!("{:?}", split.endpoint_type()).to_lowercase(),
+                                format!("{:?}", split.speed())
+                                    .to_lowercase(),
+                                format!("{:?}", split.endpoint_type())
+                                    .to_lowercase(),
                                 split.hub_address(),
                                 split.port()),
-                            PacketFields::None => match pid {
-                                PID::Malformed => format!(": {packet:02X?}"),
-                                _ => "".to_string()
-                            }
+                            PacketFields::None => Ok(()),
+                        }?;
+                        if matches!(fields, PacketFields::Data(_)) && len > 3 {
+                            let data = &packet[1 .. len - 2];
+                            if detail {
+                                write!(s, concat!(
+                                    "\nHex bytes: [{:02X}, <payload>, {:02X}, {:02X}]",
+                                    "\nPayload: {}"),
+                                    packet[0], packet[len - 2], packet[len - 1],
+                                    Bytes::first(1024, data))
+                            } else {
+                                write!(s, ": {}", Bytes::first(100, data))
+                            }?;
+                        } else if detail {
+                            write!(s, "\nHex bytes: {packet:02X?}")?;
                         }
-                    )
+                    }
                 }
+                s
             },
             Transaction(transfer_id, transaction_id) => {
                 let entry = self.transfer_index.get(*transfer_id)?;
@@ -1251,15 +1297,31 @@ impl ItemSource<TrafficItem> for CaptureReader {
                     *transaction_id, self.packet_index.len())?;
                 let start_packet_id = packet_id_range.start;
                 let start_packet = self.packet(start_packet_id)?;
+                let packet_count = packet_id_range.len();
+                if detail {
+                    writeln!(s, "Transaction #{} with {} {}",
+                        transaction_id.value + 1,
+                        packet_count,
+                        if packet_count == 1 {"packet"} else {"packets"})?;
+                    writeln!(s, "Timestamp: {} ns from capture start",
+                        fmt_count(self.packet_time(start_packet_id)?))?;
+                    write!(s, "Packets: #{}", packet_id_range.start + 1)?;
+                    if packet_count > 1 {
+                        write!(s, " to #{}", packet_id_range.end)?;
+                    }
+                    writeln!(s)?;
+                }
                 if validate_packet(&start_packet).is_ok() {
                     let transaction = self.transaction(*transaction_id)?;
-                    transaction.description(self, &endpoint)?
+                    s += &transaction.description(self, &endpoint, detail)?
                 } else {
                     let packet_count = packet_id_range.len();
-                    format!("{} malformed {}",
+                    write!(s,
+                        "{} malformed {}",
                         packet_count,
-                        if packet_count == 1 {"packet"} else {"packets"})
+                        if packet_count == 1 {"packet"} else {"packets"})?;
                 }
+                s
             },
             Transfer(transfer_id) => {
                 use EndpointType::*;
@@ -1273,26 +1335,50 @@ impl ItemSource<TrafficItem> for CaptureReader {
                 let (ep_type, _) = dev_data.endpoint_details(ep_addr);
                 let range = self.transfer_range(&entry)?;
                 let count = range.len();
+                if detail && entry.is_start() {
+                    let ep_traf = self.endpoint_traffic(entry.endpoint_id())?;
+                    let start_ep_transaction_id =
+                        ep_traf.transfer_index.get(entry.transfer_id())?;
+                    let start_transaction_id =
+                        ep_traf.transaction_ids.get(start_ep_transaction_id)?;
+                    let start_packet_id =
+                        self.transaction_index.get(start_transaction_id)?;
+                    if count == 1 {
+                        writeln!(s, "Transaction group with 1 transaction")?;
+                    } else {
+                        writeln!(s, "Transaction group with {} transactions",
+                            count)?;
+                    }
+                    writeln!(s, "Timestamp: {} ns from start of capture",
+                        fmt_count(self.packet_time(start_packet_id)?))?;
+                    writeln!(s, "First transaction #{}, first packet #{}",
+                        start_transaction_id.value + 1,
+                        start_packet_id.value + 1)?;
+                }
                 match (ep_type, entry.is_start()) {
-                    (Invalid, true) => format!(
+                    (Invalid, true) => write!(s,
                         "{count} invalid groups"),
-                    (Invalid, false) =>
-                        "End of invalid groups".to_string(),
-                    (Framing, true) => format!(
+                    (Invalid, false) => write!(s,
+                        "End of invalid groups"),
+                    (Framing, true) => write!(s,
                         "{count} SOF groups"),
-                    (Framing, false) =>
-                        "End of SOF groups".to_string(),
+                    (Framing, false) => write!(s,
+                        "End of SOF groups"),
                     (Normal(Control), true) => {
                         let addr = endpoint.device_address();
                         match self.control_transfer(addr, endpoint_id, range) {
-                            Ok(transfer) => transfer.summary(),
-                            Err(_) => format!(
+                            Ok(transfer) if detail => write!(s,
+                                "Control transfer on device {addr}\n{}",
+                                transfer.summary()),
+                            Ok(transfer) => write!(s,
+                                "{}", transfer.summary()),
+                            Err(_) => write!(s,
                                 "Incomplete control transfer on device {addr}")
                         }
                     },
                     (Normal(Control), false) => {
                         let addr = endpoint.device_address();
-                        format!("End of control transfer on device {addr}")
+                        write!(s, "End of control transfer on device {addr}")
                     },
                     (endpoint_type, starting) => {
                         let ep_transfer_id = entry.transfer_id();
@@ -1319,25 +1405,33 @@ impl ItemSource<TrafficItem> for CaptureReader {
                                 let length =
                                     ep_traf.transfer_data_length(&data_range)?;
                                 let length_string = fmt_size(length);
-                                let display_length = min(length, 100) as usize;
+                                let max = if detail { 1024 } else { 100 };
+                                let display_length = min(length, max) as usize;
                                 let transfer_bytes = self.transfer_bytes(
                                     endpoint_id, &data_range, display_length)?;
                                 let display_bytes = Bytes {
                                     partial: length > display_length as u64,
                                     bytes: &transfer_bytes,
                                 };
-                                format!(
-                                    "{ep_type_string} transfer of {length_string} on endpoint {endpoint}: {display_bytes}")
+                                write!(s, "{ep_type_string} transfer ")?;
+                                write!(s, "of {length_string} ")?;
+                                write!(s, "on endpoint {endpoint}")?;
+                                if detail {
+                                    write!(s, "\nPayload: {display_bytes}")
+                                } else {
+                                    write!(s, ": {display_bytes}")
+                                }
                             },
-                            (true, false) => format!(
+                            (true, false) => write!(s,
                                 "End of {ep_type_lower} transfer on endpoint {endpoint}"),
-                            (false, true) => format!(
+                            (false, true) => write!(s,
                                 "Polling {count} times for {ep_type_lower} transfer on endpoint {endpoint}"),
-                            (false, false) => format!(
+                            (false, false) => write!(s,
                                 "End polling for {ep_type_lower} transfer on endpoint {endpoint}"),
                         }
                     }
-                }
+                }?;
+                s
             }
         })
     }
