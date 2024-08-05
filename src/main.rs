@@ -38,6 +38,8 @@ mod usb;
 mod util;
 mod vec_map;
 mod version;
+mod devices;
+mod cli_capture;
 
 // Declare optional modules.
 #[cfg(any(test, feature="record-ui-test"))]
@@ -47,7 +49,6 @@ mod test_replay;
 
 use gtk::prelude::*;
 use gtk::gio::ApplicationFlags;
-use gtk::glib::{self, OptionArg, OptionFlags};
 
 use ui::{
     activate,
@@ -56,9 +57,51 @@ use ui::{
     stop_cynthion
 };
 use version::{version, version_info};
+use devices::list_devices;
+use cli_capture::{SubCommandCliCapture, headless_capture};
 
-fn have_argument(name: &str) -> bool {
-    std::env::args().any(|arg| arg == name)
+use argh::FromArgs;
+#[derive(FromArgs, PartialEq, Debug)]
+/// packetry - a fast, intuitive USB 2.0 protocol analysis application for use with Cynthion
+struct Args {
+    #[argh(subcommand)]
+    sub_commands: Option<SubcommandEnum>,
+
+    /// recording (pcap) to open in the GUI
+    #[argh(positional)]
+    filename: Option<String>,
+}
+
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand)]
+enum SubcommandEnum {
+    One(SubCommandCliCapture),
+    Two(SubCommandDevices),
+    Three(SubCommandVersion),
+    Four(SubCommandTest)
+}
+
+#[derive(FromArgs, PartialEq, Debug)]
+/// List capture devices
+#[argh(subcommand, name = "devices")]
+struct SubCommandDevices {}
+
+#[derive(FromArgs, PartialEq, Debug)]
+/// Print version information
+#[argh(subcommand, name = "version")]
+struct SubCommandVersion {
+    /// print dependency information with version
+    #[argh(switch, long = "dependencies")]
+    print_dependencies: bool,
+}
+
+#[derive(FromArgs, PartialEq, Debug)]
+/// Test an attached Cynthion
+#[argh(subcommand, name = "test-cynthion")]
+struct SubCommandTest {
+    /// save the captures to disk
+    #[argh(switch, long = "save-captures")]
+    save_captures: bool,
 }
 
 fn main() {
@@ -69,37 +112,54 @@ fn main() {
         unsafe {AttachConsole(ATTACH_PARENT_PROCESS)};
     }
 
-    if have_argument("--version") {
-        println!("Packetry version {}\n\n{}",
-                 version(),
-                 version_info(have_argument("--dependencies")));
-    } else if have_argument("--test-cynthion") {
-        let save_captures = have_argument("--save-captures");
-        test_cynthion::run_test(save_captures);
+        
+    let args: Args = argh::from_env();
+
+    if let Some(subcmd) = args.sub_commands {
+        match subcmd {
+            SubcommandEnum::One(captureoptions) => {
+                if let Err(e) = headless_capture(captureoptions) {
+                    eprintln!("Error capturing: {}", e);
+                }
+            }
+
+            SubcommandEnum::Two(_) => {
+                if let Err(e) = list_devices() {
+                    eprintln!("Error listing devices: {}", e);
+                }
+            }
+
+            SubcommandEnum::Three(versionoptions) => {
+                println!("Packetry version {}\n\n{}",
+                version(),
+                version_info(versionoptions.print_dependencies));
+            }
+
+            SubcommandEnum::Four(testoptions) => {
+                test_cynthion::run_test(testoptions.save_captures);
+            }
+        }
+
     } else {
+        // Start the GUI application as no subcommand was provided.
+        // Here, args[1] is the filename if one was provided. This should be added to the argh enum.
+
         let application = gtk::Application::new(
             Some("com.greatscottgadgets.packetry"),
             ApplicationFlags::NON_UNIQUE |
             ApplicationFlags::HANDLES_OPEN
         );
         application.set_option_context_parameter_string(
-           Some("[filename.pcap]"));
-        application.add_main_option(
-           "version", glib::Char::from(0),
-           OptionFlags::NONE, OptionArg::None,
-           "Print version information", None);
-        application.add_main_option(
-           "test-cynthion", glib::Char::from(0),
-           OptionFlags::NONE, OptionArg::None,
-           "Test an attached Cynthion USB analyzer", None);
+            Some("[filename.pcap]"));
         application.connect_activate(|app| display_error(activate(app)));
         application.connect_open(|app, files, _hint| {
-           app.activate();
-           if let Some(file) = files.first() {
-              display_error(open(file));
-           }
+            app.activate();
+            if let Some(file) = files.first() {
+                display_error(open(file));
+            }
         });
         application.run();
         display_error(stop_cynthion());
     }
 }
+

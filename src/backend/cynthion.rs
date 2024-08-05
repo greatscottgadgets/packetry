@@ -36,7 +36,7 @@ const ENDPOINT: u8 = 0x81;
 const READ_LEN: usize = 0x4000;
 const NUM_TRANSFERS: usize = 4;
 
-#[derive(Copy, Clone, FromPrimitive, IntoPrimitive)]
+#[derive(Copy, Clone, FromPrimitive, IntoPrimitive, Eq, PartialEq)]
 #[repr(u8)]
 pub enum Speed {
     #[default]
@@ -65,6 +65,33 @@ impl Speed {
             Full => 0b0100,
             High => 0b1000,
         }
+    }
+}
+
+impl std::str::FromStr for Speed {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        use Speed::*;
+        match s {
+            "auto" => Ok(Auto),
+            "high" => Ok(High),
+            "full" => Ok(Full),
+            "low"  => Ok(Low),
+            _ => bail!("Invalid speed: {}", s)
+        }
+    }
+}
+
+impl std::fmt::Display for Speed {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.description())
+    }
+}
+
+impl std::fmt::Debug for Speed {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.description())
     }
 }
 
@@ -366,13 +393,13 @@ impl CynthionHandle {
 
     fn start_capture(&mut self, speed: Speed) -> Result<(), Error> {
         self.write_request(1, State::new(true, speed).0)?;
-        println!("Capture enabled, speed: {}", speed.description());
+        eprintln!("Capture enabled, speed: {}", speed.description());
         Ok(())
     }
 
     fn stop_capture(&mut self) -> Result<(), Error> {
         self.write_request(1, State::new(false, Speed::High).0)?;
-        println!("Capture disabled");
+        eprintln!("Capture disabled");
         Ok(())
     }
 
@@ -545,7 +572,7 @@ impl CynthionStream {
 
 impl CynthionStop {
     pub fn stop(self) -> Result<(), Error> {
-        println!("Requesting capture stop");
+        eprintln!("Requesting capture stop");
         self.stop_request.send(())
             .or_else(|_| bail!("Failed sending stop request"))?;
         handle_thread_panic(self.worker.join())?;
