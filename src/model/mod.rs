@@ -36,7 +36,7 @@ pub trait GenericModel<Item> where Self: Sized {
                     expanded: bool)
         -> Result<(), Error>;
     fn update(&self) -> Result<bool, Error>;
-    fn summary(&self, item: &Item) -> String;
+    fn description(&self, item: &Item, detail: bool) -> String;
     fn timestamp(&self, item: &Item) -> u64;
     fn connectors(&self, item: &Item) -> String;
 }
@@ -75,10 +75,10 @@ impl GenericModel<TrafficItem> for TrafficModel {
         tree.update(self)
     }
 
-    fn summary(&self, item: &TrafficItem) -> String {
+    fn description(&self, item: &TrafficItem, detail: bool) -> String {
         let tree_opt = self.imp().tree.borrow();
         let tree = tree_opt.as_ref().unwrap();
-        tree.summary(item)
+        tree.description(item, detail)
     }
 
     fn timestamp(&self, item: &TrafficItem) -> u64 {
@@ -128,10 +128,10 @@ impl GenericModel<DeviceItem> for DeviceModel {
         tree.update(self)
     }
 
-    fn summary(&self, item: &DeviceItem) -> String {
+    fn description(&self, item: &DeviceItem, detail: bool) -> String {
         let tree_opt = self.imp().tree.borrow();
         let tree = tree_opt.as_ref().unwrap();
-        tree.summary(item)
+        tree.description(item, detail)
     }
 
     fn timestamp(&self, _item: &DeviceItem) -> u64 {

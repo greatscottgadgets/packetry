@@ -599,7 +599,7 @@ fn create_view<Item, Model, RowData>(
         match row.node() {
             Ok(node_ref) => {
                 let node = node_ref.borrow();
-                let summary = bind_model.summary(&node.item);
+                let summary = bind_model.description(&node.item, false);
                 let connectors = bind_model.connectors(&node.item);
                 expander_wrapper.set_text(summary);
                 expander_wrapper.set_connectors(connectors);
@@ -748,7 +748,7 @@ pub fn reset_capture() -> Result<CaptureWriter, Error> {
                             match row.node() {
                                 Ok(node_ref) => {
                                     let node = node_ref.borrow();
-                                    traffic_model.summary(&node.item)
+                                    traffic_model.description(&node.item, true)
                                 },
                                 Err(msg) => msg
                             }

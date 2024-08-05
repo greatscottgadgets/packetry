@@ -212,7 +212,7 @@ impl Recording {
             .borrow()
             .item;
         self.capture
-            .summary(&item)
+            .description(&item, false)
             .expect("Failed to generate item summary")
     }
 

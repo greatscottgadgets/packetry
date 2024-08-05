@@ -1064,7 +1064,10 @@ pub trait ItemSource<Item> {
         -> Result<Item, Error>;
     fn item_children(&mut self, parent: Option<&Item>)
         -> Result<(CompletionStatus, u64), Error>;
-    fn summary(&mut self, item: &Item) -> Result<String, Error>;
+    fn description(&mut self,
+                   item: &Item,
+                   detail: bool)
+        -> Result<String, Error>;
     fn connectors(&mut self, item: &Item) -> Result<String, Error>;
     fn timestamp(&mut self, item: &Item) -> Result<Timestamp, Error>;
 }
@@ -1145,7 +1148,7 @@ impl ItemSource<TrafficItem> for CaptureReader {
         })
     }
 
-    fn summary(&mut self, item: &TrafficItem)
+    fn description(&mut self, item: &TrafficItem, _detail: bool)
         -> Result<String, Error>
     {
         use PID::*;
@@ -1588,7 +1591,7 @@ impl ItemSource<DeviceItem> for CaptureReader {
         Ok((completion, children as u64))
     }
 
-    fn summary(&mut self, item: &DeviceItem)
+    fn description(&mut self, item: &DeviceItem, _detail: bool)
         -> Result<String, Error>
     {
         use DeviceItem::*;
@@ -1692,7 +1695,7 @@ mod tests {
     fn summarize_item(cap: &mut CaptureReader, item: &TrafficItem, depth: usize)
         -> String
     {
-        let mut summary = cap.summary(item).unwrap();
+        let mut summary = cap.description(item, false).unwrap();
         let (_completion, num_children) =
             cap.item_children(Some(item)).unwrap();
         let child_ids = 0..num_children;

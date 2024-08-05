@@ -773,7 +773,7 @@ where Item: 'static + Copy + Debug,
 
             if item_updated {
                 // The node's description may change.
-                let summary = cap.summary(&item_node.item)?;
+                let summary = cap.description(&item_node.item, false)?;
                 #[cfg(any(test, feature="record-ui-test"))]
                 if let Ok(position) = u32::try_from(position) {
                     let mut on_item_update = self.on_item_update.borrow_mut();
@@ -948,9 +948,9 @@ where Item: 'static + Copy + Debug,
         cap.timestamp(item).unwrap_or(0)
     }
 
-    pub fn summary(&self, item: &Item) -> String {
+    pub fn description(&self, item: &Item, detail: bool) -> String {
         let mut cap = self.capture.borrow_mut();
-        match cap.summary(item) {
+        match cap.description(item, detail) {
             Ok(string) => string,
             Err(e) => format!("Error: {e:?}")
         }
