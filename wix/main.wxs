@@ -70,6 +70,14 @@
                                 Source='$(var.CargoTargetBinDir)\packetry.exe'
                                 KeyPath='yes'/>
                         </Component>
+                        <Component Id='binary1' Guid='*'>
+                            <File
+                                Id='exe1'
+                                Name='packetry-cli.exe'
+                                DiskId='1'
+                                Source='$(var.CargoTargetBinDir)\packetry-cli.exe'
+                                KeyPath='yes'/>
+                        </Component>
                         <?include dll-components.wxi ?>
                     </Directory>
 
@@ -142,6 +150,7 @@
             <?include license-references.wxi ?>
 
             <ComponentRef Id='binary0'/>
+            <ComponentRef Id='binary1'/>
             <?include dll-references.wxi ?>
 
             <ComponentRef Id='gschemas.compiled'/>

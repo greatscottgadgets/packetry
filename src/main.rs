@@ -62,6 +62,13 @@ fn have_argument(name: &str) -> bool {
 }
 
 fn main() {
+    // On Windows, this env var will be set by the packetry-cli wrapper.
+    #[cfg(windows)]
+    if std::env::var("PACKETRY_ATTACH_CONSOLE").is_ok() {
+        use winapi::um::wincon::{AttachConsole, ATTACH_PARENT_PROCESS};
+        unsafe {AttachConsole(ATTACH_PARENT_PROCESS)};
+    }
+
     if have_argument("--version") {
         println!("Packetry version {}\n\n{}",
                  version(),

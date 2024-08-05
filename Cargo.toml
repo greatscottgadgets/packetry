@@ -12,6 +12,7 @@ documentation = "https://packetry.readthedocs.io"
 edition = "2021"
 rust-version = "1.74"
 build = "src/build.rs"
+default-run = "packetry"
 
 include = [
     "CHANGELOG.md",
@@ -62,6 +63,9 @@ rand_xorshift = "0.3.0"
 procspawn = "1.0.0"
 ctor = "0.2.8"
 
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3.9", features = ["wincon"] }
+
 # Note: All of the current features are for debugging purposes only!
 #
 # None of them should be enabled for normal builds of the application.
@@ -110,3 +114,11 @@ record-ui-test = ["serde", "serde_json"]
 # that is used internally by the model, and the changes being made to it.
 #
 debug-region-map = []
+
+[[bin]]
+name = "packetry"
+path = "src/main.rs"
+
+[[bin]]
+name = "packetry-cli"
+path = "src/cli.rs"
