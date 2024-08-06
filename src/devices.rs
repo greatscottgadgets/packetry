@@ -16,6 +16,12 @@ pub fn list_devices() -> Result<()> {
 	let devices = CynthionDevice::scan()?;
 
 	let count = devices.len();
+
+	if count == 0 {
+		println!("No devices found.");
+		return Ok(());
+	}
+
 	let mut dev_names = Vec::with_capacity(count);
 	let mut dev_serialnumbers = Vec::with_capacity(count);
 	let mut dev_states = Vec::with_capacity(count);
