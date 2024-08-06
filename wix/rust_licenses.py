@@ -24,7 +24,7 @@ conditional_license_strings = (
 
 # These packages have been validated for conditionally accepted licenses.
 validated = (
-    ('target-lexicon', '0.12.14'),
+    ('target-lexicon', '0.12.16'),
     ('unicode-ident', '1.0.12'),
 )
 
@@ -119,6 +119,7 @@ for line in cargo_result.stdout.decode().rstrip().split("\n"):
         file_paths = (
             ['LICENSE-MIT'],
             ['LICENSE-MIT.md'],
+            ['LICENSE.MIT'],
             ['license-mit'],
             ['LICENSES', 'MIT.txt'],
             ['LICENSE'],
