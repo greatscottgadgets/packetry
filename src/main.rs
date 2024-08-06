@@ -6,23 +6,25 @@
 extern crate bitfield;
 
 // We need the ctor macro for the replay test on macOS.
-#[cfg(all(test, target_os="macos"))]
+#[cfg(all(test, target_os = "macos"))]
 #[allow(unused_imports)]
 #[macro_use]
 extern crate ctor;
 
 // Include build-time info.
 pub mod built {
-   // The file has been placed there by the build script.
-   include!(concat!(env!("OUT_DIR"), "/built.rs"));
+    // The file has been placed there by the build script.
+    include!(concat!(env!("OUT_DIR"), "/built.rs"));
 }
 
 // Declare all modules used.
 mod backend;
 mod capture;
+mod cli_capture;
 mod compact_index;
 mod data_stream;
 mod decoder;
+mod devices;
 mod expander;
 mod id;
 mod index_stream;
@@ -38,27 +40,20 @@ mod usb;
 mod util;
 mod vec_map;
 mod version;
-mod devices;
-mod cli_capture;
 
 // Declare optional modules.
-#[cfg(any(test, feature="record-ui-test"))]
+#[cfg(any(test, feature = "record-ui-test"))]
 mod record_ui;
 #[cfg(test)]
 mod test_replay;
 
-use gtk::prelude::*;
 use gtk::gio::ApplicationFlags;
+use gtk::prelude::*;
 
-use ui::{
-    activate,
-    display_error,
-    open,
-    stop_cynthion
-};
-use version::{version, version_info};
+use cli_capture::{headless_capture, SubCommandCliCapture};
 use devices::list_devices;
-use cli_capture::{SubCommandCliCapture, headless_capture};
+use ui::{activate, display_error, open, stop_cynthion};
+use version::{version, version_info};
 
 use argh::FromArgs;
 #[derive(FromArgs, PartialEq, Debug)]
@@ -78,7 +73,7 @@ enum SubcommandEnum {
     One(SubCommandCliCapture),
     Two(SubCommandDevices),
     Three(SubCommandVersion),
-    Four(SubCommandTest)
+    Four(SubCommandTest),
 }
 
 #[derive(FromArgs, PartialEq, Debug)]
@@ -109,10 +104,9 @@ fn main() {
     #[cfg(windows)]
     if std::env::var("PACKETRY_ATTACH_CONSOLE").is_ok() {
         use winapi::um::wincon::{AttachConsole, ATTACH_PARENT_PROCESS};
-        unsafe {AttachConsole(ATTACH_PARENT_PROCESS)};
+        unsafe { AttachConsole(ATTACH_PARENT_PROCESS) };
     }
 
-        
     let args: Args = argh::from_env();
 
     if let Some(subcmd) = args.sub_commands {
@@ -130,27 +124,26 @@ fn main() {
             }
 
             SubcommandEnum::Three(versionoptions) => {
-                println!("Packetry version {}\n\n{}",
-                version(),
-                version_info(versionoptions.print_dependencies));
+                println!(
+                    "Packetry version {}\n\n{}",
+                    version(),
+                    version_info(versionoptions.print_dependencies)
+                );
             }
 
             SubcommandEnum::Four(testoptions) => {
                 test_cynthion::run_test(testoptions.save_captures);
             }
         }
-
     } else {
         // Start the GUI application as no subcommand was provided.
         // Here, args[1] is the filename if one was provided. This should be added to the argh enum.
 
         let application = gtk::Application::new(
             Some("com.greatscottgadgets.packetry"),
-            ApplicationFlags::NON_UNIQUE |
-            ApplicationFlags::HANDLES_OPEN
+            ApplicationFlags::NON_UNIQUE | ApplicationFlags::HANDLES_OPEN,
         );
-        application.set_option_context_parameter_string(
-            Some("[filename.pcap]"));
+        application.set_option_context_parameter_string(Some("[filename.pcap]"));
         application.connect_activate(|app| display_error(activate(app)));
         application.connect_open(|app, files, _hint| {
             app.activate();
@@ -162,4 +155,3 @@ fn main() {
         display_error(stop_cynthion());
     }
 }
-
