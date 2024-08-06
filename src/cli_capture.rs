@@ -5,9 +5,7 @@ use crate::pcap::Writer;
 use anyhow::Result;
 use ctrlc;
 use std::fs::File;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
-use std::thread;
 
 use argh::FromArgs;
 #[derive(FromArgs, PartialEq, Debug)]
@@ -53,32 +51,17 @@ pub fn headless_capture(options: SubCommandCliCapture) -> Result<()> {
     let (stream_handle, stop_handle) =
         cynthion.start(options.usb_speed, |e| eprintln!("{:?}", e))?;
 
-    // Stop the capture when CTRL+C is pressed
-    // For this set up a watchdog thread that checks if CTRL+C was pressed
-    let running = Arc::new(AtomicBool::new(true));
-    let r = running.clone();
     let stop_handle = Arc::new(Mutex::new(Some(stop_handle)));
-    let stop_handle_clone = Arc::clone(&stop_handle);
-
     ctrlc::set_handler(move || {
-        r.store(false, Ordering::SeqCst);
+        let mut handle_opt = stop_handle.lock().unwrap();
+        if let Some(handle) = handle_opt.take() {
+            if let Err(e) = handle.stop() {
+                eprintln!("Failed to stop Cynthion: {}", e);
+            }
+        }
     })
     .expect("Error setting CTRL+C handler");
-
-    let ctrlc_watchdog = {
-        let running = running.clone();
-        thread::spawn(move || {
-            while running.load(Ordering::SeqCst) {
-                thread::sleep(std::time::Duration::from_millis(100));
-            }
-
-            if let Some(handle) = stop_handle_clone.lock().unwrap().take() {
-                if let Err(e) = handle.stop() {
-                    eprintln!("Error stopping capture: {}", e);
-                }
-            }
-        })
-    };
+    
 
     let mut counter = 0;
     for packet in stream_handle {
@@ -94,10 +77,6 @@ pub fn headless_capture(options: SubCommandCliCapture) -> Result<()> {
 
         counter += 1;
     }
-
-    ctrlc_watchdog
-        .join()
-        .expect("CTRL+C watchdog thread panicked");
 
     if let Some(stdout_writer) = stdout_writer {
         stdout_writer.close()?;
@@ -124,9 +103,8 @@ pub fn headless_capture(options: SubCommandCliCapture) -> Result<()> {
 
 fn select_device(serial: &str, speed: Speed) -> Result<CynthionDevice> {
     let mut devices = CynthionDevice::scan()?;
-    let count = devices.len();
 
-    if count == 0 {
+    if devices.is_empty() {
         return Err(anyhow::anyhow!("No devices found"));
     }
 
