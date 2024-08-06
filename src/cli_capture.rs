@@ -1,10 +1,9 @@
 use crate::backend::cynthion::{CynthionDevice, CynthionUsability::*, Speed};
-use crate::capture::{create_capture, PacketId};
-use crate::decoder::Decoder;
 use crate::pcap::Writer;
 use anyhow::Result;
 use ctrlc;
 use std::fs::File;
+use std::io::{self, Write};
 use std::sync::{Arc, Mutex};
 
 use argh::FromArgs;
@@ -36,16 +35,12 @@ pub struct SubCommandCliCapture {
 pub fn headless_capture(options: SubCommandCliCapture) -> Result<()> {
     let device = select_device(&options.device_serial, options.usb_speed)?;
 
-    let (capture_writer, mut capture_reader) = create_capture()?;
-    let mut decoder = Decoder::new(capture_writer)?;
-
-    // Open a writer to stdout if the output file is set to '-'
-    let mut stdout_writer = if options.output_file == "-" {
-        let stdout_file = std::io::stdout();
-        Some(Writer::open(stdout_file)?)
+    let output_writer: Box<dyn Write> = if options.output_file == "-" {
+        Box::new(io::stdout())
     } else {
-        None
+        Box::new(File::create(&options.output_file)?)
     };
+    let mut writer = Writer::open(output_writer)?;
 
     let cynthion = device.open()?;
     let (stream_handle, stop_handle) =
@@ -61,42 +56,12 @@ pub fn headless_capture(options: SubCommandCliCapture) -> Result<()> {
         }
     })
     .expect("Error setting CTRL+C handler");
-    
 
-    let mut counter = 0;
     for packet in stream_handle {
-        decoder.handle_raw_packet(&packet.bytes, packet.timestamp_ns)?;
-
-        // Write the packet to stdout
-        if let Some(ref mut stdout_writer) = stdout_writer {
-            let packet_id = PacketId::from(counter);
-            let packet = capture_reader.packet(packet_id)?;
-            let timestamp_ns = capture_reader.packet_time(packet_id)?;
-            stdout_writer.add_packet(&packet, timestamp_ns)?;
-        }
-
-        counter += 1;
+        writer.add_packet(&packet.bytes, packet.timestamp_ns)?;
     }
 
-    if let Some(stdout_writer) = stdout_writer {
-        stdout_writer.close()?;
-    }
-
-    // Save the capture to disk
-    if options.output_file != "-" {
-        let pcap_file = File::create(&options.output_file)?;
-        let mut pcap_writer = Writer::open(pcap_file)?;
-
-        let packet_count = capture_reader.packet_index.len();
-        for i in 0..packet_count {
-            let packet_id = PacketId::from(i);
-            let packet = capture_reader.packet(packet_id)?;
-            let timestamp_ns = capture_reader.packet_time(packet_id)?;
-            pcap_writer.add_packet(&packet, timestamp_ns)?;
-        }
-        pcap_writer.close()?;
-        eprintln!("Capture saved to {}", options.output_file);
-    }
+    writer.close()?;
 
     Ok(())
 }
