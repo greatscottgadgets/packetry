@@ -71,17 +71,17 @@ At devices row 16:
 Expanding devices view, row 17: Interface 0
 At devices row 18:
 + Interface descriptor
-+ Endpoint 2 IN
++ Endpoint 2 IN (interrupt)
 Expanding devices view, row 20: Interface 1
 At devices row 21:
 + Interface descriptor
-+ Endpoint 1 OUT
-+ Endpoint 1 IN
++ Endpoint 1 OUT (bulk)
++ Endpoint 1 IN (bulk)
 Expanding devices view, row 24: Interface 2
 At devices row 25:
 + Interface descriptor
-+ Endpoint 2 OUT
-+ Endpoint 3 IN
++ Endpoint 2 OUT (bulk)
++ Endpoint 3 IN (bulk)
 Expanding devices view, row 28: Device 2: TiDAL
 At devices row 29:
 + Device descriptor
@@ -95,13 +95,13 @@ At devices row 31:
 Expanding devices view, row 34: Interface 2
 At devices row 35:
 + Interface descriptor
-+ Endpoint 3 IN
++ Endpoint 3 IN (interrupt)
 Expanding devices view, row 33: Interface 1
 At devices row 34:
 + Interface descriptor
-+ Endpoint 2 OUT
-+ Endpoint 2 IN
-Expanding devices view, row 35: Endpoint 2 OUT
++ Endpoint 2 OUT (bulk)
++ Endpoint 2 IN (bulk)
+Expanding devices view, row 35: Endpoint 2 OUT (bulk)
 At devices row 36:
 + Length: 7 bytes
 + Type: 0x05
@@ -109,7 +109,7 @@ At devices row 36:
 + Attributes: 0x02
 + Max packet size: 64 bytes
 + Interval: 0x00
-Expanding devices view, row 42: Endpoint 2 IN
+Expanding devices view, row 42: Endpoint 2 IN (bulk)
 At devices row 43:
 + Length: 7 bytes
 + Type: 0x05
@@ -120,15 +120,15 @@ At devices row 43:
 Collapsing devices view, row 15: Configuration 1
 At devices row 18:
 - Interface descriptor
-- Endpoint 2 IN
+- Endpoint 2 IN (interrupt)
 At devices row 19:
 - Interface descriptor
-- Endpoint 1 OUT
-- Endpoint 1 IN
+- Endpoint 1 OUT (bulk)
+- Endpoint 1 IN (bulk)
 At devices row 20:
 - Interface descriptor
-- Endpoint 2 OUT
-- Endpoint 3 IN
+- Endpoint 2 OUT (bulk)
+- Endpoint 3 IN (bulk)
 At devices row 16:
 - Configuration descriptor
 - Interface 0
@@ -230,11 +230,11 @@ At devices row 10:
 - Interval: 0x00
 At devices row 7:
 - Interface descriptor
-- Endpoint 2 OUT
-- Endpoint 2 IN
+- Endpoint 2 OUT (bulk)
+- Endpoint 2 IN (bulk)
 At devices row 8:
 - Interface descriptor
-- Endpoint 3 IN
+- Endpoint 3 IN (interrupt)
 At devices row 4:
 - Configuration descriptor
 - Interface 0
