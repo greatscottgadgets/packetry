@@ -834,7 +834,9 @@ fn start_pcap(action: FileAction, file: gio::File) -> Result<(), Error> {
     };
     with_ui(|ui| {
         #[cfg(feature="record-ui-test")]
-        ui.recording.borrow_mut().log_open_file(&file.uri(), &ui.capture);
+        ui.recording.borrow_mut().log_open_file(
+            &file.path().context("Cannot record UI test for non-local path")?,
+            &ui.capture);
         ui.open_button.set_sensitive(false);
         ui.save_button.set_sensitive(false);
         ui.scan_button.set_sensitive(false);
