@@ -17,12 +17,15 @@ use nusb::transfer::RequestBuffer;
 use std::fs::File;
 use std::path::PathBuf;
 use std::thread::sleep;
-use std::time::Duration;
+use std::time::{Duration, Instant};
+
+const US: Duration = Duration::from_micros(1);
+const MS: Duration = Duration::from_millis(1);
 
 pub fn run_test(save_captures: bool) {
     for (name, speed, ep_addr, length, sof) in [
-        ("HS", Speed::High, 0x81, 4096, Some((124500,  125500, 500))),
-        ("FS", Speed::Full, 0x82,  512, Some((995000, 1005000,  50))),
+        ("HS", Speed::High, 0x81, 4096, Some((124*US,  126*US))),
+        ("FS", Speed::Full, 0x82,  512, Some((995*US, 1005*US))),
         ("LS", Speed::Low,  0x83,   64, None)]
     {
         test(save_captures, name, speed, ep_addr, length, sof).unwrap();
@@ -34,7 +37,7 @@ fn test(save_capture: bool,
         speed: Speed,
         ep_addr: u8,
         length: usize,
-        sof: Option<(u64, u64, u64)>)
+        sof: Option<(Duration, Duration)>)
     -> Result<(), Error>
 {
     let desc = speed.description();
@@ -62,6 +65,7 @@ fn test(save_capture: bool,
     sleep(Duration::from_millis(100));
 
     // Start capture.
+    let analyzer_start_time = Instant::now();
     let (packets, stop_handle) = analyzer
         .start(speed,
                |err| err.context("Failure in capture thread").unwrap())
@@ -94,6 +98,7 @@ fn test(save_capture: bool,
     // Stop analyzer.
     stop_handle.stop()
         .context("Failed to stop analyzer")?;
+    let analyzer_stop_time = Instant::now();
 
     // Decode all packets that were received.
     for packet in packets {
@@ -131,7 +136,7 @@ fn test(save_capture: bool,
     assert_eq!(bytes_captured, completion.data,
                "Captured data did not match received data");
 
-    if let Some((min_interval, max_interval, min_count)) = sof {
+    if let Some((min_interval, max_interval)) = sof {
         println!("Checking SOF timestamp intervals");
         // Check SOF timestamps have the expected spacing.
         // SOF packets are assigned to endpoint ID 1.
@@ -143,6 +148,7 @@ fn test(save_capture: bool,
             .target_range(ep_transfer_id, ep_traf.transaction_ids.len())?;
         let mut sof_count = 0;
         let mut last = None;
+        let mut gaps = Vec::new();
         for transaction_id in ep_traf.transaction_ids
             .get_range(&ep_transaction_ids)?
         {
@@ -150,24 +156,45 @@ fn test(save_capture: bool,
                 .target_range(transaction_id, reader.packet_index.len())?;
             for id in range.start.value..range.end.value {
                 let packet_id = PacketId::from(id);
-                let timestamp = reader.packet_times.get(packet_id)?;
+                let timestamp = Duration::from_nanos(
+                    reader.packet_times.get(packet_id)?);
                 if let Some(prev) = last.replace(timestamp) {
                     let interval = timestamp - prev;
                     if !(interval > min_interval && interval < max_interval) {
-                        if interval > 10000000 {
-                            // More than 10ms gap, assume host stopped sending.
+                        if interval > 10*MS {
+                            // More than 10ms gap, looks like a bus reset.
+                            gaps.push(interval);
+                            println!("Found a gap of {} ms between SOF packets",
+                                     interval.as_millis());
                             continue
                         } else {
-                            panic!("SOF interval of {}ns is out of range",
-                                   interval);
+                            panic!("SOF interval of {} us is out of range",
+                                   interval.as_micros());
                         }
                     }
                 }
                 sof_count += 1;
             }
         }
+
         println!("Found {} SOF packets with expected interval range", sof_count);
-        assert!(sof_count > min_count, "Not enough SOF packets captured");
+
+        assert!(gaps.len() <= 1, "More than one gap in SOF packets seen");
+
+        // Check how long we could have been capturing SOF packets for.
+        let max_bus_time = analyzer_stop_time.duration_since(analyzer_start_time);
+
+        // Allow for delays and time when the bus was in reset.
+        let min_bus_time = max_bus_time - 500*MS;
+
+        // Calculate how many SOF packets we should have seen.
+        let min_count = min_bus_time.as_micros() / max_interval.as_micros();
+        let max_count = max_bus_time.as_micros() / min_interval.as_micros();
+
+        println!("Expected to see between {min_count} and {max_count} SOF packets");
+
+        assert!(sof_count >= min_count, "Not enough SOF packets captured");
+        assert!(sof_count <= max_count, "Too many SOF packets captured");
     }
 
     Ok(())
