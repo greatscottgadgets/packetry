@@ -21,7 +21,7 @@ use gtk::gio::{
     MenuItem,
     SimpleActionGroup
 };
-use gtk::glib::{self, Object, SignalHandlerId};
+use gtk::glib::{Object, SignalHandlerId};
 use gtk::{
     prelude::*,
     AboutDialog,
@@ -1055,7 +1055,7 @@ fn show_about() -> Result<(), Error> {
 pub fn display_error(result: Result<(), Error>) {
     #[cfg(not(test))]
     if let Err(e) = result {
-        if let Some(g_error) = e.downcast_ref::<glib::Error>() {
+        if let Some(g_error) = e.downcast_ref::<gtk::glib::Error>() {
             if g_error.matches(gio::IOErrorEnum::Cancelled) {
                 // We cancelled a load/save operation. This isn't an error.
                 return;
