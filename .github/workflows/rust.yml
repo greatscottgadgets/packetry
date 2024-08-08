@@ -39,7 +39,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ['macos-latest', 'ubuntu-latest', 'windows-latest']
-        rust: ['stable', '1.74']
+        rust: ['stable', '1.75']
 
     runs-on: ${{ matrix.os }}
 
@@ -123,8 +123,8 @@ jobs:
         shell: bash
         run: |
           pip install license-expression
-          python wix/rust_licenses.py > wix/LICENSE-static-libraries.txt
-          python wix/vcpkg_licenses.py > wix/LICENSE-dynamic-libraries.txt
+          python -X utf8 wix/rust_licenses.py > wix/LICENSE-static-libraries.txt
+          python -X utf8 wix/vcpkg_licenses.py > wix/LICENSE-dynamic-libraries.txt
         if: matrix.os == 'windows-latest'
 
       - name: Generate components (Windows)
