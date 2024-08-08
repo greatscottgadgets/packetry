@@ -10,7 +10,7 @@ use crate::capture::{
 use crate::decoder::Decoder;
 use crate::pcap::Writer;
 
-use anyhow::{Context, Error};
+use anyhow::{Context, Error, ensure};
 use futures_lite::future::block_on;
 use nusb::transfer::RequestBuffer;
 
@@ -28,7 +28,10 @@ pub fn run_test(save_captures: bool) {
         ("FS", Speed::Full, 0x82,  512, Some((995*US, 1005*US))),
         ("LS", Speed::Low,  0x83,   64, None)]
     {
-        test(save_captures, name, speed, ep_addr, length, sof).unwrap();
+        if let Err(e) = test(save_captures, name, speed, ep_addr, length, sof) {
+            eprintln!("\nTest failed: {e}");
+            std::process::exit(1);
+        }
     }
 }
 
@@ -93,7 +96,8 @@ fn test(save_capture: bool,
     let completion = block_on(transfer);
     completion.status.context("Transfer from test device failed")?;
     println!("Read {} bytes from test device", completion.data.len());
-    assert_eq!(completion.data.len(), length);
+    ensure!(completion.data.len() == length,
+            "Did not complete reading data");
 
     // Stop analyzer.
     stop_handle.stop()
@@ -123,7 +127,8 @@ fn test(save_capture: bool,
     // Look for the test device in the capture.
     let device_id = DeviceId::from(1);
     let device_data = reader.device_data(&device_id)?;
-    assert_eq!(device_data.description(), "USB Analyzer Test Device");
+    ensure!(device_data.description() == "USB Analyzer Test Device",
+            "Device found did not have expected description");
     println!("Found test device in capture");
 
     // Check captured payload bytes match received ones.
@@ -131,10 +136,10 @@ fn test(save_capture: bool,
         .context("Error counting captured bytes on endpoint")?;
     println!("Captured {}/{} bytes of data read from test device",
              bytes_captured.len(), length);
-    assert_eq!(bytes_captured.len(), length,
-               "Not all data was captured");
-    assert_eq!(bytes_captured, completion.data,
-               "Captured data did not match received data");
+    ensure!(bytes_captured.len() == length,
+            "Not all data was captured");
+    ensure!(bytes_captured == completion.data,
+            "Captured data did not match received data");
 
     if let Some((min_interval, max_interval)) = sof {
         println!("Checking SOF timestamp intervals");
@@ -179,7 +184,7 @@ fn test(save_capture: bool,
 
         println!("Found {} SOF packets with expected interval range", sof_count);
 
-        assert!(gaps.len() <= 1, "More than one gap in SOF packets seen");
+        ensure!(gaps.len() <= 1, "More than one gap in SOF packets seen");
 
         // Check how long we could have been capturing SOF packets for.
         let max_bus_time = analyzer_stop_time.duration_since(analyzer_start_time);
@@ -193,8 +198,8 @@ fn test(save_capture: bool,
 
         println!("Expected to see between {min_count} and {max_count} SOF packets");
 
-        assert!(sof_count >= min_count, "Not enough SOF packets captured");
-        assert!(sof_count <= max_count, "Too many SOF packets captured");
+        ensure!(sof_count >= min_count, "Not enough SOF packets captured");
+        ensure!(sof_count <= max_count, "Too many SOF packets captured");
     }
 
     Ok(())
