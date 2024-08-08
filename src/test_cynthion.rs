@@ -104,7 +104,7 @@ fn test(save_capture: bool,
     if save_capture {
         // Write the capture to a file.
         let path = PathBuf::from(format!("./HITL-{name}.pcap"));
-        let file = File::open(path)?;
+        let file = File::create(path)?;
         let mut writer = Writer::open(file)?;
         for i in 0..reader.packet_index.len() {
             let packet_id = PacketId::from(i);
