@@ -1,4 +1,9 @@
-use crate::backend::cynthion::{CynthionDevice, CynthionUsability, Speed};
+use crate::backend::cynthion::{
+    CynthionDevice,
+    CynthionUsability,
+    CynthionHandle,
+    Speed
+};
 use crate::capture::{
     create_capture,
     CaptureReader,
@@ -74,35 +79,17 @@ fn test(save_capture: bool,
                |err| err.context("Failure in capture thread").unwrap())
         .context("Failed to start analyzer")?;
 
-    // Tell analyzer to connect test device, then wait for it to enumerate.
-    println!("Enabling test device");
-    analyzer.configure_test_device(Some(speed))?;
-    sleep(Duration::from_millis(2000));
-
-    // Open test device on AUX port.
-    let test_device = nusb::list_devices()
-        .context("Failed to list USB devices")?
-        .find(|dev| dev.vendor_id() == 0x1209 && dev.product_id() == 0x000A)
-        .context("Test device not found")?
-        .open()
-        .context("Failed to open test device")?;
-    let test_interface = test_device.claim_interface(0)
-        .context("Failed to claim interface 0 on test device")?;
-
-    // Read some data from the test device.
-    println!("Starting read from test device");
-    let buf = RequestBuffer::new(length);
-    let transfer = test_interface.interrupt_in(ep_addr, buf);
-    let completion = block_on(transfer);
-    completion.status.context("Transfer from test device failed")?;
-    println!("Read {} bytes from test device", completion.data.len());
-    ensure!(completion.data.len() == length,
-            "Did not complete reading data");
+    // Attempt to open and read data from the test device.
+    let test_device_result = read_test_device(
+        &mut analyzer, speed, ep_addr, length);
 
     // Stop analyzer.
     stop_handle.stop()
         .context("Failed to stop analyzer")?;
     let analyzer_stop_time = Instant::now();
+
+    // Now that capture is stopped, check result of reading test device.
+    let bytes_read = test_device_result?;
 
     // Decode all packets that were received.
     for packet in packets {
@@ -138,7 +125,7 @@ fn test(save_capture: bool,
              bytes_captured.len(), length);
     ensure!(bytes_captured.len() == length,
             "Not all data was captured");
-    ensure!(bytes_captured == completion.data,
+    ensure!(bytes_captured == bytes_read,
             "Captured data did not match received data");
 
     if let Some((min_interval, max_interval)) = sof {
@@ -203,6 +190,40 @@ fn test(save_capture: bool,
     }
 
     Ok(())
+}
+
+fn read_test_device(
+    analyzer: &mut CynthionHandle,
+    speed: Speed,
+    ep_addr: u8,
+    length: usize)
+-> Result<Vec<u8>, Error>
+{
+    // Tell analyzer to connect test device, then wait for it to enumerate.
+    println!("Enabling test device");
+    analyzer.configure_test_device(Some(speed))?;
+    sleep(Duration::from_millis(2000));
+
+    // Open test device on AUX port.
+    let test_device = nusb::list_devices()
+        .context("Failed to list USB devices")?
+        .find(|dev| dev.vendor_id() == 0x1209 && dev.product_id() == 0x000A)
+        .context("Test device not found")?
+        .open()
+        .context("Failed to open test device")?;
+    let test_interface = test_device.claim_interface(0)
+        .context("Failed to claim interface 0 on test device")?;
+
+    // Read some data from the test device.
+    println!("Starting read from test device");
+    let buf = RequestBuffer::new(length);
+    let transfer = test_interface.interrupt_in(ep_addr, buf);
+    let completion = block_on(transfer);
+    completion.status.context("Transfer from test device failed")?;
+    println!("Read {} bytes from test device", completion.data.len());
+    ensure!(completion.data.len() == length,
+            "Did not complete reading data");
+    Ok(completion.data)
 }
 
 fn bytes_on_endpoint(reader: &mut CaptureReader) -> Result<Vec<u8>, Error> {
