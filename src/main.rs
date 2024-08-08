@@ -77,7 +77,18 @@ fn main() {
         let save_captures = have_argument("--save-captures");
         test_cynthion::run_test(save_captures);
     } else {
-       
+        if gtk::init().is_err() {
+            eprintln!("Failed to initialize GTK");
+            std::process::exit(1);
+        }
+        if let Some(settings) = gtk::Settings::default() {
+            settings.set_gtk_application_prefer_dark_theme(
+                matches!(
+                    dark_light::detect(),
+                    dark_light::Mode::Dark
+                )
+            );
+        }
         let application = gtk::Application::new(
             Some("com.greatscottgadgets.packetry"),
             ApplicationFlags::NON_UNIQUE |
