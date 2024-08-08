@@ -1637,12 +1637,12 @@ impl ItemSource<DeviceItem> for CaptureReader {
                 interface.descriptor.field_text(*field, strings.as_ref())
             },
             EndpointDescriptor(dev, conf, iface, ep) => {
-                let addr = self.device_data(dev)?
-                               .configuration(conf)?
-                               .interface(iface)?
-                               .endpoint_descriptor(ep)?
-                               .endpoint_address;
-                format!("Endpoint {} {}", addr.number(), addr.direction())
+                let config = self.device_data(dev)?.configuration(conf)?;
+                let desc = config.interface(iface)?.endpoint_descriptor(ep)?;
+                let addr = desc.endpoint_address;
+                let attrs = desc.attributes;
+                format!("Endpoint {} {} ({})", addr.number(),
+                   addr.direction(), attrs.endpoint_type())
             },
             EndpointDescriptorField(dev, conf, iface, ep, field, _ver) => {
                 self.device_data(dev)?

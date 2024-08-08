@@ -214,6 +214,17 @@ pub enum EndpointType {
     Interrupt   = 3,
 }
 
+impl std::fmt::Display for EndpointType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Control => write!(f, "control"),
+            Self::Isochronous => write!(f, "isochronous"),
+            Self::Bulk => write!(f, "bulk"),
+            Self::Interrupt => write!(f, "interrupt"),
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
 #[repr(C)]
 pub struct BCDVersion {
