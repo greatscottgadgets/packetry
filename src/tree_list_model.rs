@@ -346,30 +346,35 @@ impl std::fmt::Display for ModelUpdate {
     }
 }
 
-pub struct TreeListModel<Item, Model, RowData> {
+pub struct TreeListModel<Item, Model, RowData, ViewMode> {
     _marker: PhantomData<(Model, RowData)>,
     capture: RefCell<CaptureReader>,
+    view_mode: ViewMode,
     root: RootNodeRc<Item>,
     regions: RefCell<BTreeMap<u64, Region<Item>>>,
     #[cfg(any(test, feature="record-ui-test"))]
     on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>,
 }
 
-impl<Item, Model, RowData> TreeListModel<Item, Model, RowData>
+impl<Item, Model, RowData, ViewMode> TreeListModel<Item, Model, RowData, ViewMode>
 where Item: 'static + Copy + Debug,
-      Model: GenericModel<Item> + ListModelExt,
+      ViewMode: Copy,
+      Model: GenericModel<Item, ViewMode> + ListModelExt,
       RowData: GenericRowData<Item> + IsA<Object> + Cast,
-      CaptureReader: ItemSource<Item>,
+      CaptureReader: ItemSource<Item, ViewMode>,
 {
     pub fn new(mut capture: CaptureReader,
+               view_mode: ViewMode,
                #[cfg(any(test, feature="record-ui-test"))]
                on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>)
         -> Result<Self, Error>
     {
-        let (completion, item_count) = capture.item_children(None)?;
+        let (completion, item_count) =
+            capture.item_children(None, view_mode)?;
         Ok(TreeListModel {
             _marker: PhantomData,
             capture: RefCell::new(capture.clone()),
+            view_mode,
             root: Rc::new(RefCell::new(RootNode {
                 children: Children::new(item_count),
                 complete: completion.is_complete(),
@@ -749,7 +754,8 @@ where Item: 'static + Copy + Debug,
 
         // Check if this node had children added and/or was completed.
         let mut cap = self.capture.borrow_mut();
-        let (completion, new_direct_count) = cap.item_children(node.item())?;
+        let (completion, new_direct_count) =
+            cap.item_children(node.item(), self.view_mode)?;
         let completed = completion.is_complete();
         let children_added = new_direct_count - old_direct_count;
         drop(node);
@@ -925,8 +931,10 @@ where Item: 'static + Copy + Debug,
         // Otherwise, fetch it from the database.
         let mut cap = self.capture.borrow_mut();
         let mut parent = parent_ref.borrow_mut();
-        let item = cap.item(parent.item(), relative_position)?;
-        let (completion, child_count) = cap.item_children(Some(&item))?;
+        let item =
+            cap.item(parent.item(), self.view_mode, relative_position)?;
+        let (completion, child_count) =
+            cap.item_children(Some(&item), self.view_mode)?;
         let node = ItemNode {
             item,
             parent: Rc::downgrade(&parent_ref),
@@ -958,7 +966,7 @@ where Item: 'static + Copy + Debug,
 
     pub fn connectors(&self, item: &Item) -> String {
         let mut cap = self.capture.borrow_mut();
-        match cap.connectors(item) {
+        match cap.connectors(self.view_mode, item) {
             Ok(string) => string,
             Err(e) => format!("Error: {e:?}")
         }

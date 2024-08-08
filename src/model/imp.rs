@@ -4,18 +4,18 @@ use gio::subclass::prelude::*;
 use gtk::{gio, glib, prelude::*};
 
 use std::cell::RefCell;
-use crate::capture::{TrafficItem, DeviceItem};
+use crate::capture::{TrafficItem, TrafficViewMode, DeviceItem};
 use crate::row_data::{TrafficRowData, DeviceRowData};
 use crate::tree_list_model::TreeListModel;
 
 #[derive(Default)]
 pub struct TrafficModel {
-    pub(super) tree: RefCell<Option<TreeListModel<TrafficItem, super::TrafficModel, TrafficRowData>>>,
+    pub(super) tree: RefCell<Option<TreeListModel<TrafficItem, super::TrafficModel, TrafficRowData, TrafficViewMode>>>,
 }
 
 #[derive(Default)]
 pub struct DeviceModel {
-    pub(super) tree: RefCell<Option<TreeListModel<DeviceItem, super::DeviceModel, DeviceRowData>>>,
+    pub(super) tree: RefCell<Option<TreeListModel<DeviceItem, super::DeviceModel, DeviceRowData, ()>>>,
 }
 
 /// Basic declaration of our type for the GObject type system

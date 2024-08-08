@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::Duration;
 
@@ -44,6 +45,8 @@ use gtk::{
     Separator,
     SignalListItemFactory,
     SingleSelection,
+    Stack,
+    StackSwitcher,
     StringList,
     Orientation,
 };
@@ -68,6 +71,7 @@ use crate::capture::{
     CaptureWriter,
     ItemSource,
     TrafficItem,
+    TrafficViewMode::{self,*},
     DeviceItem,
     PacketId,
 };
@@ -88,6 +92,9 @@ use {
     std::rc::Rc,
     crate::record_ui::Recording,
 };
+
+const TRAFFIC_MODES: [TrafficViewMode; 3] =
+    [Hierarchical, Transactions, Packets];
 
 static TOTAL: AtomicU64 = AtomicU64::new(0);
 static CURRENT: AtomicU64 = AtomicU64::new(0);
@@ -310,9 +317,9 @@ pub struct UserInterface {
     selector: DeviceSelector,
     file_name: Option<String>,
     stop_handle: Option<CynthionStop>,
-    traffic_window: ScrolledWindow,
+    traffic_windows: BTreeMap<TrafficViewMode, ScrolledWindow>,
     device_window: ScrolledWindow,
-    pub traffic_model: Option<TrafficModel>,
+    pub traffic_models: BTreeMap<TrafficViewMode, TrafficModel>,
     pub device_model: Option<DeviceModel>,
     endpoint_count: u16,
     show_progress: Option<FileAction>,
@@ -415,11 +422,36 @@ pub fn activate(application: &Application) -> Result<(), Error> {
 
     let (_, capture) = create_capture()?;
 
-    let traffic_window = gtk::ScrolledWindow::builder()
-        .hscrollbar_policy(gtk::PolicyType::Automatic)
-        .min_content_height(480)
-        .min_content_width(640)
+    let mut traffic_windows = BTreeMap::new();
+
+    let traffic_stack = Stack::builder()
+        .vexpand(true)
         .build();
+
+    for mode in TRAFFIC_MODES {
+        let window = gtk::ScrolledWindow::builder()
+            .hscrollbar_policy(gtk::PolicyType::Automatic)
+            .min_content_height(480)
+            .min_content_width(640)
+            .build();
+        traffic_windows
+            .insert(mode, window.clone());
+        traffic_stack
+            .add_child(&window)
+            .set_title(mode.display_name());
+    }
+
+    let traffic_stack_switcher = StackSwitcher::builder()
+        .stack(&traffic_stack)
+        .build();
+
+    let traffic_box = gtk::Box::builder()
+        .orientation(Orientation::Vertical)
+        .vexpand(true)
+        .build();
+
+    traffic_box.append(&traffic_stack_switcher);
+    traffic_box.append(&traffic_stack);
 
     let device_window = gtk::ScrolledWindow::builder()
         .hscrollbar_policy(gtk::PolicyType::Automatic)
@@ -430,7 +462,7 @@ pub fn activate(application: &Application) -> Result<(), Error> {
     let paned = gtk::Paned::builder()
         .orientation(Orientation::Horizontal)
         .wide_handle(true)
-        .start_child(&traffic_window)
+        .start_child(&traffic_box)
         .end_child(&device_window)
         .vexpand(true)
         .build();
@@ -484,9 +516,9 @@ pub fn activate(application: &Application) -> Result<(), Error> {
                 selector,
                 file_name: None,
                 stop_handle: None,
-                traffic_window,
+                traffic_windows,
                 device_window,
-                traffic_model: None,
+                traffic_models: BTreeMap::new(),
                 device_model: None,
                 endpoint_count: 2,
                 show_progress: None,
@@ -517,17 +549,19 @@ pub fn open(file: &gio::File) -> Result<(), Error> {
     start_pcap(FileAction::Load, file.clone())
 }
 
-fn create_view<Item, Model, RowData>(
+fn create_view<Item, Model, RowData, ViewMode>(
         title: &str,
         capture: &CaptureReader,
+        view_mode: ViewMode,
         #[cfg(any(test, feature="record-ui-test"))]
         recording_args: (&Rc<RefCell<Recording>>, &'static str))
     -> (Model, ColumnView)
     where
         Item: Copy + 'static,
-        Model: GenericModel<Item> + IsA<ListModel> + IsA<Object>,
+        ViewMode: Copy,
+        Model: GenericModel<Item, ViewMode> + IsA<ListModel> + IsA<Object>,
         RowData: GenericRowData<Item> + IsA<Object>,
-        CaptureReader: ItemSource<Item>,
+        CaptureReader: ItemSource<Item, ViewMode>,
         Object: ToGenericRowData<Item>
 {
     #[cfg(any(test, feature="record-ui-test"))]
@@ -537,6 +571,7 @@ fn create_view<Item, Model, RowData>(
     };
     let model = Model::new(
         capture.clone(),
+        view_mode,
         #[cfg(any(test, feature="record-ui-test"))]
         Rc::new(
             RefCell::new(
@@ -686,25 +721,34 @@ fn create_view<Item, Model, RowData>(
 pub fn reset_capture() -> Result<CaptureWriter, Error> {
     let (writer, reader) = create_capture()?;
     with_ui(|ui| {
-        let (traffic_model, traffic_view) =
-            create_view::<TrafficItem, TrafficModel, TrafficRowData>(
-                "Traffic",
-                &reader,
-                #[cfg(any(test, feature="record-ui-test"))]
-                (&ui.recording, "traffic")
-            );
+        for mode in TRAFFIC_MODES {
+            let (traffic_model, traffic_view) =
+                create_view::<
+                    TrafficItem,
+                    TrafficModel,
+                    TrafficRowData,
+                    TrafficViewMode
+                >(
+                    "Traffic",
+                    &reader,
+                    mode,
+                    #[cfg(any(test, feature="record-ui-test"))]
+                    (&ui.recording, mode.log_name())
+                );
+            ui.traffic_windows[&mode].set_child(Some(&traffic_view));
+            ui.traffic_models.insert(mode, traffic_model);
+        }
         let (device_model, device_view) =
-            create_view::<DeviceItem, DeviceModel, DeviceRowData>(
+            create_view::<DeviceItem, DeviceModel, DeviceRowData, ()>(
                 "Devices",
                 &reader,
+                (),
                 #[cfg(any(test, feature="record-ui-test"))]
                 (&ui.recording, "devices")
             );
         ui.capture = reader;
-        ui.traffic_model = Some(traffic_model);
         ui.device_model = Some(device_model);
         ui.endpoint_count = 2;
-        ui.traffic_window.set_child(Some(&traffic_view));
         ui.device_window.set_child(Some(&device_view));
         ui.stop_button.set_sensitive(false);
         Ok(())
@@ -744,7 +788,7 @@ pub fn update_view() -> Result<(), Error> {
                 fmt_count(transactions),
                 fmt_count(packets)
             ));
-            if let Some(model) = &ui.traffic_model {
+            for model in ui.traffic_models.values() {
                 let old_count = model.n_items();
                 more_updates |= model.update()?;
                 let new_count = model.n_items();

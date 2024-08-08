@@ -2,10 +2,10 @@
 {"Update":1}
 {"Update":2}
 {"SetExpanded":["devices",0,true]}
-{"SetExpanded":["traffic",0,true]}
+{"SetExpanded":["traffic-hierarchical",0,true]}
 {"Update":3}
 {"Update":4}
-{"SetExpanded":["traffic",2,true]}
+{"SetExpanded":["traffic-hierarchical",2,true]}
 {"Update":5}
 {"Update":6}
 {"Update":7}
@@ -42,6 +42,6 @@
 {"Update":38}
 {"Update":39}
 {"Update":40}
-{"SetExpanded":["traffic",0,false]}
-{"SetExpanded":["traffic",1,false]}
+{"SetExpanded":["traffic-hierarchical",0,false]}
+{"SetExpanded":["traffic-hierarchical",1,false]}
 {"SetExpanded":["devices",0,false]}
