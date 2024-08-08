@@ -122,3 +122,6 @@ path = "src/main.rs"
 [[bin]]
 name = "packetry-cli"
 path = "src/cli.rs"
+
+[package.metadata.cargo-all-features]
+skip_optional_dependencies = true
