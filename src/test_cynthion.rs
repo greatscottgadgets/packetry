@@ -151,7 +151,7 @@ fn test(save_capture: bool,
             for id in range.start.value..range.end.value {
                 let packet_id = PacketId::from(id);
                 let timestamp = reader.packet_times.get(packet_id)?;
-                if let Some(prev) = last {
+                if let Some(prev) = last.replace(timestamp) {
                     let interval = timestamp - prev;
                     if !(interval > min_interval && interval < max_interval) {
                         if interval > 10000000 {
@@ -164,7 +164,6 @@ fn test(save_capture: bool,
                     }
                 }
                 sof_count += 1;
-                last = Some(timestamp);
             }
         }
         println!("Found {} SOF packets with expected interval range", sof_count);
