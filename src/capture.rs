@@ -11,7 +11,7 @@ use crate::data_stream::{
     data_stream, data_stream_with_block_size, DataWriter, DataReader};
 use crate::compact_index::{compact_index, CompactWriter, CompactReader};
 use crate::rcu::SingleWriterRcu;
-use crate::vec_map::VecMap;
+use crate::vec_map::{Key, VecMap};
 use crate::usb::{self, prelude::*, validate_packet};
 use crate::util::{fmt_count, fmt_size};
 
@@ -26,6 +26,7 @@ const PACKET_DATA_BLOCK_SIZE: usize = 0x200000;
 /// Capture state shared between readers and writers.
 pub struct CaptureShared {
     pub device_data: ArcSwap<VecMap<DeviceId, Arc<DeviceData>>>,
+    pub endpoint_index: ArcSwap<VecMap<EndpointKey, EndpointId>>,
     pub endpoint_readers: ArcSwap<VecMap<EndpointId, Arc<EndpointReader>>>,
     pub complete: AtomicBool,
 }
@@ -87,6 +88,7 @@ pub fn create_capture()
     // Create the state shared by readers and writer.
     let shared = Arc::new(CaptureShared {
         device_data: ArcSwap::new(Arc::new(VecMap::new())),
+        endpoint_index: ArcSwap::new(Arc::new(VecMap::new())),
         endpoint_readers: ArcSwap::new(Arc::new(VecMap::new())),
         complete: AtomicBool::from(false),
     });
@@ -142,6 +144,7 @@ pub struct EndpointWriter {
     pub transfer_index: CompactWriter<EndpointTransferId, EndpointTransactionId>,
     pub data_transactions: CompactWriter<EndpointDataEvent, EndpointTransactionId>,
     pub data_byte_counts: CompactWriter<EndpointDataEvent, EndpointByteCount>,
+    pub progress_index: CompactWriter<TrafficItemIdOffset, EndpointTransactionId>,
     pub end_index: CompactWriter<EndpointTransferId, TrafficItemId>,
 }
 
@@ -153,6 +156,7 @@ pub struct EndpointReader {
     pub transfer_index: CompactReader<EndpointTransferId, EndpointTransactionId>,
     pub data_transactions: CompactReader<EndpointDataEvent, EndpointTransactionId>,
     pub data_byte_counts: CompactReader<EndpointDataEvent, EndpointByteCount>,
+    pub progress_index: CompactReader<TrafficItemIdOffset, EndpointTransactionId>,
     pub end_index: CompactReader<EndpointTransferId, TrafficItemId>,
 }
 
@@ -165,6 +169,7 @@ pub fn create_endpoint()
     let (transfers_writer, transfers_reader) = compact_index()?;
     let (data_transaction_writer, data_transaction_reader) = compact_index()?;
     let (data_byte_count_writer, data_byte_count_reader) = compact_index()?;
+    let (progress_writer, progress_reader) = compact_index()?;
     let (end_writer, end_reader) = compact_index()?;
 
     // Create the shared state.
@@ -180,6 +185,7 @@ pub fn create_endpoint()
         transfer_index: transfers_writer,
         data_transactions: data_transaction_writer,
         data_byte_counts: data_byte_count_writer,
+        progress_index: progress_writer,
         end_index: end_writer,
     };
 
@@ -190,6 +196,7 @@ pub fn create_endpoint()
         transfer_index: transfers_reader,
         data_transactions: data_transaction_reader,
         data_byte_counts: data_byte_count_reader,
+        progress_index: progress_reader,
         end_index: end_reader,
     };
 
@@ -210,12 +217,54 @@ pub type EndpointId = Id<Endpoint>;
 pub type EndpointDataEvent = u64;
 pub type EndpointByteCount = u64;
 pub type DeviceVersion = u32;
+pub type TrafficItemIdOffset = u64;
 
 #[derive(Copy, Clone, Debug)]
 pub enum TrafficItem {
     Transfer(TransferId),
-    Transaction(TransferId, TransactionId),
-    Packet(TransferId, TransactionId, PacketId),
+    Transaction(Option<TransferId>, TransactionId),
+    Packet(Option<TransferId>, Option<TransactionId>, PacketId),
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+pub enum TrafficViewMode {
+    Hierarchical,
+    Interleaved,
+    Transactions,
+    Packets,
+}
+
+impl TrafficViewMode {
+    pub const fn display_name(&self) -> &'static str {
+        use TrafficViewMode::*;
+        match self {
+            Hierarchical => "Hierarchical",
+            Interleaved  => "Interleaved",
+            Transactions => "Transactions",
+            Packets      => "Packets",
+        }
+    }
+
+    pub const fn log_name(&self) -> &'static str {
+        use TrafficViewMode::*;
+        match self {
+            Hierarchical => "traffic-hierarchical",
+            Interleaved  => "traffic-interleaved",
+            Transactions => "traffic-transactions",
+            Packets      => "traffic-packets",
+        }
+    }
+
+    pub fn from_log_name(log_name: &str) -> TrafficViewMode {
+        use TrafficViewMode::*;
+        match log_name {
+            "traffic-hierarchical" => Hierarchical,
+            "traffic-interleaved"  => Interleaved,
+            "traffic-transactions" => Transactions,
+            "traffic-packets"      => Packets,
+            _ => panic!("Unrecognised log name '{log_name}'")
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -320,6 +369,29 @@ impl std::fmt::Display for EndpointType {
 }
 
 type EndpointDetails = (usb::EndpointType, Option<usize>);
+
+#[derive(Copy, Clone)]
+pub struct EndpointKey {
+    pub dev_addr: DeviceAddr,
+    pub direction: Direction,
+    pub ep_num: EndpointNum,
+}
+
+impl Key for EndpointKey {
+    fn id(self) -> usize {
+        self.dev_addr.0 as usize * 32 +
+            self.direction as usize * 16 +
+                self.ep_num.0 as usize
+    }
+
+    fn key(id: usize) -> EndpointKey {
+        EndpointKey {
+            dev_addr: DeviceAddr((id / 32) as u8),
+            direction: Direction::from(((id / 16) % 2) as u8),
+            ep_num: EndpointNum((id % 16) as u8),
+        }
+    }
+}
 
 #[derive(Default)]
 pub struct DeviceData {
@@ -701,6 +773,37 @@ impl std::fmt::Display for Bytes<'_> {
     }
 }
 
+impl CaptureShared {
+    pub fn packet_endpoint(&self, pid: PID, packet: &[u8])
+        -> Result<EndpointId, EndpointKey>
+    {
+        match PacketFields::from_packet(packet) {
+            PacketFields::SOF(_) => Ok(FRAMING_EP_ID),
+            PacketFields::Token(token) => {
+                let dev_addr = token.device_address();
+                let ep_num = token.endpoint_number();
+                let direction = match (ep_num.0, pid) {
+                    (0, _)         => Direction::Out,
+                    (_, PID::IN)   => Direction::In,
+                    (_, PID::OUT)  => Direction::Out,
+                    (_, PID::PING) => Direction::Out,
+                    _ => panic!("PID {pid} does not indicate a direction")
+                };
+                let key = EndpointKey {
+                    dev_addr,
+                    ep_num,
+                    direction
+                };
+                match self.endpoint_index.load().get(key) {
+                    Some(id) => Ok(*id),
+                    None => Err(key),
+                }
+            },
+            _ => Ok(INVALID_EP_ID),
+        }
+    }
+}
+
 impl CaptureWriter {
     pub fn device_data(&self, id: DeviceId)
         -> Result<Arc<DeviceData>, Error>
@@ -1011,6 +1114,45 @@ impl CaptureReader {
             true => Complete,
         }
     }
+
+    fn transfer(&mut self, item_index: u64, item: &TrafficItem)
+        -> Result<Transfer, Error>
+    {
+        if let TrafficItem::Transfer(transfer_id) = item {
+            let start_item_id = TrafficItemId::from(item_index);
+            let entry = self.transfer_index.get(*transfer_id)?;
+            let endpoint_id = entry.endpoint_id();
+            let ep_traf = self.endpoint_traffic(endpoint_id)?;
+            let ep_first_item_id = *ep_traf.shared.first_item_id
+                .load()
+                .as_ref()
+                .context(format!("Endpoint ID {endpoint_id} has no first item"))?
+                .as_ref();
+            let transaction_range =
+                ep_traf.transfer_index.target_range(
+                    entry.transfer_id(),
+                    ep_traf.transaction_ids.len())?;
+            Ok(Transfer {
+                ep_first_item_id,
+                start_item_id,
+                transfer_id: *transfer_id,
+                endpoint_id,
+                first_ep_transaction_id: transaction_range.start,
+                transaction_range,
+            })
+        } else {
+            bail!("Item {item:?} is not a transfer")
+        }
+    }
+
+    fn transfers(&mut self,
+                expanded: &mut dyn Iterator<Item=(u64, TrafficItem)>)
+        -> Result<Vec<Transfer>, Error>
+    {
+        expanded
+            .map(|(index, item)| self.transfer(index, &item))
+            .collect()
+    }
 }
 
 impl EndpointReader {
@@ -1042,43 +1184,102 @@ impl EndpointReader {
 #[derive(Copy, Clone)]
 pub enum CompletionStatus {
     Complete,
-    Ongoing
+    Ongoing,
+    InterleavedComplete(u64),
+    InterleavedOngoing,
 }
 
 impl CompletionStatus {
     pub fn is_complete(&self) -> bool {
         use CompletionStatus::*;
         match self {
-            Complete => true,
-            Ongoing => false,
+            Complete | InterleavedComplete(_) => true,
+            Ongoing | InterleavedOngoing => false,
+        }
+    }
+
+    pub fn is_interleaved(&self) -> bool {
+        use CompletionStatus::*;
+        match self {
+            InterleavedComplete(_) | InterleavedOngoing => true,
+            Complete | Ongoing => false,
         }
     }
 }
 
-pub trait ItemSource<Item> {
-    fn item(&mut self, parent: Option<&Item>, index: u64)
+pub enum SearchResult<Item> {
+    TopLevelItem(u64, Item),
+    NextLevelItem(u64, u64, u64, Item),
+}
+
+pub trait ItemSource<Item, ViewMode> {
+    fn item(&mut self,
+            parent: Option<&Item>,
+            view_mode: ViewMode,
+            index: u64)
         -> Result<Item, Error>;
     fn item_update(&mut self, item: &Item)
         -> Result<Option<Item>, Error>;
     fn child_item(&mut self, parent: &Item, index: u64)
         -> Result<Item, Error>;
-    fn item_children(&mut self, parent: Option<&Item>)
+    fn item_children(&mut self,
+                     parent: Option<&Item>,
+                     view_mode: ViewMode)
         -> Result<(CompletionStatus, u64), Error>;
+    fn count_within(&mut self,
+                    item_index: u64,
+                    item: &Item,
+                    region: &Range<u64>)
+        -> Result<u64, Error>;
+    fn count_before(&mut self,
+                    item_index: u64,
+                    item: &Item,
+                    span_index: u64,
+                    child: &Item)
+        -> Result<u64, Error>;
+    fn find_child(&mut self,
+                  expanded: &mut dyn Iterator<Item=(u64, Item)>,
+                  region: &Range<u64>,
+                  index: u64)
+        -> Result<SearchResult<Item>, Error>;
     fn summary(&mut self, item: &Item) -> Result<String, Error>;
-    fn connectors(&mut self, item: &Item) -> Result<String, Error>;
+    fn connectors(&mut self,
+                  view_mode: ViewMode,
+                  item: &Item)
+        -> Result<String, Error>;
     fn timestamp(&mut self, item: &Item) -> Result<Timestamp, Error>;
 }
 
-impl ItemSource<TrafficItem> for CaptureReader {
-    fn item(&mut self, parent: Option<&TrafficItem>, index: u64)
+struct Transfer {
+    ep_first_item_id: TrafficItemId,
+    start_item_id: TrafficItemId,
+    transfer_id: TransferId,
+    endpoint_id: EndpointId,
+    first_ep_transaction_id: EndpointTransactionId,
+    transaction_range: Range<EndpointTransactionId>,
+}
+
+impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
+    fn item(&mut self,
+            parent: Option<&TrafficItem>,
+            view_mode: TrafficViewMode,
+            index: u64)
         -> Result<TrafficItem, Error>
     {
+        use TrafficItem::*;
+        use TrafficViewMode::*;
         match parent {
-            None => {
-                let item_id = TrafficItemId::from(index);
-                let transfer_id = self.item_index.get(item_id)?;
-                Ok(TrafficItem::Transfer(transfer_id))
-            },
+            None => Ok(match view_mode {
+                Hierarchical | Interleaved => {
+                    let item_id = TrafficItemId::from(index);
+                    let transfer_id = self.item_index.get(item_id)?;
+                    Transfer(transfer_id)
+                },
+                Transactions =>
+                    Transaction(None, TransactionId::from(index)),
+                Packets =>
+                    Packet(None, None, PacketId::from(index)),
+            }),
             Some(item) => self.child_item(item, index)
         }
     }
@@ -1095,7 +1296,7 @@ impl ItemSource<TrafficItem> for CaptureReader {
         use TrafficItem::*;
         Ok(match parent {
             Transfer(transfer_id) =>
-                Transaction(*transfer_id, {
+                Transaction(Some(*transfer_id), {
                     let entry = self.transfer_index.get(*transfer_id)?;
                     let endpoint_id = entry.endpoint_id();
                     let ep_transfer_id = entry.transfer_id();
@@ -1103,21 +1304,28 @@ impl ItemSource<TrafficItem> for CaptureReader {
                     let offset = ep_traf.transfer_index.get(ep_transfer_id)?;
                     ep_traf.transaction_ids.get(offset + index)?
                 }),
-            Transaction(transfer_id, transaction_id) =>
-                Packet(*transfer_id, *transaction_id, {
+            Transaction(transfer_id_opt, transaction_id) =>
+                Packet(*transfer_id_opt, Some(*transaction_id), {
                     self.transaction_index.get(*transaction_id)? + index}),
             Packet(..) => bail!("Packets have no child items")
         })
     }
 
-    fn item_children(&mut self, parent: Option<&TrafficItem>)
+    fn item_children(&mut self,
+                     parent: Option<&TrafficItem>,
+                     view_mode: TrafficViewMode)
         -> Result<(CompletionStatus, u64), Error>
     {
         use TrafficItem::*;
+        use TrafficViewMode::*;
         use CompletionStatus::*;
         Ok(match parent {
             None => {
-                (self.completion(), self.item_index.len())
+                (self.completion(), match view_mode {
+                    Hierarchical | Interleaved => self.item_index.len(),
+                    Transactions => self.transaction_index.len(),
+                    Packets => self.packet_index.len(),
+                })
             },
             Some(Transfer(transfer_id)) => {
                 let entry = self.transfer_index.get(*transfer_id)?;
@@ -1126,11 +1334,19 @@ impl ItemSource<TrafficItem> for CaptureReader {
                 }
                 let transaction_count = self.transfer_range(&entry)?.len();
                 let ep_traf = self.endpoint_traffic(entry.endpoint_id())?;
-                if entry.transfer_id().value >= ep_traf.end_index.len() {
-                    (Ongoing, transaction_count)
-                } else {
-                    (Complete, transaction_count)
-                }
+                let ep_transfer_id = entry.transfer_id();
+                let ongoing = ep_transfer_id.value >= ep_traf.end_index.len();
+                let status = match (view_mode, ongoing) {
+                    (Hierarchical, true) => Ongoing,
+                    (Hierarchical, false) => Complete,
+                    (Interleaved, true) => InterleavedOngoing,
+                    (Interleaved, false) => {
+                        let end = ep_traf.end_index.get(ep_transfer_id)?;
+                        InterleavedComplete(end.value)
+                    }
+                    (Transactions | Packets, _) => unreachable!(),
+                };
+                (status, transaction_count)
             },
             Some(Transaction(_, transaction_id)) => {
                 let packet_count = self.transaction_index.target_range(
@@ -1143,6 +1359,257 @@ impl ItemSource<TrafficItem> for CaptureReader {
             },
             Some(Packet(..)) => (Complete, 0),
         })
+    }
+
+    fn count_within(&mut self,
+                    item_index: u64,
+                    item: &TrafficItem,
+                    region: &Range<u64>)
+        -> Result<u64, Error>
+    {
+        // Count the transactions of this transfer item within a region.
+        let transfer = self.transfer(item_index, item)?;
+        let ep_traf = self.endpoint_traffic(transfer.endpoint_id)?;
+        let start_item_id = TrafficItemId::from(region.start);
+        let end_item_id = TrafficItemId::from(region.end);
+        let start_offset = start_item_id - transfer.ep_first_item_id;
+        let end_offset = end_item_id - transfer.ep_first_item_id;
+        let start_count = ep_traf.progress_index.get(start_offset)?.value;
+        let end_count =
+            if end_offset >= ep_traf.progress_index.len() {
+                ep_traf.transaction_ids.len()
+            } else {
+                ep_traf.progress_index.get(end_offset)?.value
+            };
+        Ok(end_count - start_count)
+    }
+
+    fn count_before(&mut self,
+                    item_index: u64,
+                    item: &TrafficItem,
+                    span_index: u64,
+                    child: &TrafficItem)
+        -> Result<u64, Error>
+    {
+        // Count the transactions of this transfer item within a span,
+        // up to the specified child transaction item.
+        let transfer = self.transfer(item_index, item)?;
+        let ep_traf = self.endpoint_traffic(transfer.endpoint_id)?;
+        let span_item_id = TrafficItemId::from(span_index);
+        let span_offset = span_item_id - transfer.ep_first_item_id;
+        let transaction_range = ep_traf.progress_index.target_range(
+            span_offset, ep_traf.transaction_ids.len())?;
+        let transaction_count = transaction_range.len();
+        if let TrafficItem::Transaction(_, transaction_id) = child {
+            let expected = transaction_id.value;
+            for index in 0..transaction_count {
+                let ep_transaction_id = transaction_range.start + index;
+                let id = ep_traf.transaction_ids.get(ep_transaction_id)?;
+                if id.value >= expected {
+                    return Ok(index)
+                }
+            }
+            Ok(transaction_count)
+        } else {
+            bail!("Child {child:?} is not a transaction")
+        }
+    }
+
+    fn find_child(&mut self,
+                  expanded: &mut dyn Iterator<Item=(u64, TrafficItem)>,
+                  region: &Range<u64>,
+                  mut index: u64)
+        -> Result<SearchResult<TrafficItem>, Error>
+    {
+        use SearchResult::*;
+        use TrafficItem::*;
+
+        // Collect data on the expanded transfers.
+        let mut transfers = self.transfers(expanded)?;
+        assert!(!transfers.is_empty());
+
+        // First, find the right span: the space between two contiguous items
+        // in which this transaction is to be found.
+        let mut total_transactions = 0;
+        let mut span_index = region.start;
+        for i in 0..region.len() {
+            span_index = region.start + i;
+            let span_item_id = TrafficItemId::from(span_index);
+            // Count the transactions within this span.
+            for transfer in transfers.iter_mut() {
+                let ep_traf = self.endpoint_traffic(transfer.endpoint_id)?;
+                // Find the transaction counts for this transfer at the
+                // beginning and end of this span.
+                let item_offset = span_item_id - transfer.ep_first_item_id;
+                transfer.transaction_range =
+                    ep_traf.progress_index.target_range(
+                        item_offset, ep_traf.transaction_ids.len())?;
+                // Add to the total count for this span.
+                total_transactions += transfer.transaction_range.len();
+            }
+            // If the index is within this span, proceed to the next stage.
+            if index < total_transactions {
+                break;
+            // Otherwise, advance to the end of this span.
+            } else {
+                index -= total_transactions;
+                total_transactions = 0;
+            }
+            // We are now at the end of a span. If the index is now zero,
+            // return the transfer item after this span.
+            if index == 0 {
+                let item_id = span_item_id + 1;
+                let transfer_id = self.item_index.get(item_id)?;
+                let item = Transfer(transfer_id);
+                return Ok(TopLevelItem(item_id.value, item))
+            // Otherwise, skip over the transfer item.
+            } else {
+                index -= 1;
+            }
+        }
+
+        // Check the index is within the span found by the loop above. This
+        // will fail if the index was past the end of this region's rows.
+        if index >= total_transactions {
+            bail!("Index {index} is beyond the \
+                  {total_transactions} transactions in this span");
+        }
+
+        // Now we have identified the correct span. Find the transaction with
+        // the remaining index from among the active transfers.
+        loop {
+            // Exclude transfers with no remaining transactions.
+            transfers.retain(|transfer|
+                !transfer.transaction_range.is_empty());
+
+            // If only one remains, look up directly.
+            if transfers.len() == 1 {
+                let transfer = &transfers[0];
+                let ep_traf = self.endpoint_traffic(transfer.endpoint_id)?;
+                // Get the next transaction ID for this transfer.
+                let ep_transaction_id =
+                    transfer.transaction_range.start + index;
+                let transaction_id =
+                    ep_traf.transaction_ids.get(ep_transaction_id)?;
+                let parent_index = transfer.start_item_id.value;
+                let child_index =
+                    ep_transaction_id - transfer.first_ep_transaction_id;
+                let item = Transaction(
+                    Some(transfer.transfer_id), transaction_id);
+                return Ok(NextLevelItem(
+                    span_index, parent_index, child_index, item))
+            }
+
+            // Exclude transactions that cannot possibly match the index.
+            for transfer in transfers.iter_mut() {
+                let range = &transfer.transaction_range;
+                if range.len() > index + 1 {
+                    transfer.transaction_range.end =
+                        range.start + index + 1;
+                }
+            }
+
+            // Choose the transfer with the most transactions.
+            let (longest, longest_length) = transfers
+                .iter()
+                .enumerate()
+                .map(|(i, transfer)| (i, transfer.transaction_range.len()))
+                .max_by_key(|(_, length)| *length)
+                .context("No transfers remaining")?;
+
+            // If there are no transfers with more than 1 transaction,
+            // proceed to selecting from the remaining candidates.
+            if longest_length < 2 {
+                break
+            }
+
+            // Identify the midpoint of the longest transfer.
+            let midpoint_offset = longest_length / 2;
+
+            // Get the transaction ID at the midpoint, as a pivot.
+            let ep_traf =
+                self.endpoint_traffic(transfers[longest].endpoint_id)?;
+            let ep_transaction_id =
+                transfers[longest].transaction_range.start + midpoint_offset;
+            let pivot_transaction_id =
+                ep_traf.transaction_ids.get(ep_transaction_id)?;
+
+            // Find the offset of the pivot within each transfer.
+            let mut offsets = Vec::with_capacity(transfers.len());
+            for transfer in transfers.iter() {
+                offsets.push(
+                    if std::ptr::eq(transfer, &transfers[longest]) {
+                        midpoint_offset
+                    } else {
+                        let ep_traf =
+                            self.endpoint_traffic(transfer.endpoint_id)?;
+                        let position =
+                            ep_traf.transaction_ids.bisect_range_left(
+                                &transfer.transaction_range,
+                                &pivot_transaction_id)?;
+                        position - transfer.transaction_range.start
+                    }
+                );
+            }
+
+            // Count the total transactions before the pivot.
+            let count = offsets.iter().sum::<u64>();
+
+            use std::cmp::Ordering::*;
+            match index.cmp(&count) {
+                Equal => {
+                    // If the index equals the count, return the pivot.
+                    let parent_index =
+                        transfers[longest].start_item_id.value;
+                    let child_index = ep_transaction_id -
+                        transfers[longest].first_ep_transaction_id;
+                    let item = Transaction(
+                        Some(transfers[longest].transfer_id),
+                        pivot_transaction_id);
+                    return Ok(NextLevelItem(
+                        span_index, parent_index, child_index, item));
+                },
+                Less => {
+                    // If the index is less than the count, split the ranges
+                    // and discard the upper ends.
+                    for (transfer, offset) in transfers.iter_mut().zip(offsets) {
+                        transfer.transaction_range.end =
+                            transfer.transaction_range.start + offset;
+                    }
+                }
+                Greater => {
+                    // If the index is greater than the count, split the ranges
+                    // and discard the lower ends.
+                    for (transfer, offset) in transfers.iter_mut().zip(offsets) {
+                        transfer.transaction_range.start += offset;
+                    }
+                    // Reduce the index by the count of excluded transactions.
+                    index -= count;
+                }
+            }
+        }
+
+        // There is now at most one transaction in each transfer. Retrieve each
+        // and find the one with the lowest transaction ID.
+        let mut results = Vec::with_capacity(transfers.len());
+        for transfer in transfers.iter() {
+            if !transfer.transaction_range.is_empty() {
+                let ep_traf = self.endpoint_traffic(transfer.endpoint_id)?;
+                let transaction_id =
+                    ep_traf.transaction_ids.get(
+                        transfer.transaction_range.start)?;
+                results.push((transfer, transaction_id));
+            }
+        }
+        results.sort_by_key(|(_, id)| id.value);
+        let (transfer, transaction_id) = results
+            .get(index as usize)
+            .context("Index not found")?;
+        let parent_index = transfer.start_item_id.value;
+        let child_index = transfer.transaction_range.start -
+            transfer.first_ep_transaction_id;
+        let item = Transaction(Some(transfer.transfer_id), *transaction_id);
+        Ok(NextLevelItem(span_index, parent_index, child_index, item))
     }
 
     fn summary(&mut self, item: &TrafficItem)
@@ -1240,15 +1707,40 @@ impl ItemSource<TrafficItem> for CaptureReader {
                     )
                 }
             },
-            Transaction(transfer_id, transaction_id) => {
-                let entry = self.transfer_index.get(*transfer_id)?;
-                let endpoint_id = entry.endpoint_id();
-                let endpoint = self.endpoints.get(endpoint_id)?;
+            Transaction(transfer_id_opt, transaction_id) => {
+                let num_packets = self.packet_index.len();
                 let packet_id_range = self.transaction_index.target_range(
-                    *transaction_id, self.packet_index.len())?;
+                    *transaction_id, num_packets)?;
                 let start_packet_id = packet_id_range.start;
                 let start_packet = self.packet(start_packet_id)?;
-                if validate_packet(&start_packet).is_ok() {
+                if let Ok(pid) = validate_packet(&start_packet) {
+                    if pid == SPLIT && start_packet_id.value + 1 == num_packets {
+                        // We can't know the endpoint yet.
+                        let split = SplitFields::from_packet(&start_packet);
+                        return Ok(format!(
+                            "{} {} speed {} transaction on hub {} port {}",
+                            match split.sc() {
+                                Start => "Starting",
+                                Complete => "Completing",
+                            },
+                            format!("{:?}", split.speed()).to_lowercase(),
+                            format!("{:?}", split.endpoint_type()).to_lowercase(),
+                            split.hub_address(),
+                            split.port()))
+                    }
+                    let endpoint_id = match transfer_id_opt {
+                        Some(transfer_id) => {
+                            let entry = self.transfer_index.get(*transfer_id)?;
+                            entry.endpoint_id()
+                        },
+                        None => match self.shared.packet_endpoint(
+                            pid, &start_packet)
+                        {
+                            Ok(endpoint_id) => endpoint_id,
+                            Err(_) => INVALID_EP_ID
+                        }
+                    };
+                    let endpoint = self.endpoints.get(endpoint_id)?;
                     let transaction = self.transaction(*transaction_id)?;
                     transaction.description(self, &endpoint)?
                 } else {
@@ -1339,16 +1831,36 @@ impl ItemSource<TrafficItem> for CaptureReader {
         })
     }
 
-    fn connectors(&mut self, item: &TrafficItem)
+    fn connectors(&mut self, view_mode: TrafficViewMode, item: &TrafficItem)
         -> Result<String, Error>
     {
         use EndpointState::*;
         use TrafficItem::*;
+        use TrafficViewMode::*;
+        if view_mode == Packets {
+            return Ok(String::from(""));
+        }
+        let last_packet = match item {
+            Packet(_, Some(transaction_id), packet_id) => {
+                let range = self.transaction_index.target_range(
+                    *transaction_id, self.packet_index.len())?;
+                *packet_id == range.end - 1
+            }, _ => false
+        };
+        if view_mode == Transactions {
+            return Ok(String::from(match (item, last_packet) {
+                (Transfer(_), _)     => unreachable!(),
+                (Transaction(..), _) => "○",
+                (Packet(..), false)  => "├──",
+                (Packet(..), true )  => "└──",
+            }));
+        }
         let endpoint_count = self.endpoints.len() as usize;
         let max_string_length = endpoint_count + "    └──".len();
         let mut connectors = String::with_capacity(max_string_length);
         let transfer_id = match item {
-            Transfer(i) | Transaction(i, _) | Packet(i, ..) => *i
+            Transfer(i) | Transaction(Some(i), _) | Packet(Some(i), ..) => *i,
+            _ => unreachable!()
         };
         let entry = self.transfer_index.get(transfer_id)?;
         let endpoint_id = entry.endpoint_id();
@@ -1356,19 +1868,13 @@ impl ItemSource<TrafficItem> for CaptureReader {
         let extended = self.transfer_extended(endpoint_id, transfer_id)?;
         let ep_traf = self.endpoint_traffic(endpoint_id)?;
         let last_transaction = match item {
-            Transaction(_, transaction_id) | Packet(_, transaction_id, _) => {
+            Transaction(_, transaction_id) |
+            Packet(_, Some(transaction_id), _) => {
                 let range = ep_traf.transfer_index.target_range(
                     entry.transfer_id(), ep_traf.transaction_ids.len())?;
                 let last_transaction_id =
                     ep_traf.transaction_ids.get(range.end - 1)?;
                 *transaction_id == last_transaction_id
-            }, _ => false
-        };
-        let last_packet = match item {
-            Packet(_, transaction_id, packet_id) => {
-                let range = self.transaction_index.target_range(
-                    *transaction_id, self.packet_index.len())?;
-                *packet_id == range.end - 1
             }, _ => false
         };
         let last = last_transaction && !extended;
@@ -1455,8 +1961,11 @@ impl ItemSource<TrafficItem> for CaptureReader {
     }
 }
 
-impl ItemSource<DeviceItem> for CaptureReader {
-    fn item(&mut self, parent: Option<&DeviceItem>, index: u64)
+impl ItemSource<DeviceItem, ()> for CaptureReader {
+    fn item(&mut self,
+            parent: Option<&DeviceItem>,
+            _view_mode: (),
+            index: u64)
         -> Result<DeviceItem, Error>
     {
         match parent {
@@ -1542,7 +2051,9 @@ impl ItemSource<DeviceItem> for CaptureReader {
         })
     }
 
-    fn item_children(&mut self, parent: Option<&DeviceItem>)
+    fn item_children(&mut self,
+                     parent: Option<&DeviceItem>,
+                     _view_mode: ())
         -> Result<(CompletionStatus, u64), Error>
     {
         use DeviceItem::*;
@@ -1586,6 +2097,34 @@ impl ItemSource<DeviceItem> for CaptureReader {
             _ => (Ongoing, 0)
         };
         Ok((completion, children as u64))
+    }
+
+    fn count_within(&mut self,
+                    _item_index: u64,
+                    _item: &DeviceItem,
+                    _region: &Range<u64>)
+        -> Result<u64, Error>
+    {
+        unimplemented!()
+    }
+
+    fn count_before(&mut self,
+                    _item_index: u64,
+                    _item: &DeviceItem,
+                    _span_index: u64,
+                    _child: &DeviceItem)
+        -> Result<u64, Error>
+    {
+        unimplemented!()
+    }
+
+    fn find_child(&mut self,
+                  _expanded: &mut dyn Iterator<Item=(u64, DeviceItem)>,
+                  _region: &Range<u64>,
+                  _index: u64)
+        -> Result<SearchResult<DeviceItem>, Error>
+    {
+        unimplemented!()
     }
 
     fn summary(&mut self, item: &DeviceItem)
@@ -1654,7 +2193,9 @@ impl ItemSource<DeviceItem> for CaptureReader {
         })
     }
 
-    fn connectors(&mut self, item: &DeviceItem) -> Result<String, Error> {
+    fn connectors(&mut self, _view_mode: (), item: &DeviceItem)
+        -> Result<String, Error>
+    {
         use DeviceItem::*;
         let depth = match item {
             Device(..) => 0,
@@ -1694,7 +2235,7 @@ mod tests {
     {
         let mut summary = cap.summary(item).unwrap();
         let (_completion, num_children) =
-            cap.item_children(Some(item)).unwrap();
+            cap.item_children(Some(item), TrafficViewMode::Hierarchical).unwrap();
         let child_ids = 0..num_children;
         for (n, child_summary) in child_ids
             .map(|child_id| {
@@ -1756,7 +2297,8 @@ mod tests {
                 let mut out_writer = BufWriter::new(out_file);
                 let num_items = reader.item_index.len();
                 for item_id in 0 .. num_items {
-                    let item = reader.item(None, item_id).unwrap();
+                    let item = reader.item(
+                        None, TrafficViewMode::Hierarchical, item_id).unwrap();
                     write_item(&mut reader, &item, 0, &mut out_writer);
                 }
             }
@@ -1786,6 +2328,7 @@ pub mod prelude {
         DeviceData,
         Endpoint,
         EndpointId,
+        EndpointKey,
         EndpointType,
         EndpointState,
         EndpointReader,

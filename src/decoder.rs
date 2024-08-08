@@ -6,12 +6,13 @@ use anyhow::{Context, Error, bail};
 use crate::capture::prelude::*;
 use crate::rcu::SingleWriterRcu;
 use crate::usb::{self, prelude::*, validate_packet};
-use crate::vec_map::{VecMap, Key};
+use crate::vec_map::VecMap;
 
 struct EndpointData {
     device_id: DeviceId,
     address: EndpointAddr,
     writer: EndpointWriter,
+    start_item: Option<TrafficItemId>,
     early_start: Option<EndpointTransferId>,
     active: Option<TransferState>,
     ended: Option<EndpointTransferId>,
@@ -58,6 +59,7 @@ impl EndpointData {
             address,
             device_id,
             writer,
+            start_item: None,
             early_start: None,
             active: None,
             ended: None,
@@ -492,33 +494,9 @@ impl EndpointData {
     }
 }
 
-#[derive(Copy, Clone)]
-struct EndpointKey {
-    dev_addr: DeviceAddr,
-    direction: Direction,
-    ep_num: EndpointNum,
-}
-
-impl Key for EndpointKey {
-    fn id(self) -> usize {
-        self.dev_addr.0 as usize * 32 +
-            self.direction as usize * 16 +
-                self.ep_num.0 as usize
-    }
-
-    fn key(id: usize) -> EndpointKey {
-        EndpointKey {
-            dev_addr: DeviceAddr((id / 32) as u8),
-            direction: Direction::from(((id / 16) % 2) as u8),
-            ep_num: EndpointNum((id % 16) as u8),
-        }
-    }
-}
-
 pub struct Decoder {
     capture: CaptureWriter,
     device_index: VecMap<DeviceAddr, DeviceId>,
-    endpoint_index: VecMap<EndpointKey, EndpointId>,
     endpoint_data: VecMap<EndpointId, EndpointData>,
     last_endpoint_state: Vec<u8>,
     last_item_endpoint: Option<EndpointId>,
@@ -531,7 +509,6 @@ impl Decoder {
         let mut decoder = Decoder {
             capture,
             device_index: VecMap::new(),
-            endpoint_index: VecMap::new(),
             endpoint_data: VecMap::new(),
             last_endpoint_state: Vec::new(),
             last_item_endpoint: None,
@@ -592,42 +569,18 @@ impl Decoder {
         Ok(self.capture)
     }
 
-    pub fn token_endpoint(&mut self, pid: PID, token: &TokenFields)
-        -> Result<EndpointId, Error>
-    {
-        let dev_addr = token.device_address();
-        let ep_num = token.endpoint_number();
-        let direction = match (ep_num.0, pid) {
-            (0, _)         => Direction::Out,
-            (_, PID::IN)   => Direction::In,
-            (_, PID::OUT)  => Direction::Out,
-            (_, PID::PING) => Direction::Out,
-            _ => bail!("PID {pid} does not indicate a direction")
-        };
-        let key = EndpointKey {
-            dev_addr,
-            ep_num,
-            direction
-        };
-        Ok(match self.endpoint_index.get(key) {
-            Some(id) => *id,
-            None => {
-                let id = self.add_endpoint(
-                    key.dev_addr, key.ep_num, key.direction)?;
-                self.endpoint_index.set(key, id);
-                id
-            }
-        })
-    }
-
     fn packet_endpoint(&mut self, pid: PID, packet: &[u8])
         -> Result<EndpointId, Error>
     {
-        Ok(match PacketFields::from_packet(packet) {
-            PacketFields::SOF(_) => FRAMING_EP_ID,
-            PacketFields::Token(token) =>
-                self.token_endpoint(pid, &token)?,
-            _ => INVALID_EP_ID,
+        Ok(match self.capture.shared.packet_endpoint(pid, packet) {
+            Ok(id) => id,
+            Err(key) => {
+                let id = self.add_endpoint(
+                    key.dev_addr, key.ep_num, key.direction)?;
+                self.capture.shared.endpoint_index
+                    .update(|map| map.set(key, id));
+                id
+            }
         })
     }
 
@@ -954,7 +907,7 @@ impl Decoder {
             let transfer_end_id =
                 self.add_transfer_entry(endpoint_id, ep_transfer_id, false)?;
             if self.last_item_endpoint != Some(endpoint_id) {
-                self.add_item(endpoint_id, transfer_end_id)?;
+                self.add_item(endpoint_id, transfer_end_id, false)?;
             }
         }
         Ok(())
@@ -985,7 +938,7 @@ impl Decoder {
             ep_data.writer.transfer_index.push(ep_transaction_id)?;
         let transfer_start_id =
             self.add_transfer_entry(endpoint_id, ep_transfer_id, true)?;
-        self.add_item(endpoint_id, transfer_start_id)?;
+        self.add_item(endpoint_id, transfer_start_id, true)?;
         Ok(ep_transfer_id)
     }
 
@@ -1031,7 +984,8 @@ impl Decoder {
 
     fn add_item(&mut self,
                 item_endpoint_id: EndpointId,
-                transfer_id: TransferId)
+                transfer_id: TransferId,
+                start: bool)
         -> Result<TrafficItemId, Error>
     {
         let item_id = self.capture.item_index.push(transfer_id)?;
@@ -1042,10 +996,28 @@ impl Decoder {
         for i in 0..endpoint_count {
             let endpoint_id = EndpointId::from(i);
             let ep_data = &mut self.endpoint_data[endpoint_id];
+            if start && endpoint_id == item_endpoint_id &&
+                ep_data.start_item.replace(item_id).is_none()
+            {
+                // This is the first item since this endpoint appeared.
+                let first_item_id = Some(Arc::new(item_id));
+                ep_data.writer.shared.first_item_id.swap(first_item_id);
+            }
             if let Some(ep_transfer_id) = ep_data.ended.take() {
                 // This transfer has ended and is not yet linked to an item.
                 let end_id = ep_data.writer.end_index.push(item_id)?;
                 assert!(end_id == ep_transfer_id);
+            }
+            if ep_data.writer.shared.first_item_id.load().is_some() {
+                // Record the total transactions on this endpoint.
+                let mut transaction_count =
+                    ep_data.writer.transaction_ids.len();
+                if start && endpoint_id == item_endpoint_id {
+                    // We just added a transaction, that shouldn't be included.
+                    transaction_count -= 1;
+                }
+                ep_data.writer.progress_index.push(
+                    EndpointTransactionId::from(transaction_count))?;
             }
         }
 

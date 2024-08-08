@@ -7,6 +7,7 @@ use gtk::prelude::*;
 use itertools::assert_equal;
 use serde_json::Deserializer;
 
+use crate::capture::TrafficViewMode;
 use crate::decoder::Decoder;
 use crate::pcap::Loader;
 use crate::model::GenericModel;
@@ -179,19 +180,6 @@ fn set_expanded(ui: &mut UserInterface,
                 expanded: bool)
 {
     match name {
-        "traffic" => {
-            let model = ui.traffic_model
-                .as_ref()
-                .expect("UI has no traffic model");
-            let node = model.item(position)
-                .expect("Failed to retrieve list item")
-                .downcast::<TrafficRowData>()
-                .expect("List item is not TrafficRowData")
-                .node()
-                .expect("Failed to get node from TrafficRowData");
-            model.set_expanded(&node, position, expanded)
-                .expect("Failed to expand/collapse item");
-        },
         "devices" => {
             let model = ui.device_model
                 .as_ref()
@@ -205,6 +193,19 @@ fn set_expanded(ui: &mut UserInterface,
             model.set_expanded(&node, position, expanded)
                 .expect("Failed to expand/collapse item");
         },
-        _ => panic!("Unknown model name")
+        log_name => {
+            let mode = TrafficViewMode::from_log_name(log_name);
+            let model = ui.traffic_models
+                .get(&mode)
+                .expect("UI has no traffic model");
+            let node = model.item(position)
+                .expect("Failed to retrieve list item")
+                .downcast::<TrafficRowData>()
+                .expect("List item is not TrafficRowData")
+                .node()
+                .expect("Failed to get node from TrafficRowData");
+            model.set_expanded(&node, position, expanded)
+                .expect("Failed to expand/collapse item");
+        },
     }
 }

@@ -13,7 +13,7 @@ use gtk::{gio, glib};
 
 use anyhow::Error;
 
-use crate::capture::{CaptureReader, TrafficItem, DeviceItem};
+use crate::capture::{CaptureReader, TrafficItem, TrafficViewMode, DeviceItem};
 use crate::tree_list_model::{TreeListModel, ItemNodeRc};
 
 // Public part of the Model type.
@@ -24,9 +24,10 @@ glib::wrapper! {
     pub struct DeviceModel(ObjectSubclass<imp::DeviceModel>) @implements gio::ListModel;
 }
 
-pub trait GenericModel<Item> where Self: Sized {
+pub trait GenericModel<Item, ViewMode> where Self: Sized {
     const HAS_TIMES: bool;
     fn new(capture: CaptureReader,
+           view_mode: ViewMode,
            #[cfg(any(test, feature="record-ui-test"))]
            on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>)
         -> Result<Self, Error>;
@@ -41,10 +42,11 @@ pub trait GenericModel<Item> where Self: Sized {
     fn connectors(&self, item: &Item) -> String;
 }
 
-impl GenericModel<TrafficItem> for TrafficModel {
+impl GenericModel<TrafficItem, TrafficViewMode> for TrafficModel {
     const HAS_TIMES: bool = true;
 
     fn new(capture: CaptureReader,
+           view_mode: TrafficViewMode,
            #[cfg(any(test, feature="record-ui-test"))]
            on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>)
         -> Result<Self, Error>
@@ -52,6 +54,7 @@ impl GenericModel<TrafficItem> for TrafficModel {
         let model: TrafficModel = glib::Object::new::<TrafficModel>();
         let tree = TreeListModel::new(
             capture,
+            view_mode,
             #[cfg(any(test, feature="record-ui-test"))]
             on_item_update)?;
         model.imp().tree.replace(Some(tree));
@@ -94,10 +97,11 @@ impl GenericModel<TrafficItem> for TrafficModel {
     }
 }
 
-impl GenericModel<DeviceItem> for DeviceModel {
+impl GenericModel<DeviceItem, ()> for DeviceModel {
     const HAS_TIMES: bool = false;
 
     fn new(capture: CaptureReader,
+           view_mode: (),
            #[cfg(any(test, feature="record-ui-test"))]
            on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>)
         -> Result<Self, Error>
@@ -105,6 +109,7 @@ impl GenericModel<DeviceItem> for DeviceModel {
         let model: DeviceModel = glib::Object::new::<DeviceModel>();
         let tree = TreeListModel::new(
             capture,
+            view_mode,
             #[cfg(any(test, feature="record-ui-test"))]
             on_item_update)?;
         model.imp().tree.replace(Some(tree));
