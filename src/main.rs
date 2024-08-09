@@ -66,7 +66,7 @@ fn main() {
     #[cfg(windows)]
     if std::env::var("PACKETRY_ATTACH_CONSOLE").is_ok() {
         use winapi::um::wincon::{AttachConsole, ATTACH_PARENT_PROCESS};
-        unsafe {AttachConsole(ATTACH_PARENT_PROCESS)};
+        unsafe { AttachConsole(ATTACH_PARENT_PROCESS) };
     }
 
     if have_argument("--version") {
