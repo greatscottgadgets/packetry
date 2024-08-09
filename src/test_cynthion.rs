@@ -1,4 +1,9 @@
-use crate::backend::cynthion::{CynthionDevice, CynthionUsability, Speed};
+use crate::backend::cynthion::{
+    CynthionDevice,
+    CynthionUsability,
+    CynthionHandle,
+    Speed
+};
 use crate::capture::{
     create_capture,
     CaptureReader,
@@ -10,22 +15,28 @@ use crate::capture::{
 use crate::decoder::Decoder;
 use crate::pcap::Writer;
 
-use anyhow::{Context, Error};
+use anyhow::{Context, Error, ensure};
 use futures_lite::future::block_on;
 use nusb::transfer::RequestBuffer;
 
 use std::fs::File;
 use std::path::PathBuf;
 use std::thread::sleep;
-use std::time::Duration;
+use std::time::{Duration, Instant};
+
+const US: Duration = Duration::from_micros(1);
+const MS: Duration = Duration::from_millis(1);
 
 pub fn run_test(save_captures: bool) {
     for (name, speed, ep_addr, length, sof) in [
-        ("HS", Speed::High, 0x81, 4096, Some((124500,  125500, 500))),
-        ("FS", Speed::Full, 0x82,  512, Some((995000, 1005000,  50))),
+        ("HS", Speed::High, 0x81, 4096, Some((124*US,  126*US))),
+        ("FS", Speed::Full, 0x82,  512, Some((995*US, 1005*US))),
         ("LS", Speed::Low,  0x83,   64, None)]
     {
-        test(save_captures, name, speed, ep_addr, length, sof).unwrap();
+        if let Err(e) = test(save_captures, name, speed, ep_addr, length, sof) {
+            eprintln!("\nTest failed: {e}");
+            std::process::exit(1);
+        }
     }
 }
 
@@ -34,7 +45,7 @@ fn test(save_capture: bool,
         speed: Speed,
         ep_addr: u8,
         length: usize,
-        sof: Option<(u64, u64, u64)>)
+        sof: Option<(Duration, Duration)>)
     -> Result<(), Error>
 {
     let desc = speed.description();
@@ -62,11 +73,132 @@ fn test(save_capture: bool,
     sleep(Duration::from_millis(100));
 
     // Start capture.
+    let analyzer_start_time = Instant::now();
     let (packets, stop_handle) = analyzer
         .start(speed,
                |err| err.context("Failure in capture thread").unwrap())
         .context("Failed to start analyzer")?;
 
+    // Attempt to open and read data from the test device.
+    let test_device_result = read_test_device(
+        &mut analyzer, speed, ep_addr, length);
+
+    // Stop analyzer.
+    stop_handle.stop()
+        .context("Failed to stop analyzer")?;
+    let analyzer_stop_time = Instant::now();
+
+    // Now that capture is stopped, check result of reading test device.
+    let bytes_read = test_device_result?;
+
+    // Decode all packets that were received.
+    for packet in packets {
+        decoder.handle_raw_packet(&packet.bytes, packet.timestamp_ns)
+            .context("Error decoding packet")?;
+    }
+
+    if save_capture {
+        // Write the capture to a file.
+        let path = PathBuf::from(format!("./HITL-{name}.pcap"));
+        let file = File::create(path)?;
+        let mut writer = Writer::open(file)?;
+        for i in 0..reader.packet_index.len() {
+            let packet_id = PacketId::from(i);
+            let packet = reader.packet(packet_id)?;
+            let timestamp_ns = reader.packet_time(packet_id)?;
+            writer.add_packet(&packet, timestamp_ns)?;
+        }
+        writer.close()?;
+    }
+
+    // Look for the test device in the capture.
+    let device_id = DeviceId::from(1);
+    let device_data = reader.device_data(&device_id)?;
+    ensure!(device_data.description() == "USB Analyzer Test Device",
+            "Device found did not have expected description");
+    println!("Found test device in capture");
+
+    // Check captured payload bytes match received ones.
+    let bytes_captured = bytes_on_endpoint(&mut reader)
+        .context("Error counting captured bytes on endpoint")?;
+    println!("Captured {}/{} bytes of data read from test device",
+             bytes_captured.len(), length);
+    ensure!(bytes_captured.len() == length,
+            "Not all data was captured");
+    ensure!(bytes_captured == bytes_read,
+            "Captured data did not match received data");
+
+    if let Some((min_interval, max_interval)) = sof {
+        println!("Checking SOF timestamp intervals");
+        // Check SOF timestamps have the expected spacing.
+        // SOF packets are assigned to endpoint ID 1.
+        // We're looking for the first and only transfer on the endpoint.
+        let endpoint_id = EndpointId::from(1);
+        let ep_transfer_id = EndpointTransferId::from(0);
+        let ep_traf = reader.endpoint_traffic(endpoint_id)?;
+        let ep_transaction_ids = ep_traf.transfer_index
+            .target_range(ep_transfer_id, ep_traf.transaction_ids.len())?;
+        let mut sof_count = 0;
+        let mut last = None;
+        let mut gaps = Vec::new();
+        for transaction_id in ep_traf.transaction_ids
+            .get_range(&ep_transaction_ids)?
+        {
+            let range = reader.transaction_index
+                .target_range(transaction_id, reader.packet_index.len())?;
+            for id in range.start.value..range.end.value {
+                let packet_id = PacketId::from(id);
+                let timestamp = Duration::from_nanos(
+                    reader.packet_times.get(packet_id)?);
+                if let Some(prev) = last.replace(timestamp) {
+                    let interval = timestamp - prev;
+                    if !(interval > min_interval && interval < max_interval) {
+                        if interval > 10*MS {
+                            // More than 10ms gap, looks like a bus reset.
+                            gaps.push(interval);
+                            println!("Found a gap of {} ms between SOF packets",
+                                     interval.as_millis());
+                            continue
+                        } else {
+                            panic!("SOF interval of {} us is out of range",
+                                   interval.as_micros());
+                        }
+                    }
+                }
+                sof_count += 1;
+            }
+        }
+
+        println!("Found {} SOF packets with expected interval range", sof_count);
+
+        ensure!(gaps.len() <= 1, "More than one gap in SOF packets seen");
+
+        // Check how long we could have been capturing SOF packets for.
+        let max_bus_time = analyzer_stop_time.duration_since(analyzer_start_time);
+
+        // Allow for delays and time when the bus was in reset.
+        let min_bus_time = max_bus_time - 500*MS;
+
+        // Calculate how many SOF packets we should have seen.
+        let min_count = min_bus_time.as_micros() / max_interval.as_micros();
+        let max_count = max_bus_time.as_micros() / min_interval.as_micros();
+
+        println!("Expected to see between {min_count} and {max_count} SOF packets");
+
+        ensure!(sof_count >= min_count, "Not enough SOF packets captured");
+        ensure!(sof_count <= max_count, "Too many SOF packets captured");
+    }
+
+    Ok(())
+}
+
+fn read_test_device(
+    analyzer: &mut CynthionHandle,
+    speed: Speed,
+    ep_addr: u8,
+    length: usize)
+-> Result<Vec<u8>, Error>
+{
     // Tell analyzer to connect test device, then wait for it to enumerate.
     println!("Enabling test device");
     analyzer.configure_test_device(Some(speed))?;
@@ -89,89 +221,9 @@ fn test(save_capture: bool,
     let completion = block_on(transfer);
     completion.status.context("Transfer from test device failed")?;
     println!("Read {} bytes from test device", completion.data.len());
-    assert_eq!(completion.data.len(), length);
-
-    // Stop analyzer.
-    stop_handle.stop()
-        .context("Failed to stop analyzer")?;
-
-    // Decode all packets that were received.
-    for packet in packets {
-        decoder.handle_raw_packet(&packet.bytes, packet.timestamp_ns)
-            .context("Error decoding packet")?;
-    }
-
-    if save_capture {
-        // Write the capture to a file.
-        let path = PathBuf::from(format!("./HITL-{name}.pcap"));
-        let file = File::open(path)?;
-        let mut writer = Writer::open(file)?;
-        for i in 0..reader.packet_index.len() {
-            let packet_id = PacketId::from(i);
-            let packet = reader.packet(packet_id)?;
-            let timestamp_ns = reader.packet_time(packet_id)?;
-            writer.add_packet(&packet, timestamp_ns)?;
-        }
-        writer.close()?;
-    }
-
-    // Look for the test device in the capture.
-    let device_id = DeviceId::from(1);
-    let device_data = reader.device_data(&device_id)?;
-    assert_eq!(device_data.description(), "USB Analyzer Test Device");
-    println!("Found test device in capture");
-
-    // Check captured payload bytes match received ones.
-    let bytes_captured = bytes_on_endpoint(&mut reader)
-        .context("Error counting captured bytes on endpoint")?;
-    println!("Captured {}/{} bytes of data read from test device",
-             bytes_captured.len(), length);
-    assert_eq!(bytes_captured.len(), length,
-               "Not all data was captured");
-    assert_eq!(bytes_captured, completion.data,
-               "Captured data did not match received data");
-
-    if let Some((min_interval, max_interval, min_count)) = sof {
-        println!("Checking SOF timestamp intervals");
-        // Check SOF timestamps have the expected spacing.
-        // SOF packets are assigned to endpoint ID 1.
-        // We're looking for the first and only transfer on the endpoint.
-        let endpoint_id = EndpointId::from(1);
-        let ep_transfer_id = EndpointTransferId::from(0);
-        let ep_traf = reader.endpoint_traffic(endpoint_id)?;
-        let ep_transaction_ids = ep_traf.transfer_index
-            .target_range(ep_transfer_id, ep_traf.transaction_ids.len())?;
-        let mut sof_count = 0;
-        let mut last = None;
-        for transaction_id in ep_traf.transaction_ids
-            .get_range(&ep_transaction_ids)?
-        {
-            let range = reader.transaction_index
-                .target_range(transaction_id, reader.packet_index.len())?;
-            for id in range.start.value..range.end.value {
-                let packet_id = PacketId::from(id);
-                let timestamp = reader.packet_times.get(packet_id)?;
-                if let Some(prev) = last {
-                    let interval = timestamp - prev;
-                    if !(interval > min_interval && interval < max_interval) {
-                        if interval > 10000000 {
-                            // More than 10ms gap, assume host stopped sending.
-                            continue
-                        } else {
-                            panic!("SOF interval of {}ns is out of range",
-                                   interval);
-                        }
-                    }
-                }
-                sof_count += 1;
-                last = Some(timestamp);
-            }
-        }
-        println!("Found {} SOF packets with expected interval range", sof_count);
-        assert!(sof_count > min_count, "Not enough SOF packets captured");
-    }
-
-    Ok(())
+    ensure!(completion.data.len() == length,
+            "Did not complete reading data");
+    Ok(completion.data)
 }
 
 fn bytes_on_endpoint(reader: &mut CaptureReader) -> Result<Vec<u8>, Error> {
