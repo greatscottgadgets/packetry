@@ -52,7 +52,6 @@ use gtk::{
 
 #[cfg(not(test))]
 use gtk::{
-    glib,
     MessageDialog,
     DialogFlags,
     ButtonsType,
