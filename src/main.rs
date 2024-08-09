@@ -13,8 +13,8 @@ extern crate ctor;
 
 // Include build-time info.
 pub mod built {
-   // The file has been placed there by the build script.
-   include!(concat!(env!("OUT_DIR"), "/built.rs"));
+    // The file has been placed there by the build script.
+    include!(concat!(env!("OUT_DIR"), "/built.rs"));
 }
 
 // Declare all modules used.
@@ -77,27 +77,39 @@ fn main() {
         let save_captures = have_argument("--save-captures");
         test_cynthion::run_test(save_captures);
     } else {
+        if gtk::init().is_err() {
+            eprintln!("Failed to initialize GTK");
+            std::process::exit(1);
+        }
+        if let Some(settings) = gtk::Settings::default() {
+            settings.set_gtk_application_prefer_dark_theme(
+                matches!(
+                    dark_light::detect(),
+                    dark_light::Mode::Dark
+                )
+            );
+        }
         let application = gtk::Application::new(
             Some("com.greatscottgadgets.packetry"),
             ApplicationFlags::NON_UNIQUE |
             ApplicationFlags::HANDLES_OPEN
         );
         application.set_option_context_parameter_string(
-           Some("[filename.pcap]"));
+            Some("[filename.pcap]"));
         application.add_main_option(
-           "version", glib::Char::from(0),
-           OptionFlags::NONE, OptionArg::None,
-           "Print version information", None);
+            "version", glib::Char::from(0),
+            OptionFlags::NONE, OptionArg::None,
+            "Print version information", None);
         application.add_main_option(
-           "test-cynthion", glib::Char::from(0),
-           OptionFlags::NONE, OptionArg::None,
-           "Test an attached Cynthion USB analyzer", None);
+            "test-cynthion", glib::Char::from(0),
+            OptionFlags::NONE, OptionArg::None,
+            "Test an attached Cynthion USB analyzer", None);
         application.connect_activate(|app| display_error(activate(app)));
         application.connect_open(|app, files, _hint| {
-           app.activate();
-           if let Some(file) = files.first() {
-              display_error(open(file));
-           }
+            app.activate();
+            if let Some(file) = files.first() {
+                display_error(open(file));
+            }
         });
         application.run();
         display_error(stop_cynthion());

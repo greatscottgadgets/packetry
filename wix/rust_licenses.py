@@ -122,6 +122,7 @@ for line in cargo_result.stdout.decode().rstrip().split("\n"):
             ['license-mit'],
             ['LICENSES', 'MIT.txt'],
             ['LICENSE'],
+            ['LICENSE.txt'],
             ['LICENSE.md'],
             ['COPYING'],
         )

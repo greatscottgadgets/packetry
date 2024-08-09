@@ -10,7 +10,7 @@ homepage = "https://github.com/greatscottgadgets/packetry"
 repository = "https://github.com/greatscottgadgets/packetry"
 documentation = "https://packetry.readthedocs.io"
 edition = "2021"
-rust-version = "1.74"
+rust-version = "1.75"
 build = "src/build.rs"
 default-run = "packetry"
 
@@ -52,6 +52,7 @@ page_size = "0.6.0"
 anyhow = { version = "1.0.79", features = ["backtrace"] }
 crc = "3.2.1"
 usb-ids = "1.2024.4"
+dark-light = "1.1.1"
 
 [dev-dependencies]
 serde = { version = "1.0.196", features = ["derive"] }
