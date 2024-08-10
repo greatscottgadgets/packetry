@@ -5,10 +5,17 @@ extern crate bitfield;
 
 mod backend;
 mod pcap;
+mod version;
 
 use crate::backend::cynthion::{CynthionDevice, CynthionUsability::*, Speed};
-
 use crate::pcap::Writer;
+use version::{version, version_info};
+
+// Include build-time info.
+pub mod built {
+    // The file has been placed there by the build script.
+    include!(concat!(env!("OUT_DIR"), "/built.rs"));
+}
 
 use anyhow::Error;
 use std::fs::File;
@@ -29,6 +36,7 @@ struct Args {
 enum SubcommandEnum {
     One(SubCommandCliCapture),
     Two(SubCommandDevices),
+    Three(SubCommandVersion),
 }
 
 #[derive(FromArgs, PartialEq, Debug)]
@@ -61,6 +69,15 @@ struct SubCommandCliCapture {
 #[argh(subcommand, name = "devices")]
 struct SubCommandDevices {}
 
+#[derive(FromArgs, PartialEq, Debug)]
+/// Print version information
+#[argh(subcommand, name = "version")]
+struct SubCommandVersion {
+    /// print dependency information with version
+    #[argh(switch, long = "dependencies")]
+    print_dependencies: bool,
+}
+
 #[derive(Tabled)]
 pub struct DeviceInfo {
     name: String,
@@ -92,6 +109,13 @@ fn main() -> ExitCode {
                 } else {
                     ExitCode::SUCCESS
                 }
+            }
+
+            SubcommandEnum::Three(versionoptions) => {
+                println!("Packetry version {}\n\n{}",
+                version(),
+                version_info(versionoptions.print_dependencies));
+                ExitCode::SUCCESS
             }
         }
     } else {
