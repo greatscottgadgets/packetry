@@ -178,13 +178,7 @@ You can connect Cynthion's TARGET A port to your target device at this time, but
 Launch Packetry
 ---------------
 
-Run the Packetry executable:
-
-.. code::
-
-    packetry
-
-The Packetry window should appear.
+Run the Packetry executable. The Packetry window should appear.
 
 
 Start Capturing USB Traffic
