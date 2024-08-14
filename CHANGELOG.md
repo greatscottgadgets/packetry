@@ -9,9 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 -->
 
-## [0.1.0] - 2024-07-16
+## [0.2.0] - 2024-08-13
+
 ### Added
+
+- Add detail pane.
+- Add packetry-cli wrapper program, enabling command-line options on Windows.
+- Add Linux AppImage build.
+- Use usb.ids database to interpret various ID values.
+- Use GIO File abstraction, supporting file operations over MTP or SMB, for
+  example.
+- Add information about command line options to Application instance.
+
+### Changed
+- Bump nusb dependency to 0.1.10 and remove workaround for 0.1.9.
+- Handle opening files in the standard way for a GTK application.
+
+### Fixed
+- Avoid underflow in UI code when capture is completely empty.
+- Validate packet CRCs and lengths, and diagnose malformed packets.
+
+
+## [0.1.0] - 2024-07-16
+
+### Added
+
 - Initial release
 
-[Unreleased]: https://github.com/greatscottgadgets/packetry/compare/v0.1.0...HEAD
+
+[Unreleased]: https://github.com/greatscottgadgets/packetry/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/greatscottgadgets/packetry/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/greatscottgadgets/packetry/releases/tag/v0.1.0
