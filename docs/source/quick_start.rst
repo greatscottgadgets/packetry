@@ -21,7 +21,7 @@ Install Packetry
 
     .. tab:: Pre-built
 
-        AppImage coming soon! For now you can build and install from source code.
+        Download ``packetry-x86_64.AppImage`` from the `latest release <https://github.com/greatscottgadgets/packetry/releases/latest>`__. Follow the `AppImage Quickstart instructions <https://docs.appimage.org/introduction/quickstart.html>`__ to make the file executable.
 
     .. tab:: From source code
 
@@ -67,7 +67,11 @@ Install Packetry
 
     .. tab:: Pre-built
 
-        Homebrew installation coming soon! For now you can build and install from source code.
+        Use `Homebrew <https://brew.sh/>`__ to install Packetry:
+
+        .. code::
+
+            brew install packetry
 
     .. tab:: From source code
 
