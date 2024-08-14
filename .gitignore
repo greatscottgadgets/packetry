@@ -10,3 +10,5 @@
 /wix/LICENSE-static-libraries.txt
 /wix/LICENSE-dynamic-libraries.txt
 /vcpkg
+/docs/build/
+HITL-*.pcap
