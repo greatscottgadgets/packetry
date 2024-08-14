@@ -164,9 +164,11 @@ Install Packetry
 Connect Cynthion
 ----------------
 
+Cynthion enables analysis of a USB connection between a target host and a target device. This connection passes through Cynthion's TARGET A and TARGET C ports. Cynthion watches the traffic on this connection and sends the observed packet data over the CONTROL port for analysis in Packetry.
+
 Connect Cynthion's CONTROL port to your analysis host computer running Packetry. Connect TARGET C to your target host computer. If your target host and analysis host are the same computer, please be aware of `this issue <https://github.com/greatscottgadgets/packetry/issues/122>`__.
 
-You can connect Cynthion's TARGET A port to your target device at this time, but you may wish to delay this connection until after Packetry is capturing. This will ensure that Packetry can observe the entire device enumeration process.
+You can connect Cynthion's TARGET A port to your target device at this time, but you may wish to delay this connection until after Packetry is capturing. This will ensure that Packetry can observe the entire device enumeration process and is able to provide detailed information in the Device Pane.
 
 .. image:: ../images/cynthion-connections-packetry.svg
   :width: 800
