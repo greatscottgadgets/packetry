@@ -43,6 +43,17 @@ To the right of the Traffic Pane is the Device Pane. The Device Pane summarizes 
 Much of the information that can be displayed in the Device Pane is discovered only if Packetry observes the initial enumeration of a USB device by the target host. To allow this to take place in a live capture, connect the target device after starting a capture, not before.
 
 
+Detail Pane
+-----------
+
+The Detail Pane is located below the Traffic Pane. It provides a detailed view of an item selected in the Traffic Pane and allows copying of data from that item.
+
+.. image:: ../images/detail-pane.png
+  :alt: Detail Pane
+
+Depending on the item selected, the Detail Pane may provide different information. For example, when a string descriptor request transfer is selected, the Detail Pane summarizes the request including the actual string as text. By expanding that transfer in the Traffic Pane you can select a transaction or packet within the transfer to view packet data in hexadecimal in the Detail Pane.
+
+
 Status Bar
 ----------
 

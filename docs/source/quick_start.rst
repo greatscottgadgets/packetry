@@ -21,7 +21,7 @@ Install Packetry
 
     .. tab:: Pre-built
 
-        AppImage coming soon! For now you can build and install from source code.
+        Download ``packetry-x86_64.AppImage`` from the `latest release <https://github.com/greatscottgadgets/packetry/releases/latest>`__. Follow the `AppImage Quickstart instructions <https://docs.appimage.org/introduction/quickstart.html>`__ to make the file executable.
 
     .. tab:: From source code
 
@@ -67,7 +67,11 @@ Install Packetry
 
     .. tab:: Pre-built
 
-        Homebrew installation coming soon! For now you can build and install from source code.
+        Use `Homebrew <https://brew.sh/>`__ to install Packetry:
+
+        .. code::
+
+            brew install packetry
 
     .. tab:: From source code
 
@@ -160,9 +164,11 @@ Install Packetry
 Connect Cynthion
 ----------------
 
+Cynthion enables analysis of a USB connection between a target host and a target device. This connection passes through Cynthion's TARGET A and TARGET C ports. Cynthion watches the traffic on this connection and sends the observed packet data over the CONTROL port for analysis in Packetry.
+
 Connect Cynthion's CONTROL port to your analysis host computer running Packetry. Connect TARGET C to your target host computer. If your target host and analysis host are the same computer, please be aware of `this issue <https://github.com/greatscottgadgets/packetry/issues/122>`__.
 
-You can connect Cynthion's TARGET A port to your target device at this time, but you may wish to delay this connection until after Packetry is capturing. This will ensure that Packetry can observe the entire device enumeration process.
+You can connect Cynthion's TARGET A port to your target device at this time, but you may wish to delay this connection until after Packetry is capturing. This will ensure that Packetry can observe the entire device enumeration process and is able to provide detailed information in the Device Pane.
 
 .. image:: ../images/cynthion-connections-packetry.svg
   :width: 800
@@ -172,13 +178,7 @@ You can connect Cynthion's TARGET A port to your target device at this time, but
 Launch Packetry
 ---------------
 
-Run the Packetry executable:
-
-.. code::
-
-    packetry
-
-The Packetry window should appear.
+Run the Packetry executable. The Packetry window should appear.
 
 
 Start Capturing USB Traffic
