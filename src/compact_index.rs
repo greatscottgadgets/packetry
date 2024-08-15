@@ -1,17 +1,17 @@
 use std::cmp::max;
 use std::fmt::Debug;
-use std::iter::once;
+use std::iter::{Peekable, once};
 use std::marker::PhantomData;
 use std::ops::{Add, AddAssign, Range, Sub, SubAssign};
 use std::sync::atomic::{AtomicU64, Ordering::{Acquire, Release}};
 use std::sync::Arc;
 
-use anyhow::{Error, bail};
-use itertools::multizip;
+use anyhow::{Context, Error, anyhow, bail};
+use itertools::{structs::Zip, multizip};
 
-use crate::data_stream::{data_stream, DataReader, DataWriter};
+use crate::data_stream::{data_stream, DataReader, DataWriter, DataIterator};
 use crate::id::Id;
-use crate::index_stream::{index_stream, IndexReader, IndexWriter};
+use crate::index_stream::{index_stream, IndexReader, IndexWriter, IndexIterator};
 use crate::util::{fmt_count, fmt_size};
 
 type Offset = Id<u8>;
@@ -57,6 +57,39 @@ pub struct CompactReader<Position, Value> {
     segment_width_reader: DataReader<u8>,
     /// Byte stream containing deltas for all segments.
     data_reader: DataReader<u8>,
+}
+
+/// Iterator over values in a compact index stream.
+pub struct CompactIterator<Position, Value>
+where Position: From<u64>, Value: From<u64>
+{
+    /// Range of positions being iterated over.
+    range: Range<Position>,
+    /// Peekable iterator over the required fields of each segment:
+    /// start position, base value, and data offset.
+    #[allow(clippy::type_complexity)]
+    segments:
+        Peekable<
+            Zip<(
+                IndexIterator<SegmentId, Position>,
+                IndexIterator<SegmentId, Value>,
+                IndexIterator<SegmentId, Offset>
+            )>
+        >,
+    /// Iterator over the delta widths of each segment.
+    segment_widths: DataIterator<u8>,
+    /// Reader for the delta data.
+    data_reader: DataReader<u8>,
+    /// Segment currently in use by the iterator.
+    current_segment: Option<Segment<Position, Value>>,
+}
+
+/// A segment in use by an iterator.
+struct Segment<Position, Value> {
+    start: Position,
+    base_value: Value,
+    data_offset: Offset,
+    delta_width: Option<u8>,
 }
 
 type CompactPair<P, V, const W: usize> =
@@ -301,6 +334,35 @@ where
         Ok(values)
     }
 
+    /// Create an iterator over values from the index.
+    pub fn iter(&mut self, range: &Range<Position>)
+        -> Result<CompactIterator<Position, Value>, Error>
+    {
+        let length = self.len();
+        if range.end.into() > length {
+            bail!("requested range {range:?} but index length is {length}")
+        }
+        // Determine which segments we need to read from.
+        let first = self.segment_start_reader.bisect_right(&range.start)? - 1;
+        let last = self.segment_start_reader.bisect_left(&range.end)?;
+        let seg_range = first..last;
+        // Construct iterators for each segment field.
+        let segment_starts = self.segment_start_reader.iter(&seg_range);
+        let base_values = self.segment_base_reader.iter(&seg_range);
+        let data_offsets = self.segment_offset_reader.iter(&seg_range);
+        let segment_widths = self.segment_width_reader.iter(&seg_range);
+        // Construct the iterator.
+        Ok(CompactIterator {
+            range: range.clone(),
+            current_segment: None,
+            segments:
+                multizip((segment_starts, base_values, data_offsets))
+                    .peekable(),
+            segment_widths,
+            data_reader: self.data_reader.clone(),
+        })
+    }
+
     /// Get the range of values between the specified position and the next.
     ///
     /// The length of the data referenced by this index must be passed
@@ -396,6 +458,100 @@ where
     }
 }
 
+impl<Position, Value>
+CompactIterator<Position, Value>
+where
+    Position: Copy + From<u64> + Into<u64> + Ord
+        + Add<u64, Output=Position> + AddAssign<u64>
+        + Sub<u64, Output=Position> + SubAssign<u64> + Sub<Output=u64>,
+    Value: Copy + From<u64> + Into<u64> + Ord
+        + Add<u64, Output=Value>
+        + Sub<Output=u64>
+{
+    // Fetch the next value from the iterator. This is called when we have
+    // already established that there should be a next value, so does not
+    // need to handle the None case, and can just return Result.
+    fn fetch_next(&mut self) -> Result<Value, Error> {
+        let position = self.range.start;
+        // Get the segment this position is stored in.
+        let segment = match &mut self.current_segment {
+            // We can reuse the current segment if ...
+            Some(current) if
+                // ...our position is at or after the current segment start...
+                position >= current.start &&
+                match self.segments.peek() {
+                    // ...and before the start of the next segment...
+                    Some((Ok(next_start), ..)) => position < *next_start,
+                    // ...or there is no next segment to consider.
+                    None => true,
+                    // If we see an error while peeking, proceed with loading
+                    // the next segment, and we'll handle it there. We can't
+                    // do it here where we only have a reference to it.
+                    Some((Err(_), ..)) => false,
+                } => current,
+            // Otherwise, we must load the next segment.
+            _ => {
+                self.current_segment.insert(
+                    match self.segments
+                        .next()
+                        .map(|(start, base, offset)| -> Result<_, Error> {
+                            // Construct a segment from the results returned
+                            // by the separate iterators for each field.
+                            Ok(Segment {
+                                 start: start?,
+                                 base_value: base?,
+                                 data_offset: offset?,
+                                 delta_width: None,
+                            })
+                        })
+                    {
+                        Some(Ok(segment)) => segment,
+                        Some(Err(err)) => return Err(anyhow!(err))
+                            .context("Failed to load next segment"),
+                        None => bail!("Expected another segment"),
+                    }
+                )
+            }
+        };
+        // Now get the value from the segment.
+        let value = if position == segment.start {
+            // The value for this position is the base value of this segment.
+            segment.base_value
+        } else {
+            // The value for this position is encoded as a delta. We need to
+            // know the delta width for this segment.
+            let width = *match &mut segment.delta_width {
+                // We already fetched the width for this segment.
+                Some(width) => width,
+                // We don't have the width yet, fetch it.
+                None => segment.delta_width.insert(
+                    match self.segment_widths.next() {
+                        Some(Ok(width)) => width,
+                        Some(Err(err)) => return Err(anyhow!(err))
+                            .context("Failed to load segment width"),
+                        None => bail!("Expected a segment width"),
+                    }
+                )
+            };
+            // Identify the delta we need and fetch it.
+            let delta_index = position - segment.start - 1;
+            let delta_start = segment.data_offset + delta_index * width as u64;
+            let byte_range = delta_start..(delta_start + width as u64);
+            let delta_low_bytes = self.data_reader.get_range(&byte_range)?;
+            // Reconstruct the delta and the complete value.
+            let mut delta_bytes = [0; 8];
+            delta_bytes[..width as usize]
+                .copy_from_slice(delta_low_bytes.as_slice());
+            let delta = u64::from_le_bytes(delta_bytes);
+            segment.base_value + delta
+        };
+        // Advance our range start for next iteration.
+        self.range.start += 1;
+        // Return the value found.
+        Ok(value)
+    }
+}
+
 fn byte_width(value: u64) -> usize {
     if value == 0 {
         1
@@ -414,6 +570,27 @@ where Position: Copy + From<u64> + Into<u64>,
                fmt_count(self.len()),
                fmt_count(self.segment_start_writer.len()),
                fmt_size(self.size()))
+    }
+}
+
+impl<Position, Value>
+std::iter::Iterator for CompactIterator<Position, Value>
+where
+    Position: Copy + From<u64> + Into<u64> + Ord
+        + Add<u64, Output=Position> + AddAssign<u64>
+        + Sub<u64, Output=Position> + SubAssign<u64> + Sub<Output=u64>,
+    Value: Copy + From<u64> + Into<u64> + Ord
+        + Add<u64, Output=Value>
+        + Sub<Output=u64>
+{
+    type Item = Result<Value, Error>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.range.is_empty() {
+            None
+        } else {
+            Some(self.fetch_next())
+        }
     }
 }
 
@@ -460,6 +637,12 @@ mod tests {
             let vr = reader.get_range(&vrng).unwrap();
             let xr = &expected[xrng];
             assert!(vr == xr);
+            let ir = reader
+                .iter(&vrng)
+                .unwrap()
+                .collect::<Result<Vec<Id<u8>>, Error>>()
+                .unwrap();
+            assert!(ir == xr);
         }
         let start = Id::<Id<u8>>::from(0 as u64);
         for i in 0..n {
@@ -469,6 +652,12 @@ mod tests {
             let vr = reader.get_range(&vrng).unwrap();
             let xr = &expected[xrng];
             assert!(vr == xr);
+            let ir = reader
+                .iter(&vrng)
+                .unwrap()
+                .collect::<Result<Vec<Id<u8>>, Error>>()
+                .unwrap();
+            assert!(ir == xr);
         }
         for i in 0..(n - 10) {
             let start = Id::<Id<u8>>::from(i as u64);
@@ -478,6 +667,12 @@ mod tests {
             let vr = reader.get_range(&vrng).unwrap();
             let xr = &expected[xrng];
             assert!(vr == xr);
+            let ir = reader
+                .iter(&vrng)
+                .unwrap()
+                .collect::<Result<Vec<Id<u8>>, Error>>()
+                .unwrap();
+            assert!(ir == xr);
         }
         for i in 0..n {
             let id = Id::<Id<u8>>::from(i);

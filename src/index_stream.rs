@@ -23,7 +23,9 @@ pub struct IndexReader<Position, Value, const S: usize = MIN_BLOCK> {
 }
 
 /// Iterator over values in an index.
-pub struct IndexIterator<Position, Value, const S: usize = MIN_BLOCK> {
+pub struct IndexIterator<Position, Value, const S: usize = MIN_BLOCK>
+where Position: From<u64>
+{
     marker: PhantomData<(Position, Value)>,
     data_iterator: DataIterator<u64, S>,
 }
@@ -271,7 +273,7 @@ where Position: From<u64>, Value: Into<u64>
 
 impl<Position, Value, const S: usize>
 std::iter::Iterator for IndexIterator<Position, Value, S>
-where Value: From<u64>
+where Position: From<u64>, Value: From<u64>
 {
     type Item = Result<Value, Error>;
 
