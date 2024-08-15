@@ -35,7 +35,7 @@ pub struct CaptureWriter {
     pub shared: Arc<CaptureShared>,
     pub packet_data: DataWriter<u8, PACKET_DATA_BLOCK_SIZE>,
     pub packet_index: CompactWriter<PacketId, PacketByteId, 2>,
-    pub packet_times: CompactWriter<PacketId, Timestamp, 2>,
+    pub packet_times: CompactWriter<PacketId, Timestamp, 3>,
     pub transaction_index: CompactWriter<TransactionId, PacketId>,
     pub transfer_index: DataWriter<TransferIndexEntry>,
     pub item_index: CompactWriter<TrafficItemId, TransferId>,
