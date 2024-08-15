@@ -231,8 +231,8 @@ where
         let mut values = Vec::with_capacity(total_count);
         // Determine which segments we need to read from.
         let first = self.segment_start_reader.bisect_right(&range.start)? - 1;
-        let last = self.segment_start_reader.bisect_left(&range.end)? - 1;
-        let seg_range = first..(last + 1);
+        let last = self.segment_start_reader.bisect_left(&range.end)?;
+        let seg_range = first..last;
         let segment_starts = self.segment_start_reader.get_range(&seg_range)?;
         let base_values = self.segment_base_reader.get_range(&seg_range)?;
         let data_offsets = self.segment_offset_reader.get_range(&seg_range)?;
@@ -436,7 +436,7 @@ mod tests {
 
     #[test]
     fn test_compact_index() {
-        let (mut writer, mut reader) = index_stream().unwrap();
+        let (mut writer, mut reader) = compact_index::<_, _, 1>().unwrap();
         let mut expected = Vec::<Id<u8>>::new();
         let mut x = 10;
         let n = 4321;
