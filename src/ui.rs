@@ -351,6 +351,20 @@ pub fn with_ui<F>(f: F) -> Result<(), Error>
     })
 }
 
+macro_rules! button_action {
+    ($name:literal, $button:ident, $body:expr) => {
+        ActionEntry::builder($name)
+            .activate(|_: &ApplicationWindow, _, _| {
+                let mut enabled = false;
+                display_error(with_ui(|ui| { enabled = ui.$button.get_sensitive(); Ok(()) }));
+                if enabled {
+                    display_error($body);
+                }
+            })
+            .build()
+    }
+}
+
 pub fn activate(application: &Application) -> Result<(), Error> {
     use FileAction::*;
 
@@ -361,27 +375,40 @@ pub fn activate(application: &Application) -> Result<(), Error> {
         .title("Packetry")
         .build();
 
+    window.add_action_entries([
+        button_action!("open", open_button, choose_file(Load)),
+        button_action!("save", save_button, choose_file(Save)),
+        button_action!("scan", scan_button, detect_hardware()),
+        button_action!("capture", capture_button, start_cynthion()),
+        button_action!("stop", stop_button, stop_operation()),
+    ]);
+
     let action_bar = gtk::ActionBar::new();
 
     let open_button = gtk::Button::builder()
         .icon_name("document-open")
         .tooltip_text("Open")
+        .action_name("win.open")
         .build();
     let save_button = gtk::Button::builder()
         .icon_name("document-save")
         .tooltip_text("Save")
+        .action_name("win.save")
         .build();
     let scan_button = gtk::Button::builder()
         .icon_name("view-refresh")
         .tooltip_text("Scan for devices")
+        .action_name("win.scan")
         .build();
     let capture_button = gtk::Button::builder()
         .icon_name("media-record")
         .tooltip_text("Capture")
+        .action_name("win.capture")
         .build();
     let stop_button = gtk::Button::builder()
         .icon_name("media-playback-stop")
         .tooltip_text("Stop")
+        .action_name("win.stop")
         .build();
 
     open_button.set_sensitive(true);
@@ -499,12 +526,6 @@ pub fn activate(application: &Application) -> Result<(), Error> {
     vbox.append(&gtk::Separator::new(Orientation::Horizontal));
 
     window.set_child(Some(&vbox));
-
-    scan_button.connect_clicked(|_| display_error(detect_hardware()));
-    capture_button.connect_clicked(|_| display_error(start_cynthion()));
-    open_button.connect_clicked(|_| display_error(choose_file(Load)));
-    save_button.connect_clicked(|_| display_error(choose_file(Save)));
-    stop_button.connect_clicked(|_| display_error(stop_operation()));
 
     UI.with(|cell| {
         cell.borrow_mut().replace(
