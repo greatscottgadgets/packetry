@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 #[cfg(feature="step-decoder")]
 use std::{io::Read, net::TcpListener};
@@ -912,10 +912,22 @@ fn start_pcap(action: FileAction, file: gio::File) -> Result<(), Error> {
             Save => packet_count,
         }, Ordering::Relaxed);
         std::thread::spawn(move || {
-            display_error(match action {
+            let start_time = Instant::now();
+            let result = match action {
                 Load => load_pcap(file, writer.unwrap(), cancel_handle),
                 Save => save_pcap(file, capture, cancel_handle),
-            });
+            };
+            let duration = Instant::now().duration_since(start_time);
+            if result.is_ok() {
+                eprintln!("{} in {} ms",
+                    match action {
+                        Load => "Loaded",
+                        Save => "Saved",
+                    },
+                    duration.as_millis()
+                );
+            }
+            display_error(result);
             gtk::glib::idle_add_once(|| {
                 STOP.store(false, Ordering::Relaxed);
                 display_error(
