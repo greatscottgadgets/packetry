@@ -71,7 +71,6 @@ use crate::capture::{
     ItemSource,
     TrafficItem,
     DeviceItem,
-    PacketId,
 };
 use crate::decoder::Decoder;
 use crate::expander::ExpanderWrapper;
@@ -1004,10 +1003,8 @@ fn save_pcap(file: gio::File,
         .replace(None, false, FileCreateFlags::NONE, Some(&cancel_handle))?
         .into_write();
     let mut writer = Writer::open(dest)?;
-    for i in 0..packet_count {
-        let packet_id = PacketId::from(i);
-        let packet = capture.packet(packet_id)?;
-        let timestamp_ns = capture.packet_time(packet_id)?;
+    for (result, i) in capture.timestamped_packets()?.zip(0..packet_count) {
+        let (timestamp_ns, packet) = result?;
         writer.add_packet(&packet, timestamp_ns)?;
         CURRENT.store(i + 1, Ordering::Relaxed);
         if STOP.load(Ordering::Relaxed) {

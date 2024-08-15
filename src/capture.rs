@@ -1,5 +1,6 @@
 use std::cmp::min;
 use std::fmt::{Debug, Write};
+use std::iter::once;
 use std::ops::Range;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64};
 use std::sync::atomic::Ordering::{Acquire, Release};
@@ -884,6 +885,30 @@ impl CaptureReader {
         -> Result<Timestamp, Error>
     {
         self.packet_times.get(id)
+    }
+
+    pub fn timestamped_packets(&mut self)
+        -> Result<impl Iterator<Item=Result<(u64, Vec<u8>), Error>>, Error>
+    {
+        let packet_count = self.packet_index.len();
+        let packet_ids = PacketId::from(0)..PacketId::from(packet_count);
+        let timestamps = self.packet_times.iter(&packet_ids)?;
+        let packet_starts = self.packet_index.iter(&packet_ids)?;
+        let packet_ends = self.packet_index
+            .iter(&packet_ids)?
+            .skip(1)
+            .chain(once(Ok(PacketByteId::from(self.packet_data.len()))));
+        let data_ranges = packet_starts.zip(packet_ends);
+        let mut packet_data = self.packet_data.clone();
+        Ok(timestamps
+            .zip(data_ranges)
+            .map(move |(ts, (start, end))| -> Result<(u64, Vec<u8>), Error> {
+                let timestamp = ts?;
+                let data_range = start?..end?;
+                let packet = packet_data.get_range(&data_range)?;
+                Ok((timestamp, packet))
+            })
+        )
     }
 
     fn packet_pid(&mut self, id: PacketId)
