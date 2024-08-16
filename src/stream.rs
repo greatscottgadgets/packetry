@@ -12,7 +12,7 @@ use std::sync::atomic::{AtomicU64, Ordering::{Acquire, Release}};
 
 use anyhow::{Context, Error, bail};
 use arc_swap::{ArcSwap, ArcSwapOption};
-use lrumap::LruBTreeMap;
+use lrumap::{LruMap, LruBTreeMap};
 use memmap2::{Mmap, MmapOptions};
 use tempfile::tempfile;
 
@@ -407,7 +407,13 @@ impl<const S: usize> Clone for StreamReader<S> {
     fn clone(&self) -> StreamReader<S> {
         StreamReader {
             shared: self.shared.clone(),
-            mappings: LruBTreeMap::new(MAP_CACHE_PER_READER),
+            mappings: {
+                let mut new_mappings = LruBTreeMap::new(MAP_CACHE_PER_READER);
+                for (key, value) in self.mappings.iter().rev() {
+                    new_mappings.push(*key, value.clone());
+                }
+                new_mappings
+            }
         }
     }
 }
