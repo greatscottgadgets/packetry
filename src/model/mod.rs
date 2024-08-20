@@ -16,14 +16,6 @@ use anyhow::Error;
 use crate::capture::{CaptureReader, TrafficItem, DeviceItem};
 use crate::tree_list_model::{TreeListModel, ItemNodeRc};
 
-// Public part of the Model type.
-glib::wrapper! {
-    pub struct TrafficModel(ObjectSubclass<imp::TrafficModel>) @implements gio::ListModel;
-}
-glib::wrapper! {
-    pub struct DeviceModel(ObjectSubclass<imp::DeviceModel>) @implements gio::ListModel;
-}
-
 pub trait GenericModel<Item> where Self: Sized {
     const HAS_TIMES: bool;
     fn new(capture: CaptureReader,
@@ -41,106 +33,68 @@ pub trait GenericModel<Item> where Self: Sized {
     fn connectors(&self, item: &Item) -> String;
 }
 
-impl GenericModel<TrafficItem> for TrafficModel {
-    const HAS_TIMES: bool = true;
+macro_rules! model {
+    ($model: ident, $item: ident, $has_times: literal) => {
+        // Public part of the Model type.
+        glib::wrapper! {
+            pub struct $model(ObjectSubclass<imp::$model>)
+                @implements gio::ListModel;
+        }
 
-    fn new(capture: CaptureReader,
-           #[cfg(any(test, feature="record-ui-test"))]
-           on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>)
-        -> Result<Self, Error>
-    {
-        let model: TrafficModel = glib::Object::new::<TrafficModel>();
-        let tree = TreeListModel::new(
-            capture,
-            #[cfg(any(test, feature="record-ui-test"))]
-            on_item_update)?;
-        model.imp().tree.replace(Some(tree));
-        Ok(model)
-    }
+        impl GenericModel<$item> for $model {
+            const HAS_TIMES: bool = $has_times;
 
-    fn set_expanded(&self,
-                    node: &ItemNodeRc<TrafficItem>,
-                    position: u32,
-                    expanded: bool)
-        -> Result<(), Error>
-    {
-        let tree_opt  = self.imp().tree.borrow();
-        let tree = tree_opt.as_ref().unwrap();
-        tree.set_expanded(self, node, position as u64, expanded)
-    }
+            fn new(capture: CaptureReader,
+                   #[cfg(any(test, feature="record-ui-test"))]
+                   on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>)
+                -> Result<Self, Error>
+            {
+                let model: $model = glib::Object::new::<$model>();
+                let tree = TreeListModel::new(
+                    capture,
+                    #[cfg(any(test, feature="record-ui-test"))]
+                    on_item_update)?;
+                model.imp().tree.replace(Some(tree));
+                Ok(model)
+            }
 
-    fn update(&self) -> Result<bool, Error> {
-        let tree_opt = self.imp().tree.borrow();
-        let tree = tree_opt.as_ref().unwrap();
-        tree.update(self)
-    }
+            fn set_expanded(&self,
+                            node: &ItemNodeRc<$item>,
+                            position: u32,
+                            expanded: bool)
+                -> Result<(), Error>
+            {
+                let tree_opt  = self.imp().tree.borrow();
+                let tree = tree_opt.as_ref().unwrap();
+                tree.set_expanded(self, node, position as u64, expanded)
+            }
 
-    fn description(&self, item: &TrafficItem, detail: bool) -> String {
-        let tree_opt = self.imp().tree.borrow();
-        let tree = tree_opt.as_ref().unwrap();
-        tree.description(item, detail)
-    }
+            fn update(&self) -> Result<bool, Error> {
+                let tree_opt = self.imp().tree.borrow();
+                let tree = tree_opt.as_ref().unwrap();
+                tree.update(self)
+            }
 
-    fn timestamp(&self, item: &TrafficItem) -> u64 {
-        let tree_opt = self.imp().tree.borrow();
-        let tree = tree_opt.as_ref().unwrap();
-        tree.timestamp(item)
-    }
+            fn description(&self, item: &$item, detail: bool) -> String {
+                let tree_opt = self.imp().tree.borrow();
+                let tree = tree_opt.as_ref().unwrap();
+                tree.description(item, detail)
+            }
 
-    fn connectors(&self, item: &TrafficItem) -> String {
-        let tree_opt = self.imp().tree.borrow();
-        let tree = tree_opt.as_ref().unwrap();
-        tree.connectors(item)
-    }
-}
+            fn timestamp(&self, item: &$item) -> u64 {
+                let tree_opt = self.imp().tree.borrow();
+                let tree = tree_opt.as_ref().unwrap();
+                tree.timestamp(item)
+            }
 
-impl GenericModel<DeviceItem> for DeviceModel {
-    const HAS_TIMES: bool = false;
-
-    fn new(capture: CaptureReader,
-           #[cfg(any(test, feature="record-ui-test"))]
-           on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>)
-        -> Result<Self, Error>
-    {
-        let model: DeviceModel = glib::Object::new::<DeviceModel>();
-        let tree = TreeListModel::new(
-            capture,
-            #[cfg(any(test, feature="record-ui-test"))]
-            on_item_update)?;
-        model.imp().tree.replace(Some(tree));
-        Ok(model)
-    }
-
-    fn set_expanded(&self,
-                    node: &ItemNodeRc<DeviceItem>,
-                    position: u32,
-                    expanded: bool)
-        -> Result<(), Error>
-    {
-        let tree_opt  = self.imp().tree.borrow();
-        let tree = tree_opt.as_ref().unwrap();
-        tree.set_expanded(self, node, position as u64, expanded)
-    }
-
-    fn update(&self) -> Result<bool, Error> {
-        let tree_opt = self.imp().tree.borrow();
-        let tree = tree_opt.as_ref().unwrap();
-        tree.update(self)
-    }
-
-    fn description(&self, item: &DeviceItem, detail: bool) -> String {
-        let tree_opt = self.imp().tree.borrow();
-        let tree = tree_opt.as_ref().unwrap();
-        tree.description(item, detail)
-    }
-
-    fn timestamp(&self, _item: &DeviceItem) -> u64 {
-        unreachable!();
-    }
-
-    fn connectors(&self, item: &DeviceItem) -> String {
-        let tree_opt = self.imp().tree.borrow();
-        let tree = tree_opt.as_ref().unwrap();
-        tree.connectors(item)
+            fn connectors(&self, item: &$item) -> String {
+                let tree_opt = self.imp().tree.borrow();
+                let tree = tree_opt.as_ref().unwrap();
+                tree.connectors(item)
+            }
+        }
     }
 }
+
+model!(TrafficModel, TrafficItem, true);
+model!(DeviceModel, DeviceItem, false);
