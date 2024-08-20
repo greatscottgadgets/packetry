@@ -44,6 +44,14 @@ runs:
         rm -f libxcb-render*
         rm -f libzstd*
 
+        # add libharfbuzz even though we don't link to it directly as
+        # some systems will attempt to dlopen(3) its own version if it
+        # is not present
+        cp -a /opt/gtk-*/lib/x86_64-linux-gnu/libharfbuzz.* .
+        cp -a /opt/gtk-*/lib/x86_64-linux-gnu/libharfbuzz-gobject.* .
+        cp -a /opt/gtk-*/lib/x86_64-linux-gnu/libharfbuzz-icu.* .
+        cp -a /opt/gtk-*/lib/x86_64-linux-gnu/libharfbuzz-subset.* .
+
         # remove duplicate library files and replace with symlinks
         fdupes --sameline --order=name . | while read -r lib ; do
             src=$(echo $lib | rev | cut -d' ' -f1 | rev)
