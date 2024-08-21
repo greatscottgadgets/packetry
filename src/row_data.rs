@@ -1,3 +1,5 @@
+//! GObject subclasses for row data in each UI view.
+
 use gtk::glib;
 use gtk::subclass::prelude::*;
 
@@ -7,16 +9,22 @@ use gtk::prelude::Cast;
 use crate::capture::{TrafficItem, DeviceItem};
 use crate::tree_list_model::ItemNodeRc;
 
+/// Trait implemented by each of our row data types.
 pub trait GenericRowData<Item> where Item: Copy {
+    /// Create a row for the given node.
     fn new(node: Result<ItemNodeRc<Item>, String>) -> Self where Self: Sized;
+
+    /// Fetch the node for this row.
     fn node(&self) -> Result<ItemNodeRc<Item>, String>;
 }
 
+/// Trait for converting an arbitrary GObject to one of our row data types.
 pub trait ToGenericRowData<Item> {
     #[cfg(any(test, feature="record-ui-test"))]
     fn to_generic_row_data(self) -> Box<dyn GenericRowData<Item>>;
 }
 
+/// Define the outer type exposed to our Rust code.
 macro_rules! row_data {
     ($row_data: ident, $item: ident) => {
         glib::wrapper! {
@@ -44,9 +52,11 @@ macro_rules! row_data {
     }
 }
 
+// Repeat the above boilerplate for each row type.
 row_data!(TrafficRowData, TrafficItem);
 row_data!(DeviceRowData, DeviceItem);
 
+/// The internal implementation module.
 mod imp {
     use gtk::glib::{self, subclass::prelude::*};
     use std::cell::RefCell;
@@ -54,6 +64,7 @@ mod imp {
     use crate::capture::{TrafficItem, DeviceItem};
     use crate::tree_list_model::ItemNodeRc;
 
+    /// Define the inner type to be used in the GObject type system.
     macro_rules! row_data {
         ($row_data: ident, $item: ident) => {
             #[derive(Default)]
@@ -72,6 +83,7 @@ mod imp {
         }
     }
 
+    // Repeat the above boilerplate for each row type.
     row_data!(TrafficRowData, TrafficItem);
     row_data!(DeviceRowData, DeviceItem);
 }

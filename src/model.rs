@@ -1,3 +1,5 @@
+//! GObject subclasses implementing ListModel for each UI view.
+
 #[cfg(any(test, feature="record-ui-test"))]
 use {
     std::cell::RefCell,
@@ -12,25 +14,43 @@ use anyhow::Error;
 use crate::capture::{CaptureReader, TrafficItem, DeviceItem};
 use crate::tree_list_model::{TreeListModel, ItemNodeRc};
 
+/// Trait implemented by each of our ListModel implementations.
 pub trait GenericModel<Item> where Self: Sized {
+    /// Whether this model has timestamps.
     const HAS_TIMES: bool;
+
+    /// Create a new model instance for the given capture.
     fn new(capture: CaptureReader,
            #[cfg(any(test, feature="record-ui-test"))]
            on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>)
         -> Result<Self, Error>;
+
+    /// Set whether a tree node is expanded.
     fn set_expanded(&self,
                     node: &ItemNodeRc<Item>,
                     position: u32,
                     expanded: bool)
         -> Result<(), Error>;
+
+    /// Update the model with new data from the capture.
+    ///
+    /// Returns true if there will be further updates in future.
     fn update(&self) -> Result<bool, Error>;
+
+    /// Fetch the description for a given item.
     fn description(&self, item: &Item, detail: bool) -> String;
+
+    /// Fetch the timestamp for a given item.
     fn timestamp(&self, item: &Item) -> u64;
+
+    /// Fetch the connecting lines for a given item.
     fn connectors(&self, item: &Item) -> String;
 }
 
+/// Define the outer type exposed to our Rust code.
 macro_rules! model {
     ($model: ident, $item: ident, $has_times: literal) => {
+
         glib::wrapper! {
             pub struct $model(ObjectSubclass<imp::$model>)
                 @implements gio::ListModel;
@@ -91,9 +111,11 @@ macro_rules! model {
     }
 }
 
+// Repeat the above boilerplate for each model.
 model!(TrafficModel, TrafficItem, true);
 model!(DeviceModel, DeviceItem, false);
 
+/// The internal implementation module.
 mod imp {
     use gio::subclass::prelude::*;
     use gtk::{gio, glib, prelude::*};
@@ -103,6 +125,7 @@ mod imp {
     use crate::row_data::{TrafficRowData, DeviceRowData};
     use crate::tree_list_model::TreeListModel;
 
+    /// Define the inner type to be used in the GObject type system.
     macro_rules! model {
         ($model:ident, $item:ident, $row_data:ident) => {
             #[derive(Default)]
@@ -144,6 +167,7 @@ mod imp {
         }
     }
 
+    // Repeat the above boilerplate for each model.
     model!(TrafficModel, TrafficItem, TrafficRowData);
     model!(DeviceModel, DeviceItem, DeviceRowData);
 }
