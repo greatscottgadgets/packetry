@@ -81,8 +81,6 @@ mod imp {
     };
     use std::cell::RefCell;
 
-    unsafe impl IsSubclassable<ExpanderWrapper> for Expander {}
-
     /// The inner type to be used in the GObject type system.
     #[derive(Default)]
     pub struct ExpanderWrapper {
