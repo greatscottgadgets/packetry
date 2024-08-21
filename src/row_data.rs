@@ -1,9 +1,3 @@
-//! Our GObject subclass for carrying a name and count for the ListBox model
-//!
-//! Both name and count are stored in a RefCell to allow for interior mutability
-//! and are exposed via normal GObject properties. This allows us to use property
-//! bindings below to bind the values with what widgets display in the UI
-
 use gtk::glib;
 use gtk::subclass::prelude::*;
 
@@ -25,8 +19,6 @@ pub trait ToGenericRowData<Item> {
 
 macro_rules! row_data {
     ($row_data: ident, $item: ident) => {
-        // Public part of the RowData type. This behaves like a normal gtk-rs-style GObject
-        // binding
         glib::wrapper! {
             pub struct $row_data(ObjectSubclass<imp::$row_data>);
         }
@@ -64,15 +56,12 @@ mod imp {
 
     macro_rules! row_data {
         ($row_data: ident, $item: ident) => {
-            // The actual data structure that stores our values. This is not accessible
-            // directly from the outside.
             #[derive(Default)]
             pub struct $row_data {
                 pub(super) node: RefCell<Option<
                     Result<ItemNodeRc<$item>, String>>>,
             }
 
-            // Basic declaration of our type for the GObject type system
             #[glib::object_subclass]
             impl ObjectSubclass for $row_data {
                 const NAME: &'static str = stringify!($row_data);

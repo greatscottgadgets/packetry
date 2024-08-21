@@ -1,5 +1,3 @@
-//! Defines our custom model
-
 #[cfg(any(test, feature="record-ui-test"))]
 use {
     std::cell::RefCell,
@@ -33,7 +31,6 @@ pub trait GenericModel<Item> where Self: Sized {
 
 macro_rules! model {
     ($model: ident, $item: ident, $has_times: literal) => {
-        // Public part of the Model type.
         glib::wrapper! {
             pub struct $model(ObjectSubclass<imp::$model>)
                 @implements gio::ListModel;
@@ -114,7 +111,6 @@ mod imp {
                     TreeListModel<$item, super::$model, $row_data>>>,
             }
 
-            /// Basic declaration of our type for the GObject type system
             #[glib::object_subclass]
             impl ObjectSubclass for $model {
                 const NAME: &'static str = stringify!($model);

@@ -81,7 +81,6 @@ mod imp {
         pub handler: RefCell<Option<SignalHandlerId>>,
     }
 
-    // Basic declaration of our type for the GObject type system
     #[glib::object_subclass]
     impl ObjectSubclass for ExpanderWrapper {
         const NAME: &'static str = "ExpanderWrapper";
