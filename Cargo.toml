@@ -59,6 +59,7 @@ serde = { version = "1.0.196", features = ["derive"] }
 serde_json = "1.0.113"
 rand = "0.8.5"
 rand_xorshift = "0.3.0"
+libfuzzer-sys = "0.4.7"
 
 [target.'cfg(target_os = "macos")'.dev-dependencies]
 procspawn = "1.0.0"
@@ -116,6 +117,26 @@ record-ui-test = ["serde", "serde_json"]
 #
 debug-region-map = []
 
+# fuzzer:
+#
+# Used for fuzzing the decoder. Does not affect the main binary, but enables
+# an example target named 'fuzzer'.
+#
+# Build the fuzzer with:
+#
+#     cargo +nightly rustc --features fuzzer --example fuzzer -- \
+#         -C passes='sancov-module' \
+#         -C llvm-args='-sanitizer-coverage-level=3' \
+#         -C llvm-args='-sanitizer-coverage-inline-8bit-counters' \
+#         -Z sanitizer=address
+#
+# Run with:
+#
+#     target/debug/examples/fuzzer
+#
+# Not currently working on Windows.
+fuzzer = []
+
 [[bin]]
 name = "packetry"
 path = "src/main.rs"
@@ -123,6 +144,11 @@ path = "src/main.rs"
 [[bin]]
 name = "packetry-cli"
 path = "src/cli.rs"
+
+[[example]]
+name = "fuzzer"
+path = "src/fuzzer.rs"
+required-features = ["fuzzer"]
 
 [package.metadata.cargo-all-features]
 skip_optional_dependencies = true
