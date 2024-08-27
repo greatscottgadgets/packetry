@@ -14,7 +14,7 @@ Across the top of the Packetry window is the Action Bar used to control Packetry
 - **Save Button**: Saves a ``.pcap`` file with the ``LINKTYPE_USB_2_0`` link-layer header type.
 - **Scan Button**: Searches for a capture device such as a Cynthion running analyzer gateware.
 - **Capture Button**: Starts capturing USB data with the connected capture device.
-- **Stop Button**: Stops capturing USB data.
+- **Stop Button**: Stops capturing USB data. Stops reading USB data from file.
 - **Device Drop-down**: Selects a capture device. If you don't see a device listed here, try using the Scan button.
 - **Speed Drop-down**: Selects the target device speed for live capture.
 
