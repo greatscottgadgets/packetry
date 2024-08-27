@@ -383,6 +383,24 @@ pub fn activate(application: &Application) -> Result<(), Error> {
         button_action!("stop", stop_button, stop_operation()),
     ]);
 
+    #[cfg(not(target_os="macos"))]
+    {
+        application.set_accels_for_action("win.open", &["<Ctrl>o"]);
+        application.set_accels_for_action("win.save", &["<Ctrl>s"]);
+        application.set_accels_for_action("win.scan", &["<Ctrl>r", "F5"]);
+        application.set_accels_for_action("win.capture", &["<Ctrl>b"]);
+        application.set_accels_for_action("win.stop", &["<Ctrl>e"]);
+    }
+
+    #[cfg(target_os="macos")]
+    {
+        application.set_accels_for_action("win.open", &["<Meta>o"]);
+        application.set_accels_for_action("win.save", &["<Meta>s"]);
+        application.set_accels_for_action("win.scan", &["<Meta>r", "F5"]);
+        application.set_accels_for_action("win.capture", &["<Meta>b"]);
+        application.set_accels_for_action("win.stop", &["<Meta>e"]);
+    }
+
     let action_bar = gtk::ActionBar::new();
 
     let open_button = gtk::Button::builder()
