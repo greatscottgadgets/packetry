@@ -6,7 +6,7 @@ use anyhow::Error;
 use bytemuck::{bytes_of, cast_slice, from_bytes, Pod};
 
 use crate::id::Id;
-use crate::stream::{stream, StreamReader, StreamWriter, MIN_BLOCK};
+use crate::stream::{stream, StreamReader, StreamWriter, Data, MIN_BLOCK};
 use crate::util::{fmt_count, fmt_size};
 
 /// Unique handle for append-only write access to a data stream.
@@ -20,6 +20,13 @@ pub struct DataWriter<Value, const S: usize = MIN_BLOCK> {
 pub struct DataReader<Value, const S: usize = MIN_BLOCK> {
     marker: PhantomData<Value>,
     stream_reader: StreamReader<S>,
+}
+
+/// Iterator over data in a stream.
+pub struct DataIterator<Value, const S: usize = MIN_BLOCK> {
+    range: Range<Id<Value>>,
+    stream_reader: StreamReader<S>,
+    current_data: Option<(u64, Data<S>)>,
 }
 
 /// A read-only handle to values that are part of the stream.
@@ -149,6 +156,15 @@ where Value: Pod + Default
             data: self.stream_reader.access(&range)?
         })
     }
+
+    /// Create an iterator over values in the stream.
+    pub fn iter(&self, range: &Range<Id<Value>>) -> DataIterator<Value, S> {
+        DataIterator {
+            range: range.clone(),
+            stream_reader: self.stream_reader.clone(),
+            current_data: None,
+        }
+    }
 }
 
 impl<Data, Value> Deref for Values<Data, Value>
@@ -167,6 +183,46 @@ where Value: Pod + Default
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{} items, {}", fmt_count(self.len()), fmt_size(self.size()))
+    }
+}
+
+impl<Value, const S: usize> std::iter::Iterator for DataIterator<Value, S>
+where Value: Pod
+{
+    type Item = Result<Value, Error>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.range.is_empty() {
+            return None
+        }
+        let start = self.range.start.offset();
+        let end = start + size_of::<Value>() as u64;
+        // Get the data this value can be found within.
+        let (offset, data) = match &self.current_data {
+            // We can reuse the current data...
+            Some(current @ (offset, data))
+                // ...if the data for the current value is within it.
+                if start >= *offset && end <= *offset + data.len() as u64
+                    => current,
+            // Otherwise, make a new request for all remaining data.
+            _ => {
+                let remaining = start..self.range.end.offset();
+                match self.stream_reader.access(&remaining) {
+                    Err(err) => return Some(Err(err)),
+                    Ok(data) => self.current_data.insert(
+                        (start, data)
+                    )
+                }
+            }
+        };
+        // Retrieve the value from the data.
+        let value_start = (start - *offset) as usize;
+        let value_end = (end - *offset) as usize;
+        let value = *from_bytes(&data[value_start..value_end]);
+        // Advance our range start for next iteration.
+        self.range.start += 1;
+        // Return the value found.
+        Some(Ok(value))
     }
 }
 
@@ -212,5 +268,26 @@ mod tests {
         let range = start..end;
         let vec: Vec<_> = reader.get_range(&range).unwrap();
         assert!(vec == data);
+    }
+
+    #[test]
+    fn test_data_stream_iter() {
+        let (mut writer, mut reader) = data_stream().unwrap();
+        for i in 0..100 {
+            let x = Foo { bar: i, baz: i };
+            writer.push(&x).unwrap();
+        }
+        let start = Id::<Foo>::from(0);
+        let end = Id::<Foo>::from(100);
+        let range = start..end;
+        assert_eq!(
+            reader
+                .get_range(&range)
+                .unwrap(),
+            reader
+                .iter(&range)
+                .collect::<Result<Vec<Foo>, Error>>()
+                .unwrap()
+        );
     }
 }

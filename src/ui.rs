@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 #[cfg(feature="step-decoder")]
 use std::{io::Read, net::TcpListener};
@@ -71,7 +71,6 @@ use crate::capture::{
     ItemSource,
     TrafficItem,
     DeviceItem,
-    PacketId,
 };
 use crate::decoder::Decoder;
 use crate::expander::ExpanderWrapper;
@@ -912,10 +911,22 @@ fn start_pcap(action: FileAction, file: gio::File) -> Result<(), Error> {
             Save => packet_count,
         }, Ordering::Relaxed);
         std::thread::spawn(move || {
-            display_error(match action {
+            let start_time = Instant::now();
+            let result = match action {
                 Load => load_pcap(file, writer.unwrap(), cancel_handle),
                 Save => save_pcap(file, capture, cancel_handle),
-            });
+            };
+            let duration = Instant::now().duration_since(start_time);
+            if result.is_ok() {
+                eprintln!("{} in {} ms",
+                    match action {
+                        Load => "Loaded",
+                        Save => "Saved",
+                    },
+                    duration.as_millis()
+                );
+            }
+            display_error(result);
             gtk::glib::idle_add_once(|| {
                 STOP.store(false, Ordering::Relaxed);
                 display_error(
@@ -992,10 +1003,8 @@ fn save_pcap(file: gio::File,
         .replace(None, false, FileCreateFlags::NONE, Some(&cancel_handle))?
         .into_write();
     let mut writer = Writer::open(dest)?;
-    for i in 0..packet_count {
-        let packet_id = PacketId::from(i);
-        let packet = capture.packet(packet_id)?;
-        let timestamp_ns = capture.packet_time(packet_id)?;
+    for (result, i) in capture.timestamped_packets()?.zip(0..packet_count) {
+        let (timestamp_ns, packet) = result?;
         writer.add_packet(&packet, timestamp_ns)?;
         CURRENT.store(i + 1, Ordering::Relaxed);
         if STOP.load(Ordering::Relaxed) {

@@ -12,7 +12,7 @@ use std::sync::atomic::{AtomicU64, Ordering::{Acquire, Release}};
 
 use anyhow::{Context, Error, bail};
 use arc_swap::{ArcSwap, ArcSwapOption};
-use lrumap::LruBTreeMap;
+use lrumap::{LruMap, LruBTreeMap};
 use memmap2::{Mmap, MmapOptions};
 use tempfile::tempfile;
 
@@ -54,7 +54,7 @@ pub struct StreamReader<const S: usize = MIN_BLOCK> {
 }
 
 /// Data that is part of a stream and currently in memory.
-struct Buffer<const S: usize> {
+pub struct Buffer<const S: usize> {
     /// Block to which this data belongs.
     block_base: u64,
     /// Raw pointer to space allocated to hold the data.
@@ -62,7 +62,7 @@ struct Buffer<const S: usize> {
 }
 
 /// A read-only handle to any data that is part of a stream.
-enum Data<const S: usize> {
+pub enum Data<const S: usize> {
     /// Data in the file, accessed through a mapping.
     Mapped(Arc<Mmap>, Range<usize>),
     /// Data in memory, accessed within a buffer.
@@ -257,7 +257,7 @@ impl<const BLOCK_SIZE: usize> StreamReader<BLOCK_SIZE> {
     /// requested length. The method may be called again to access further data.
     ///
     pub fn access(&mut self, range: &Range<u64>)
-        -> Result<impl Deref<Target=[u8]>, Error>
+        -> Result<Data<BLOCK_SIZE>, Error>
     {
         use Data::*;
 
@@ -407,7 +407,13 @@ impl<const S: usize> Clone for StreamReader<S> {
     fn clone(&self) -> StreamReader<S> {
         StreamReader {
             shared: self.shared.clone(),
-            mappings: LruBTreeMap::new(MAP_CACHE_PER_READER),
+            mappings: {
+                let mut new_mappings = LruBTreeMap::new(MAP_CACHE_PER_READER);
+                for (key, value) in self.mappings.iter().rev() {
+                    new_mappings.push(*key, value.clone());
+                }
+                new_mappings
+            }
         }
     }
 }

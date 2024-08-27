@@ -4,7 +4,7 @@ use std::ops::Range;
 
 use anyhow::Error;
 
-use crate::data_stream::{data_stream, DataReader, DataWriter};
+use crate::data_stream::{data_stream, DataReader, DataWriter, DataIterator};
 use crate::id::Id;
 use crate::stream::MIN_BLOCK;
 use crate::util::{fmt_count, fmt_size};
@@ -20,6 +20,14 @@ pub struct IndexWriter<Position, Value, const S: usize = MIN_BLOCK> {
 pub struct IndexReader<Position, Value, const S: usize = MIN_BLOCK> {
     marker: PhantomData<(Position, Value)>,
     data_reader: DataReader<u64, S>,
+}
+
+/// Iterator over values in an index.
+pub struct IndexIterator<Position, Value, const S: usize = MIN_BLOCK>
+where Position: From<u64>
+{
+    marker: PhantomData<(Position, Value)>,
+    data_iterator: DataIterator<u64, S>,
 }
 
 type IndexPair<P, V> = (IndexWriter<P, V>, IndexReader<P, V>);
@@ -64,7 +72,7 @@ where Position: From<u64>, Value: Into<u64>
     }
 }
 
-impl<Position, Value> IndexReader<Position, Value>
+impl<Position, Value, const S: usize> IndexReader<Position, Value, S>
 where Position: Copy + From<u64> + Into<u64>,
       Value: Copy + From<u64> + Into<u64> + Ord
 {
@@ -94,6 +102,18 @@ where Position: Copy + From<u64> + Into<u64>,
         let data = self.data_reader.get_range(&(start..end))?;
         let values = data.into_iter().map(Value::from).collect();
         Ok(values)
+    }
+
+    /// Create an iterator over values in the index.
+    pub fn iter(&self, range: &Range<Position>)
+        -> IndexIterator<Position, Value, S>
+    {
+        let start = Id::<u64>::from(range.start.into());
+        let end = Id::<u64>::from(range.end.into());
+        IndexIterator {
+            marker: PhantomData,
+            data_iterator: self.data_reader.iter(&(start..end)),
+        }
     }
 
     /// Get the range of values between the specified position and the next.
@@ -251,6 +271,22 @@ where Position: From<u64>, Value: Into<u64>
     }
 }
 
+impl<Position, Value, const S: usize>
+std::iter::Iterator for IndexIterator<Position, Value, S>
+where Position: From<u64>, Value: From<u64>
+{
+    type Item = Result<Value, Error>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.data_iterator.next() {
+            Some(Ok(value)) => Some(Ok(Value::from(value))),
+            Some(Err(err)) => Some(Err(err)),
+            None => None,
+        }
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -281,6 +317,11 @@ mod tests {
             let vr = reader.get_range(&vrng).unwrap();
             let xr = &expected[xrng];
             assert!(vr == xr);
+            let ir = reader
+                .iter(&vrng)
+                .collect::<Result<Vec<Id<u8>>, Error>>()
+                .unwrap();
+            assert!(ir == xr);
         }
         let start = Id::<Id<u8>>::from(0 as u64);
         for i in 0..n {
@@ -290,6 +331,11 @@ mod tests {
             let vr = reader.get_range(&vrng).unwrap();
             let xr = &expected[xrng];
             assert!(vr == xr);
+            let ir = reader
+                .iter(&vrng)
+                .collect::<Result<Vec<Id<u8>>, Error>>()
+                .unwrap();
+            assert!(ir == xr);
         }
         for i in 0..(n - 10) {
             let start = Id::<Id<u8>>::from(i as u64);
@@ -299,6 +345,11 @@ mod tests {
             let vr = reader.get_range(&vrng).unwrap();
             let xr = &expected[xrng];
             assert!(vr == xr);
+            let ir = reader
+                .iter(&vrng)
+                .collect::<Result<Vec<Id<u8>>, Error>>()
+                .unwrap();
+            assert!(ir == xr);
         }
         for i in 0..n {
             let id = Id::<Id<u8>>::from(i);
