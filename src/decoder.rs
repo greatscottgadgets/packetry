@@ -598,10 +598,11 @@ impl Decoder {
         let dev_addr = token.device_address();
         let ep_num = token.endpoint_number();
         let direction = match (ep_num.0, pid) {
-            (0, _)         => Direction::Out,
-            (_, PID::IN)   => Direction::In,
-            (_, PID::OUT)  => Direction::Out,
-            (_, PID::PING) => Direction::Out,
+            (0, _)          => Direction::Out,
+            (_, PID::SETUP) => Direction::Out,
+            (_, PID::IN)    => Direction::In,
+            (_, PID::OUT)   => Direction::Out,
+            (_, PID::PING)  => Direction::Out,
             _ => bail!("PID {pid} does not indicate a direction")
         };
         let key = EndpointKey {
