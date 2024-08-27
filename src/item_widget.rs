@@ -1,4 +1,4 @@
-mod imp;
+//! GObject subclass for our custom widget.
 
 use std::cell::RefMut;
 use gtk::{
@@ -13,14 +13,16 @@ use gtk::{
 };
 
 glib::wrapper! {
-    pub struct ExpanderWrapper(ObjectSubclass<imp::ExpanderWrapper>)
+    /// The outer type exposed to our Rust code.
+    pub struct ItemWidget(ObjectSubclass<imp::ItemWidget>)
     @extends gtk::Box, gtk::Widget,
     @implements gtk::Orientable;
 }
 
-impl ExpanderWrapper {
-    pub fn new() -> ExpanderWrapper {
-        let wrapper: ExpanderWrapper = glib::Object::new::<ExpanderWrapper>();
+impl ItemWidget {
+    /// Create a new widget.
+    pub fn new() -> ItemWidget {
+        let wrapper: ItemWidget = glib::Object::new::<ItemWidget>();
         wrapper.imp().text_label.replace(
             Label::builder()
                 .ellipsize(EllipsizeMode::End)
@@ -35,30 +37,67 @@ impl ExpanderWrapper {
         wrapper
     }
 
+    /// Fetch the Expander from the widget.
     pub fn expander(&self) -> RefMut<Expander> {
         self.imp().expander.borrow_mut()
     }
 
+    /// Store a signal handler to be retained by this widget.
     pub fn set_handler(&self, handler: SignalHandlerId) {
         self.imp().handler.replace(Some(handler));
     }
 
+    /// Take the signal handler retained by this widget.
     pub fn take_handler(&self) -> Option<SignalHandlerId> {
         self.imp().handler.take().take()
     }
 
+    /// Set the summary text on this widget.
     pub fn set_text(&self, text: String) {
         self.imp().text_label.borrow_mut().set_text(&text);
     }
 
+    /// Set the connecting lines on this widget.
     pub fn set_connectors(&self, connectors: String) {
         self.imp().conn_label.borrow_mut().set_markup(
                 format!("<tt>{connectors}</tt>").as_str());
     }
 }
 
-impl Default for ExpanderWrapper {
+impl Default for ItemWidget {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// The internal implementation module.
+mod imp {
+    use gtk::{
+        self,
+        subclass::prelude::*,
+        glib::{self, SignalHandlerId},
+        Expander,
+        Label,
+    };
+    use std::cell::RefCell;
+
+    /// The inner type to be used in the GObject type system.
+    #[derive(Default)]
+    pub struct ItemWidget {
+        pub text_label: RefCell<Label>,
+        pub conn_label: RefCell<Label>,
+        pub expander: RefCell<Expander>,
+        pub handler: RefCell<Option<SignalHandlerId>>,
+    }
+
+    #[glib::object_subclass]
+    impl ObjectSubclass for ItemWidget {
+        const NAME: &'static str = "ItemWidget";
+        type Type = super::ItemWidget;
+        type ParentType = gtk::Box;
+    }
+
+    impl BoxImpl for ItemWidget {}
+    impl WidgetImpl for ItemWidget {}
+    impl ObjectImpl for ItemWidget {}
 }

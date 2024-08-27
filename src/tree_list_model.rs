@@ -18,7 +18,7 @@ use itertools::Itertools;
 use crate::capture::{CaptureReader, ItemSource};
 use crate::model::GenericModel;
 use crate::row_data::GenericRowData;
-use crate::expander::ExpanderWrapper;
+use crate::item_widget::ItemWidget;
 
 type RootNodeRc<Item> = Rc<RefCell<RootNode<Item>>>;
 pub type ItemNodeRc<Item> = Rc<RefCell<ItemNode<Item>>>;
@@ -92,7 +92,7 @@ pub struct ItemNode<Item> {
     children: Children<Item>,
 
     /// Widgets to update when this item changes.
-    widgets: RefCell<HashSet<ExpanderWrapper>>,
+    widgets: RefCell<HashSet<ItemWidget>>,
 }
 
 impl<Item> Children<Item> {
@@ -265,11 +265,11 @@ impl<Item> ItemNode<Item> where Item: Copy {
         self.children.total_count != 0
     }
 
-    pub fn attach_widget(&self, widget: &ExpanderWrapper) {
+    pub fn attach_widget(&self, widget: &ItemWidget) {
         self.widgets.borrow_mut().insert(widget.clone());
     }
 
-    pub fn remove_widget(&self, widget: &ExpanderWrapper) {
+    pub fn remove_widget(&self, widget: &ItemWidget) {
         self.widgets.borrow_mut().remove(widget);
     }
 }
@@ -779,12 +779,12 @@ where Item: 'static + Copy + Debug,
                     let mut on_item_update = self.on_item_update.borrow_mut();
                     on_item_update(position, summary.clone());
                 }
-                for widget in item_node.widgets.borrow().iter() {
-                    widget.set_text(summary.clone());
+                for item_widget in item_node.widgets.borrow().iter() {
+                    item_widget.set_text(summary.clone());
                     // If there were no previous children, the row was not
                     // previously expandable.
                     if children_added > 0 && old_direct_count == 0 {
-                        widget.expander().set_visible(true);
+                        item_widget.expander().set_visible(true);
                     }
                 }
             }

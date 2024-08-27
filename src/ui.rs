@@ -73,7 +73,7 @@ use crate::capture::{
     DeviceItem,
 };
 use crate::decoder::Decoder;
-use crate::expander::ExpanderWrapper;
+use crate::item_widget::ItemWidget;
 use crate::pcap::{Loader, Writer};
 use crate::model::{GenericModel, TrafficModel, DeviceModel};
 use crate::row_data::{
@@ -577,8 +577,8 @@ fn create_view<Item, Model, RowData>(
     let selection_model = SingleSelection::new(Some(model.clone()));
     let factory = SignalListItemFactory::new();
     factory.connect_setup(move |_, list_item| {
-        let expander = ExpanderWrapper::new();
-        list_item.set_child(Some(&expander));
+        let widget = ItemWidget::new();
+        list_item.set_child(Some(&widget));
     });
     let bind = move |list_item: &ListItem| -> Result<(), Error> {
         let row = list_item
@@ -587,20 +587,20 @@ fn create_view<Item, Model, RowData>(
             .downcast::<RowData>()
             .or_else(|_| bail!("Item is not RowData"))?;
 
-        let expander_wrapper = list_item
+        let item_widget = list_item
             .child()
             .context("ListItem has no child widget")?
-            .downcast::<ExpanderWrapper>()
-            .or_else(|_| bail!("Child widget is not an ExpanderWrapper"))?;
+            .downcast::<ItemWidget>()
+            .or_else(|_| bail!("Child widget is not an ItemWidget"))?;
 
-        let expander = expander_wrapper.expander();
+        let expander = item_widget.expander();
         match row.node() {
             Ok(node_ref) => {
                 let node = node_ref.borrow();
                 let summary = bind_model.description(&node.item, false);
                 let connectors = bind_model.connectors(&node.item);
-                expander_wrapper.set_text(summary);
-                expander_wrapper.set_connectors(connectors);
+                item_widget.set_text(summary);
+                item_widget.set_connectors(connectors);
                 expander.set_visible(node.expandable());
                 expander.set_expanded(node.expanded());
                 let model = bind_model.clone();
@@ -619,12 +619,12 @@ fn create_view<Item, Model, RowData>(
                     display_error(
                         model.set_expanded(&node_ref, position, expanded))
                 });
-                expander_wrapper.set_handler(handler);
-                node.attach_widget(&expander_wrapper);
+                item_widget.set_handler(handler);
+                node.attach_widget(&item_widget);
             },
             Err(msg) => {
-                expander_wrapper.set_connectors("".to_string());
-                expander_wrapper.set_text(format!("Error: {msg}"));
+                item_widget.set_connectors("".to_string());
+                item_widget.set_text(format!("Error: {msg}"));
                 expander.set_visible(false);
             }
         };
@@ -637,18 +637,18 @@ fn create_view<Item, Model, RowData>(
             .downcast::<RowData>()
             .or_else(|_| bail!("Item is not RowData"))?;
 
-        let expander_wrapper = list_item
+        let item_widget = list_item
             .child()
             .context("ListItem has no child widget")?
-            .downcast::<ExpanderWrapper>()
-            .or_else(|_| bail!("Child widget is not an ExpanderWrapper"))?;
+            .downcast::<ItemWidget>()
+            .or_else(|_| bail!("Child widget is not an ItemWidget"))?;
 
         if let Ok(node_ref) = row.node() {
-            node_ref.borrow().remove_widget(&expander_wrapper);
+            node_ref.borrow().remove_widget(&item_widget);
         }
 
-        let expander = expander_wrapper.expander();
-        if let Some(handler) = expander_wrapper.take_handler() {
+        let expander = item_widget.expander();
+        if let Some(handler) = item_widget.take_handler() {
             expander.disconnect(handler);
         }
 
