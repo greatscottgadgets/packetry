@@ -14,15 +14,15 @@ use gtk::{
 
 glib::wrapper! {
     /// The outer type exposed to our Rust code.
-    pub struct ExpanderWrapper(ObjectSubclass<imp::ExpanderWrapper>)
+    pub struct ItemWidget(ObjectSubclass<imp::ItemWidget>)
     @extends gtk::Box, gtk::Widget,
     @implements gtk::Orientable;
 }
 
-impl ExpanderWrapper {
+impl ItemWidget {
     /// Create a new widget.
-    pub fn new() -> ExpanderWrapper {
-        let wrapper: ExpanderWrapper = glib::Object::new::<ExpanderWrapper>();
+    pub fn new() -> ItemWidget {
+        let wrapper: ItemWidget = glib::Object::new::<ItemWidget>();
         wrapper.imp().text_label.replace(
             Label::builder()
                 .ellipsize(EllipsizeMode::End)
@@ -64,7 +64,7 @@ impl ExpanderWrapper {
     }
 }
 
-impl Default for ExpanderWrapper {
+impl Default for ItemWidget {
     fn default() -> Self {
         Self::new()
     }
@@ -83,7 +83,7 @@ mod imp {
 
     /// The inner type to be used in the GObject type system.
     #[derive(Default)]
-    pub struct ExpanderWrapper {
+    pub struct ItemWidget {
         pub text_label: RefCell<Label>,
         pub conn_label: RefCell<Label>,
         pub expander: RefCell<Expander>,
@@ -91,13 +91,13 @@ mod imp {
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for ExpanderWrapper {
-        const NAME: &'static str = "ExpanderWrapper";
-        type Type = super::ExpanderWrapper;
+    impl ObjectSubclass for ItemWidget {
+        const NAME: &'static str = "ItemWidget";
+        type Type = super::ItemWidget;
         type ParentType = gtk::Box;
     }
 
-    impl BoxImpl for ExpanderWrapper {}
-    impl WidgetImpl for ExpanderWrapper {}
-    impl ObjectImpl for ExpanderWrapper {}
+    impl BoxImpl for ItemWidget {}
+    impl WidgetImpl for ItemWidget {}
+    impl ObjectImpl for ItemWidget {}
 }
