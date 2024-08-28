@@ -10,11 +10,11 @@ Across the top of the Packetry window is the Action Bar used to control Packetry
 .. image:: ../images/action-bar.png
   :alt: Action Bar
 
-- **Open Button**: Loads a ``.pcap`` file with the ``LINKTYPE_USB_2_0`` link-layer header type.
+- **Open Button**: Clears Traffic Pane and Device Pane and loads a ``.pcap`` file with the ``LINKTYPE_USB_2_0`` link-layer header type.
 - **Save Button**: Saves a ``.pcap`` file with the ``LINKTYPE_USB_2_0`` link-layer header type.
 - **Scan Button**: Searches for a capture device such as a Cynthion running analyzer gateware.
-- **Capture Button**: Starts capturing USB data with the connected capture device.
-- **Stop Button**: Stops capturing USB data.
+- **Capture Button**: Clears Traffic Pane and Device Pane and starts capturing USB data with the connected capture device.
+- **Stop Button**: Stops capturing USB data. Stops reading USB data from file.
 - **Device Drop-down**: Selects a capture device. If you don't see a device listed here, try using the Scan button.
 - **Speed Drop-down**: Selects the target device speed for live capture.
 
@@ -31,6 +31,8 @@ The Traffic Pane displays packets in an interactive hierarchical view, allowing 
 
 Each packet is displayed with a precise time stamp relative to the start of capture. Higher level groups have a time stamp matching the first packet that is a part of the group.
 
+The Traffic Pane is cleared at the start of each capture or when a file is loaded.
+
 
 Device Pane
 -----------
@@ -41,6 +43,8 @@ To the right of the Traffic Pane is the Device Pane. The Device Pane summarizes 
   :alt: Device Pane
 
 Much of the information that can be displayed in the Device Pane is discovered only if Packetry observes the initial enumeration of a USB device by the target host. To allow this to take place in a live capture, connect the target device after starting a capture, not before.
+
+The Device Pane is cleared at the start of each capture or when a file is loaded.
 
 
 Detail Pane
