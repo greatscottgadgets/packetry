@@ -598,10 +598,11 @@ impl Decoder {
         let dev_addr = token.device_address();
         let ep_num = token.endpoint_number();
         let direction = match (ep_num.0, pid) {
-            (0, _)         => Direction::Out,
-            (_, PID::IN)   => Direction::In,
-            (_, PID::OUT)  => Direction::Out,
-            (_, PID::PING) => Direction::Out,
+            (0, _)          => Direction::Out,
+            (_, PID::SETUP) => Direction::Out,
+            (_, PID::IN)    => Direction::In,
+            (_, PID::OUT)   => Direction::Out,
+            (_, PID::PING)  => Direction::Out,
             _ => bail!("PID {pid} does not indicate a direction")
         };
         let key = EndpointKey {
@@ -682,11 +683,13 @@ impl Decoder {
         use PID::*;
         use TransactionStyle::*;
         let transaction_id = self.capture.transaction_index.push(packet_id)?;
-        let (style, endpoint_id) = if pid == SPLIT {
-            let split = SplitFields::from_packet(packet);
-            (Split(split.sc(), split.endpoint_type(), None), None)
-        } else {
-            (Simple(pid), Some(self.packet_endpoint(pid, packet)?))
+        let (style, endpoint_id) = match pid {
+            Malformed => (Simple(pid), Some(INVALID_EP_ID)),
+            SPLIT => {
+                let split = SplitFields::from_packet(packet);
+                (Split(split.sc(), split.endpoint_type(), None), None)
+            },
+            pid => (Simple(pid), Some(self.packet_endpoint(pid, packet)?))
         };
         let mut state = TransactionState {
             style,
