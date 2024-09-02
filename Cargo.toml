@@ -1,6 +1,6 @@
 [package]
 name = "packetry"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["Great Scott Gadgets <dev@greatscottgadgets.com>"]
 license = "BSD-3-Clause"
 description = "A fast, intuitive USB 2.0 protocol analysis application for use with Cynthion."
