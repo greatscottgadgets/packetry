@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 use std::collections::VecDeque;
-use std::thread::{spawn, sleep, JoinHandle};
+use std::thread::{spawn, sleep};
 use std::time::Duration;
 use std::sync::mpsc;
 
@@ -9,7 +9,6 @@ use futures_channel::oneshot;
 use futures_lite::future::block_on;
 use futures_util::future::FusedFuture;
 use futures_util::{select_biased, FutureExt};
-use num_enum::{FromPrimitive, IntoPrimitive};
 use nusb::{
     self,
     transfer::{
@@ -24,6 +23,16 @@ use nusb::{
     Interface
 };
 
+use super::{
+    BackendStop,
+    DeviceUsability,
+    InterfaceSelection,
+    Speed,
+    handle_thread_panic,
+    TracePacket,
+};
+use super::DeviceUsability::*;
+
 const VID: u16 = 0x1d50;
 const PID: u16 = 0x615b;
 
@@ -35,38 +44,6 @@ const ENDPOINT: u8 = 0x81;
 
 const READ_LEN: usize = 0x4000;
 const NUM_TRANSFERS: usize = 4;
-
-#[derive(Copy, Clone, FromPrimitive, IntoPrimitive)]
-#[repr(u8)]
-pub enum Speed {
-    #[default]
-    High = 0,
-    Full = 1,
-    Low  = 2,
-    Auto = 3,
-}
-
-impl Speed {
-    pub fn description(&self) -> &'static str {
-        use Speed::*;
-        match self {
-            Auto => "Auto",
-            High => "High (480Mbps)",
-            Full => "Full (12Mbps)",
-            Low => "Low (1.5Mbps)",
-        }
-    }
-
-    pub fn mask(&self) -> u8 {
-        use Speed::*;
-        match self {
-            Auto => 0b0001,
-            Low  => 0b0010,
-            Full => 0b0100,
-            High => 0b1000,
-        }
-    }
-}
 
 bitfield! {
     #[derive(Copy, Clone)]
@@ -107,25 +84,10 @@ impl TestConfig {
     }
 }
 
-pub struct InterfaceSelection {
-    interface_number: u8,
-    alt_setting_number: u8,
-}
-
-/// Whether a Cynthion device is ready for use as an analyzer.
-pub enum CynthionUsability {
-    /// Device is usable via the given interface, at supported speeds.
-    Usable(InterfaceSelection, Vec<Speed>),
-    /// Device not usable, with a string explaining why.
-    Unusable(String),
-}
-
-use CynthionUsability::*;
-
 /// A Cynthion device attached to the system.
 pub struct CynthionDevice {
     pub device_info: DeviceInfo,
-    pub usability: CynthionUsability,
+    pub usability: DeviceUsability,
 }
 
 /// A handle to an open Cynthion device.
@@ -144,16 +106,6 @@ pub struct CynthionStream {
     buffer: VecDeque<u8>,
     padding_due: bool,
     total_clk_cycles: u64,
-}
-
-pub struct CynthionStop {
-    stop_request: oneshot::Sender<()>,
-    worker: JoinHandle::<()>,
-}
-
-pub struct CynthionPacket {
-    pub timestamp_ns: u64,
-    pub bytes: Vec<u8>,
 }
 
 /// Convert 60MHz clock cycles to nanoseconds, rounding down.
@@ -300,7 +252,7 @@ impl CynthionHandle {
     }
 
     pub fn start<F>(&self, speed: Speed, result_handler: F)
-        -> Result<(CynthionStream, CynthionStop), Error>
+        -> Result<(CynthionStream, BackendStop), Error>
         where F: FnOnce(Result<(), Error>) + Send + 'static
     {
         // Channel to pass captured data to the decoder thread.
@@ -320,7 +272,7 @@ impl CynthionHandle {
                 padding_due: false,
                 total_clk_cycles: 0,
             },
-            CynthionStop {
+            BackendStop {
                 stop_request: stop_tx,
                 worker,
             }
@@ -454,9 +406,9 @@ impl CynthionQueue {
 }
 
 impl Iterator for CynthionStream {
-    type Item = CynthionPacket;
+    type Item = TracePacket;
 
-    fn next(&mut self) -> Option<CynthionPacket> {
+    fn next(&mut self) -> Option<TracePacket> {
         loop {
             // Do we have another packet already in the buffer?
             match self.next_buffered_packet() {
@@ -475,7 +427,7 @@ impl Iterator for CynthionStream {
 }
 
 impl CynthionStream {
-    fn next_buffered_packet(&mut self) -> Option<CynthionPacket> {
+    fn next_buffered_packet(&mut self) -> Option<TracePacket> {
         // Are we waiting for a padding byte?
         if self.padding_due {
             if self.buffer.is_empty() {
@@ -527,7 +479,7 @@ impl CynthionStream {
         }
 
         // Remove the rest of the packet from the buffer and return it.
-        Some(CynthionPacket {
+        Some(TracePacket {
             timestamp_ns: clk_to_ns(self.total_clk_cycles),
             bytes: self.buffer.drain(0..packet_len).collect()
         })
@@ -540,32 +492,5 @@ impl CynthionStream {
 
         // Update our running total.
         self.total_clk_cycles += clk_cycles as u64;
-    }
-}
-
-impl CynthionStop {
-    pub fn stop(self) -> Result<(), Error> {
-        println!("Requesting capture stop");
-        self.stop_request.send(())
-            .or_else(|_| bail!("Failed sending stop request"))?;
-        handle_thread_panic(self.worker.join())?;
-        Ok(())
-    }
-}
-
-fn handle_thread_panic<T>(result: std::thread::Result<T>) -> Result<T, Error> {
-    match result {
-        Ok(x) => Ok(x),
-        Err(panic) => {
-            let msg = match (
-                panic.downcast_ref::<&str>(),
-                panic.downcast_ref::<String>())
-            {
-                (Some(&s), _) => s,
-                (_,  Some(s)) => s,
-                (None,  None) => "<No panic message>"
-            };
-            bail!("Worker thread panic: {msg}");
-        }
     }
 }
