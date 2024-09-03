@@ -1,8 +1,7 @@
+use crate::backend::{DeviceUsability, Speed};
 use crate::backend::cynthion::{
     CynthionDevice,
-    CynthionUsability,
     CynthionHandle,
-    Speed
 };
 use crate::capture::{
     create_capture,
@@ -62,7 +61,8 @@ fn test(save_capture: bool,
     let mut analyzer = CynthionDevice::scan()
         .context("Failed to scan for analyzers")?
         .iter()
-        .find(|dev| matches!(dev.usability, CynthionUsability::Usable(..)))
+
+        .find(|dev| matches!(dev.usability, DeviceUsability::Usable(..)))
         .context("No usable analyzer found")?
         .open()
         .context("Failed to open analyzer")?;

@@ -60,9 +60,9 @@ use gtk::{
 use crate::backend::cynthion::{
     CynthionDevice,
     CynthionHandle,
-    CynthionStop,
-    CynthionUsability::*,
-    Speed};
+};
+use crate::backend::{BackendStop, Speed};
+use crate::backend::DeviceUsability::*;
 
 use crate::capture::{
     create_capture,
@@ -114,7 +114,7 @@ enum FileAction {
 enum StopState {
     Disabled,
     Pcap(Cancellable),
-    Cynthion(CynthionStop),
+    Cynthion(BackendStop),
 }
 
 struct DeviceSelector {
