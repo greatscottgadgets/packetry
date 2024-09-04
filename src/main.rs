@@ -53,7 +53,7 @@ use ui::{
     activate,
     display_error,
     open,
-    stop_cynthion
+    stop_operation
 };
 use version::{version, version_info};
 
@@ -112,6 +112,6 @@ fn main() {
             }
         });
         application.run();
-        display_error(stop_cynthion());
+        display_error(stop_operation());
     }
 }
