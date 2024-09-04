@@ -8,6 +8,8 @@ Packetry Documentation
 
   what_is_packetry
   user_interface
+  keyboard_shortcuts_linux_windows
+  keyboard_shortcuts_macos
 
 .. toctree::
   :maxdepth: 2
