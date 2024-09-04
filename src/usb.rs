@@ -18,7 +18,7 @@ fn crc16(bytes: &[u8]) -> u16 {
 // compute the CRC over either 11 or 19 bits of data, rather than
 // over an integer number of bytes.
 
-fn crc5(mut input: u32, num_bits: u32) -> u8 {
+pub fn crc5(mut input: u32, num_bits: u32) -> u8 {
     let mut state: u32 = 0x1f;
     for _ in 0..num_bits {
         let cmp = input & 1 != state & 1;
