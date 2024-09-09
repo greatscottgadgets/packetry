@@ -91,7 +91,14 @@ use crate::item::{
     DeviceViewMode,
 };
 use crate::decoder::Decoder;
-use crate::pcap::{Loader, Writer};
+use crate::file::{
+    GenericPacket,
+    GenericLoader,
+    GenericSaver,
+    LoaderItem,
+    PcapLoader,
+    PcapSaver,
+};
 use crate::usb::{Descriptor, PacketFields, validate_packet};
 use crate::util::{fmt_count, fmt_size};
 use crate::version::{version, version_info};
@@ -1086,6 +1093,7 @@ fn load_pcap(file: gio::File,
              cancel_handle: Cancellable)
     -> Result<(), Error>
 {
+    use LoaderItem::*;
     let info = file.query_info("standard::*",
                                FileQueryInfoFlags::NONE,
                                Some(&cancel_handle))?;
@@ -1094,23 +1102,30 @@ fn load_pcap(file: gio::File,
         TOTAL.store(file_size, Ordering::Relaxed);
     }
     let source = file.read(Some(&cancel_handle))?.into_read();
-    let mut loader = Loader::open(source)?;
+    let mut loader = PcapLoader::new(source)?;
     let mut decoder = Decoder::new(writer)?;
     #[cfg(feature="step-decoder")]
     let (mut client, _addr) =
         TcpListener::bind("127.0.0.1:46563")?.accept()?;
-    while let Some(result) = loader.next() {
-        let (packet, timestamp_ns) = result?;
-        #[cfg(feature="step-decoder")] {
-            let mut buf = [0; 1];
-            client.read(&mut buf).unwrap();
-        };
-        #[cfg(feature="record-ui-test")]
-        let guard = UPDATE_LOCK.lock();
-        decoder.handle_raw_packet(&packet.data, timestamp_ns)?;
-        #[cfg(feature="record-ui-test")]
-        drop(guard);
-        CURRENT.store(loader.bytes_read, Ordering::Relaxed);
+    loop {
+        match loader.next() {
+            Packet(packet) => {
+                #[cfg(feature="step-decoder")] {
+                    let mut buf = [0; 1];
+                    client.read(&mut buf).unwrap();
+                };
+                #[cfg(feature="record-ui-test")]
+                let guard = UPDATE_LOCK.lock();
+                decoder.handle_raw_packet(
+                    packet.bytes(), packet.timestamp_ns())?;
+                #[cfg(feature="record-ui-test")]
+                drop(guard);
+                CURRENT.store(packet.total_bytes_read(), Ordering::Relaxed);
+            },
+            LoadError(e) => return Err(e),
+            Ignore => continue,
+            End => break,
+        }
         if STOP.load(Ordering::Relaxed) {
             break;
         }
@@ -1129,16 +1144,16 @@ fn save_pcap(file: gio::File,
     let dest = file
         .replace(None, false, FileCreateFlags::NONE, Some(&cancel_handle))?
         .into_write();
-    let mut writer = Writer::open(dest)?;
+    let mut saver = PcapSaver::new(dest)?;
     for (result, i) in capture.timestamped_packets()?.zip(0..packet_count) {
         let (timestamp_ns, packet) = result?;
-        writer.add_packet(&packet, timestamp_ns)?;
+        saver.add_packet(&packet, timestamp_ns)?;
         CURRENT.store(i + 1, Ordering::Relaxed);
         if STOP.load(Ordering::Relaxed) {
             break;
         }
     }
-    writer.close()?;
+    saver.close()?;
     Ok(())
 }
 
