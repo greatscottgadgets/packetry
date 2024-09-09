@@ -1883,7 +1883,7 @@ mod tests {
     use std::io::{BufReader, BufWriter, BufRead, Write};
     use std::path::PathBuf;
     use crate::decoder::Decoder;
-    use crate::pcap::Loader;
+    use crate::file::{GenericPacket, GenericLoader, LoaderItem, PcapLoader};
 
     fn summarize_item(cap: &mut CaptureReader, item: &TrafficItem, depth: usize)
         -> String
@@ -1938,14 +1938,20 @@ mod tests {
             out_path.push("output.txt");
             {
                 let file = File::open(cap_path).unwrap();
-                let mut loader = Loader::open(file).unwrap();
+                let mut loader = PcapLoader::new(file).unwrap();
                 let (writer, mut reader) = create_capture().unwrap();
                 let mut decoder = Decoder::new(writer).unwrap();
-                while let Some(result) = loader.next() {
-                    let (packet, timestamp_ns) = result.unwrap();
-                    decoder
-                        .handle_raw_packet(&packet.data, timestamp_ns)
-                        .unwrap();
+                loop {
+                    use LoaderItem::*;
+                    match loader.next() {
+                        Packet(packet) => decoder
+                            .handle_raw_packet(
+                                packet.bytes(), packet.timestamp_ns())
+                            .unwrap(),
+                        LoadError(e) => panic!("{e}"),
+                        Ignore => continue,
+                        End => break,
+                    }
                 }
                 decoder.finish().unwrap();
                 let out_file = File::create(out_path.clone()).unwrap();

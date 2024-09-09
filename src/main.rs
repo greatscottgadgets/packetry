@@ -27,7 +27,7 @@ mod id;
 mod index_stream;
 mod item_widget;
 mod model;
-mod pcap;
+mod file;
 mod rcu;
 mod row_data;
 mod stream;
