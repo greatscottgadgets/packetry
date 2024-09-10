@@ -71,9 +71,9 @@ use crate::backend::{
     BackendHandle,
     BackendStop,
     ProbeResult,
-    Speed,
     scan
 };
+
 use crate::capture::{
     create_capture,
     CaptureReader,
@@ -102,7 +102,7 @@ use crate::file::{
     PcapNgLoader,
     PcapNgSaver,
 };
-use crate::usb::{Descriptor, PacketFields, validate_packet};
+use crate::usb::{Descriptor, PacketFields, Speed, validate_packet};
 use crate::util::{fmt_count, fmt_size};
 use crate::version::{version, version_info};
 
@@ -1554,4 +1554,17 @@ pub fn display_error(result: Result<(), Error>) {
     }
     #[cfg(test)]
     result.unwrap();
+}
+
+impl Speed {
+    /// How this speed setting should be displayed in the UI.
+    pub fn description(&self) -> &'static str {
+        use Speed::*;
+        match self {
+            Auto => "Auto",
+            High => "High (480Mbps)",
+            Full => "Full (12Mbps)",
+            Low => "Low (1.5Mbps)",
+        }
+    }
 }
