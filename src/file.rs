@@ -1,11 +1,30 @@
 use std::borrow::Cow;
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::mem::size_of;
+use std::ops::Deref;
+use std::time::Duration;
 
 use anyhow::{Context, Error, anyhow};
+use byteorder_slice::{
+    ByteOrder, BigEndian, LittleEndian,
+    result::ReadSlice
+};
 use pcap_file::{
     pcap::{PcapReader, PcapHeader, PcapWriter, RawPcapPacket},
+    pcapng::{
+        PcapNgReader, PcapNgWriter, PcapNgBlock,
+        blocks::{
+            Block, RawBlock,
+            ENHANCED_PACKET_BLOCK,
+            interface_description::{
+                InterfaceDescriptionBlock,
+                InterfaceDescriptionOption,
+            },
+            enhanced_packet::EnhancedPacketBlock,
+        },
+    },
     DataLink,
+    Endianness,
     TsResolution,
 };
 
@@ -164,6 +183,194 @@ where Self: Sized, Dest: Write
 
 impl GenericPacket for PacketWrapper<RawPcapPacket<'_>> {
     fn bytes(&self) -> &[u8] { &self.packet_data.data }
+    fn timestamp_ns(&self) -> u64 { self.timestamp_ns }
+    fn total_bytes_read(&self) -> u64 { self.total_bytes_read }
+}
+
+/// Loader for pcap-ng format.
+pub struct PcapNgLoader<Source: Read> {
+    pcap: PcapNgReader<BufReader<Source>>,
+    bytes_read: u64,
+    endianness: Endianness,
+    interface_ts_units: Vec<u64>,
+    ts_start: Option<u64>,
+}
+
+/// Saver for pcap-ng format.
+pub struct PcapNgSaver<Dest: Write> {
+    pcap: PcapNgWriter<BufWriter<Dest>>,
+}
+
+/// Helper for parsing Enhanced Packet Blocks.
+fn parse_epb<B: ByteOrder>(raw_block: &RawBlock<'_>)
+    -> Result<(usize, u64, usize), Error>
+{
+    let mut slice = raw_block.body.deref();
+    let interface_id = slice.read_u32::<B>()? as usize;
+    let timestamp_hi = slice.read_u32::<B>()? as u64;
+    let timestamp_lo = slice.read_u32::<B>()? as u64;
+    let length = slice.read_u32::<B>()? as usize;
+    let timestamp = (timestamp_hi << 32) + timestamp_lo;
+    Ok((interface_id, timestamp, length))
+}
+
+impl<Source> GenericLoader<Source>
+for PcapNgLoader<Source>
+where Source: Read
+{
+    type PacketData<'p> = PacketWrapper<(RawBlock<'p>, usize)>;
+
+    fn new(source: Source) -> Result<Self, Error> {
+        let reader = BufReader::new(source);
+        let pcap = PcapNgReader::new(reader)?;
+        let section_header = pcap.section();
+        let endianness = section_header.endianness;
+        let header_length = {
+            let mut tmp = Vec::<u8>::new();
+            section_header.write_to::<LittleEndian, Vec<u8>>(&mut tmp)?;
+            tmp.len()
+        };
+        Ok(PcapNgLoader{
+            pcap,
+            endianness,
+            interface_ts_units: vec![],
+            bytes_read: header_length as u64,
+            ts_start: None
+        })
+    }
+
+    fn next(&mut self) -> LoaderItem<impl GenericPacket> {
+        use Endianness::*;
+        use DataLink::*;
+        use InterfaceDescriptionOption::*;
+        use LoaderItem::*;
+        let raw_block = match self.pcap.next_raw_block() {
+            None => return End,
+            Some(Err(e)) => return LoadError(anyhow!(e)),
+            Some(Ok(block)) => block
+        };
+        self.bytes_read += raw_block.initial_len as u64;
+        if raw_block.type_ == ENHANCED_PACKET_BLOCK {
+            let parse_result = match self.endianness {
+                Big => parse_epb::<BigEndian>(&raw_block),
+                Little => parse_epb::<LittleEndian>(&raw_block),
+            };
+            let (interface_id, ts_value, length) = match parse_result {
+                Ok(values) => values,
+                Err(e) => return LoadError(anyhow!(e)),
+            };
+            let ts_unit = match self.interface_ts_units.get(interface_id) {
+                Some(unit) => unit,
+                None => return LoadError(anyhow!(
+                    "Missing block for interface {interface_id}"
+                ))
+            };
+            let timestamp_ns = if let Some(ts_start) = self.ts_start {
+                ts_unit * (ts_value - ts_start)
+            } else {
+                self.ts_start = Some(ts_value);
+                0
+            };
+            return Packet(
+                PacketWrapper {
+                    packet_data: (raw_block, length),
+                    timestamp_ns,
+                    total_bytes_read: self.bytes_read,
+                }
+            )
+        }
+        let parsed_block = match self.endianness {
+            Big => raw_block.try_into_block::<BigEndian>(),
+            Little => raw_block.try_into_block::<LittleEndian>(),
+        };
+        match parsed_block {
+            Err(e) => return LoadError(anyhow!(e)),
+            Ok(Block::SectionHeader(_)) =>
+                return LoadError(anyhow!(
+                    "Multiple sections are not supported.")),
+            Ok(Block::InterfaceDescription(interface)) => {
+                if !self.interface_ts_units.is_empty() {
+                    return LoadError(anyhow!(
+                        "Multiple interfaces are not supported"))
+                }
+                match interface.linktype {
+                    USB_2_0 |
+                    USB_2_0_HIGH_SPEED |
+                    USB_2_0_FULL_SPEED |
+                    USB_2_0_LOW_SPEED => {},
+                    _ => return LoadError(anyhow!(
+                        "Link type {:?} is not supported.",
+                        interface.linktype)),
+                };
+                for option in interface.options {
+                    if let IfTsResol(res) = option {
+                        let ts_unit = 1_000_000_000 / match res {
+                            0x00..=0x7f => 10u64.pow(res as u32),
+                            0x80..=0xff => 2u64.pow((res & 0x7f) as u32)
+                        };
+                        self.interface_ts_units.push(ts_unit);
+                        return Ignore
+                    }
+                }
+                self.interface_ts_units.push(1000);
+            }
+            _ => {}
+        };
+        Ignore
+    }
+}
+
+impl<Dest> GenericSaver<Dest>
+for PcapNgSaver<Dest>
+where Self: Sized, Dest: Write
+{
+    fn new(dest: Dest) -> Result<Self, Error> {
+        let writer = BufWriter::new(dest);
+        let mut pcap = PcapNgWriter::with_endianness(
+            writer, Endianness::native())?;
+        pcap.write_block(&Block::InterfaceDescription(
+            InterfaceDescriptionBlock {
+                linktype: DataLink::USB_2_0,
+                snaplen: 0,
+                options: vec![
+                    // Nanosecond resolution.
+                    InterfaceDescriptionOption::IfTsResol(9),
+                ],
+            }
+        ))?;
+        Ok(PcapNgSaver { pcap })
+    }
+
+    fn add_packet(&mut self, bytes: &[u8], timestamp_ns: u64)
+        -> Result<(), Error>
+    {
+        let length: u32 = bytes
+            .len()
+            .try_into()
+            .context("Packet too large for pcap file")?;
+        self.pcap.write_block(&Block::EnhancedPacket(
+            EnhancedPacketBlock {
+                interface_id: 0,
+                timestamp: Duration::from_nanos(timestamp_ns),
+                original_len: length,
+                data: Cow::from(bytes),
+                options: vec![],
+            }
+        ))?;
+        Ok(())
+    }
+
+    fn close(self) -> Result<(), Error> {
+        self.pcap.into_inner().flush()?;
+        Ok(())
+    }
+}
+
+impl GenericPacket for PacketWrapper<(RawBlock<'_>, usize)> {
+    fn bytes(&self) -> &[u8] {
+        let (raw_block, length) = &self.packet_data;
+        &raw_block.body[20..][..*length]
+    }
     fn timestamp_ns(&self) -> u64 { self.timestamp_ns }
     fn total_bytes_read(&self) -> u64 { self.total_bytes_read }
 }
