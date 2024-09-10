@@ -107,7 +107,8 @@ fn test(save_capture: bool,
         // Write the capture to a file.
         let path = PathBuf::from(format!("./HITL-{name}.pcap"));
         let file = File::create(path)?;
-        let mut saver = PcapSaver::new(file)?;
+        let meta = reader.shared.metadata.load_full();
+        let mut saver = PcapSaver::new(file, meta)?;
         for i in 0..reader.packet_index.len() {
             let packet_id = PacketId::from(i);
             let packet = reader.packet(packet_id)?;

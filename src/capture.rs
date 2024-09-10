@@ -7,6 +7,7 @@ use std::ops::Range;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64};
 use std::sync::atomic::Ordering::{Acquire, Release};
 use std::sync::Arc;
+use std::time::SystemTime;
 use std::mem::size_of;
 
 use crate::database::{
@@ -38,8 +39,23 @@ use num_enum::{IntoPrimitive, FromPrimitive};
 // Use 2MB block size for packet data, which is a large page size on x86_64.
 const PACKET_DATA_BLOCK_SIZE: usize = 0x200000;
 
+/// Metadata about the capture.
+#[derive(Clone, Default)]
+pub struct CaptureMetadata {
+    // Fields corresponding to PcapNG interface description.
+    pub iface_desc: Option<String>,
+    pub iface_hardware: Option<String>,
+    pub iface_os: Option<String>,
+    pub iface_speed: Option<Speed>,
+
+    // Fields corresponding to PcapNG interface statistics.
+    pub start_time: Option<SystemTime>,
+    pub end_time: Option<SystemTime>,
+}
+
 /// Capture state shared between readers and writers.
 pub struct CaptureShared {
+    pub metadata: ArcSwap<CaptureMetadata>,
     pub device_data: ArcSwap<VecMap<DeviceId, Arc<DeviceData>>>,
     pub endpoint_index: ArcSwap<VecMap<EndpointKey, EndpointId>>,
     pub endpoint_readers: ArcSwap<VecMap<EndpointId, Arc<EndpointReader>>>,
@@ -102,6 +118,7 @@ pub fn create_capture()
 
     // Create the state shared by readers and writer.
     let shared = Arc::new(CaptureShared {
+        metadata: ArcSwap::new(Arc::new(CaptureMetadata::default())),
         device_data: ArcSwap::new(Arc::new(VecMap::new())),
         endpoint_index: ArcSwap::new(Arc::new(VecMap::new())),
         endpoint_readers: ArcSwap::new(Arc::new(VecMap::new())),
