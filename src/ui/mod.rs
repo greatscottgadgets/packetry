@@ -1186,7 +1186,8 @@ where
     Dest: Write
 {
     let packet_count = capture.packet_index.len();
-    let mut saver = Saver::new(dest)?;
+    let meta = capture.shared.metadata.load_full();
+    let mut saver = Saver::new(dest, meta)?;
     for (result, i) in capture.timestamped_packets()?.zip(0..packet_count) {
         let (timestamp_ns, packet) = result?;
         saver.add_packet(&packet, timestamp_ns)?;
