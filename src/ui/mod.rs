@@ -2,13 +2,14 @@
 
 use std::cell::RefCell;
 use std::collections::BTreeMap;
-use std::io::Write;
+use std::ffi::OsStr;
+use std::io::{Read, Write};
 use std::ops::Range;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 #[cfg(feature="step-decoder")]
-use std::{io::Read, net::TcpListener};
+use std::net::TcpListener;
 
 #[cfg(feature="record-ui-test")]
 use std::sync::Mutex;
@@ -98,6 +99,8 @@ use crate::file::{
     LoaderItem,
     PcapLoader,
     PcapSaver,
+    PcapNgLoader,
+    PcapNgSaver,
 };
 use crate::usb::{Descriptor, PacketFields, validate_packet};
 use crate::util::{fmt_count, fmt_size};
@@ -151,9 +154,15 @@ enum FileAction {
     Save,
 }
 
+#[derive(Copy, Clone, PartialEq)]
+enum FileFormat {
+    Pcap,
+    PcapNg,
+}
+
 enum StopState {
     Disabled,
-    Pcap(Cancellable),
+    File(Cancellable),
     Backend(BackendStop),
 }
 
@@ -416,8 +425,8 @@ pub fn activate(application: &Application) -> Result<(), Error> {
         .build();
 
     window.add_action_entries([
-        button_action!("open", open_button, choose_pcap_file(Load)),
-        button_action!("save", save_button, choose_pcap_file(Save)),
+        button_action!("open", open_button, choose_capture_file(Load)),
+        button_action!("save", save_button, choose_capture_file(Save)),
         button_action!("scan", scan_button, detect_hardware()),
         button_action!("capture", capture_button, start_capture()),
         button_action!("stop", stop_button, stop_operation()),
@@ -650,7 +659,7 @@ pub fn activate(application: &Application) -> Result<(), Error> {
 }
 
 pub fn open(file: &gio::File) -> Result<(), Error> {
-    start_pcap(FileAction::Load, file.clone())
+    start_file(FileAction::Load, file.clone())
 }
 
 type ContextFn<Item> =
@@ -1013,6 +1022,14 @@ fn choose_file<F>(
             ),
         }
     });
+    let pcap = gtk::FileFilter::new();
+    let pcapng = gtk::FileFilter::new();
+    pcap.add_suffix("pcap");
+    pcapng.add_suffix("pcapng");
+    pcap.set_name(Some("pcap (*.pcap)"));
+    pcapng.set_name(Some("pcap-NG (*.pcapng)"));
+    chooser.add_filter(&pcap);
+    chooser.add_filter(&pcapng);
     chooser.connect_response(move |dialog, response| {
         if response == gtk::ResponseType::Accept {
             if let Some(file) = dialog.file() {
@@ -1025,12 +1042,23 @@ fn choose_file<F>(
     Ok(())
 }
 
-fn choose_pcap_file(action: FileAction) -> Result<(), Error> {
-    choose_file(action, "pcap file", move |file| start_pcap(action, file))
+fn choose_capture_file(action: FileAction) -> Result<(), Error> {
+    choose_file(action, "capture file", move |file| start_file(action, file))
 }
 
-fn start_pcap(action: FileAction, file: gio::File) -> Result<(), Error> {
+fn start_file(action: FileAction, file: gio::File) -> Result<(), Error> {
     use FileAction::*;
+    use FileFormat::*;
+    let basename = match file.basename() {
+        None => bail!("Could not determine format without file name"),
+        Some(name) => name,
+    };
+    let format = match basename.extension().and_then(OsStr::to_str) {
+        Some("pcap") => Pcap,
+        Some("pcapng") => PcapNg,
+        _ => bail!("Could not determine format from file name '{}'",
+                   basename.display())
+    };
     let writer = if action == Load {
         Some(reset_capture()?)
     } else {
@@ -1048,13 +1076,11 @@ fn start_pcap(action: FileAction, file: gio::File) -> Result<(), Error> {
         ui.selector.set_sensitive(false);
         ui.capture_button.set_sensitive(false);
         ui.stop_button.set_sensitive(true);
-        ui.stop_state = StopState::Pcap(cancel_handle.clone());
+        ui.stop_state = StopState::File(cancel_handle.clone());
         ui.vbox.insert_child_after(&ui.separator, Some(&ui.vertical_panes));
         ui.vbox.insert_child_after(&ui.progress_bar, Some(&ui.separator));
         ui.show_progress = Some(action);
-        ui.file_name = file
-            .basename()
-            .map(|path| path.to_string_lossy().to_string());
+        ui.file_name = Some(basename.to_string_lossy().to_string());
         let capture = ui.capture.clone();
         let packet_count = capture.packet_index.len();
         CURRENT.store(0, Ordering::Relaxed);
@@ -1065,8 +1091,8 @@ fn start_pcap(action: FileAction, file: gio::File) -> Result<(), Error> {
         std::thread::spawn(move || {
             let start_time = Instant::now();
             let result = match action {
-                Load => load_pcap(file, writer.unwrap(), cancel_handle),
-                Save => save_pcap(file, capture, cancel_handle),
+                Load => load_file(file, format, writer.unwrap(), cancel_handle),
+                Save => save_file(file, format, capture, cancel_handle),
             };
             let duration = Instant::now().duration_since(start_time);
             if result.is_ok() {
@@ -1088,26 +1114,21 @@ fn start_pcap(action: FileAction, file: gio::File) -> Result<(), Error> {
     })
 }
 
-fn load_pcap(file: gio::File,
-             writer: CaptureWriter,
-             cancel_handle: Cancellable)
-    -> Result<(), Error>
+fn load<Source, Loader>(
+    writer: CaptureWriter,
+    source: Source
+) -> Result<(), Error>
+where
+    Source: Read,
+    Loader: GenericLoader<Source> + 'static
 {
-    use LoaderItem::*;
-    let info = file.query_info("standard::*",
-                               FileQueryInfoFlags::NONE,
-                               Some(&cancel_handle))?;
-    if info.has_attribute(gio::FILE_ATTRIBUTE_STANDARD_SIZE) {
-        let file_size = info.size() as u64;
-        TOTAL.store(file_size, Ordering::Relaxed);
-    }
-    let source = file.read(Some(&cancel_handle))?.into_read();
-    let mut loader = PcapLoader::new(source)?;
-    let mut decoder = Decoder::new(writer)?;
     #[cfg(feature="step-decoder")]
     let (mut client, _addr) =
         TcpListener::bind("127.0.0.1:46563")?.accept()?;
+    let mut decoder = Decoder::new(writer)?;
+    let mut loader = Loader::new(source)?;
     loop {
+        use LoaderItem::*;
         match loader.next() {
             Packet(packet) => {
                 #[cfg(feature="step-decoder")] {
@@ -1135,16 +1156,37 @@ fn load_pcap(file: gio::File,
     Ok(())
 }
 
-fn save_pcap(file: gio::File,
-             mut capture: CaptureReader,
+fn load_file(file: gio::File,
+             format: FileFormat,
+             writer: CaptureWriter,
              cancel_handle: Cancellable)
     -> Result<(), Error>
 {
+    use FileFormat::*;
+    let info = file.query_info("standard::*",
+                               FileQueryInfoFlags::NONE,
+                               Some(&cancel_handle))?;
+    if info.has_attribute(gio::FILE_ATTRIBUTE_STANDARD_SIZE) {
+        let file_size = info.size() as u64;
+        TOTAL.store(file_size, Ordering::Relaxed);
+    }
+    let source = file.read(Some(&cancel_handle))?.into_read();
+    match format {
+        Pcap => load::<_, PcapLoader<_>>(writer, source),
+        PcapNg => load::<_, PcapNgLoader<_>>(writer, source),
+    }
+}
+
+fn save<Dest, Saver>(
+    mut capture: CaptureReader,
+    dest: Dest)
+-> Result<(), Error>
+where
+    Saver: GenericSaver<Dest>,
+    Dest: Write
+{
     let packet_count = capture.packet_index.len();
-    let dest = file
-        .replace(None, false, FileCreateFlags::NONE, Some(&cancel_handle))?
-        .into_write();
-    let mut saver = PcapSaver::new(dest)?;
+    let mut saver = Saver::new(dest)?;
     for (result, i) in capture.timestamped_packets()?.zip(0..packet_count) {
         let (timestamp_ns, packet) = result?;
         saver.add_packet(&packet, timestamp_ns)?;
@@ -1153,15 +1195,30 @@ fn save_pcap(file: gio::File,
             break;
         }
     }
-    saver.close()?;
-    Ok(())
+    saver.close()
+}
+
+fn save_file(file: gio::File,
+             format: FileFormat,
+             capture: CaptureReader,
+             cancel_handle: Cancellable)
+    -> Result<(), Error>
+{
+    use FileFormat::*;
+    let dest = file
+        .replace(None, false, FileCreateFlags::NONE, Some(&cancel_handle))?
+        .into_write();
+    match format {
+        Pcap => save::<_, PcapSaver<_>>(capture, dest),
+        PcapNg => save::<_, PcapNgSaver<_>>(capture, dest),
+    }
 }
 
 pub fn stop_operation() -> Result<(), Error> {
     with_ui(|ui| {
         match std::mem::replace(&mut ui.stop_state, StopState::Disabled) {
             StopState::Disabled => {},
-            StopState::Pcap(cancel_handle) => {
+            StopState::File(cancel_handle) => {
                 STOP.store(true, Ordering::Relaxed);
                 cancel_handle.cancel();
             },
