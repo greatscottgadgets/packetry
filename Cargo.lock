@@ -1558,6 +1558,7 @@ dependencies = [
  "built",
  "bytemuck",
  "bytemuck_derive",
+ "byteorder_slice",
  "crc",
  "ctor",
  "dark-light",
