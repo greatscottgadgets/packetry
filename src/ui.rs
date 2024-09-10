@@ -64,7 +64,7 @@ use crate::backend::cynthion::{
     CynthionHandle,
     CynthionStop,
     CynthionUsability::*,
-    Speed};
+};
 
 use crate::capture::{
     create_capture,
@@ -92,6 +92,7 @@ use crate::row_data::{
     ToGenericRowData,
     TrafficRowData,
     DeviceRowData};
+use crate::usb::Speed;
 use crate::util::{fmt_count, fmt_size};
 use crate::version::{version, version_info};
 

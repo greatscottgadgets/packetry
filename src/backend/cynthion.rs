@@ -9,7 +9,6 @@ use futures_channel::oneshot;
 use futures_lite::future::block_on;
 use futures_util::future::FusedFuture;
 use futures_util::{select_biased, FutureExt};
-use num_enum::{FromPrimitive, IntoPrimitive};
 use nusb::{
     self,
     transfer::{
@@ -24,6 +23,8 @@ use nusb::{
     Interface
 };
 
+use crate::usb::Speed;
+
 const VID: u16 = 0x1d50;
 const PID: u16 = 0x615b;
 
@@ -35,16 +36,6 @@ const ENDPOINT: u8 = 0x81;
 
 const READ_LEN: usize = 0x4000;
 const NUM_TRANSFERS: usize = 4;
-
-#[derive(Copy, Clone, FromPrimitive, IntoPrimitive)]
-#[repr(u8)]
-pub enum Speed {
-    #[default]
-    High = 0,
-    Full = 1,
-    Low  = 2,
-    Auto = 3,
-}
 
 impl Speed {
     pub fn description(&self) -> &'static str {

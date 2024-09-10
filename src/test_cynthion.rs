@@ -2,7 +2,6 @@ use crate::backend::cynthion::{
     CynthionDevice,
     CynthionUsability,
     CynthionHandle,
-    Speed
 };
 use crate::capture::{
     create_capture,
@@ -14,6 +13,7 @@ use crate::capture::{
 };
 use crate::decoder::Decoder;
 use crate::file::{GenericSaver, PcapSaver};
+use crate::usb::Speed;
 
 use anyhow::{Context, Error, ensure};
 use futures_lite::future::block_on;
