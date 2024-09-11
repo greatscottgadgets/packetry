@@ -61,6 +61,10 @@ use crate::backend::cynthion::{
     CynthionDevice,
     CynthionHandle,
 };
+use crate::backend::ice40usbtrace::{
+    Ice40UsbtraceDevice,
+    Ice40UsbtraceHandle,
+};
 use crate::backend::{BackendStop, Speed};
 use crate::backend::DeviceUsability::*;
 
@@ -115,10 +119,11 @@ enum StopState {
     Disabled,
     Pcap(Cancellable),
     Cynthion(BackendStop),
+    Ice40Usbtrace(BackendStop),
 }
 
 struct DeviceSelector {
-    devices: Vec<CynthionDevice>,
+    devices: Vec<Ice40UsbtraceDevice>,
     dev_strings: Vec<String>,
     dev_speeds: Vec<Vec<&'static str>>,
     dev_dropdown: DropDown,
@@ -157,7 +162,7 @@ impl DeviceSelector {
         Ok(selector)
     }
 
-    fn current_device(&self) -> Option<&CynthionDevice> {
+    fn current_device(&self) -> Option<&Ice40UsbtraceDevice> {
         if self.devices.is_empty() {
             None
         } else {
@@ -199,20 +204,20 @@ impl DeviceSelector {
         if let Some(handler) = self.change_handler.take() {
             self.dev_dropdown.disconnect(handler);
         }
-        self.devices = CynthionDevice::scan()?;
+        self.devices = Ice40UsbtraceDevice::scan()?;
         let count = self.devices.len();
         self.dev_strings = Vec::with_capacity(count);
         self.dev_speeds = Vec::with_capacity(count);
         for device in self.devices.iter() {
             self.dev_strings.push(
                 if count <= 1 {
-                    String::from("Cynthion")
+                    String::from("ICE40usbtrace")
                 } else {
                     let info = &device.device_info;
                     if let Some(serial) = info.serial_number() {
-                        format!("Cynthion #{}", serial)
+                        format!("ICE40usbtrace #{}", serial)
                     } else {
-                        format!("Cynthion (bus {}, device {})",
+                        format!("ICE40usbtrace (bus {}, device {})",
                             info.bus_number(),
                             info.device_address())
                     }
@@ -245,7 +250,7 @@ impl DeviceSelector {
         self.speed_dropdown.set_sensitive(!speed_strings.is_empty());
     }
 
-    fn open(&self) -> Result<(CynthionHandle, Speed), Error> {
+    fn open(&self) -> Result<(Ice40UsbtraceHandle, Speed), Error> {
         let device_id = self.dev_dropdown.selected();
         let device = &self.devices[device_id as usize];
         match &device.usability {
@@ -1065,7 +1070,7 @@ pub fn stop_operation() -> Result<(), Error> {
                 STOP.store(true, Ordering::Relaxed);
                 cancel_handle.cancel();
             },
-            StopState::Cynthion(stop_handle) => {
+            StopState::Cynthion(stop_handle) | StopState::Ice40Usbtrace(stop_handle) => {
                 stop_handle.stop()?;
             }
         };
@@ -1105,7 +1110,7 @@ pub fn start_cynthion() -> Result<(), Error> {
         ui.selector.set_sensitive(false);
         ui.capture_button.set_sensitive(false);
         ui.stop_button.set_sensitive(true);
-        ui.stop_state = StopState::Cynthion(stop_handle);
+        ui.stop_state = StopState::Ice40Usbtrace(stop_handle);
         let read_cynthion = move || {
             let mut decoder = Decoder::new(writer)?;
             for packet in stream_handle {
