@@ -5,8 +5,9 @@ use futures_channel::oneshot;
 use num_enum::{FromPrimitive, IntoPrimitive};
 
 pub mod cynthion;
+pub mod ice40usbtrace;
 
-#[derive(Copy, Clone, FromPrimitive, IntoPrimitive)]
+#[derive(Debug, Copy, Clone, PartialEq, FromPrimitive, IntoPrimitive)]
 #[repr(u8)]
 pub enum Speed {
     #[default]
