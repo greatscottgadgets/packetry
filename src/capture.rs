@@ -1,3 +1,5 @@
+//! Capture database implementation for USB 2.0
+
 use std::cmp::min;
 use std::fmt::{Debug, Write};
 use std::iter::once;

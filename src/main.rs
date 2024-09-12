@@ -1,3 +1,5 @@
+//! The main Packetry binary.
+
 // On Windows, produce a GUI app rather than a console one.
 #![windows_subsystem = "windows"]
 

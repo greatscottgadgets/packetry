@@ -1,3 +1,5 @@
+//! Test the UI by replaying previously recorded interactions.
+
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;

@@ -1,3 +1,8 @@
+//! Our custom implementation of TreeListModel.
+//!
+//! The concept is similar to the GTK TreeListModel type, but the
+//! implementation is customised for Packetry's usage.
+
 use std::cell::RefCell;
 use std::cmp::min;
 use std::collections::{BTreeMap, HashSet};

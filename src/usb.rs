@@ -1,3 +1,5 @@
+//! Code describing the USB standard and its data types.
+
 use std::collections::BTreeMap;
 use std::fmt::Formatter;
 use std::mem::size_of;

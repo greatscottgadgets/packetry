@@ -1,3 +1,7 @@
+//! CLI wrapper program.
+//!
+//! Necessary on Windows, where the GUI binary cannot have console output.
+
 use std::process::{Command, ExitCode};
 
 #[cfg(unix)]

@@ -1,3 +1,5 @@
+//! The Packetry user interface.
+
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::io::Write;

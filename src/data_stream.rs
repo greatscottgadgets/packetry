@@ -1,3 +1,7 @@
+//! Typed data stream implementation.
+//!
+//! Stores streams of specific types, rather than raw bytes.
+
 use std::marker::PhantomData;
 use std::mem::size_of;
 use std::ops::{Deref, Range};

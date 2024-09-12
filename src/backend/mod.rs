@@ -1,3 +1,5 @@
+//! The backend API for USB capture devices.
+
 use std::collections::BTreeMap;
 use std::sync::mpsc;
 use std::thread::{JoinHandle, spawn, sleep};

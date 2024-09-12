@@ -1,3 +1,7 @@
+//! Basic index stream implementation.
+//!
+//! Stores non-compressed indexes. Used in the compressed index implementation.
+
 use std::cmp::min;
 use std::marker::PhantomData;
 use std::ops::Range;

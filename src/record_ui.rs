@@ -1,3 +1,5 @@
+//! Code for recording UI interactions for testing purposes.
+
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;

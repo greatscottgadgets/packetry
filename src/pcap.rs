@@ -1,3 +1,5 @@
+//! Code for loading and saving pcap files.
+
 use std::borrow::Cow;
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::mem::size_of;

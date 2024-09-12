@@ -1,3 +1,5 @@
+//! Hardware-in-the loop test using a Cynthion USB analyzer.
+
 use crate::backend::{BackendHandle, Speed};
 use crate::backend::cynthion::{CynthionDevice, CynthionHandle, VID_PID};
 use crate::capture::{

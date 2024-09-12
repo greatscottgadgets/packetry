@@ -1,3 +1,7 @@
+//! Compressed index implementation.
+//!
+//! This is the basis of all indexes in the capture database.
+
 use std::cmp::max;
 use std::fmt::Debug;
 use std::iter::{Peekable, once};

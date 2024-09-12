@@ -1,3 +1,7 @@
+//! The Id type and its traits.
+//!
+//! Used to enforce type safety of indices used in the capture database.
+
 use std::fmt::{Debug, Display};
 use std::marker::PhantomData;
 use std::mem::size_of;

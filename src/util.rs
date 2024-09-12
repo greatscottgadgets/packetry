@@ -1,3 +1,5 @@
+//! Utility code that doesn't belong anywhere specific.
+
 use anyhow::{Error, bail};
 use num_format::{Locale, ToFormattedString};
 use humansize::{SizeFormatter, BINARY};

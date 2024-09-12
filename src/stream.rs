@@ -1,3 +1,10 @@
+//! Core stream implementation.
+//!
+//! This is the basis for all non-bounded data storage in Packetry.
+//!
+//! Stores a growing stream of bytes from a single writer, whilst providing
+//! efficient random access by multiple readers to any part of the stream.
+
 #![deny(unsafe_op_in_unsafe_fn)]
 
 use std::alloc::{GlobalAlloc, Layout, System};

@@ -1,3 +1,7 @@
+//! USB 2.0 protocol decoder.
+//!
+//! Processes incoming packets and populates a capture database.
+
 use std::sync::atomic::Ordering::Release;
 use std::sync::Arc;
 

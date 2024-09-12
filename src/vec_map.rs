@@ -1,3 +1,5 @@
+//! A fast Vec-based map type, for use where keys are small bounded integers.
+
 use std::iter::FilterMap;
 use std::ops::{Index, IndexMut};
 use std::marker::PhantomData;

@@ -1,3 +1,5 @@
+//! USB capture backend for Cynthion.
+
 use std::cmp::Ordering;
 use std::collections::VecDeque;
 use std::time::Duration;

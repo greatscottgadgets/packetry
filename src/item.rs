@@ -1,3 +1,7 @@
+//! Items displayed in the UI tree views.
+//!
+//! Defines how items are fetched from the database and described with text.
+
 use std::cmp::min;
 use std::fmt::Write;
 
