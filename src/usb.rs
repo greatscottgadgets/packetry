@@ -120,60 +120,27 @@ pub fn validate_packet(packet: &[u8]) -> Result<PID, Option<PID>> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
-         Pod, Zeroable, From, Into, Display)]
-#[repr(transparent)]
-pub struct DeviceAddr(pub u8);
+macro_rules! byte_type {
+    ($name: ident) => {
+        #[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
+            Pod, Zeroable, From, Into, Display)]
+        #[repr(transparent)]
+        pub struct $name(pub u8);
+    }
+}
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
-         Pod, Zeroable, From, Into, Display)]
-#[repr(transparent)]
-pub struct DeviceField(pub u8);
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
-         Pod, Zeroable, From, Into, Display)]
-#[repr(transparent)]
-pub struct StringId(pub u8);
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
-         Pod, Zeroable, From, Into, Display)]
-#[repr(transparent)]
-pub struct ConfigNum(pub u8);
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
-         Pod, Zeroable, From, Into, Display)]
-#[repr(transparent)]
-pub struct ConfigField(pub u8);
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
-         Pod, Zeroable, From, Into, Display)]
-#[repr(transparent)]
-pub struct InterfaceNum(pub u8);
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
-         Pod, Zeroable, From, Into, Display)]
-#[repr(transparent)]
-pub struct InterfaceField(pub u8);
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
-         Pod, Zeroable, From, Into, Display)]
-#[repr(transparent)]
-pub struct InterfaceEpNum(pub u8);
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
-         Pod, Zeroable, From, Into, Display)]
-#[repr(transparent)]
-pub struct EndpointNum(pub u8);
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
-         Pod, Zeroable, From, Into, Display)]
-#[repr(transparent)]
-pub struct EndpointField(pub u8);
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
-         Pod, Zeroable, From, Into, Display)]
-#[repr(transparent)]
-pub struct EndpointAddr(pub u8);
+byte_type!(DeviceAddr);
+byte_type!(DeviceField);
+byte_type!(StringId);
+byte_type!(ConfigNum);
+byte_type!(ConfigField);
+byte_type!(InterfaceNum);
+byte_type!(InterfaceField);
+byte_type!(InterfaceEpNum);
+byte_type!(EndpointNum);
+byte_type!(EndpointField);
+byte_type!(EndpointAddr);
+byte_type!(EndpointAttr);
 
 impl EndpointAddr {
     pub fn number(&self) -> EndpointNum {
@@ -192,11 +159,6 @@ impl EndpointAddr {
         EndpointAddr((direction as u8) << 7 | number.0 & 0x7F)
     }
 }
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
-         Pod, Zeroable, From, Into, Display)]
-#[repr(transparent)]
-pub struct EndpointAttr(pub u8);
 
 impl EndpointAttr {
     pub fn endpoint_type(&self) -> EndpointType {
