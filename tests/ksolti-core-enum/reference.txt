@@ -1,0 +1,296 @@
+9 SOF groups
+ 30 SOF packets
+  SOF packet with frame number 884, CRC 0C
+  SOF packet with frame number 885, CRC 13
+  SOF packet with frame number 886, CRC 1B
+  SOF packet with frame number 887, CRC 04
+  SOF packet with frame number 888, CRC 05
+  SOF packet with frame number 889, CRC 1A
+  SOF packet with frame number 890, CRC 12
+  SOF packet with frame number 891, CRC 0D
+  SOF packet with frame number 892, CRC 02
+  SOF packet with frame number 893, CRC 1D
+  SOF packet with frame number 894, CRC 15
+  SOF packet with frame number 895, CRC 0A
+  SOF packet with frame number 896, CRC 1B
+  SOF packet with frame number 897, CRC 04
+  SOF packet with frame number 898, CRC 0C
+  SOF packet with frame number 899, CRC 13
+  SOF packet with frame number 900, CRC 1C
+  SOF packet with frame number 901, CRC 03
+  SOF packet with frame number 902, CRC 0B
+  SOF packet with frame number 903, CRC 14
+  SOF packet with frame number 904, CRC 15
+  SOF packet with frame number 905, CRC 0A
+  SOF packet with frame number 906, CRC 02
+  SOF packet with frame number 907, CRC 1D
+  SOF packet with frame number 908, CRC 12
+  SOF packet with frame number 909, CRC 0D
+  SOF packet with frame number 910, CRC 05
+  SOF packet with frame number 911, CRC 1A
+  SOF packet with frame number 912, CRC 07
+  SOF packet with frame number 913, CRC 18
+ 4 SOF packets
+  SOF packet with frame number 914, CRC 10
+  SOF packet with frame number 915, CRC 0F
+  SOF packet with frame number 916, CRC 00
+  SOF packet with frame number 917, CRC 1F
+ 2 SOF packets
+  SOF packet with frame number 918, CRC 17
+  SOF packet with frame number 919, CRC 08
+ 1 SOF packets
+  SOF packet with frame number 920, CRC 09
+ 1 SOF packets
+  SOF packet with frame number 921, CRC 16
+ 1 SOF packets
+  SOF packet with frame number 922, CRC 1E
+ 2 SOF packets
+  SOF packet with frame number 923, CRC 01
+  SOF packet with frame number 924, CRC 0E
+ 1 SOF packets
+  SOF packet with frame number 925, CRC 11
+ 4 SOF packets
+  SOF packet with frame number 926, CRC 19
+  SOF packet with frame number 927, CRC 06
+  SOF packet with frame number 928, CRC 0A
+  SOF packet with frame number 929, CRC 15
+Setting address to 27 for device 0
+ SETUP transaction on 0.0 with 8 data bytes, ACK: [00, 05, 1B, 00, 00, 00, 00, 00]
+  SETUP packet on 0.0, CRC 02
+  DATA0 packet with CRC 1FE9 and 8 data bytes: [00, 05, 1B, 00, 00, 00, 00, 00]
+  ACK packet
+ IN transaction on 0.0, NAK
+  IN packet on 0.0, CRC 02
+  NAK packet
+ IN transaction on 0.0 with no data, ACK
+  IN packet on 0.0, CRC 02
+  DATA1 packet with CRC 0000 and no data
+  ACK packet
+Getting device descriptor #0 for device 27, reading 8 bytes
+ SETUP transaction on 27.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 08, 00]
+  SETUP packet on 27.0, CRC 18
+  DATA0 packet with CRC 94EB and 8 data bytes: [80, 06, 00, 01, 00, 00, 08, 00]
+  ACK packet
+ IN transaction on 27.0, NAK
+  IN packet on 27.0, CRC 18
+  NAK packet
+ IN transaction on 27.0 with 8 data bytes, ACK: [12, 01, 00, 02, EF, 02, 01, 40]
+  IN packet on 27.0, CRC 18
+  DATA1 packet with CRC 55C3 and 8 data bytes: [12, 01, 00, 02, EF, 02, 01, 40]
+  ACK packet
+ OUT transaction on 27.0 with no data, ACK
+  OUT packet on 27.0, CRC 18
+  DATA1 packet with CRC 0000 and no data
+  ACK packet
+Getting device descriptor #0 for device 27, reading 18 bytes
+ SETUP transaction on 27.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 12, 00]
+  SETUP packet on 27.0, CRC 18
+  DATA0 packet with CRC F4E0 and 8 data bytes: [80, 06, 00, 01, 00, 00, 12, 00]
+  ACK packet
+ IN transaction on 27.0, NAK
+  IN packet on 27.0, CRC 18
+  NAK packet
+ IN transaction on 27.0 with 18 data bytes, ACK: [12, 01, 00, 02, EF, 02, 01, 40, C0, 16, 44, 04, 00, 02, 01, 05, 03, 01]
+  IN packet on 27.0, CRC 18
+  DATA1 packet with CRC CAB3 and 18 data bytes: [12, 01, 00, 02, EF, 02, 01, 40, C0, 16, 44, 04, 00, 02, 01, 05, 03, 01]
+  ACK packet
+ OUT transaction on 27.0 with no data, ACK
+  OUT packet on 27.0, CRC 18
+  DATA1 packet with CRC 0000 and no data
+  ACK packet
+Getting string descriptor #5, language 0x0409 (English/US) for device 27, reading 2 bytes
+ SETUP transaction on 27.0 with 8 data bytes, ACK: [80, 06, 05, 03, 09, 04, 02, 00]
+  SETUP packet on 27.0, CRC 18
+  DATA0 packet with CRC FCD6 and 8 data bytes: [80, 06, 05, 03, 09, 04, 02, 00]
+  ACK packet
+ IN transaction on 27.0, NAK
+  IN packet on 27.0, CRC 18
+  NAK packet
+ IN transaction on 27.0 with 2 data bytes, ACK: [1A, 03]
+  IN packet on 27.0, CRC 18
+  DATA1 packet with CRC 2EB5 and 2 data bytes: [1A, 03]
+  ACK packet
+ OUT transaction on 27.0 with no data, ACK
+  OUT packet on 27.0, CRC 18
+  DATA1 packet with CRC 0000 and no data
+  ACK packet
+Getting string descriptor #5, language 0x0409 (English/US) for device 27, reading 26 bytes: 'Ksoloti Core'
+ SETUP transaction on 27.0 with 8 data bytes, ACK: [80, 06, 05, 03, 09, 04, 1A, 00]
+  SETUP packet on 27.0, CRC 18
+  DATA0 packet with CRC FCDC and 8 data bytes: [80, 06, 05, 03, 09, 04, 1A, 00]
+  ACK packet
+ IN transaction on 27.0, NAK
+  IN packet on 27.0, CRC 18
+  NAK packet
+ IN transaction on 27.0 with 26 data bytes, ACK: [1A, 03, 4B, 00, 73, 00, 6F, 00, 6C, 00, 6F, 00, 74, 00, 69, 00, 20, 00, 43, 00, 6F, 00, 72, 00, 65, 00]
+  IN packet on 27.0, CRC 18
+  DATA1 packet with CRC 8E03 and 26 data bytes: [1A, 03, 4B, 00, 73, 00, 6F, 00, 6C, 00, 6F, 00, 74, 00, 69, 00, 20, 00, 43, 00, 6F, 00, 72, 00, 65, 00]
+  ACK packet
+ OUT transaction on 27.0 with no data, ACK
+  OUT packet on 27.0, CRC 18
+  DATA1 packet with CRC 0000 and no data
+  ACK packet
+Getting string descriptor #1, language 0x0409 (English/US) for device 27, reading 2 bytes
+ SETUP transaction on 27.0 with 8 data bytes, ACK: [80, 06, 01, 03, 09, 04, 02, 00]
+  SETUP packet on 27.0, CRC 18
+  DATA0 packet with CRC 78D7 and 8 data bytes: [80, 06, 01, 03, 09, 04, 02, 00]
+  ACK packet
+ IN transaction on 27.0, NAK
+  IN packet on 27.0, CRC 18
+  NAK packet
+ IN transaction on 27.0 with 2 data bytes, ACK: [10, 03]
+  IN packet on 27.0, CRC 18
+  DATA1 packet with CRC 8EB3 and 2 data bytes: [10, 03]
+  ACK packet
+ OUT transaction on 27.0 with no data, ACK
+  OUT packet on 27.0, CRC 18
+  DATA1 packet with CRC 0000 and no data
+  ACK packet
+Getting string descriptor #1, language 0x0409 (English/US) for device 27, reading 16 bytes: 'Ksoloti'
+ SETUP transaction on 27.0 with 8 data bytes, ACK: [80, 06, 01, 03, 09, 04, 10, 00]
+  SETUP packet on 27.0, CRC 18
+  DATA0 packet with CRC D8DB and 8 data bytes: [80, 06, 01, 03, 09, 04, 10, 00]
+  ACK packet
+ IN transaction on 27.0, NAK
+  IN packet on 27.0, CRC 18
+  NAK packet
+ IN transaction on 27.0 with 16 data bytes, ACK: [10, 03, 4B, 00, 73, 00, 6F, 00, 6C, 00, 6F, 00, 74, 00, 69, 00]
+  IN packet on 27.0, CRC 18
+  DATA1 packet with CRC FE08 and 16 data bytes: [10, 03, 4B, 00, 73, 00, 6F, 00, 6C, 00, 6F, 00, 74, 00, 69, 00]
+  ACK packet
+ OUT transaction on 27.0 with no data, ACK
+  OUT packet on 27.0, CRC 18
+  DATA1 packet with CRC 0000 and no data
+  ACK packet
+Getting string descriptor #3, language 0x0409 (English/US) for device 27, reading 2 bytes
+ SETUP transaction on 27.0 with 8 data bytes, ACK: [80, 06, 03, 03, 09, 04, 02, 00]
+  SETUP packet on 27.0, CRC 18
+  DATA0 packet with CRC 9AD6 and 8 data bytes: [80, 06, 03, 03, 09, 04, 02, 00]
+  ACK packet
+ IN transaction on 27.0, NAK
+  IN packet on 27.0, CRC 18
+  NAK packet
+ IN transaction on 27.0 with 2 data bytes, ACK: '2\x03'
+  IN packet on 27.0, CRC 18
+  DATA1 packet with CRC 2EAB and 2 data bytes: '2\x03'
+  ACK packet
+ OUT transaction on 27.0 with no data, ACK
+  OUT packet on 27.0, CRC 18
+  DATA1 packet with CRC 0000 and no data
+  ACK packet
+Getting string descriptor #3, language 0x0409 (English/US) for device 27, reading 50 bytes: '002900193133510B33383438'
+ SETUP transaction on 27.0 with 8 data bytes, ACK: [80, 06, 03, 03, 09, 04, 32, 00]
+  SETUP packet on 27.0, CRC 18
+  DATA0 packet with CRC 9AC2 and 8 data bytes: [80, 06, 03, 03, 09, 04, 32, 00]
+  ACK packet
+ IN transaction on 27.0, NAK
+  IN packet on 27.0, CRC 18
+  NAK packet
+ IN transaction on 27.0 with 50 data bytes, ACK: [32, 03, 30, 00, 30, 00, 32, 00, 39, 00, 30, 00, 30, 00, 31, 00, 39, 00, 33, 00, 31, 00, 33, 00, 33, 00, 35, 00, 31, 00, 30, 00, 42, 00, 33, 00, 33, 00, 33, 00, 38, 00, 33, 00, 34, 00, 33, 00, 38, 00]
+  IN packet on 27.0, CRC 18
+  DATA1 packet with CRC B529 and 50 data bytes: [32, 03, 30, 00, 30, 00, 32, 00, 39, 00, 30, 00, 30, 00, 31, 00, 39, 00, 33, 00, 31, 00, 33, 00, 33, 00, 35, 00, 31, 00, 30, 00, 42, 00, 33, 00, 33, 00, 33, 00, 38, 00, 33, 00, 34, 00, 33, 00, 38, 00]
+  ACK packet
+ OUT transaction on 27.0 with no data, ACK
+  OUT packet on 27.0, CRC 18
+  DATA1 packet with CRC 0000 and no data
+  ACK packet
+Getting configuration descriptor #0 for device 27, reading 9 bytes
+ SETUP transaction on 27.0 with 8 data bytes, ACK: [80, 06, 00, 02, 00, 00, 09, 00]
+  SETUP packet on 27.0, CRC 18
+  DATA0 packet with CRC 04AE and 8 data bytes: [80, 06, 00, 02, 00, 00, 09, 00]
+  ACK packet
+ IN transaction on 27.0, NAK
+  IN packet on 27.0, CRC 18
+  NAK packet
+ IN transaction on 27.0 with 9 data bytes, ACK: [09, 02, AA, 01, 05, 01, 05, C0, 32]
+  IN packet on 27.0, CRC 18
+  DATA1 packet with CRC 7519 and 9 data bytes: [09, 02, AA, 01, 05, 01, 05, C0, 32]
+  ACK packet
+ OUT transaction on 27.0 with no data, ACK
+  OUT packet on 27.0, CRC 18
+  DATA1 packet with CRC 0000 and no data
+  ACK packet
+Getting configuration descriptor #0 for device 27, reading 426 bytes
+ SETUP transaction on 27.0 with 8 data bytes, ACK: [80, 06, 00, 02, 00, 00, AA, 01]
+  SETUP packet on 27.0, CRC 18
+  DATA0 packet with CRC 3417 and 8 data bytes: [80, 06, 00, 02, 00, 00, AA, 01]
+  ACK packet
+ IN transaction on 27.0, NAK
+  IN packet on 27.0, CRC 18
+  NAK packet
+ IN transaction on 27.0 with 64 data bytes, ACK: [09, 02, AA, 01, 05, 01, 05, C0, 32, 08, 0B, 00, 04, 01, 00, 20, 00, 09, 04, 00, 00, 00, 01, 01, 20, 00, 09, 24, 01, 00, 02, 04, 5D, 00, 00, 08, 24, 0A, 04, 03, 07, 00, 00, 11, 24, 02, 01, 01, 01, 00, 04, 02, 00, 00, 00, 00, 00, 00, 00, 00, 12, 24, 06, 02]
+  IN packet on 27.0, CRC 18
+  DATA1 packet with CRC 1DB0 and 64 data bytes: [09, 02, AA, 01, 05, 01, 05, C0, 32, 08, 0B, 00, 04, 01, 00, 20, 00, 09, 04, 00, 00, 00, 01, 01, 20, 00, 09, 24, 01, 00, 02, 04, 5D, 00, 00, 08, 24, 0A, 04, 03, 07, 00, 00, 11, 24, 02, 01, 01, 01, 00, 04, 02, 00, 00, 00, 00, 00, 00, 00, 00, 12, 24, 06, 02]
+  ACK packet
+ IN transaction on 27.0 with 64 data bytes, ACK: [01, 0F, 00, 00, 00, 0F, 00, 00, 00, 0F, 00, 00, 00, 00, 0C, 24, 03, 03, 02, 03, 00, 02, 04, 00, 00, 00, 11, 24, 02, 11, 01, 02, 00, 04, 02, 00, 00, 00, 00, 00, 00, 00, 00, 0C, 24, 03, 13, 01, 01, 00, 11, 04, 00, 00, 00, 09, 04, 01, 00, 00, 01, 02, 20, 00]
+  IN packet on 27.0, CRC 18
+  DATA0 packet with CRC 3F59 and 64 data bytes: [01, 0F, 00, 00, 00, 0F, 00, 00, 00, 0F, 00, 00, 00, 00, 0C, 24, 03, 03, 02, 03, 00, 02, 04, 00, 00, 00, 11, 24, 02, 11, 01, 02, 00, 04, 02, 00, 00, 00, 00, 00, 00, 00, 00, 0C, 24, 03, 13, 01, 01, 00, 11, 04, 00, 00, 00, 09, 04, 01, 00, 00, 01, 02, 20, 00]
+  ACK packet
+ IN transaction on 27.0 with 64 data bytes, ACK: [09, 04, 01, 01, 01, 01, 02, 20, 00, 10, 24, 01, 01, 00, 01, 01, 00, 00, 00, 02, 00, 00, 00, 00, 00, 06, 24, 02, 01, 02, 10, 07, 05, 03, 09, C4, 00, 01, 08, 25, 01, 00, 00, 01, 01, 00, 09, 04, 01, 02, 01, 01, 02, 20, 00, 10, 24, 01, 01, 00, 01, 01, 00, 00]
+  IN packet on 27.0, CRC 18
+  DATA1 packet with CRC 6EDE and 64 data bytes: [09, 04, 01, 01, 01, 01, 02, 20, 00, 10, 24, 01, 01, 00, 01, 01, 00, 00, 00, 02, 00, 00, 00, 00, 00, 06, 24, 02, 01, 02, 10, 07, 05, 03, 09, C4, 00, 01, 08, 25, 01, 00, 00, 01, 01, 00, 09, 04, 01, 02, 01, 01, 02, 20, 00, 10, 24, 01, 01, 00, 01, 01, 00, 00]
+  ACK packet
+ IN transaction on 27.0 with 64 data bytes, ACK: [00, 02, 00, 00, 00, 00, 00, 06, 24, 02, 01, 04, 18, 07, 05, 03, 09, 88, 01, 01, 08, 25, 01, 00, 00, 01, 01, 00, 09, 04, 02, 00, 00, 01, 02, 20, 00, 09, 04, 02, 01, 01, 01, 02, 20, 00, 10, 24, 01, 13, 00, 01, 01, 00, 00, 00, 02, 00, 00, 00, 00, 00, 06, 24]
+  IN packet on 27.0, CRC 18
+  DATA0 packet with CRC 9B1F and 64 data bytes: [00, 02, 00, 00, 00, 00, 00, 06, 24, 02, 01, 04, 18, 07, 05, 03, 09, 88, 01, 01, 08, 25, 01, 00, 00, 01, 01, 00, 09, 04, 02, 00, 00, 01, 02, 20, 00, 09, 04, 02, 01, 01, 01, 02, 20, 00, 10, 24, 01, 13, 00, 01, 01, 00, 00, 00, 02, 00, 00, 00, 00, 00, 06, 24]
+  ACK packet
+ IN transaction on 27.0 with 64 data bytes, ACK: [02, 01, 02, 10, 07, 05, 83, 05, C4, 00, 01, 08, 25, 01, 00, 00, 00, 00, 00, 09, 04, 02, 02, 01, 01, 02, 20, 00, 10, 24, 01, 13, 00, 01, 01, 00, 00, 00, 02, 00, 00, 00, 00, 00, 06, 24, 02, 01, 04, 18, 07, 05, 83, 05, 88, 01, 01, 08, 25, 01, 00, 00, 00, 00]
+  IN packet on 27.0, CRC 18
+  DATA1 packet with CRC 3DB6 and 64 data bytes: [02, 01, 02, 10, 07, 05, 83, 05, C4, 00, 01, 08, 25, 01, 00, 00, 00, 00, 00, 09, 04, 02, 02, 01, 01, 02, 20, 00, 10, 24, 01, 13, 00, 01, 01, 00, 00, 00, 02, 00, 00, 00, 00, 00, 06, 24, 02, 01, 04, 18, 07, 05, 83, 05, 88, 01, 01, 08, 25, 01, 00, 00, 00, 00]
+  ACK packet
+ IN transaction on 27.0 with 64 data bytes, ACK: [00, 09, 04, 03, 00, 02, 01, 03, 00, 00, 07, 24, 01, 00, 01, 41, 00, 06, 24, 02, 01, 01, 05, 06, 24, 02, 02, 02, 06, 09, 24, 03, 01, 03, 01, 02, 01, 06, 09, 24, 03, 02, 04, 01, 01, 01, 02, 09, 05, 01, 02, 40, 00, 00, 00, 00, 05, 25, 01, 01, 01, 09, 05, 81]
+  IN packet on 27.0, CRC 18
+  DATA0 packet with CRC 7FAF and 64 data bytes: [00, 09, 04, 03, 00, 02, 01, 03, 00, 00, 07, 24, 01, 00, 01, 41, 00, 06, 24, 02, 01, 01, 05, 06, 24, 02, 02, 02, 06, 09, 24, 03, 01, 03, 01, 02, 01, 06, 09, 24, 03, 02, 04, 01, 01, 01, 02, 09, 05, 01, 02, 40, 00, 00, 00, 00, 05, 25, 01, 01, 01, 09, 05, 81]
+  ACK packet
+ IN transaction on 27.0 with 42 data bytes, ACK: [02, 40, 00, 00, 00, 00, 05, 25, 01, 01, 03, 08, 0B, 04, 01, FF, 00, 00, 04, 09, 04, 04, 00, 02, FF, 00, 00, 04, 07, 05, 02, 02, 40, 00, 00, 07, 05, 82, 02, 40, 00, 00]
+  IN packet on 27.0, CRC 18
+  DATA1 packet with CRC 1F28 and 42 data bytes: [02, 40, 00, 00, 00, 00, 05, 25, 01, 01, 03, 08, 0B, 04, 01, FF, 00, 00, 04, 09, 04, 04, 00, 02, FF, 00, 00, 04, 07, 05, 02, 02, 40, 00, 00, 07, 05, 82, 02, 40, 00, 00]
+  ACK packet
+ OUT transaction on 27.0 with no data, ACK
+  OUT packet on 27.0, CRC 18
+  DATA1 packet with CRC 0000 and no data
+  ACK packet
+Setting configuration 1 for device 27
+ SETUP transaction on 27.0 with 8 data bytes, ACK: [00, 09, 01, 00, 00, 00, 00, 00]
+  SETUP packet on 27.0, CRC 18
+  DATA0 packet with CRC 2527 and 8 data bytes: [00, 09, 01, 00, 00, 00, 00, 00]
+  ACK packet
+ IN transaction on 27.0, NAK
+  IN packet on 27.0, CRC 18
+  NAK packet
+ IN transaction on 27.0 with no data, ACK
+  IN packet on 27.0, CRC 18
+  DATA1 packet with CRC 0000 and no data
+  ACK packet
+Getting string descriptor #4, language 0x0409 (English/US) for device 27, reading 2 bytes
+ SETUP transaction on 27.0 with 8 data bytes, ACK: [80, 06, 04, 03, 09, 04, 02, 00]
+  SETUP packet on 27.0, CRC 18
+  DATA0 packet with CRC 2DD7 and 8 data bytes: [80, 06, 04, 03, 09, 04, 02, 00]
+  ACK packet
+ IN transaction on 27.0, NAK
+  IN packet on 27.0, CRC 18
+  NAK packet
+ IN transaction on 27.0 with 2 data bytes, ACK: '.\x03'
+  IN packet on 27.0, CRC 18
+  DATA1 packet with CRC EEA3 and 2 data bytes: '.\x03'
+  ACK packet
+ OUT transaction on 27.0 with no data, ACK
+  OUT packet on 27.0, CRC 18
+  DATA1 packet with CRC 0000 and no data
+  ACK packet
+Getting string descriptor #4, language 0x0409 (English/US) for device 27, reading 46 bytes: 'Ksoloti Bulk Interface'
+ SETUP transaction on 27.0 with 8 data bytes, ACK: [80, 06, 04, 03, 09, 04, 2E, 00]
+  SETUP packet on 27.0, CRC 18
+  DATA0 packet with CRC EDCB and 8 data bytes: [80, 06, 04, 03, 09, 04, 2E, 00]
+  ACK packet
+ IN transaction on 27.0, NAK
+  IN packet on 27.0, CRC 18
+  NAK packet
+ IN transaction on 27.0 with 46 data bytes, ACK: [2E, 03, 4B, 00, 73, 00, 6F, 00, 6C, 00, 6F, 00, 74, 00, 69, 00, 20, 00, 42, 00, 75, 00, 6C, 00, 6B, 00, 20, 00, 49, 00, 6E, 00, 74, 00, 65, 00, 72, 00, 66, 00, 61, 00, 63, 00, 65, 00]
+  IN packet on 27.0, CRC 18
+  DATA1 packet with CRC 25A8 and 46 data bytes: [2E, 03, 4B, 00, 73, 00, 6F, 00, 6C, 00, 6F, 00, 74, 00, 69, 00, 20, 00, 42, 00, 75, 00, 6C, 00, 6B, 00, 20, 00, 49, 00, 6E, 00, 74, 00, 65, 00, 72, 00, 66, 00, 61, 00, 63, 00, 65, 00]
+  ACK packet
+ OUT transaction on 27.0 with no data, ACK
+  OUT packet on 27.0, CRC 18
+  DATA1 packet with CRC 0000 and no data
+  ACK packet
