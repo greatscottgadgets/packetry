@@ -45,6 +45,7 @@ enum TransactionStatus {
     Retry,
     Done,
     Fail,
+    Ambiguous,
     Invalid
 }
 
@@ -111,7 +112,9 @@ fn transaction_status(state: &Option<TransactionState>, packet: &[u8])
         },
         Some(TransactionState {
             style: Simple(first),
-            last, ..}) =>
+            last,
+            endpoint_type,
+            ..}) =>
         {
             match (first, last, next) {
                 // These tokens always start a new transaction.
@@ -133,7 +136,15 @@ fn transaction_status(state: &Option<TransactionState>, packet: &[u8])
                 // IN may be followed by NAK or STALL, failing transaction.
                 (_, IN, NAK | STALL) => Fail,
                 // IN or OUT may be followed by DATA0 or DATA1.
-                (_, IN | OUT, DATA0 | DATA1) if packet.len() >= 3 => Continue,
+                (_, IN | OUT, DATA0 | DATA1) =>
+                    match endpoint_type {
+                        // No handshake for an isochronous transaction.
+                        Some(Isochronous) => Done,
+                        // Expect handshake if known to be non-isochronous.
+                        Some(_) => Continue,
+                        // If we don't know the endpoint type, we can't be sure.
+                        None => Ambiguous,
+                    },
                 // An ACK or NYET then completes the transaction.
                 (IN | OUT, DATA0 | DATA1, ACK | NYET) => Done,
                 // OUT may also be completed by NAK or STALL.
@@ -666,6 +677,9 @@ impl Decoder {
             Done | Retry | Fail => {
                 self.transaction_append(pid, packet)?;
                 self.transaction_end(success, complete)?;
+            },
+            Ambiguous => {
+                self.transaction_append(pid, packet)?;
             },
             Invalid => {
                 self.transaction_start(packet_id, pid, packet)?;
