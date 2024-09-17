@@ -80,6 +80,7 @@ struct TransactionState {
     id: TransactionId,
     last: PID,
     endpoint_id: Option<EndpointId>,
+    endpoint_type: Option<usb::EndpointType>,
     ep_transaction_id: Option<EndpointTransactionId>,
     setup: Option<SetupFields>,
     payload: Option<Vec<u8>>,
@@ -683,19 +684,31 @@ impl Decoder {
         use PID::*;
         use TransactionStyle::*;
         let transaction_id = self.capture.transaction_index.push(packet_id)?;
-        let (style, endpoint_id) = match pid {
-            Malformed => (Simple(pid), Some(INVALID_EP_ID)),
+        let (style, endpoint_id, endpoint_type) = match pid {
+            Malformed => (Simple(pid), Some(INVALID_EP_ID), None),
             SPLIT => {
                 let split = SplitFields::from_packet(packet);
-                (Split(split.sc(), split.endpoint_type(), None), None)
+                let style = Split(split.sc(), split.endpoint_type(), None);
+                (style, None, Some(split.endpoint_type()))
             },
-            pid => (Simple(pid), Some(self.packet_endpoint(pid, packet)?))
+            pid => {
+                let endpoint_id = self.packet_endpoint(pid, packet)?;
+                let ep_data = &self.endpoint_data[endpoint_id];
+                let dev_data = self.capture.device_data(ep_data.device_id)?;
+                let (ep_type, _) = dev_data.endpoint_details(ep_data.address);
+                let endpoint_type = match ep_type {
+                    EndpointType::Normal(usb_ep_type) => Some(usb_ep_type),
+                    _ => None,
+                };
+                (Simple(pid), Some(endpoint_id), endpoint_type)
+            }
         };
         let mut state = TransactionState {
             style,
             id: transaction_id,
             last: pid,
             endpoint_id,
+            endpoint_type,
             ep_transaction_id: None,
             setup: None,
             payload: None,
