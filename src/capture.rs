@@ -304,7 +304,7 @@ pub const FRAMING_EP_NUM: EndpointNum = EndpointNum(0x11);
 pub const INVALID_EP_ID: EndpointId = EndpointId::constant(0);
 pub const FRAMING_EP_ID: EndpointId = EndpointId::constant(1);
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum EndpointType {
     Unidentified,
     Framing,
@@ -568,8 +568,10 @@ impl Transaction {
         self.payload_byte_range.as_ref().map(|range| range.len())
     }
 
-    fn successful(&self) -> bool {
+    fn successful(&self, ep_type: EndpointType) -> bool {
         use PID::*;
+        use EndpointType::*;
+        use usb::EndpointType::*;
         match (self.start_pid, self.end_pid) {
 
             // SPLIT is successful if it ends with DATA0/DATA1/ACK/NYET.
@@ -577,6 +579,9 @@ impl Transaction {
 
             // SETUP/IN/OUT is successful if it ends with ACK/NYET.
             (SETUP | IN | OUT, ACK | NYET) => true,
+
+            // Isochronous IN/OUT is successful if it ends with DATA0/DATA1.
+            (IN | OUT, DATA0 | DATA1) if ep_type == Normal(Isochronous) => true,
 
             (..) => false
         }
@@ -587,6 +592,8 @@ impl Transaction {
         use StartComplete::*;
         use Direction::*;
         use PID::*;
+        use EndpointType::*;
+        use usb::EndpointType::*;
         let end_pid = match (direction, self.start_pid, self.split.as_ref()) {
             (In,  OUT,   None) |
             (Out, IN,    None) =>
@@ -603,7 +610,7 @@ impl Transaction {
         };
         if end_pid == STALL {
             Stalled
-        } else if self.successful() {
+        } else if self.successful(Normal(Control)) {
             Completed
         } else {
             Incomplete
@@ -1453,7 +1460,7 @@ impl ItemSource<TrafficItem> for CaptureReader {
                         } else {
                             count
                         };
-                        match (first_transaction.successful(), starting) {
+                        match (first_transaction.successful(ep_type), starting) {
                             (true, true) => {
                                 let ep_traf =
                                     self.endpoint_traffic(endpoint_id)?;
