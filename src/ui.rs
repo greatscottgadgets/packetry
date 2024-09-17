@@ -369,8 +369,6 @@ pub fn activate(application: &Application) -> Result<(), Error> {
     use FileAction::*;
 
     let window = gtk::ApplicationWindow::builder()
-        .default_width(320)
-        .default_height(480)
         .application(application)
         .title("Packetry")
         .build();
@@ -468,15 +466,13 @@ pub fn activate(application: &Application) -> Result<(), Error> {
     let (_, capture) = create_capture()?;
 
     let traffic_window = gtk::ScrolledWindow::builder()
-        .hscrollbar_policy(gtk::PolicyType::Automatic)
-        .min_content_height(480)
         .min_content_width(640)
+        .min_content_height(480)
         .build();
 
     let device_window = gtk::ScrolledWindow::builder()
-        .hscrollbar_policy(gtk::PolicyType::Automatic)
-        .min_content_height(480)
         .min_content_width(240)
+        .min_content_height(480)
         .build();
 
     let detail_text = gtk::TextBuffer::new(None);
@@ -489,8 +485,6 @@ pub fn activate(application: &Application) -> Result<(), Error> {
         .build();
 
     let detail_window = gtk::ScrolledWindow::builder()
-        .hscrollbar_policy(gtk::PolicyType::Automatic)
-        .min_content_width(640)
         .min_content_height(120)
         .child(&detail_view)
         .build();
@@ -500,15 +494,17 @@ pub fn activate(application: &Application) -> Result<(), Error> {
         .wide_handle(true)
         .start_child(&traffic_window)
         .end_child(&device_window)
-        .vexpand(true)
-        .build();
+        .shrink_start_child(false)
+        .shrink_end_child(false)
+       .build();
 
     let vertical_panes = gtk::Paned::builder()
         .orientation(Orientation::Vertical)
         .wide_handle(true)
         .start_child(&horizontal_panes)
         .end_child(&detail_window)
-        .hexpand(true)
+        .shrink_start_child(false)
+        .shrink_end_child(false)
         .build();
 
     let separator = gtk::Separator::new(Orientation::Horizontal);
