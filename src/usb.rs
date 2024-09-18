@@ -735,11 +735,14 @@ impl Iterator for DescriptorIterator<'_> {
             let desc_length = remaining_bytes[0] as usize;
             let desc_type = DescriptorType::from(remaining_bytes[1]);
             self.offset += desc_length;
+            // The expected length is the minimum length, but sometimes the
+            // descriptors have extra padding/garbage data at the end.
+            // Handle this by trimming off the extra data.
             if let Some(expected) = desc_type.expected_length() {
-                if desc_length != expected {
+                if desc_length < expected {
                     continue
                 }
-                let bytes = &remaining_bytes[0 .. desc_length];
+                let bytes = &remaining_bytes[0 .. expected];
                 return Some(match desc_type {
                     DescriptorType::Device =>
                         Descriptor::Device(

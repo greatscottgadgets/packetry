@@ -22,23 +22,8 @@ Expanding devices view, row 0: Device 27: Ksoloti Core
 At devices row 1:
 + Device descriptor
 + Configuration 1
-Expanding devices view, row 1: Device descriptor
-At devices row 2:
-+ Length: 18 bytes
-+ Type: 0x01
-+ USB Version: 2.00
-+ Class: 0xEF: Miscellaneous Device
-+ Subclass: 0x02: ?
-+ Protocol: 0x01: Interface Association
-+ Max EP0 packet size: 64 bytes
-+ Vendor ID: 0x16C0: Van Ooijen Technische Informatica
-+ Product ID: 0x0444
-+ Version: 2.00
-+ Manufacturer string: #1 'Ksoloti'
-+ Product string: #5 'Ksoloti Core'
-+ Serial string: #3 '002900193133510B33383438'
-Expanding devices view, row 15: Configuration 1
-At devices row 16:
+Expanding devices view, row 2: Configuration 1
+At devices row 3:
 + Configuration descriptor
 + Interface 0
 + Interface 1
@@ -49,21 +34,11 @@ At devices row 16:
 + Interface 2 (alternate 2)
 + Interface 3
 + Interface 4
-Expanding devices view, row 16: Configuration descriptor
-At devices row 17:
-+ Length: 9 bytes
-+ Type: 0x02
-+ Total length: 426 bytes
-+ Number of interfaces: 5
-+ Configuration number: 1
-+ Configuration string: #5 'Ksoloti Core'
-+ Attributes: 0xC0
-+ Max power: 100mA
-Expanding devices view, row 25: Interface 0
-At devices row 26:
+Expanding devices view, row 4: Interface 0
+At devices row 5:
 + Interface descriptor
-Expanding devices view, row 26: Interface descriptor
-At devices row 27:
+Expanding devices view, row 5: Interface descriptor
+At devices row 6:
 + Length: 9 bytes
 + Type: 0x04
 + Interface number: 0
@@ -73,49 +48,49 @@ At devices row 27:
 + Subclass: 0x01: Control Device
 + Protocol: 0x20
 + Interface string: (none)
-Expanding devices view, row 36: Interface 1
-At devices row 37:
+Expanding devices view, row 15: Interface 1
+At devices row 16:
 + Interface descriptor
-Expanding devices view, row 37: Interface descriptor
+Expanding devices view, row 16: Interface descriptor
+At devices row 17:
++ Length: 9 bytes
++ Type: 0x04
++ Interface number: 1
++ Alternate setting: 0
++ Number of endpoints: 0
++ Class: 0x01: Audio
++ Subclass: 0x02: Streaming
++ Protocol: 0x20
++ Interface string: (none)
+Expanding devices view, row 26: Interface 1 (alternate 1)
+At devices row 27:
++ Interface descriptor
++ Endpoint 3 OUT (isochronous)
+Expanding devices view, row 27: Interface descriptor
+At devices row 28:
++ Length: 9 bytes
++ Type: 0x04
++ Interface number: 1
++ Alternate setting: 1
++ Number of endpoints: 1
++ Class: 0x01: Audio
++ Subclass: 0x02: Streaming
++ Protocol: 0x20
++ Interface string: (none)
+Expanding devices view, row 37: Endpoint 3 OUT (isochronous)
 At devices row 38:
-+ Length: 9 bytes
-+ Type: 0x04
-+ Interface number: 1
-+ Alternate setting: 0
-+ Number of endpoints: 0
-+ Class: 0x01: Audio
-+ Subclass: 0x02: Streaming
-+ Protocol: 0x20
-+ Interface string: (none)
-Expanding devices view, row 47: Interface 1 (alternate 1)
-At devices row 48:
-+ Interface descriptor
-+ Endpoint 3 OUT (isochronous)
-Expanding devices view, row 48: Interface descriptor
-At devices row 49:
-+ Length: 9 bytes
-+ Type: 0x04
-+ Interface number: 1
-+ Alternate setting: 1
-+ Number of endpoints: 1
-+ Class: 0x01: Audio
-+ Subclass: 0x02: Streaming
-+ Protocol: 0x20
-+ Interface string: (none)
-Expanding devices view, row 58: Endpoint 3 OUT (isochronous)
-At devices row 59:
 + Length: 7 bytes
 + Type: 0x05
 + Endpoint address: 0x03
 + Attributes: 0x09
 + Max packet size: 196 bytes
 + Interval: 0x01
-Expanding devices view, row 65: Interface 1 (alternate 2)
-At devices row 66:
+Expanding devices view, row 44: Interface 1 (alternate 2)
+At devices row 45:
 + Interface descriptor
 + Endpoint 3 OUT (isochronous)
-Expanding devices view, row 66: Interface descriptor
-At devices row 67:
+Expanding devices view, row 45: Interface descriptor
+At devices row 46:
 + Length: 9 bytes
 + Type: 0x04
 + Interface number: 1
@@ -125,57 +100,57 @@ At devices row 67:
 + Subclass: 0x02: Streaming
 + Protocol: 0x20
 + Interface string: (none)
-Expanding devices view, row 76: Endpoint 3 OUT (isochronous)
-At devices row 77:
+Expanding devices view, row 55: Endpoint 3 OUT (isochronous)
+At devices row 56:
 + Length: 7 bytes
 + Type: 0x05
 + Endpoint address: 0x03
 + Attributes: 0x09
 + Max packet size: 392 bytes
 + Interval: 0x01
-Expanding devices view, row 83: Interface 2
-At devices row 84:
+Expanding devices view, row 62: Interface 2
+At devices row 63:
 + Interface descriptor
-Expanding devices view, row 84: Interface descriptor
+Expanding devices view, row 63: Interface descriptor
+At devices row 64:
++ Length: 9 bytes
++ Type: 0x04
++ Interface number: 2
++ Alternate setting: 0
++ Number of endpoints: 0
++ Class: 0x01: Audio
++ Subclass: 0x02: Streaming
++ Protocol: 0x20
++ Interface string: (none)
+Expanding devices view, row 73: Interface 2 (alternate 1)
+At devices row 74:
++ Interface descriptor
++ Endpoint 3 IN (isochronous)
+Expanding devices view, row 74: Interface descriptor
+At devices row 75:
++ Length: 9 bytes
++ Type: 0x04
++ Interface number: 2
++ Alternate setting: 1
++ Number of endpoints: 1
++ Class: 0x01: Audio
++ Subclass: 0x02: Streaming
++ Protocol: 0x20
++ Interface string: (none)
+Expanding devices view, row 84: Endpoint 3 IN (isochronous)
 At devices row 85:
-+ Length: 9 bytes
-+ Type: 0x04
-+ Interface number: 2
-+ Alternate setting: 0
-+ Number of endpoints: 0
-+ Class: 0x01: Audio
-+ Subclass: 0x02: Streaming
-+ Protocol: 0x20
-+ Interface string: (none)
-Expanding devices view, row 94: Interface 2 (alternate 1)
-At devices row 95:
-+ Interface descriptor
-+ Endpoint 3 IN (isochronous)
-Expanding devices view, row 95: Interface descriptor
-At devices row 96:
-+ Length: 9 bytes
-+ Type: 0x04
-+ Interface number: 2
-+ Alternate setting: 1
-+ Number of endpoints: 1
-+ Class: 0x01: Audio
-+ Subclass: 0x02: Streaming
-+ Protocol: 0x20
-+ Interface string: (none)
-Expanding devices view, row 105: Endpoint 3 IN (isochronous)
-At devices row 106:
 + Length: 7 bytes
 + Type: 0x05
 + Endpoint address: 0x83
 + Attributes: 0x05
 + Max packet size: 196 bytes
 + Interval: 0x01
-Expanding devices view, row 112: Interface 2 (alternate 2)
-At devices row 113:
+Expanding devices view, row 91: Interface 2 (alternate 2)
+At devices row 92:
 + Interface descriptor
 + Endpoint 3 IN (isochronous)
-Expanding devices view, row 113: Interface descriptor
-At devices row 114:
+Expanding devices view, row 92: Interface descriptor
+At devices row 93:
 + Length: 9 bytes
 + Type: 0x04
 + Interface number: 2
@@ -185,19 +160,21 @@ At devices row 114:
 + Subclass: 0x02: Streaming
 + Protocol: 0x20
 + Interface string: (none)
-Expanding devices view, row 123: Endpoint 3 IN (isochronous)
-At devices row 124:
+Expanding devices view, row 102: Endpoint 3 IN (isochronous)
+At devices row 103:
 + Length: 7 bytes
 + Type: 0x05
 + Endpoint address: 0x83
 + Attributes: 0x05
 + Max packet size: 392 bytes
 + Interval: 0x01
-Expanding devices view, row 130: Interface 3
-At devices row 131:
+Expanding devices view, row 109: Interface 3
+At devices row 110:
 + Interface descriptor
-Expanding devices view, row 131: Interface descriptor
-At devices row 132:
++ Endpoint 1 OUT (bulk)
++ Endpoint 1 IN (bulk)
+Expanding devices view, row 110: Interface descriptor
+At devices row 111:
 + Length: 9 bytes
 + Type: 0x04
 + Interface number: 3
@@ -207,13 +184,29 @@ At devices row 132:
 + Subclass: 0x03: MIDI Streaming
 + Protocol: 0x00
 + Interface string: (none)
-Expanding devices view, row 141: Interface 4
-At devices row 142:
+Expanding devices view, row 120: Endpoint 1 OUT (bulk)
+At devices row 121:
++ Length: 9 bytes
++ Type: 0x05
++ Endpoint address: 0x01
++ Attributes: 0x02
++ Max packet size: 64 bytes
++ Interval: 0x00
+Expanding devices view, row 127: Endpoint 1 IN (bulk)
+At devices row 128:
++ Length: 9 bytes
++ Type: 0x05
++ Endpoint address: 0x81
++ Attributes: 0x02
++ Max packet size: 64 bytes
++ Interval: 0x00
+Expanding devices view, row 134: Interface 4
+At devices row 135:
 + Interface descriptor
 + Endpoint 2 OUT (bulk)
 + Endpoint 2 IN (bulk)
-Expanding devices view, row 142: Interface descriptor
-At devices row 143:
+Expanding devices view, row 135: Interface descriptor
+At devices row 136:
 + Length: 9 bytes
 + Type: 0x04
 + Interface number: 4
@@ -223,16 +216,16 @@ At devices row 143:
 + Subclass: 0x00
 + Protocol: 0x00
 + Interface string: #4 'Ksoloti Bulk Interface'
-Expanding devices view, row 152: Endpoint 2 OUT (bulk)
-At devices row 153:
+Expanding devices view, row 145: Endpoint 2 OUT (bulk)
+At devices row 146:
 + Length: 7 bytes
 + Type: 0x05
 + Endpoint address: 0x02
 + Attributes: 0x02
 + Max packet size: 64 bytes
 + Interval: 0x00
-Expanding devices view, row 159: Endpoint 2 IN (bulk)
-At devices row 160:
+Expanding devices view, row 152: Endpoint 2 IN (bulk)
+At devices row 153:
 + Length: 7 bytes
 + Type: 0x05
 + Endpoint address: 0x82
