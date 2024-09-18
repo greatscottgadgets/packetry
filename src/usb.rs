@@ -428,9 +428,8 @@ impl StandardRequest {
             },
             GetConfiguration => format!("Getting configuration"),
             SetConfiguration => format!("Setting configuration {}", fields.value),
-            GetInterface => format!("Getting interface {}", fields.index),
-            SetInterface => format!("Setting interface {} to {}",
-                                    fields.index, fields.value),
+            GetInterface => format!("Getting interface setting"),
+            SetInterface => format!("Setting alternate setting {}", fields.value),
             SynchFrame => format!("Synchronising frame"),
             Unknown => format!("Unknown standard request"),
         }

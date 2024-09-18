@@ -744,7 +744,7 @@ Getting string descriptor #0 for device 27, reading 4 bytes
   OUT packet on 27.0, CRC 18
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Setting interface 1 to 0 for interface 27.1
+Setting alternate setting 0 for interface 27.1
  SETUP transaction on 27.0 with 8 data bytes, ACK: [01, 0B, 00, 00, 01, 00, 00, 00]
   SETUP packet on 27.0, CRC 18
   DATA0 packet with CRC 04C5 and 8 data bytes: [01, 0B, 00, 00, 01, 00, 00, 00]
@@ -1132,7 +1132,7 @@ Class request #1, index 2, value 258 for interface 27.0, writing 1 bytes
   IN packet on 27.0, CRC 18
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Setting interface 2 to 0 for interface 27.2
+Setting alternate setting 0 for interface 27.2
  SETUP transaction on 27.0 with 8 data bytes, ACK: [01, 0B, 00, 00, 02, 00, 00, 00]
   SETUP packet on 27.0, CRC 18
   DATA0 packet with CRC 40C5 and 8 data bytes: [01, 0B, 00, 00, 02, 00, 00, 00]
@@ -1586,7 +1586,7 @@ Class request #1, index 4, value 256 for interface 27.0, writing 4 bytes
   IN packet on 27.0, CRC 18
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Setting interface 1 to 1 for interface 27.1
+Setting alternate setting 1 for interface 27.1
  SETUP transaction on 27.0 with 8 data bytes, ACK: [01, 0B, 01, 00, 01, 00, 00, 00]
   SETUP packet on 27.0, CRC 18
   DATA0 packet with CRC D5C4 and 8 data bytes: [01, 0B, 01, 00, 01, 00, 00, 00]
@@ -1598,7 +1598,7 @@ Setting interface 1 to 1 for interface 27.1
   IN packet on 27.0, CRC 18
   DATA1 packet with CRC 0000 and no data
   ACK packet
-Setting interface 2 to 1 for interface 27.2
+Setting alternate setting 1 for interface 27.2
  SETUP transaction on 27.0 with 8 data bytes, ACK: [01, 0B, 01, 00, 02, 00, 00, 00]
   SETUP packet on 27.0, CRC 18
   DATA0 packet with CRC 91C4 and 8 data bytes: [01, 0B, 01, 00, 02, 00, 00, 00]
