@@ -368,7 +368,23 @@ macro_rules! button_action {
 pub fn activate(application: &Application) -> Result<(), Error> {
     use FileAction::*;
 
+    // These are used to set initial size of the main application window,
+    // as well as the positions for the window pane dividers.
+    // "non_pane_height" is the approx height of non Paned widgets,
+    // eg action_bar + status bar.
+    // These don't need to be pixel perfect, just close enough to just generate
+    // acceptable values.
+    let app_width = 800;
+    let app_height = 600;
+    let non_pane_height = 100;
+    let hori_pane_width = app_width;
+    let vert_pane_height = app_height - non_pane_height;
+    let traffic_width_percent = 70;
+    let traffic_height_percent = 75;
+
     let window = gtk::ApplicationWindow::builder()
+        .default_width(app_width)
+        .default_height(app_height)
         .application(application)
         .title("Packetry")
         .build();
@@ -466,13 +482,9 @@ pub fn activate(application: &Application) -> Result<(), Error> {
     let (_, capture) = create_capture()?;
 
     let traffic_window = gtk::ScrolledWindow::builder()
-        .min_content_width(640)
-        .min_content_height(480)
-        .build();
+       .build();
 
     let device_window = gtk::ScrolledWindow::builder()
-        .min_content_width(240)
-        .min_content_height(480)
         .build();
 
     let detail_text = gtk::TextBuffer::new(None);
@@ -485,7 +497,6 @@ pub fn activate(application: &Application) -> Result<(), Error> {
         .build();
 
     let detail_window = gtk::ScrolledWindow::builder()
-        .min_content_height(120)
         .child(&detail_view)
         .build();
 
@@ -496,6 +507,9 @@ pub fn activate(application: &Application) -> Result<(), Error> {
         .end_child(&device_window)
         .shrink_start_child(false)
         .shrink_end_child(false)
+        .hexpand(true)
+        .vexpand(true)
+        .position((hori_pane_width * traffic_width_percent) / 100)
        .build();
 
     let vertical_panes = gtk::Paned::builder()
@@ -505,6 +519,9 @@ pub fn activate(application: &Application) -> Result<(), Error> {
         .end_child(&detail_window)
         .shrink_start_child(false)
         .shrink_end_child(false)
+        .hexpand(true)
+        .vexpand(true)
+        .position((vert_pane_height * traffic_height_percent) / 100)
         .build();
 
     let separator = gtk::Separator::new(Orientation::Horizontal);
