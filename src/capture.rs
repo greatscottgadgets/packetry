@@ -19,6 +19,7 @@ use crate::util::{fmt_count, fmt_size};
 use anyhow::{Context, Error, bail};
 use arc_swap::{ArcSwap, ArcSwapOption};
 use bytemuck_derive::{Pod, Zeroable};
+use itertools::Itertools;
 use num_enum::{IntoPrimitive, FromPrimitive};
 
 // Use 2MB block size for packet data, which is a large page size on x86_64.
@@ -327,6 +328,7 @@ pub struct DeviceData {
     pub device_descriptor: ArcSwapOption<DeviceDescriptor>,
     pub configurations: ArcSwap<VecMap<ConfigNum, Arc<Configuration>>>,
     pub config_number: ArcSwapOption<ConfigNum>,
+    pub interface_settings: ArcSwap<VecMap<InterfaceNum, InterfaceAlt>>,
     pub endpoint_details: ArcSwap<VecMap<EndpointAddr, EndpointDetails>>,
     pub strings: ArcSwap<VecMap<StringId, UTF16ByteVec>>,
     pub version: AtomicU32,
@@ -384,16 +386,19 @@ impl DeviceData {
     pub fn update_endpoint_details(&self) {
         if let Some(number) = self.config_number.load().as_ref() {
             if let Some(config) = &self.configurations.load().get(**number) {
+                let iface_settings = self.interface_settings.load();
                 self.endpoint_details.update(|endpoint_details| {
-                    for iface in config.interfaces.values() {
-                        for ep_desc in &iface.endpoint_descriptors {
-                            let ep_addr = ep_desc.endpoint_address;
-                            let ep_type = ep_desc.attributes.endpoint_type();
-                            let ep_max = ep_desc.max_packet_size as usize;
-                            endpoint_details.set(
-                                ep_addr,
-                                (ep_type, Some(ep_max))
-                            );
+                    for ((num, alt), iface) in config.interfaces.iter() {
+                        if iface_settings.get(*num) == Some(alt) {
+                            for ep_desc in &iface.endpoint_descriptors {
+                                let ep_addr = ep_desc.endpoint_address;
+                                let ep_type = ep_desc.attributes.endpoint_type();
+                                let ep_max = ep_desc.max_packet_size as usize;
+                                endpoint_details.set(
+                                    ep_addr,
+                                    (ep_type, Some(ep_max))
+                                );
+                            }
                         }
                     }
                 });
@@ -425,6 +430,8 @@ impl DeviceData {
                 => self.decode_descriptor_read(fields, payload)?,
             (RequestType::Standard, StandardRequest::SetConfiguration)
                 => self.decode_configuration_set(fields)?,
+            (RequestType::Standard, StandardRequest::SetInterface)
+                => self.decode_interface_set(fields)?,
             _ => ()
         }
         Ok(())
@@ -482,6 +489,30 @@ impl DeviceData {
     {
         let config_number = ConfigNum(fields.value.try_into()?);
         self.config_number.swap(Some(Arc::new(config_number)));
+        let mut interface_settings = VecMap::new();
+        if let Some(config) = self.configurations.load().get(config_number) {
+            // All interfaces are reset to setting zero.
+            for (num, _alt) in config.interfaces
+                .keys()
+                .unique_by(|(num, _alt)| num)
+            {
+                interface_settings.set(*num, InterfaceAlt(0));
+            }
+        }
+        self.interface_settings.swap(Arc::new(interface_settings));
+        self.update_endpoint_details();
+        self.increment_version();
+        Ok(())
+    }
+
+    fn decode_interface_set(&self, fields: &SetupFields)
+        -> Result<(), Error>
+    {
+        let iface_num = InterfaceNum(fields.index.try_into()?);
+        let iface_alt = InterfaceAlt(fields.value.try_into()?);
+        self.interface_settings.update(|interface_settings|
+            interface_settings.set(iface_num, iface_alt)
+        );
         self.update_endpoint_details();
         self.increment_version();
         Ok(())
@@ -1819,7 +1850,6 @@ mod tests {
     use std::path::PathBuf;
     use crate::decoder::Decoder;
     use crate::pcap::Loader;
-    use itertools::Itertools;
 
     fn summarize_item(cap: &mut CaptureReader, item: &TrafficItem, depth: usize)
         -> String

@@ -124,7 +124,7 @@ pub fn validate_packet(packet: &[u8]) -> Result<PID, Option<PID>> {
 macro_rules! byte_type {
     ($name: ident) => {
         #[derive(Copy, Clone, Debug, Default,
-                 PartialEq, Eq, PartialOrd, Ord,
+                 PartialEq, Eq, Hash, PartialOrd, Ord,
                  Pod, Zeroable, From, Into, Display)]
         #[repr(transparent)]
         pub struct $name(pub u8);
