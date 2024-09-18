@@ -298,15 +298,15 @@ bitfield! {
     impl Debug;
     u16;
     // 24MHz ticks
-    pub get_ts, _: 31, 16;
-    pub u8, get_pid, _: 3, 0;
-    pub get_ok, _: 4;
-    pub get_dat, _: 15, 5;
+    pub ts, _: 31, 16;
+    pub u8, pid, _: 3, 0;
+    pub ok, _: 4;
+    pub dat, _: 15, 5;
 }
 
 impl<T: std::convert::AsRef<[u8]>> Header<T> {
     pub fn pid_byte(&self) -> u8 {
-        let pid = self.get_pid();
+        let pid = self.pid();
 
         pid | ((pid ^ 0xf) << 4)
     }
@@ -357,9 +357,9 @@ impl Ice40UsbStream {
         let header: Vec<u8> = self.buffer.drain(0..4).collect();
         let header = Header(&header);
 
-        self.ts += u64::from(header.get_ts());
+        self.ts += u64::from(header.ts());
 
-        let pkt = match (header.get_pid().try_into(), header.get_ok()) {
+        let pkt = match (header.pid().try_into(), header.ok()) {
             // The packet header could not even be decoded, skip it
             (Ok(Pid::TsOverflow), false) => {
                 println!("Bad packet!\n{header:?}");
@@ -374,7 +374,7 @@ impl Ice40UsbStream {
                 }
 
                 let mut bytes = vec![header.pid_byte()];
-                let data_len: usize = header.get_dat().into();
+                let data_len: usize = header.dat().into();
                 if self.buffer.len() < data_len {
                     for byte in header.0.iter().rev() {
                         self.buffer.push_front(*byte);
@@ -389,7 +389,7 @@ impl Ice40UsbStream {
             }
             (Ok(Pid::Sof | Pid::Setup | Pid::In | Pid::Out), data_ok) => {
                 let mut bytes = vec![header.pid_byte()];
-                let mut data = header.get_dat().to_le_bytes();
+                let mut data = header.dat().to_le_bytes();
                 let crc = crc5(u32::from_le_bytes([data[0], data[1], 0, 0]), 11);
                 if data_ok {
                     data[1] |= crc << 3;
@@ -452,9 +452,9 @@ mod tests {
         let data: [u8; 4] = [8, 1, 255, 241];
         let header = Header(&data);
 
-        assert_eq!(header.get_ts(), 65521);
-        assert_eq!(header.get_pid(), 0);
-        assert!(header.get_ok());
-        assert_eq!(header.get_dat(), 1);
+        assert_eq!(header.ts(), 65521);
+        assert_eq!(header.pid(), 0);
+        assert!(header.ok());
+        assert_eq!(header.dat(), 1);
     }
 }
