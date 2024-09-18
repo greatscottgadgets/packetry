@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::mem::size_of;
 
 use bytemuck_derive::{Pod, Zeroable};
@@ -120,60 +121,30 @@ pub fn validate_packet(packet: &[u8]) -> Result<PID, Option<PID>> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
-         Pod, Zeroable, From, Into, Display)]
-#[repr(transparent)]
-pub struct DeviceAddr(pub u8);
+macro_rules! byte_type {
+    ($name: ident) => {
+        #[derive(Copy, Clone, Debug, Default,
+                 PartialEq, Eq, PartialOrd, Ord,
+                 Pod, Zeroable, From, Into, Display)]
+        #[repr(transparent)]
+        pub struct $name(pub u8);
+    }
+}
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
-         Pod, Zeroable, From, Into, Display)]
-#[repr(transparent)]
-pub struct DeviceField(pub u8);
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
-         Pod, Zeroable, From, Into, Display)]
-#[repr(transparent)]
-pub struct StringId(pub u8);
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
-         Pod, Zeroable, From, Into, Display)]
-#[repr(transparent)]
-pub struct ConfigNum(pub u8);
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
-         Pod, Zeroable, From, Into, Display)]
-#[repr(transparent)]
-pub struct ConfigField(pub u8);
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
-         Pod, Zeroable, From, Into, Display)]
-#[repr(transparent)]
-pub struct InterfaceNum(pub u8);
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
-         Pod, Zeroable, From, Into, Display)]
-#[repr(transparent)]
-pub struct InterfaceField(pub u8);
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
-         Pod, Zeroable, From, Into, Display)]
-#[repr(transparent)]
-pub struct InterfaceEpNum(pub u8);
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
-         Pod, Zeroable, From, Into, Display)]
-#[repr(transparent)]
-pub struct EndpointNum(pub u8);
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
-         Pod, Zeroable, From, Into, Display)]
-#[repr(transparent)]
-pub struct EndpointField(pub u8);
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
-         Pod, Zeroable, From, Into, Display)]
-#[repr(transparent)]
-pub struct EndpointAddr(pub u8);
+byte_type!(DeviceAddr);
+byte_type!(DeviceField);
+byte_type!(StringId);
+byte_type!(ConfigNum);
+byte_type!(ConfigField);
+byte_type!(ConfigIfaceNum);
+byte_type!(InterfaceNum);
+byte_type!(InterfaceAlt);
+byte_type!(InterfaceField);
+byte_type!(InterfaceEpNum);
+byte_type!(EndpointNum);
+byte_type!(EndpointField);
+byte_type!(EndpointAddr);
+byte_type!(EndpointAttr);
 
 impl EndpointAddr {
     pub fn number(&self) -> EndpointNum {
@@ -192,11 +163,6 @@ impl EndpointAddr {
         EndpointAddr((direction as u8) << 7 | number.0 & 0x7F)
     }
 }
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default,
-         Pod, Zeroable, From, Into, Display)]
-#[repr(transparent)]
-pub struct EndpointAttr(pub u8);
 
 impl EndpointAttr {
     pub fn endpoint_type(&self) -> EndpointType {
@@ -667,7 +633,7 @@ pub struct InterfaceDescriptor {
     pub length: u8,
     pub descriptor_type: u8,
     pub interface_number: InterfaceNum,
-    pub alternate_setting: u8,
+    pub alternate_setting: InterfaceAlt,
     pub num_endpoints: u8,
     pub interface_class: u8,
     pub interface_subclass: u8,
@@ -805,28 +771,29 @@ pub struct Interface {
 
 pub struct Configuration {
     pub descriptor: ConfigDescriptor,
-    pub interfaces: VecMap<InterfaceNum, Interface>,
+    pub interfaces: BTreeMap<(InterfaceNum, InterfaceAlt), Interface>,
 }
 
 impl Configuration {
     pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
         let mut result: Option<Configuration> = None;
-        let mut iface_num: Option<InterfaceNum> = None;
+        let mut iface_key: Option<(InterfaceNum, InterfaceAlt)> = None;
         for descriptor in DescriptorIterator::from(bytes) {
             match descriptor {
                 Descriptor::Configuration(config_desc) => {
                     result = Some(Configuration {
                         descriptor: config_desc,
-                        interfaces:
-                            VecMap::with_capacity(
-                                config_desc.num_interfaces),
+                        interfaces: BTreeMap::new(),
                     });
                 },
                 Descriptor::Interface(iface_desc) => {
                     if let Some(config) = result.as_mut() {
-                        iface_num = Some(iface_desc.interface_number);
-                        config.interfaces.set(
-                            iface_desc.interface_number,
+                        let iface_num = iface_desc.interface_number;
+                        let iface_alt = iface_desc.alternate_setting;
+                        let key = (iface_num, iface_alt);
+                        iface_key = Some(key);
+                        config.interfaces.insert(
+                            key,
                             Interface {
                                 descriptor: iface_desc,
                                 endpoint_descriptors:
@@ -837,13 +804,11 @@ impl Configuration {
                     }
                 },
                 Descriptor::Endpoint(ep_desc) => {
-                    if let Some(config) = result.as_mut() {
-                        if let Some(num) = iface_num {
-                            if let Some(iface) =
-                                config.interfaces.get_mut(num)
-                            {
-                                iface.endpoint_descriptors.push(ep_desc);
-                            }
+                    if let (Some(config), Some(key)) =
+                        (result.as_mut(), iface_key)
+                    {
+                        if let Some(iface) = config.interfaces.get_mut(&key) {
+                            iface.endpoint_descriptors.push(ep_desc);
                         }
                     }
                 },
@@ -1076,8 +1041,10 @@ pub mod prelude {
         DeviceField,
         StringId,
         ConfigNum,
+        ConfigIfaceNum,
         ConfigField,
         InterfaceNum,
+        InterfaceAlt,
         InterfaceField,
         InterfaceEpNum,
         EndpointNum,

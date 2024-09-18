@@ -228,12 +228,12 @@ pub enum DeviceItem {
     ConfigurationDescriptor(DeviceId, ConfigNum),
     ConfigurationDescriptorField(DeviceId, ConfigNum,
                                  ConfigField, DeviceVersion),
-    Interface(DeviceId, ConfigNum, InterfaceNum),
-    InterfaceDescriptor(DeviceId, ConfigNum, InterfaceNum),
-    InterfaceDescriptorField(DeviceId, ConfigNum,
-                             InterfaceNum, InterfaceField, DeviceVersion),
-    EndpointDescriptor(DeviceId, ConfigNum, InterfaceNum, InterfaceEpNum),
-    EndpointDescriptorField(DeviceId, ConfigNum, InterfaceNum,
+    Interface(DeviceId, ConfigNum, ConfigIfaceNum),
+    InterfaceDescriptor(DeviceId, ConfigNum, ConfigIfaceNum),
+    InterfaceDescriptorField(DeviceId, ConfigNum, ConfigIfaceNum,
+                             InterfaceField, DeviceVersion),
+    EndpointDescriptor(DeviceId, ConfigNum, ConfigIfaceNum, InterfaceEpNum),
+    EndpointDescriptorField(DeviceId, ConfigNum, ConfigIfaceNum,
                             InterfaceEpNum, EndpointField, DeviceVersion),
 }
 
@@ -385,7 +385,7 @@ impl DeviceData {
         if let Some(number) = self.config_number.load().as_ref() {
             if let Some(config) = &self.configurations.load().get(**number) {
                 self.endpoint_details.update(|endpoint_details| {
-                    for iface in &config.interfaces {
+                    for iface in config.interfaces.values() {
                         for ep_desc in &iface.endpoint_descriptors {
                             let ep_addr = ep_desc.endpoint_address;
                             let ep_type = ep_desc.attributes.endpoint_type();
@@ -497,12 +497,13 @@ impl DeviceData {
 }
 
 impl Configuration {
-    pub fn interface(&self, number: &InterfaceNum)
+    pub fn interface(&self, number: &ConfigIfaceNum)
         -> Result<&Interface, Error>
     {
-        match self.interfaces.get(*number) {
+        let index = number.0 as usize;
+        match self.interfaces.values().nth(index) {
             Some(iface) => Ok(iface),
-            _ => bail!("Configuration has no interface {number}")
+            _ => bail!("Configuration has no interface with index {index}")
         }
     }
 }
@@ -1641,7 +1642,7 @@ impl ItemSource<DeviceItem> for CaptureReader {
             Configuration(dev, conf) => match index {
                 0 => ConfigurationDescriptor(*dev, *conf),
                 n => Interface(*dev, *conf,
-                    InterfaceNum((n - 1).try_into()?)),
+                    ConfigIfaceNum((n - 1).try_into()?)),
             },
             ConfigurationDescriptor(dev, conf) =>
                 ConfigurationDescriptorField(*dev, *conf,
@@ -1696,9 +1697,8 @@ impl ItemSource<DeviceItem> for CaptureReader {
                 },
             Some(Interface(dev, conf, iface)) =>
                 match self.try_configuration(dev, conf) {
-                    Some(conf) =>
-                        (Ongoing,
-                         1 + conf.interface(iface)?.endpoint_descriptors.len()),
+                    Some(conf) => (Ongoing,
+                        1 + conf.interface(iface)?.endpoint_descriptors.len()),
                     None => (Ongoing, 0)
                 },
             Some(InterfaceDescriptor(..)) =>
@@ -1747,8 +1747,18 @@ impl ItemSource<DeviceItem> for CaptureReader {
                 let strings = data.strings.load();
                 config_descriptor.field_text(*field, strings.as_ref())
             },
-            Interface(_, _, iface) => format!(
-                "Interface {iface}"),
+            Interface(dev, conf, iface) => {
+                let data = self.device_data(dev)?;
+                let config = data.configuration(conf)?;
+                let iface_desc = config.interface(iface)?.descriptor;
+                let num = iface_desc.interface_number;
+                match iface_desc.alternate_setting {
+                    InterfaceAlt(0) => format!(
+                        "Interface {num}"),
+                    InterfaceAlt(alt) => format!(
+                        "Interface {num} (alternate {alt})"),
+                }
+            },
             InterfaceDescriptor(..) =>
                 "Interface descriptor".to_string(),
             InterfaceDescriptorField(dev, conf, iface, field, _ver) => {

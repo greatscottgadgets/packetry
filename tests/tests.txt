@@ -4,6 +4,7 @@ emf2022-badge
 hackrf-connect
 hackrf-dfu-enum
 hackrf-restart-failure
+ksolti-core-enum
 mouse
 split-enum
 split-poll
