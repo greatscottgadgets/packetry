@@ -350,7 +350,10 @@ impl std::fmt::Display for Pid {
 impl Ice40UsbStream {
     fn ns(&self) -> u64 {
         // 24MHz clock, a tick is 41.666...ns
-        self.ts * 1000 / 24
+        const TABLE: [u64; 3] = [0, 41, 83];
+        let quotient = self.ts / 3;
+        let remainder = self.ts % 3;
+        quotient * 125 + TABLE[remainder as usize]
     }
 
     fn parse_packet(&mut self) -> ParseResult<TracePacket> {
