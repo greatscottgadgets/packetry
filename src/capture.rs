@@ -559,6 +559,13 @@ pub struct Transaction {
     payload_byte_range: Option<Range<Id<u8>>>,
 }
 
+#[derive(PartialEq)]
+pub enum TransactionResult {
+    Success,
+    Failure,
+    Ambiguous
+}
+
 impl Transaction {
     fn packet_count(&self) -> u64 {
         self.packet_id_range.len()
@@ -568,22 +575,30 @@ impl Transaction {
         self.payload_byte_range.as_ref().map(|range| range.len())
     }
 
-    fn successful(&self, ep_type: EndpointType) -> bool {
+    fn result(&self, ep_type: EndpointType) -> TransactionResult {
         use PID::*;
         use EndpointType::*;
         use usb::EndpointType::*;
+        use TransactionResult::*;
         match (self.start_pid, self.end_pid) {
 
             // SPLIT is successful if it ends with DATA0/DATA1/ACK/NYET.
-            (SPLIT, DATA0 | DATA1 | ACK | NYET) => true,
+            (SPLIT, DATA0 | DATA1 | ACK | NYET) => Success,
 
             // SETUP/IN/OUT is successful if it ends with ACK/NYET.
-            (SETUP | IN | OUT, ACK | NYET) => true,
+            (SETUP | IN | OUT, ACK | NYET) => Success,
 
-            // Isochronous IN/OUT is successful if it ends with DATA0/DATA1.
-            (IN | OUT, DATA0 | DATA1) if ep_type == Normal(Isochronous) => true,
+            // IN/OUT followed by DATA0/DATA1 depends on endpoint type.
+            (IN | OUT, DATA0 | DATA1) => match ep_type {
+                // For an isochronous endpoint this is a success.
+                Normal(Isochronous) => Success,
+                // For an unidentified endpoint this is ambiguous.
+                Unidentified => Ambiguous,
+                // For any other endpoint type this is a failure (no handshake).
+                _ => Failure,
+            },
 
-            (..) => false
+            (..) => Failure
         }
     }
 
@@ -594,6 +609,7 @@ impl Transaction {
         use PID::*;
         use EndpointType::*;
         use usb::EndpointType::*;
+        use TransactionResult::*;
         let end_pid = match (direction, self.start_pid, self.split.as_ref()) {
             (In,  OUT,   None) |
             (Out, IN,    None) =>
@@ -610,7 +626,7 @@ impl Transaction {
         };
         if end_pid == STALL {
             Stalled
-        } else if self.successful(Normal(Control)) {
+        } else if self.result(Normal(Control)) == Success {
             Completed
         } else {
             Incomplete
@@ -1390,6 +1406,7 @@ impl ItemSource<TrafficItem> for CaptureReader {
             Transfer(transfer_id) => {
                 use EndpointType::*;
                 use usb::EndpointType::*;
+                use TransactionResult::*;
                 let entry = self.transfer_index.get(*transfer_id)?;
                 let endpoint_id = entry.endpoint_id();
                 let endpoint = self.endpoints.get(endpoint_id)?;
@@ -1460,8 +1477,8 @@ impl ItemSource<TrafficItem> for CaptureReader {
                         } else {
                             count
                         };
-                        match (first_transaction.successful(ep_type), starting) {
-                            (true, true) => {
+                        match (first_transaction.result(ep_type), starting) {
+                            (Success, true) => {
                                 let ep_traf =
                                     self.endpoint_traffic(endpoint_id)?;
                                 let data_range =
@@ -1486,12 +1503,22 @@ impl ItemSource<TrafficItem> for CaptureReader {
                                     write!(s, ": {display_bytes}")
                                 }
                             },
-                            (true, false) => write!(s,
+                            (Success, false) => write!(s,
                                 "End of {ep_type_lower} transfer on endpoint {endpoint}"),
-                            (false, true) => write!(s,
+                            (Failure, true) => write!(s,
                                 "Polling {count} times for {ep_type_lower} transfer on endpoint {endpoint}"),
-                            (false, false) => write!(s,
+                            (Failure, false) => write!(s,
                                 "End polling for {ep_type_lower} transfer on endpoint {endpoint}"),
+                            (Ambiguous, true) => {
+                                write!(s, "{count} ambiguous transactions on endpoint {endpoint}")?;
+                                if detail {
+                                    write!(s, "\nThe result of these transactions is ambiguous because the endpoint type is not known.")?;
+                                    write!(s, "\nTry starting the capture before this device is enumerated, so that its descriptors are captured.")?;
+                                }
+                                Ok(())
+                            },
+                            (Ambiguous, false) => write!(s,
+                                "End of ambiguous transactions."),
                         }
                     }
                 }?;
