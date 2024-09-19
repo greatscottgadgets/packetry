@@ -406,7 +406,7 @@ impl EndpointData {
                 }
                 if complete {
                     self.last_success = success;
-                    if success && short {
+                    if success && short && ep_type != Normal(Isochronous) {
                         // New transfer, ended immediately by a short packet.
                         Single
                     } else {
@@ -435,7 +435,7 @@ impl EndpointData {
                     let success_changed = success != self.last_success;
                     self.last_success = success;
                     if success_changed {
-                        if success && short {
+                        if success && short && ep_type != Normal(Isochronous) {
                             // New transfer, ended immediately by a short packet.
                             Single
                         } else {
@@ -444,7 +444,7 @@ impl EndpointData {
                         }
                     } else if success {
                         // Continuing an ongoing transfer.
-                        if short {
+                        if short && ep_type != Normal(Isochronous) {
                             // A short packet ends the transfer.
                             Done
                         } else {
