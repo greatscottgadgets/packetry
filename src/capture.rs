@@ -34,13 +34,14 @@ use anyhow::{Context, Error, bail};
 use arc_swap::{ArcSwap, ArcSwapOption};
 use bytemuck_derive::{Pod, Zeroable};
 use itertools::Itertools;
+use merge::Merge;
 use num_enum::{IntoPrimitive, FromPrimitive};
 
 // Use 2MB block size for packet data, which is a large page size on x86_64.
 const PACKET_DATA_BLOCK_SIZE: usize = 0x200000;
 
 /// Metadata about the capture.
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Merge)]
 pub struct CaptureMetadata {
     // Fields corresponding to PcapNG interface description.
     pub iface_desc: Option<String>,
