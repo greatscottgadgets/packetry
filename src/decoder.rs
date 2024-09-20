@@ -2,6 +2,7 @@ use std::sync::atomic::Ordering::Release;
 use std::sync::Arc;
 
 use anyhow::{Context, Error, bail};
+use merge::Merge;
 
 use crate::capture::prelude::*;
 use crate::rcu::SingleWriterRcu;
@@ -596,6 +597,10 @@ impl Decoder {
         self.capture.packet_times.push(timestamp_ns)?;
         self.transaction_update(packet_id, packet)?;
         Ok(())
+    }
+
+    pub fn handle_metadata(&mut self, meta: Box<CaptureMetadata>) {
+        self.capture.shared.metadata.update(|old| old.merge(*meta))
     }
 
     pub fn finish(mut self) -> Result<CaptureWriter, Error> {
