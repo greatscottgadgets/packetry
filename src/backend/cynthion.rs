@@ -23,6 +23,7 @@ use nusb::{
     Interface
 };
 
+use crate::capture::CaptureMetadata;
 use crate::usb::Speed;
 
 const VID: u16 = 0x1d50;
@@ -91,6 +92,7 @@ impl TestConfig {
 pub struct InterfaceSelection {
     interface_number: u8,
     alt_setting_number: u8,
+    protocol: u8,
 }
 
 /// Whether a Cynthion device is ready for use as an analyzer.
@@ -113,6 +115,7 @@ pub struct CynthionDevice {
 #[derive(Clone)]
 pub struct CynthionHandle {
     interface: Interface,
+    metadata: CaptureMetadata,
 }
 
 pub struct CynthionQueue {
@@ -197,8 +200,13 @@ fn check_device(device_info: &DeviceInfo)
                     .context("Failed to select alternate setting")?;
             }
 
+            // Create temporary handle to fetch speeds.
+            let handle = CynthionHandle {
+                interface,
+                metadata: CaptureMetadata::default()
+            };
+
             // Fetch the available speeds.
-            let handle = CynthionHandle { interface };
             let speeds = handle
                 .speeds()
                 .context("Failed to fetch available speeds")?;
@@ -208,6 +216,7 @@ fn check_device(device_info: &DeviceInfo)
                 InterfaceSelection {
                     interface_number,
                     alt_setting_number,
+                    protocol,
                 },
                 speeds
             ))
@@ -239,20 +248,38 @@ impl CynthionDevice {
 
     pub fn open(&self) -> Result<CynthionHandle, Error> {
         match &self.usability {
-            Usable(iface, _) => {
-                let device = self.device_info.open()?;
-                let interface = device.claim_interface(iface.interface_number)?;
-                if iface.alt_setting_number != 0 {
-                    interface.set_alt_setting(iface.alt_setting_number)?;
-                }
-                Ok(CynthionHandle { interface })
-            },
+            Usable(iface, _) => CynthionHandle::open(&self.device_info, iface),
             Unusable(reason) => bail!("Device not usable: {}", reason),
         }
     }
 }
 
 impl CynthionHandle {
+    fn open(device_info: &DeviceInfo, iface: &InterfaceSelection)
+        -> Result<CynthionHandle, Error>
+    {
+        let device = device_info.open()?;
+        let interface = device.claim_interface(iface.interface_number)?;
+        if iface.alt_setting_number != 0 {
+            interface.set_alt_setting(iface.alt_setting_number)?;
+        }
+        let protocol = iface.protocol;
+        Ok(CynthionHandle {
+            interface,
+            metadata: CaptureMetadata {
+                iface_desc: Some("Cynthion USB Analyzer".to_string()),
+                iface_hardware: Some({
+                    let bcd = device_info.device_version();
+                    let major = bcd >> 8;
+                    let minor = bcd as u8;
+                    format!("Cynthion r{major}.{minor}")
+                }),
+                iface_os: Some(
+                    format!("USB Analyzer v{protocol}")),
+                .. Default::default()
+            },
+        })
+    }
 
     pub fn speeds(&self) -> Result<Vec<Speed>, Error> {
         use Speed::*;
@@ -379,6 +406,10 @@ impl CynthionHandle {
             .control_out_blocking(control, data, timeout)
             .context("Write request failed")?;
         Ok(())
+    }
+
+    pub fn metadata(&self) -> CaptureMetadata {
+        self.metadata.clone()
     }
 }
 
