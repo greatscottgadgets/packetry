@@ -139,6 +139,7 @@ fn check_replays() {
                                 .handle_raw_packet(
                                     packet.bytes(), packet.timestamp_ns())
                                 .expect("Failed to decode packet"),
+                            Metadata(meta) => decoder.handle_metadata(meta),
                             LoadError(e) => panic!("Error in pcap reader: {e}"),
                             Ignore => continue,
                             End => panic!("No next loader item"),

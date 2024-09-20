@@ -1120,6 +1120,7 @@ mod tests {
                             .handle_raw_packet(
                                 packet.bytes(), packet.timestamp_ns())
                             .unwrap(),
+                        Metadata(meta) => decoder.handle_metadata(meta),
                         LoadError(e) => panic!("{e}"),
                         Ignore => continue,
                         End => break,

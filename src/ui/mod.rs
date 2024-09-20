@@ -1143,6 +1143,7 @@ where
                 drop(guard);
                 CURRENT.store(packet.total_bytes_read(), Ordering::Relaxed);
             },
+            Metadata(meta) => decoder.handle_metadata(meta),
             LoadError(e) => return Err(e),
             Ignore => continue,
             End => break,

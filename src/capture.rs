@@ -43,6 +43,12 @@ const PACKET_DATA_BLOCK_SIZE: usize = 0x200000;
 /// Metadata about the capture.
 #[derive(Clone, Default, Merge)]
 pub struct CaptureMetadata {
+    // Fields corresponding to PCapNG section header.
+    pub application: Option<String>,
+    pub os: Option<String>,
+    pub hardware: Option<String>,
+    pub comment: Option<String>,
+
     // Fields corresponding to PcapNG interface description.
     pub iface_desc: Option<String>,
     pub iface_hardware: Option<String>,
@@ -1281,6 +1287,7 @@ pub mod prelude {
         create_endpoint,
         CaptureReader,
         CaptureWriter,
+        CaptureMetadata,
         Device,
         DeviceId,
         DeviceData,
