@@ -11,6 +11,7 @@ use futures_lite::future::block_on;
 use nusb::{self, DeviceInfo};
 use once_cell::sync::Lazy;
 
+use crate::capture::CaptureMetadata;
 use crate::util::handle_thread_panic;
 pub use crate::usb::Speed;
 
@@ -84,6 +85,9 @@ pub trait PacketIterator: Iterator<Item=PacketResult> + Send {}
 
 /// A handle to an open capture device.
 pub trait BackendHandle: Send + Sync {
+
+    /// Get metadata about the capture device.
+    fn metadata(&self) -> &CaptureMetadata;
 
     /// Begin capture.
     ///

@@ -6,7 +6,8 @@ use std::ffi::OsStr;
 use std::io::{Read, Write};
 use std::ops::Range;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::time::{Duration, Instant};
+use std::sync::Arc;
+use std::time::{Duration, Instant, SystemTime};
 
 #[cfg(feature="step-decoder")]
 use std::net::TcpListener;
@@ -81,6 +82,7 @@ use crate::capture::{
     create_capture,
     CaptureReader,
     CaptureWriter,
+    CaptureMetadata,
     EndpointId,
     EndpointDataEvent,
     Group,
@@ -1278,8 +1280,18 @@ fn device_selection_changed() -> Result<(), Error> {
 
 pub fn start_capture() -> Result<(), Error> {
     let writer = reset_capture()?;
+
     with_ui(|ui| {
         let (device, speed) = ui.selector.open()?;
+        let meta = CaptureMetadata {
+            application: Some(format!("Packetry {}", version())),
+            os: Some(std::env::consts::OS.to_string()),
+            hardware: Some(std::env::consts::ARCH.to_string()),
+            iface_speed: Some(speed),
+            start_time: Some(SystemTime::now()),
+            .. device.metadata().clone()
+        };
+        writer.shared.metadata.swap(Arc::new(meta));
         let (stream_handle, stop_handle) =
             device.start(speed, Box::new(display_error))?;
         ui.open_button.set_sensitive(false);
@@ -1295,6 +1307,12 @@ pub fn start_capture() -> Result<(), Error> {
                     .context("Error processing raw capture data")?;
                 decoder.handle_raw_packet(&packet.bytes, packet.timestamp_ns)?;
             }
+            decoder.handle_metadata(Box::new(
+                CaptureMetadata {
+                    end_time: Some(SystemTime::now()),
+                    .. Default::default()
+                }
+            ));
             decoder.finish()?;
             Ok(())
         };
