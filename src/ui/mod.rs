@@ -36,11 +36,14 @@ use gtk::{
     Application,
     ApplicationWindow,
     Button,
+    Dialog,
+    DialogFlags,
     DropDown,
     InfoBar,
     Label,
     License,
     ListItem,
+    Grid,
     ColumnView,
     ColumnViewColumn,
     MenuButton,
@@ -56,6 +59,7 @@ use gtk::{
     StackSwitcher,
     StringList,
     TextBuffer,
+    TextView,
     Orientation,
     WrapMode,
 };
@@ -63,7 +67,6 @@ use gtk::{
 #[cfg(not(test))]
 use gtk::{
     MessageDialog,
-    DialogFlags,
     ButtonsType,
 };
 
@@ -103,7 +106,7 @@ use crate::file::{
     PcapNgSaver,
 };
 use crate::usb::{Descriptor, PacketFields, Speed, validate_packet};
-use crate::util::{fmt_count, fmt_size};
+use crate::util::{rcu::SingleWriterRcu, fmt_count, fmt_size};
 use crate::version::{version, version_info};
 
 pub mod item_widget;
@@ -486,16 +489,21 @@ pub fn activate(application: &Application) -> Result<(), Error> {
     capture_button.set_sensitive(selector.device_available());
 
     let menu = Menu::new();
+    let meta_item = MenuItem::new(Some("Metadata..."), Some("actions.metadata"));
     let about_item = MenuItem::new(Some("About..."), Some("actions.about"));
+    menu.append_item(&meta_item);
     menu.append_item(&about_item);
     let menu_button = MenuButton::builder()
         .menu_model(&menu)
         .build();
     let action_group = SimpleActionGroup::new();
+    let action_metadata = ActionEntry::builder("metadata")
+        .activate(|_, _, _| display_error(show_metadata()))
+        .build();
     let action_about = ActionEntry::builder("about")
         .activate(|_, _, _| display_error(show_about()))
         .build();
-    action_group.add_action_entries([action_about]);
+    action_group.add_action_entries([action_metadata, action_about]);
     window.insert_action_group("actions", Some(&action_group));
 
     action_bar.pack_start(&open_button);
@@ -1494,6 +1502,117 @@ fn save_data(
                 "<unnamed>".to_string(),
                 |path| path.to_string_lossy().to_string())
     );
+    Ok(())
+}
+
+fn show_metadata() -> Result<(), Error> {
+    let grid = Grid::new();
+    let comment_buffer = TextBuffer::new(None);
+    with_ui(|ui| {
+        let meta = ui.capture.shared.metadata.load();
+        const NONE: &str = "(not specified)";
+        let mut current_row = 0;
+        let row = &mut current_row;
+        let make_label = |text: &'_ str, vertical_margin| {
+            Label::builder()
+                .halign(Align::Start)
+                .margin_top(vertical_margin)
+                .margin_bottom(vertical_margin)
+                .margin_start(10)
+                .margin_end(10)
+                .use_markup(true)
+                .label(text)
+                .build()
+        };
+        let add_heading = |row: &mut i32, heading| {
+            let label = make_label(&format!("<b>{heading}</b>"), 5);
+            grid.attach(&label, 0, *row, 2, 1);
+            *row += 1;
+        };
+        let add_field = |row: &mut i32, name, text: &'_ str| {
+            grid.attach(&make_label(name, 0), 0, *row, 1, 1);
+            grid.attach(&make_label(text, 0), 1, *row, 1, 1);
+            *row += 1;
+        };
+        add_heading(row, "Writer:");
+        for (name, field) in [
+            ("Application:", &meta.application),
+            ("OS:", &meta.os),
+            ("Hardware:", &meta.hardware),
+        ] {
+            let text = field.as_deref().unwrap_or(NONE);
+            add_field(row, name, text);
+        }
+        add_heading(row, "Interface:");
+        for (name, field) in [
+            ("Description:", &meta.iface_desc),
+            ("Hardware:", &meta.iface_hardware),
+            ("OS:", &meta.iface_os),
+        ] {
+            let text = field.as_deref().unwrap_or(NONE);
+            add_field(row, name, text);
+        }
+        add_field(row, "Speed:",
+            meta.iface_speed
+                .as_ref()
+                .map(Speed::description)
+                .unwrap_or(NONE)
+        );
+        add_heading(row, "Capture:");
+        for (name, field) in [
+            ("Start time", &meta.start_time),
+            ("End time", &meta.end_time),
+        ] {
+            let text = field
+                .map(|s| format!("{s:?}"))
+                .unwrap_or(NONE.to_string());
+            add_field(row, name, &text);
+        }
+        add_heading(row, "Comment:");
+        if let Some(text) = &meta.comment {
+            comment_buffer.set_text(text);
+        }
+        let comment_view = TextView::builder()
+            .buffer(&comment_buffer)
+            .margin_start(10)
+            .margin_end(10)
+            .margin_bottom(5)
+            .build();
+        grid.attach(&comment_view, 0, current_row, 2, 1);
+        Ok(())
+    })?;
+    WINDOW.with(|win| {
+        let dialog = Dialog::with_buttons(
+            Some("Capture Metadata"),
+            win.borrow().as_ref(),
+            DialogFlags::DESTROY_WITH_PARENT,
+            &[
+                ("Close", ResponseType::Close),
+                ("Apply", ResponseType::Apply),
+            ]
+        );
+        dialog.content_area().append(&grid);
+        let buf = comment_buffer.clone();
+        dialog.connect_response(move |dialog, response| {
+            if response == ResponseType::Apply {
+                display_error(with_ui(|ui| {
+                    ui.capture.shared.metadata.update(|meta| {
+                        let start = buf.iter_at_offset(0);
+                        let end = buf.iter_at_offset(-1);
+                        let text = buf.text(&start, &end, false);
+                        meta.comment = if text.len() == 0 {
+                            None
+                        } else {
+                            Some(text.to_string())
+                        }
+                    });
+                    Ok(())
+                }));
+            }
+            dialog.destroy();
+        });
+        dialog.present();
+    });
     Ok(())
 }
 
