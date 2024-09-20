@@ -38,16 +38,6 @@ const READ_LEN: usize = 0x4000;
 const NUM_TRANSFERS: usize = 4;
 
 impl Speed {
-    pub fn description(&self) -> &'static str {
-        use Speed::*;
-        match self {
-            Auto => "Auto",
-            High => "High (480Mbps)",
-            Full => "Full (12Mbps)",
-            Low => "Low (1.5Mbps)",
-        }
-    }
-
     pub fn mask(&self) -> u8 {
         use Speed::*;
         match self {

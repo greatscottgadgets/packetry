@@ -42,6 +42,18 @@ pub enum Speed {
     Auto = 3,
 }
 
+impl Speed {
+    pub fn description(&self) -> &'static str {
+        use Speed::*;
+        match self {
+            Auto => "Auto",
+            High => "High (480Mbps)",
+            Full => "Full (12Mbps)",
+            Low => "Low (1.5Mbps)",
+        }
+    }
+}
+
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Copy, Clone, Debug, Default, IntoPrimitive, FromPrimitive, PartialEq, Eq)]
 #[repr(u8)]
