@@ -20,6 +20,7 @@ use bytemuck::bytes_of;
 
 use gtk::gio::{
     self,
+    Action,
     ActionEntry,
     Cancellable,
     FileCreateFlags,
@@ -389,6 +390,7 @@ pub struct UserInterface {
     stop_button: Button,
     status_label: Label,
     warning: DeviceWarning,
+    metadata_action: Action,
     #[cfg(any(test, feature="record-ui-test"))]
     pub recording: Rc<RefCell<Recording>>,
 }
@@ -507,6 +509,8 @@ pub fn activate(application: &Application) -> Result<(), Error> {
         .build();
     action_group.add_action_entries([action_metadata, action_about]);
     window.insert_action_group("actions", Some(&action_group));
+    let metadata_action = action_group.lookup_action("metadata").unwrap();
+    metadata_action.set_property("enabled", false);
 
     action_bar.pack_start(&open_button);
     action_bar.pack_start(&save_button);
@@ -657,6 +661,7 @@ pub fn activate(application: &Application) -> Result<(), Error> {
                 stop_button,
                 status_label,
                 warning,
+                metadata_action,
             }
         )
     });
@@ -1256,6 +1261,7 @@ pub fn rearm() -> Result<(), Error> {
             ui.vbox.remove(&ui.separator);
             ui.vbox.remove(&ui.progress_bar);
         }
+        ui.metadata_action.set_property("enabled", true);
         Ok(())
     })
 }
