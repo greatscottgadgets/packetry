@@ -60,6 +60,7 @@ pub struct CaptureMetadata {
     // Fields corresponding to PcapNG interface statistics.
     pub start_time: Option<SystemTime>,
     pub end_time: Option<SystemTime>,
+    pub dropped: Option<u64>,
 }
 
 /// Capture state shared between readers and writers.

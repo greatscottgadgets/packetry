@@ -402,6 +402,9 @@ where Source: Read
                                 )
                             );
                         },
+                        IsbIfDrop(pkts) => {
+                            meta.dropped.replace(pkts);
+                        },
                         _ => {}
                     };
                 }
@@ -467,6 +470,9 @@ fn stats_options(meta: &CaptureMetadata)
     let mut opt = Vec::new();
     option!(meta, opt, start_time, IsbStartTime, time_nanos);
     option!(meta, opt, end_time, IsbEndTime, time_nanos);
+    if let Some(pkts) = meta.dropped {
+        opt.push(IsbIfDrop(pkts));
+    }
     opt
 }
 
