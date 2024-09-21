@@ -1582,6 +1582,12 @@ fn show_metadata() -> Result<(), Error> {
                 .map(Speed::description)
                 .unwrap_or(NONE)
         );
+        add_field(row, "Max packet size:",
+            &meta.iface_snaplen
+                .as_ref()
+                .map(|len| format!("{} bytes", len.get()))
+                .unwrap_or(NONE.to_string())
+        );
         add_heading(row, "Capture:");
         for (name, field) in [
             ("Start time", &meta.start_time),
