@@ -32,6 +32,28 @@ fn crc5(mut input: u32, num_bits: u32) -> u8 {
     (state ^ 0x1f) as u8
 }
 
+#[derive(Copy, Clone, FromPrimitive, IntoPrimitive)]
+#[repr(u8)]
+pub enum Speed {
+    #[default]
+    High = 0,
+    Full = 1,
+    Low  = 2,
+    Auto = 3,
+}
+
+impl Speed {
+    pub fn description(&self) -> &'static str {
+        use Speed::*;
+        match self {
+            Auto => "Auto",
+            High => "High (480Mbps)",
+            Full => "Full (12Mbps)",
+            Low => "Low (1.5Mbps)",
+        }
+    }
+}
+
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Copy, Clone, Debug, Default, IntoPrimitive, FromPrimitive, PartialEq, Eq)]
 #[repr(u8)]
@@ -213,7 +235,7 @@ pub enum StartComplete {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum Speed {
+pub enum SplitSpeed {
     Low,
     Full,
 }
@@ -257,8 +279,8 @@ impl SplitFields {
                 [packet[1], packet[2], packet[3], 0]))
     }
 
-    pub fn speed(&self) -> Speed {
-        use Speed::*;
+    pub fn speed(&self) -> SplitSpeed {
+        use SplitSpeed::*;
         if self.endpoint_type() == EndpointType::Isochronous {
             Full
         } else if self.start() {

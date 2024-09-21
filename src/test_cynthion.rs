@@ -2,7 +2,6 @@ use crate::backend::cynthion::{
     CynthionDevice,
     CynthionUsability,
     CynthionHandle,
-    Speed
 };
 use crate::capture::{
     create_capture,
@@ -13,7 +12,8 @@ use crate::capture::{
     PacketId,
 };
 use crate::decoder::Decoder;
-use crate::pcap::Writer;
+use crate::file::{GenericSaver, PcapSaver};
+use crate::usb::Speed;
 
 use anyhow::{Context, Error, ensure};
 use futures_lite::future::block_on;
@@ -101,14 +101,15 @@ fn test(save_capture: bool,
         // Write the capture to a file.
         let path = PathBuf::from(format!("./HITL-{name}.pcap"));
         let file = File::create(path)?;
-        let mut writer = Writer::open(file)?;
+        let meta = reader.shared.metadata.load_full();
+        let mut saver = PcapSaver::new(file, meta)?;
         for i in 0..reader.packet_index.len() {
             let packet_id = PacketId::from(i);
             let packet = reader.packet(packet_id)?;
             let timestamp_ns = reader.packet_time(packet_id)?;
-            writer.add_packet(&packet, timestamp_ns)?;
+            saver.add_packet(&packet, timestamp_ns)?;
         }
-        writer.close()?;
+        saver.close()?;
     }
 
     // Look for the test device in the capture.

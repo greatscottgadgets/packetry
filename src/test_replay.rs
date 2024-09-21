@@ -8,7 +8,7 @@ use itertools::assert_equal;
 use serde_json::Deserializer;
 
 use crate::decoder::Decoder;
-use crate::pcap::Loader;
+use crate::file::{GenericPacket, GenericLoader, LoaderItem, PcapLoader};
 use crate::model::GenericModel;
 use crate::row_data::{GenericRowData, TrafficRowData, DeviceRowData};
 use crate::record_ui::UiAction;
@@ -114,7 +114,7 @@ fn check_replays() {
                     if let Some(capture) = capture {
                         let file = File::open(path)
                             .expect("Failed to open pcap file");
-                        let loader = Loader::open(file)
+                        let loader = PcapLoader::new(file)
                             .expect("Failed to create pcap loader");
                         let decoder = Decoder::new(writer)
                             .expect("Failed to create decoder");
@@ -130,12 +130,17 @@ fn check_replays() {
                         Ok(())
                     }).unwrap();
                     while capture.packet_index.len() < count {
-                        let (packet, timestamp_ns) = loader.next()
-                            .expect("No next pcap packet")
-                            .expect("Error in pcap reader");
-                        decoder
-                            .handle_raw_packet(&packet.data, timestamp_ns)
-                            .expect("Failed to decode packet");
+                        use LoaderItem::*;
+                        match loader.next() {
+                            Packet(packet) => decoder
+                                .handle_raw_packet(
+                                    packet.bytes(), packet.timestamp_ns())
+                                .expect("Failed to decode packet"),
+                            Metadata(meta) => decoder.handle_metadata(meta),
+                            LoadError(e) => panic!("Error in pcap reader: {e}"),
+                            Ignore => continue,
+                            End => panic!("No next loader item"),
+                        };
                     }
                     update_view()
                         .expect("Failed to update view");

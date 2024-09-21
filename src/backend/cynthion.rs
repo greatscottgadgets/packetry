@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 use std::collections::VecDeque;
+use std::num::NonZeroU32;
 use std::thread::{spawn, sleep, JoinHandle};
 use std::time::Duration;
 use std::sync::mpsc;
@@ -9,7 +10,6 @@ use futures_channel::oneshot;
 use futures_lite::future::block_on;
 use futures_util::future::FusedFuture;
 use futures_util::{select_biased, FutureExt};
-use num_enum::{FromPrimitive, IntoPrimitive};
 use nusb::{
     self,
     transfer::{
@@ -24,6 +24,9 @@ use nusb::{
     Interface
 };
 
+use crate::capture::CaptureMetadata;
+use crate::usb::Speed;
+
 const VID: u16 = 0x1d50;
 const PID: u16 = 0x615b;
 
@@ -36,27 +39,7 @@ const ENDPOINT: u8 = 0x81;
 const READ_LEN: usize = 0x4000;
 const NUM_TRANSFERS: usize = 4;
 
-#[derive(Copy, Clone, FromPrimitive, IntoPrimitive)]
-#[repr(u8)]
-pub enum Speed {
-    #[default]
-    High = 0,
-    Full = 1,
-    Low  = 2,
-    Auto = 3,
-}
-
 impl Speed {
-    pub fn description(&self) -> &'static str {
-        use Speed::*;
-        match self {
-            Auto => "Auto",
-            High => "High (480Mbps)",
-            Full => "Full (12Mbps)",
-            Low => "Low (1.5Mbps)",
-        }
-    }
-
     pub fn mask(&self) -> u8 {
         use Speed::*;
         match self {
@@ -110,6 +93,7 @@ impl TestConfig {
 pub struct InterfaceSelection {
     interface_number: u8,
     alt_setting_number: u8,
+    protocol: u8,
 }
 
 /// Whether a Cynthion device is ready for use as an analyzer.
@@ -132,6 +116,7 @@ pub struct CynthionDevice {
 #[derive(Clone)]
 pub struct CynthionHandle {
     interface: Interface,
+    metadata: CaptureMetadata,
 }
 
 pub struct CynthionQueue {
@@ -216,8 +201,13 @@ fn check_device(device_info: &DeviceInfo)
                     .context("Failed to select alternate setting")?;
             }
 
+            // Create temporary handle to fetch speeds.
+            let handle = CynthionHandle {
+                interface,
+                metadata: CaptureMetadata::default()
+            };
+
             // Fetch the available speeds.
-            let handle = CynthionHandle { interface };
             let speeds = handle
                 .speeds()
                 .context("Failed to fetch available speeds")?;
@@ -227,6 +217,7 @@ fn check_device(device_info: &DeviceInfo)
                 InterfaceSelection {
                     interface_number,
                     alt_setting_number,
+                    protocol,
                 },
                 speeds
             ))
@@ -258,20 +249,39 @@ impl CynthionDevice {
 
     pub fn open(&self) -> Result<CynthionHandle, Error> {
         match &self.usability {
-            Usable(iface, _) => {
-                let device = self.device_info.open()?;
-                let interface = device.claim_interface(iface.interface_number)?;
-                if iface.alt_setting_number != 0 {
-                    interface.set_alt_setting(iface.alt_setting_number)?;
-                }
-                Ok(CynthionHandle { interface })
-            },
+            Usable(iface, _) => CynthionHandle::open(&self.device_info, iface),
             Unusable(reason) => bail!("Device not usable: {}", reason),
         }
     }
 }
 
 impl CynthionHandle {
+    fn open(device_info: &DeviceInfo, iface: &InterfaceSelection)
+        -> Result<CynthionHandle, Error>
+    {
+        let device = device_info.open()?;
+        let interface = device.claim_interface(iface.interface_number)?;
+        if iface.alt_setting_number != 0 {
+            interface.set_alt_setting(iface.alt_setting_number)?;
+        }
+        let protocol = iface.protocol;
+        Ok(CynthionHandle {
+            interface,
+            metadata: CaptureMetadata {
+                iface_desc: Some("Cynthion USB Analyzer".to_string()),
+                iface_hardware: Some({
+                    let bcd = device_info.device_version();
+                    let major = bcd >> 8;
+                    let minor = bcd as u8;
+                    format!("Cynthion r{major}.{minor}")
+                }),
+                iface_os: Some(
+                    format!("USB Analyzer v{protocol}")),
+                iface_snaplen: Some(NonZeroU32::new(0xFFFF).unwrap()),
+                .. Default::default()
+            },
+        })
+    }
 
     pub fn speeds(&self) -> Result<Vec<Speed>, Error> {
         use Speed::*;
@@ -398,6 +408,10 @@ impl CynthionHandle {
             .control_out_blocking(control, data, timeout)
             .context("Write request failed")?;
         Ok(())
+    }
+
+    pub fn metadata(&self) -> CaptureMetadata {
+        self.metadata.clone()
     }
 }
 

@@ -1,10 +1,12 @@
 use std::cmp::min;
 use std::fmt::{Debug, Write};
 use std::iter::once;
+use std::num::NonZeroU32;
 use std::ops::Range;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64};
 use std::sync::atomic::Ordering::{Acquire, Release};
 use std::sync::Arc;
+use std::time::SystemTime;
 use std::mem::size_of;
 
 use crate::id::{Id, HasLength};
@@ -20,13 +22,37 @@ use anyhow::{Context, Error, bail};
 use arc_swap::{ArcSwap, ArcSwapOption};
 use bytemuck_derive::{Pod, Zeroable};
 use itertools::Itertools;
+use merge::Merge;
 use num_enum::{IntoPrimitive, FromPrimitive};
 
 // Use 2MB block size for packet data, which is a large page size on x86_64.
 const PACKET_DATA_BLOCK_SIZE: usize = 0x200000;
 
+/// Metadata about the capture.
+#[derive(Clone, Default, Merge)]
+pub struct CaptureMetadata {
+    // Fields corresponding to PCapNG section header.
+    pub application: Option<String>,
+    pub os: Option<String>,
+    pub hardware: Option<String>,
+    pub comment: Option<String>,
+
+    // Fields corresponding to PcapNG interface description.
+    pub iface_desc: Option<String>,
+    pub iface_hardware: Option<String>,
+    pub iface_os: Option<String>,
+    pub iface_speed: Option<Speed>,
+    pub iface_snaplen: Option<NonZeroU32>,
+
+    // Fields corresponding to PcapNG interface statistics.
+    pub start_time: Option<SystemTime>,
+    pub end_time: Option<SystemTime>,
+    pub dropped: Option<u64>,
+}
+
 /// Capture state shared between readers and writers.
 pub struct CaptureShared {
+    pub metadata: ArcSwap<CaptureMetadata>,
     pub device_data: ArcSwap<VecMap<DeviceId, Arc<DeviceData>>>,
     pub endpoint_readers: ArcSwap<VecMap<EndpointId, Arc<EndpointReader>>>,
     pub complete: AtomicBool,
@@ -88,6 +114,7 @@ pub fn create_capture()
 
     // Create the state shared by readers and writer.
     let shared = Arc::new(CaptureShared {
+        metadata: ArcSwap::new(Arc::new(CaptureMetadata::default())),
         device_data: ArcSwap::new(Arc::new(VecMap::new())),
         endpoint_readers: ArcSwap::new(Arc::new(VecMap::new())),
         complete: AtomicBool::from(false),
@@ -1883,7 +1910,7 @@ mod tests {
     use std::io::{BufReader, BufWriter, BufRead, Write};
     use std::path::PathBuf;
     use crate::decoder::Decoder;
-    use crate::pcap::Loader;
+    use crate::file::{GenericPacket, GenericLoader, LoaderItem, PcapLoader};
 
     fn summarize_item(cap: &mut CaptureReader, item: &TrafficItem, depth: usize)
         -> String
@@ -1938,14 +1965,21 @@ mod tests {
             out_path.push("output.txt");
             {
                 let file = File::open(cap_path).unwrap();
-                let mut loader = Loader::open(file).unwrap();
+                let mut loader = PcapLoader::new(file).unwrap();
                 let (writer, mut reader) = create_capture().unwrap();
                 let mut decoder = Decoder::new(writer).unwrap();
-                while let Some(result) = loader.next() {
-                    let (packet, timestamp_ns) = result.unwrap();
-                    decoder
-                        .handle_raw_packet(&packet.data, timestamp_ns)
-                        .unwrap();
+                loop {
+                    use LoaderItem::*;
+                    match loader.next() {
+                        Packet(packet) => decoder
+                            .handle_raw_packet(
+                                packet.bytes(), packet.timestamp_ns())
+                            .unwrap(),
+                        Metadata(meta) => decoder.handle_metadata(meta),
+                        LoadError(e) => panic!("{e}"),
+                        Ignore => continue,
+                        End => break,
+                    }
                 }
                 decoder.finish().unwrap();
                 let out_file = File::create(out_path.clone()).unwrap();
@@ -1977,6 +2011,7 @@ pub mod prelude {
         create_endpoint,
         CaptureReader,
         CaptureWriter,
+        CaptureMetadata,
         Device,
         DeviceId,
         DeviceData,
