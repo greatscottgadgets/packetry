@@ -1204,12 +1204,14 @@ where
     let packet_count = capture.packet_index.len();
     let meta = capture.shared.metadata.load_full();
     let mut saver = Saver::new(dest, meta)?;
-    for (result, i) in capture.timestamped_packets()?.zip(0..packet_count) {
-        let (timestamp_ns, packet) = result?;
-        saver.add_packet(&packet, timestamp_ns)?;
-        CURRENT.store(i + 1, Ordering::Relaxed);
-        if STOP.load(Ordering::Relaxed) {
-            break;
+    if packet_count > 0 {
+        for (result, i) in capture.timestamped_packets()?.zip(0..packet_count) {
+            let (timestamp_ns, packet) = result?;
+            saver.add_packet(&packet, timestamp_ns)?;
+            CURRENT.store(i + 1, Ordering::Relaxed);
+            if STOP.load(Ordering::Relaxed) {
+                break;
+            }
         }
     }
     saver.close()
