@@ -15,6 +15,7 @@ use anyhow::{Context as ErrorContext, Error, bail};
 
 use gtk::gio::{
     self,
+    Action,
     ActionEntry,
     Cancellable,
     FileCreateFlags,
@@ -359,6 +360,7 @@ pub struct UserInterface {
     stop_button: Button,
     status_label: Label,
     warning: DeviceWarning,
+    metadata_action: Action,
     #[cfg(any(test, feature="record-ui-test"))]
     pub recording: Rc<RefCell<Recording>>,
 }
@@ -477,6 +479,8 @@ pub fn activate(application: &Application) -> Result<(), Error> {
         .build();
     action_group.add_action_entries([action_metadata, action_about]);
     window.insert_action_group("actions", Some(&action_group));
+    let metadata_action = action_group.lookup_action("metadata").unwrap();
+    metadata_action.set_property("enabled", false);
 
     action_bar.pack_start(&open_button);
     action_bar.pack_start(&save_button);
@@ -602,6 +606,7 @@ pub fn activate(application: &Application) -> Result<(), Error> {
                 stop_button,
                 status_label,
                 warning,
+                metadata_action,
             }
         )
     });
@@ -1030,6 +1035,7 @@ fn start_file(action: FileAction, file: gio::File) -> Result<(), Error> {
                         ui.scan_button.set_sensitive(true);
                         ui.selector.set_sensitive(true);
                         ui.capture_button.set_sensitive(ui.selector.device_available());
+                        ui.metadata_action.set_property("enabled", true);
                         Ok(())
                     })
                 );
@@ -1159,6 +1165,7 @@ pub fn stop_operation() -> Result<(), Error> {
         ui.stop_button.set_sensitive(false);
         ui.scan_button.set_sensitive(true);
         ui.save_button.set_sensitive(true);
+        ui.metadata_action.set_property("enabled", true);
         Ok(())
     })
 }
@@ -1227,6 +1234,7 @@ pub fn start_cynthion() -> Result<(), Error> {
                         ui.open_button.set_sensitive(true);
                         ui.selector.set_sensitive(true);
                         ui.capture_button.set_sensitive(ui.selector.device_available());
+                        ui.metadata_action.set_property("enabled", true);
                         Ok(())
                     })
                 );
