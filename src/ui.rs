@@ -1215,13 +1215,11 @@ pub fn start_cynthion() -> Result<(), Error> {
             for packet in stream_handle {
                 decoder.handle_raw_packet(&packet.bytes, packet.timestamp_ns)?;
             }
-            decoder.handle_metadata(Box::new(
-                CaptureMetadata {
-                    end_time: Some(SystemTime::now()),
-                    .. Default::default()
-                }
-            ));
-            decoder.finish()?;
+            let writer = decoder.finish()?;
+            writer.shared.metadata.update(|meta| {
+                meta.end_time = Some(SystemTime::now());
+                meta.dropped = Some(0);
+            });
             Ok(())
         };
         std::thread::spawn(move || {
@@ -1316,6 +1314,12 @@ fn show_metadata() -> Result<(), Error> {
                 .unwrap_or(NONE.to_string());
             add_field(row, name, &text);
         }
+        add_field(row, "Packets dropped:",
+            &meta.dropped
+                .as_ref()
+                .map(|p| format!("{p}"))
+                .unwrap_or(NONE.to_string())
+        );
         add_heading(row, "Comment:");
         if let Some(text) = &meta.comment {
             comment_buffer.set_text(text);
