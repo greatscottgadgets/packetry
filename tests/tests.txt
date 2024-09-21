@@ -4,6 +4,8 @@ emf2022-badge
 hackrf-connect
 hackrf-dfu-enum
 hackrf-restart-failure
+iso-ambiguous
+iso-unambiguous
 ksolti-core-enum
 mouse
 split-enum

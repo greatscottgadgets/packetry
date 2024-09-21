@@ -45,6 +45,7 @@ enum TransactionStatus {
     Retry,
     Done,
     Fail,
+    Ambiguous,
     Invalid
 }
 
@@ -80,6 +81,7 @@ struct TransactionState {
     id: TransactionId,
     last: PID,
     endpoint_id: Option<EndpointId>,
+    endpoint_type: Option<usb::EndpointType>,
     ep_transaction_id: Option<EndpointTransactionId>,
     setup: Option<SetupFields>,
     payload: Option<Vec<u8>>,
@@ -110,7 +112,9 @@ fn transaction_status(state: &Option<TransactionState>, packet: &[u8])
         },
         Some(TransactionState {
             style: Simple(first),
-            last, ..}) =>
+            last,
+            endpoint_type,
+            ..}) =>
         {
             match (first, last, next) {
                 // These tokens always start a new transaction.
@@ -132,7 +136,15 @@ fn transaction_status(state: &Option<TransactionState>, packet: &[u8])
                 // IN may be followed by NAK or STALL, failing transaction.
                 (_, IN, NAK | STALL) => Fail,
                 // IN or OUT may be followed by DATA0 or DATA1.
-                (_, IN | OUT, DATA0 | DATA1) if packet.len() >= 3 => Continue,
+                (_, IN | OUT, DATA0 | DATA1) =>
+                    match endpoint_type {
+                        // No handshake for an isochronous transaction.
+                        Some(Isochronous) => Done,
+                        // Expect handshake if known to be non-isochronous.
+                        Some(_) => Continue,
+                        // If we don't know the endpoint type, we can't be sure.
+                        None => Ambiguous,
+                    },
                 // An ACK or NYET then completes the transaction.
                 (IN | OUT, DATA0 | DATA1, ACK | NYET) => Done,
                 // OUT may also be completed by NAK or STALL.
@@ -394,7 +406,7 @@ impl EndpointData {
                 }
                 if complete {
                     self.last_success = success;
-                    if success && short {
+                    if success && short && ep_type != Normal(Isochronous) {
                         // New transfer, ended immediately by a short packet.
                         Single
                     } else {
@@ -423,7 +435,7 @@ impl EndpointData {
                     let success_changed = success != self.last_success;
                     self.last_success = success;
                     if success_changed {
-                        if success && short {
+                        if success && short && ep_type != Normal(Isochronous) {
                             // New transfer, ended immediately by a short packet.
                             Single
                         } else {
@@ -432,7 +444,7 @@ impl EndpointData {
                         }
                     } else if success {
                         // Continuing an ongoing transfer.
-                        if short {
+                        if short && ep_type != Normal(Isochronous) {
                             // A short packet ends the transfer.
                             Done
                         } else {
@@ -666,6 +678,9 @@ impl Decoder {
                 self.transaction_append(pid, packet)?;
                 self.transaction_end(success, complete)?;
             },
+            Ambiguous => {
+                self.transaction_append(pid, packet)?;
+            },
             Invalid => {
                 self.transaction_start(packet_id, pid, packet)?;
                 self.transaction_end(false, false)?;
@@ -683,19 +698,31 @@ impl Decoder {
         use PID::*;
         use TransactionStyle::*;
         let transaction_id = self.capture.transaction_index.push(packet_id)?;
-        let (style, endpoint_id) = match pid {
-            Malformed => (Simple(pid), Some(INVALID_EP_ID)),
+        let (style, endpoint_id, endpoint_type) = match pid {
+            Malformed => (Simple(pid), Some(INVALID_EP_ID), None),
             SPLIT => {
                 let split = SplitFields::from_packet(packet);
-                (Split(split.sc(), split.endpoint_type(), None), None)
+                let style = Split(split.sc(), split.endpoint_type(), None);
+                (style, None, Some(split.endpoint_type()))
             },
-            pid => (Simple(pid), Some(self.packet_endpoint(pid, packet)?))
+            pid => {
+                let endpoint_id = self.packet_endpoint(pid, packet)?;
+                let ep_data = &self.endpoint_data[endpoint_id];
+                let dev_data = self.capture.device_data(ep_data.device_id)?;
+                let (ep_type, _) = dev_data.endpoint_details(ep_data.address);
+                let endpoint_type = match ep_type {
+                    EndpointType::Normal(usb_ep_type) => Some(usb_ep_type),
+                    _ => None,
+                };
+                (Simple(pid), Some(endpoint_id), endpoint_type)
+            }
         };
         let mut state = TransactionState {
             style,
             id: transaction_id,
             last: pid,
             endpoint_id,
+            endpoint_type,
             ep_transaction_id: None,
             setup: None,
             payload: None,
