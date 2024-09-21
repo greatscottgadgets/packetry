@@ -3,6 +3,7 @@
 use std::cmp::min;
 use std::fmt::{Debug, Write};
 use std::iter::once;
+use std::num::NonZeroU32;
 use std::ops::Range;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64};
 use std::sync::atomic::Ordering::{Acquire, Release};
@@ -54,6 +55,7 @@ pub struct CaptureMetadata {
     pub iface_hardware: Option<String>,
     pub iface_os: Option<String>,
     pub iface_speed: Option<Speed>,
+    pub iface_snaplen: Option<NonZeroU32>,
 
     // Fields corresponding to PcapNG interface statistics.
     pub start_time: Option<SystemTime>,
