@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::mem::size_of;
+use std::num::NonZeroU32;
 use std::ops::Deref;
 use std::sync::Arc;
 use std::time::{SystemTime, Duration};
@@ -353,6 +354,7 @@ where Source: Read
                         "Link type {:?} is not supported.",
                         interface.linktype)),
                 };
+                meta.iface_snaplen = NonZeroU32::new(interface.snaplen);
                 let mut ts_units_specified = false;
                 for option in interface.options {
                     match option {
@@ -498,7 +500,7 @@ where Self: Sized, Dest: Write
         pcap.write_block(&Block::InterfaceDescription(
             InterfaceDescriptionBlock {
                 linktype: DataLink::USB_2_0,
-                snaplen: 0,
+                snaplen: meta.iface_snaplen.map_or(0, NonZeroU32::get),
                 options: iface_options(&meta),
             }
         ))?;

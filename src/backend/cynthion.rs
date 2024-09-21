@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 use std::collections::VecDeque;
+use std::num::NonZeroU32;
 use std::thread::{spawn, sleep, JoinHandle};
 use std::time::Duration;
 use std::sync::mpsc;
@@ -276,6 +277,7 @@ impl CynthionHandle {
                 }),
                 iface_os: Some(
                     format!("USB Analyzer v{protocol}")),
+                iface_snaplen: Some(NonZeroU32::new(0xFFFF).unwrap()),
                 .. Default::default()
             },
         })
