@@ -64,7 +64,9 @@ pub struct Ice40UsbtraceStream {
 /// Check whether an iCE40-usbtrace device has an accessible analyzer interface.
 fn check_device(device_info: &DeviceInfo) -> Result<(), Error> {
     // Check we can open the device.
-    let device = device_info.open().context("Failed to open device")?;
+    let device = device_info
+        .open()
+        .context("Failed to open device")?;
 
     // Read the active configuration.
     let _config = device
@@ -72,7 +74,9 @@ fn check_device(device_info: &DeviceInfo) -> Result<(), Error> {
         .context("Failed to retrieve active configuration")?;
 
     // Try to claim the interface.
-    let _interface = device.claim_interface(1).context("Failed to claim interface")?;
+    let _interface = device
+        .claim_interface(1)
+        .context("Failed to claim interface")?;
 
     // Now we have a usable device.
     Ok(())
@@ -171,7 +175,8 @@ impl Ice40UsbtraceHandle {
         let worker = spawn(move || block_on(queue.process(queue_stop_rx)));
 
         // Wait until this thread is signalled to stop.
-        block_on(stop).context("Sender was dropped")?;
+        block_on(stop)
+            .context("Sender was dropped")?;
 
         // Stop capture.
         self.stop_capture()?;
@@ -183,7 +188,8 @@ impl Ice40UsbtraceHandle {
         queue_stop_tx
             .send(())
             .or_else(|_| bail!("Failed sending stop signal to queue worker"))?;
-        handle_thread_panic(worker.join())?.context("Error in queue worker thread")?;
+        handle_thread_panic(worker.join())?
+            .context("Error in queue worker thread")?;
 
         self.flush_buffer()?;
 
