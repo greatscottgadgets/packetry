@@ -431,3 +431,15 @@ impl CynthionStream {
         self.total_clk_cycles += clk_cycles as u64;
     }
 }
+
+impl Speed {
+    pub fn mask(&self) -> u8 {
+        use Speed::*;
+        match self {
+            Auto => 0b0001,
+            Low  => 0b0010,
+            Full => 0b0100,
+            High => 0b1000,
+        }
+    }
+}
