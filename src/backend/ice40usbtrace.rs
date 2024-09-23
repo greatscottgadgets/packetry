@@ -3,7 +3,7 @@ use std::sync::mpsc;
 use std::thread::{sleep, spawn};
 use std::time::Duration;
 
-use anyhow::{bail, Context as ErrorContext, Error};
+use anyhow::{anyhow, bail, Context, Error};
 use futures_channel::oneshot;
 use futures_lite::future::block_on;
 use futures_util::future::FusedFuture;
@@ -415,10 +415,9 @@ impl Ice40UsbtraceStream {
                     bytes,
                 })
             }
-            (Err(_), _) => {
-                println!("Error decoding PID for header:\n{header:?}");
-                ParseResult::Ignored
-            }
+            (Err(_), _) => ParseResult::ParseError(
+                anyhow!("Error decoding PID for header:\n{header:?}")
+            )
         };
 
         pkt
@@ -435,6 +434,9 @@ impl Ice40UsbtraceStream {
                 ParseResult::Parsed(pkt) => return Some(pkt),
                 ParseResult::Ignored => continue,
                 ParseResult::NeedMoreData => return None,
+                ParseResult::ParseError(e) => {
+                    println!("{e}");
+                }
             }
         }
     }
@@ -442,6 +444,7 @@ impl Ice40UsbtraceStream {
 
 pub enum ParseResult<T> {
     Parsed(T),
+    ParseError(Error),
     Ignored,
     NeedMoreData,
 }
