@@ -38,13 +38,13 @@ enum Command {
     BufferFlush = 0x21,
 }
 
-/// A ICE40usbtrace device attached to the system.
+/// An iCE40-usbtrace device attached to the system.
 pub struct Ice40UsbtraceDevice {
     pub device_info: DeviceInfo,
     pub usability: DeviceUsability,
 }
 
-/// A handle to an open ICE40usbtrace.
+/// A handle to an open iCE40-usbtrace device.
 #[derive(Clone)]
 pub struct Ice40UsbtraceHandle {
     interface: Interface,
@@ -55,13 +55,13 @@ pub struct Ice40UsbtraceQueue {
     queue: Queue<RequestBuffer>,
 }
 
-pub struct Ice40UsbStream {
+pub struct Ice40UsbtraceStream {
     receiver: mpsc::Receiver<Vec<u8>>,
     buffer: VecDeque<u8>,
     ts: u64,
 }
 
-/// Check whether a ICE40usbtrace device has an accessible analyzer interface.
+/// Check whether an iCE40-usbtrace device has an accessible analyzer interface.
 fn check_device(device_info: &DeviceInfo) -> Result<(), Error> {
     // Check we can open the device.
     let device = device_info.open().context("Failed to open device")?;
@@ -118,7 +118,7 @@ impl Ice40UsbtraceDevice {
 }
 
 impl Ice40UsbtraceHandle {
-    pub fn start<F>(&self, speed: Speed, result_handler: F) -> Result<(Ice40UsbStream, BackendStop), Error>
+    pub fn start<F>(&self, speed: Speed, result_handler: F) -> Result<(Ice40UsbtraceStream, BackendStop), Error>
     where
         F: FnOnce(Result<(), Error>) + Send + 'static,
     {
@@ -131,7 +131,7 @@ impl Ice40UsbtraceHandle {
         // Start worker thread.
         let worker = spawn(move || result_handler(handle.run_capture(speed, tx, stop_rx)));
         Ok((
-            Ice40UsbStream {
+            Ice40UsbtraceStream {
                 receiver: rx,
                 buffer: VecDeque::new(),
                 ts: 0,
@@ -152,13 +152,13 @@ impl Ice40UsbtraceHandle {
         // Set up a separate channel pair to stop queue processing.
         let (queue_stop_tx, queue_stop_rx) = oneshot::channel();
 
-        // Stop the ICE40usbtrace was left running before and ignore any errors
+        // Stop the device if it was left running before and ignore any errors.
         let _ = self.stop_capture();
         // Leave queue worker running briefly to receive flushed data.
         sleep(Duration::from_millis(100));
         let _ = self.flush_buffer();
 
-        // ICE40usbtrace only supports full-speed captures
+        // iCE40-usbtrace only supports full-speed captures.
         assert_eq!(speed, Speed::Full);
 
         // Start capture.
@@ -272,7 +272,7 @@ impl Ice40UsbtraceQueue {
     }
 }
 
-impl Iterator for Ice40UsbStream {
+impl Iterator for Ice40UsbtraceStream {
     type Item = TracePacket;
 
     fn next(&mut self) -> Option<TracePacket> {
@@ -347,7 +347,7 @@ impl std::fmt::Display for Pid {
     }
 }
 
-impl Ice40UsbStream {
+impl Ice40UsbtraceStream {
     fn ns(&self) -> u64 {
         // 24MHz clock, a tick is 41.666...ns
         const TABLE: [u64; 3] = [0, 41, 83];
