@@ -368,7 +368,7 @@ impl Ice40UsbtraceStream {
         quotient * 125 + TABLE[remainder as usize]
     }
 
-    fn parse_packet(&mut self) -> ParseResult<TracePacket> {
+    fn parse_packet(&mut self) -> ParseResult {
         use Pid::*;
         use ParseResult::*;
 
@@ -469,8 +469,8 @@ impl Ice40UsbtraceStream {
     }
 }
 
-pub enum ParseResult<T> {
-    Parsed(T),
+pub enum ParseResult {
+    Parsed(TracePacket),
     ParseError(Error),
     Ignored,
     NeedMoreData,
