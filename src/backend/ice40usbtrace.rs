@@ -282,18 +282,23 @@ impl Iterator for Ice40UsbtraceStream {
     type Item = TracePacket;
 
     fn next(&mut self) -> Option<TracePacket> {
+        use ParseResult::*;
         loop {
-            // Do we have another packet already in the buffer?
-            match self.next_buffered_packet() {
-                // Yes; return the packet.
-                Some(packet) => return Some(packet),
-                // No; wait for more data from the capture thread.
-                None => match self.receiver.recv().ok() {
+            match self.parse_packet() {
+                // Parsed a packet, return it.
+                Parsed(pkt) => return Some(pkt),
+                // Parsed something we ignored, try again.
+                Ignored => continue,
+                // Need more data; block until we get it.
+                NeedMoreData => match self.receiver.recv().ok() {
                     // Received more data; add it to the buffer and retry.
                     Some(bytes) => self.buffer.extend(bytes.iter()),
                     // Capture has ended, there are no more packets.
                     None => return None,
                 },
+                ParseError(e) => {
+                    println!("{e}");
+                }
             }
         }
     }
@@ -366,6 +371,11 @@ impl Ice40UsbtraceStream {
     fn parse_packet(&mut self) -> ParseResult<TracePacket> {
         use Pid::*;
         use ParseResult::*;
+
+        // Need enough bytes for the header.
+        if self.buffer.len() < 4 {
+            return NeedMoreData;
+        }
 
         let header: Vec<u8> = self.buffer.drain(0..4).collect();
         let header = Header(&header);
@@ -455,25 +465,6 @@ impl Ice40UsbtraceStream {
             (Err(_), _) => ParseError(
                 anyhow!("Error decoding PID for header:\n{header:?}")
             )
-        }
-    }
-
-    fn next_buffered_packet(&mut self) -> Option<TracePacket> {
-        use ParseResult::*;
-        loop {
-            // Need more bytes for the header
-            if self.buffer.len() < 4 {
-                return None;
-            }
-
-            match self.parse_packet() {
-                Parsed(pkt) => return Some(pkt),
-                Ignored => continue,
-                NeedMoreData => return None,
-                ParseError(e) => {
-                    println!("{e}");
-                }
-            }
         }
     }
 }
