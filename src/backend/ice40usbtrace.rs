@@ -366,7 +366,7 @@ impl Ice40UsbtraceStream {
 
         self.ts += u64::from(header.ts());
 
-        let pkt = match (header.pid().try_into(), header.ok()) {
+        match (header.pid().try_into(), header.ok()) {
             // The packet header could not even be decoded, skip it
             (Ok(TsOverflow), false) => {
                 println!("Bad packet!\n{header:?}");
@@ -422,9 +422,7 @@ impl Ice40UsbtraceStream {
             (Err(_), _) => ParseError(
                 anyhow!("Error decoding PID for header:\n{header:?}")
             )
-        };
-
-        pkt
+        }
     }
 
     fn next_buffered_packet(&mut self) -> Option<TracePacket> {
