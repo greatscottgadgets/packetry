@@ -19,7 +19,7 @@ use crate::util::handle_thread_panic;
 use super::DeviceUsability::*;
 use super::{
     transfer_queue::TransferQueue,
-    BackendStop, DeviceUsability, InterfaceSelection, Speed, TracePacket
+    BackendStop, DeviceUsability, InterfaceSelection, Speed, TimestampedPacket
 };
 
 const VID: u16 = 0x1d50;
@@ -230,9 +230,9 @@ impl Ice40UsbtraceHandle {
 }
 
 impl Iterator for Ice40UsbtraceStream {
-    type Item = TracePacket;
+    type Item = TimestampedPacket;
 
-    fn next(&mut self) -> Option<TracePacket> {
+    fn next(&mut self) -> Option<TimestampedPacket> {
         use ParseResult::*;
         loop {
             match self.parse_packet() {
@@ -339,7 +339,7 @@ impl Ice40UsbtraceStream {
             // zero byte, which is an invalid PID. This will serve to indicate
             // the presence of a packet without a valid PID.
             (Ok(TsOverflow), false) => Parsed(
-                TracePacket {
+                TimestampedPacket {
                     timestamp_ns: self.ns(),
                     bytes: vec![0]
                 }
@@ -366,7 +366,7 @@ impl Ice40UsbtraceStream {
                 let mut bytes = Vec::with_capacity(1 + data_len);
                 bytes.push(header.pid_byte());
                 bytes.extend(self.buffer.drain(0..data_len));
-                Parsed(TracePacket {
+                Parsed(TimestampedPacket {
                     timestamp_ns: self.ns(),
                     bytes,
                 })
@@ -389,7 +389,7 @@ impl Ice40UsbtraceStream {
                 }
                 bytes.extend(data);
 
-                Parsed(TracePacket {
+                Parsed(TimestampedPacket {
                     timestamp_ns: self.ns(),
                     bytes,
                 })
@@ -407,7 +407,7 @@ impl Ice40UsbtraceStream {
                 if !data_ok {
                     bytes.push(0);
                 }
-                Parsed(TracePacket {
+                Parsed(TimestampedPacket {
                     timestamp_ns: self.ns(),
                     bytes,
                 })
@@ -421,7 +421,7 @@ impl Ice40UsbtraceStream {
 }
 
 pub enum ParseResult {
-    Parsed(TracePacket),
+    Parsed(TimestampedPacket),
     ParseError(Error),
     Ignored,
     NeedMoreData,

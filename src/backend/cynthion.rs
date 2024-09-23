@@ -22,7 +22,7 @@ use crate::util::handle_thread_panic;
 
 use super::{
     transfer_queue::TransferQueue,
-    BackendStop, DeviceUsability, InterfaceSelection, Speed, TracePacket,
+    BackendStop, DeviceUsability, InterfaceSelection, Speed, TimestampedPacket,
 };
 use super::DeviceUsability::*;
 
@@ -343,9 +343,9 @@ impl CynthionHandle {
 }
 
 impl Iterator for CynthionStream {
-    type Item = TracePacket;
+    type Item = TimestampedPacket;
 
-    fn next(&mut self) -> Option<TracePacket> {
+    fn next(&mut self) -> Option<TimestampedPacket> {
         loop {
             // Do we have another packet already in the buffer?
             match self.next_buffered_packet() {
@@ -364,7 +364,7 @@ impl Iterator for CynthionStream {
 }
 
 impl CynthionStream {
-    fn next_buffered_packet(&mut self) -> Option<TracePacket> {
+    fn next_buffered_packet(&mut self) -> Option<TimestampedPacket> {
         // Are we waiting for a padding byte?
         if self.padding_due {
             if self.buffer.is_empty() {
@@ -416,7 +416,7 @@ impl CynthionStream {
         }
 
         // Remove the rest of the packet from the buffer and return it.
-        Some(TracePacket {
+        Some(TimestampedPacket {
             timestamp_ns: clk_to_ns(self.total_clk_cycles),
             bytes: self.buffer.drain(0..packet_len).collect()
         })

@@ -56,7 +56,7 @@ pub enum DeviceUsability {
 }
 
 #[derive(Debug)]
-pub struct TracePacket {
+pub struct TimestampedPacket {
     pub timestamp_ns: u64,
     pub bytes: Vec<u8>,
 }
