@@ -373,41 +373,57 @@ impl Ice40UsbtraceStream {
         self.ts += u64::from(header.ts());
 
         match (header.pid().try_into(), header.ok()) {
-            // The packet header could not even be decoded, skip it
-            (Ok(TsOverflow), false) => {
-                println!("Bad packet!\n{header:?}");
-                return Ignored;
-            }
-            // Need to increment self.ts
-            (Ok(TsOverflow), true) => Ignored,
-            // Handle Data packet. If the CRC16 is wrong get_ok() returns false - push broken packet regardless
-            (Ok(Data0 | Data1), data_ok) => {
-                if !data_ok {
-                    println!("Data packet with corrupt checksum:\n{header:?}");
+            // A SYNC pattern was seen on the wire but no valid PID followed,
+            // so no packet data was captured. Generate a packet with a single
+            // zero byte, which is an invalid PID. This will serve to indicate
+            // the presence of a packet without a valid PID.
+            (Ok(TsOverflow), false) => Parsed(
+                TracePacket {
+                    timestamp_ns: self.ns(),
+                    bytes: vec![0]
                 }
+            ),
 
-                let mut bytes = vec![header.pid_byte()];
+            // This header was sent because the timestamp field was
+            // about to overflow. There was no packet captured.
+            (Ok(TsOverflow), true) => Ignored,
+
+            // A data packet was captured. The CRC16 may or may not be valid.
+            // We'll pass the whole packet on either way, so we don't care
+            // about the state of the OK flag here.
+            (Ok(Data0 | Data1), _data_ok) => {
+                // Check if we have the whole packet yet.
                 let data_len: usize = header.dat().into();
                 if self.buffer.len() < data_len {
+                    // We don't have the whole packet yet. Put the header
+                    // back in the buffer and wait for more data.
                     for byte in header.0.iter().rev() {
                         self.buffer.push_front(*byte);
                     }
                     return NeedMoreData;
                 }
+                let mut bytes = Vec::with_capacity(1 + data_len);
+                bytes.push(header.pid_byte());
                 bytes.extend(self.buffer.drain(0..data_len));
                 Parsed(TracePacket {
                     timestamp_ns: self.ns(),
                     bytes,
                 })
             }
+
+            // A token packet was captured. The OK flag indicates if it
+            // was valid, but we don't have the CRC bits seen on the wire.
+            // Reconstruct the packet with a good or bad CRC as appropriate.
             (Ok(Sof | Setup | In | Out), data_ok) => {
                 let mut bytes = vec![header.pid_byte()];
                 let mut data = header.dat().to_le_bytes();
+                // Calculate the CRC this packet should have had.
                 let crc = crc5(u32::from_le_bytes([data[0], data[1], 0, 0]), 11);
                 if data_ok {
+                    // The packet was valid, so insert the correct CRC.
                     data[1] |= crc << 3;
                 } else {
-                    println!("PID pattern correct, but broken CRC5:\n{header:?}");
+                    // The packet was invalid, so insert a bad CRC.
                     data[1] |= (!crc) << 3;
                 }
                 bytes.extend(data);
@@ -417,14 +433,25 @@ impl Ice40UsbtraceStream {
                     bytes,
                 })
             }
+
+            // A handshake packet was captured. If the OK flag is set then
+            // the packet was valid, which implies the PID was the only byte
+            // received.
+            //
+            // If the OK flag is not set then there must have been trailing
+            // bytes present to make the packet invalid. So generate a packet
+            // with the same flaw, by appending a single zero byte.
             (Ok(Ack | Nak | Stall), data_ok) => {
-                assert!(data_ok, "PID is all there is to decode!");
-                let bytes = vec![header.pid_byte()];
+                let mut bytes = vec![header.pid_byte()];
+                if !data_ok {
+                    bytes.push(0);
+                }
                 Parsed(TracePacket {
                     timestamp_ns: self.ns(),
                     bytes,
                 })
             }
+
             (Err(_), _) => ParseError(
                 anyhow!("Error decoding PID for header:\n{header:?}")
             )
