@@ -116,85 +116,85 @@ fn clk_to_ns(clk_cycles: u64) -> u64 {
     quotient * 50 + TABLE[remainder as usize]
 }
 
-/// Check whether a Cynthion device has an accessible analyzer interface.
-fn check_device(device_info: &DeviceInfo)
-    -> Result<(InterfaceSelection, Vec<Speed>), Error>
-{
-    // Check we can open the device.
-    let device = device_info
-        .open()
-        .context("Failed to open device")?;
+impl CynthionDevice {
+    /// Check whether a Cynthion device has an accessible analyzer interface.
+    fn check_device(device_info: &DeviceInfo)
+        -> Result<(InterfaceSelection, Vec<Speed>), Error>
+    {
+        // Check we can open the device.
+        let device = device_info
+            .open()
+            .context("Failed to open device")?;
 
-    // Read the active configuration.
-    let config = device
-        .active_configuration()
-        .context("Failed to retrieve active configuration")?;
+        // Read the active configuration.
+        let config = device
+            .active_configuration()
+            .context("Failed to retrieve active configuration")?;
 
-    // Iterate over the interfaces...
-    for interface in config.interfaces() {
-        let interface_number = interface.interface_number();
+        // Iterate over the interfaces...
+        for interface in config.interfaces() {
+            let interface_number = interface.interface_number();
 
-        // ...and alternate settings...
-        for alt_setting in interface.alt_settings() {
-            let alt_setting_number = alt_setting.alternate_setting();
+            // ...and alternate settings...
+            for alt_setting in interface.alt_settings() {
+                let alt_setting_number = alt_setting.alternate_setting();
 
-            // Ignore if this is not our supported target.
-            if alt_setting.class() != CLASS ||
-               alt_setting.subclass() != SUBCLASS
-            {
-                continue;
+                // Ignore if this is not our supported target.
+                if alt_setting.class() != CLASS ||
+                   alt_setting.subclass() != SUBCLASS
+                {
+                    continue;
+                }
+
+                // Check protocol version.
+                let protocol = alt_setting.protocol();
+                #[allow(clippy::absurd_extreme_comparisons)]
+                match PROTOCOL.cmp(&protocol) {
+                    Ordering::Less =>
+                        bail!("Analyzer gateware is newer (v{}) than supported by this version of Packetry (v{}). Please update Packetry.", protocol, PROTOCOL),
+                    Ordering::Greater =>
+                        bail!("Analyzer gateware is older (v{}) than supported by this version of Packetry (v{}). Please update gateware.", protocol, PROTOCOL),
+                    Ordering::Equal => {}
+                }
+
+                // Try to claim the interface.
+                let interface = device
+                    .claim_interface(interface_number)
+                    .context("Failed to claim interface")?;
+
+                // Select the required alternate, if not the default.
+                if alt_setting_number != 0 {
+                    interface
+                        .set_alt_setting(alt_setting_number)
+                        .context("Failed to select alternate setting")?;
+                }
+
+                // Fetch the available speeds.
+                let handle = CynthionHandle { interface };
+                let speeds = handle
+                    .speeds()
+                    .context("Failed to fetch available speeds")?;
+
+                // Now we have a usable device.
+                return Ok((
+                    InterfaceSelection {
+                        interface_number,
+                        alt_setting_number,
+                    },
+                    speeds
+                ))
             }
-
-            // Check protocol version.
-            let protocol = alt_setting.protocol();
-            #[allow(clippy::absurd_extreme_comparisons)]
-            match PROTOCOL.cmp(&protocol) {
-                Ordering::Less =>
-                    bail!("Analyzer gateware is newer (v{}) than supported by this version of Packetry (v{}). Please update Packetry.", protocol, PROTOCOL),
-                Ordering::Greater =>
-                    bail!("Analyzer gateware is older (v{}) than supported by this version of Packetry (v{}). Please update gateware.", protocol, PROTOCOL),
-                Ordering::Equal => {}
-            }
-
-            // Try to claim the interface.
-            let interface = device
-                .claim_interface(interface_number)
-                .context("Failed to claim interface")?;
-
-            // Select the required alternate, if not the default.
-            if alt_setting_number != 0 {
-                interface
-                    .set_alt_setting(alt_setting_number)
-                    .context("Failed to select alternate setting")?;
-            }
-
-            // Fetch the available speeds.
-            let handle = CynthionHandle { interface };
-            let speeds = handle
-                .speeds()
-                .context("Failed to fetch available speeds")?;
-
-            // Now we have a usable device.
-            return Ok((
-                InterfaceSelection {
-                    interface_number,
-                    alt_setting_number,
-                },
-                speeds
-            ))
         }
+
+        bail!("No supported analyzer interface found");
     }
 
-    bail!("No supported analyzer interface found");
-}
-
-impl CynthionDevice {
     pub fn scan() -> Result<Vec<CynthionDevice>, Error> {
         Ok(nusb::list_devices()?
             .filter(|info| info.vendor_id() == VID)
             .filter(|info| info.product_id() == PID)
             .map(|device_info|
-                match check_device(&device_info) {
+                match CynthionDevice::check_device(&device_info) {
                     Ok((iface, speeds)) => CynthionDevice {
                         device_info,
                         usability: Usable(iface, speeds)
