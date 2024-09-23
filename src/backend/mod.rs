@@ -6,6 +6,7 @@ use num_enum::{FromPrimitive, IntoPrimitive};
 
 pub mod cynthion;
 pub mod ice40usbtrace;
+mod transfer_queue;
 
 #[derive(Debug, Copy, Clone, PartialEq, FromPrimitive, IntoPrimitive)]
 #[repr(u8)]

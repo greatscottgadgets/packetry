@@ -7,23 +7,19 @@ use std::sync::mpsc;
 use anyhow::{Context as ErrorContext, Error, bail};
 use futures_channel::oneshot;
 use futures_lite::future::block_on;
-use futures_util::future::FusedFuture;
-use futures_util::{select_biased, FutureExt};
 use nusb::{
     self,
     transfer::{
         Control,
         ControlType,
-        Queue,
         Recipient,
-        RequestBuffer,
-        TransferError,
     },
     DeviceInfo,
     Interface
 };
 
 use super::{
+    transfer_queue::TransferQueue,
     BackendStop,
     DeviceUsability,
     InterfaceSelection,
@@ -94,11 +90,6 @@ pub struct CynthionDevice {
 #[derive(Clone)]
 pub struct CynthionHandle {
     interface: Interface,
-}
-
-pub struct CynthionQueue {
-    tx: mpsc::Sender<Vec<u8>>,
-    queue: Queue<RequestBuffer>,
 }
 
 pub struct CynthionStream {
@@ -292,7 +283,8 @@ impl CynthionHandle {
         self.start_capture(speed)?;
 
         // Set up transfer queue.
-        let mut queue = CynthionQueue::new(&self.interface, tx);
+        let mut queue = TransferQueue::new(&self.interface, tx,
+            ENDPOINT, NUM_TRANSFERS, READ_LEN);
 
         // Spawn a worker thread to process queue until stopped.
         let worker = spawn(move || block_on(queue.process(queue_stop_rx)));
@@ -350,58 +342,6 @@ impl CynthionHandle {
             .control_out_blocking(control, data, timeout)
             .context("Write request failed")?;
         Ok(())
-    }
-}
-
-impl CynthionQueue {
-
-    fn new(interface: &Interface, tx: mpsc::Sender<Vec<u8>>)
-        -> CynthionQueue
-    {
-        let mut queue = interface.bulk_in_queue(ENDPOINT);
-        while queue.pending() < NUM_TRANSFERS {
-            queue.submit(RequestBuffer::new(READ_LEN));
-        }
-        CynthionQueue { queue, tx }
-    }
-
-    async fn process(&mut self, mut stop: oneshot::Receiver<()>)
-        -> Result<(), Error>
-    {
-        use TransferError::Cancelled;
-        loop {
-            select_biased!(
-                _ = stop => {
-                    // Stop requested. Cancel all transfers.
-                    self.queue.cancel_all();
-                }
-                completion = self.queue.next_complete().fuse() => {
-                    match completion.status {
-                        Ok(()) => {
-                            // Send data to decoder thread.
-                            self.tx.send(completion.data)
-                                .context("Failed sending capture data to channel")?;
-                            if !stop.is_terminated() {
-                                // Submit next transfer.
-                                self.queue.submit(RequestBuffer::new(READ_LEN));
-                            }
-                        },
-                        Err(Cancelled) if stop.is_terminated() => {
-                            // Transfer cancelled during shutdown. Drop it.
-                            drop(completion);
-                            if self.queue.pending() == 0 {
-                                // All cancellations now handled.
-                                return Ok(());
-                            }
-                        },
-                        Err(usb_error) => {
-                            // Transfer failed.
-                            return Err(Error::from(usb_error));
-                        }
-                    }
-                }
-            );
-        }
     }
 }
 
