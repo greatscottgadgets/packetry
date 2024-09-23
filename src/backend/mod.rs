@@ -4,6 +4,8 @@ use anyhow::{bail, Error};
 use futures_channel::oneshot;
 use num_enum::{FromPrimitive, IntoPrimitive};
 
+use crate::util::handle_thread_panic;
+
 pub mod cynthion;
 pub mod ice40usbtrace;
 mod transfer_queue;
@@ -51,23 +53,6 @@ pub enum DeviceUsability {
     Usable(InterfaceSelection, Vec<Speed>),
     /// Device not usable, with a string explaining why.
     Unusable(String),
-}
-
-fn handle_thread_panic<T>(result: std::thread::Result<T>) -> Result<T, Error> {
-    match result {
-        Ok(x) => Ok(x),
-        Err(panic) => {
-            let msg = match (
-                panic.downcast_ref::<&str>(),
-                panic.downcast_ref::<String>())
-            {
-                (Some(&s), _) => s,
-                (_,  Some(s)) => s,
-                (None,  None) => "<No panic message>"
-            };
-            bail!("Worker thread panic: {msg}");
-        }
-    }
 }
 
 #[derive(Debug)]

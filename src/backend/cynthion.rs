@@ -18,14 +18,11 @@ use nusb::{
     Interface
 };
 
+use crate::util::handle_thread_panic;
+
 use super::{
     transfer_queue::TransferQueue,
-    BackendStop,
-    DeviceUsability,
-    InterfaceSelection,
-    Speed,
-    handle_thread_panic,
-    TracePacket,
+    BackendStop, DeviceUsability, InterfaceSelection, Speed, TracePacket,
 };
 use super::DeviceUsability::*;
 

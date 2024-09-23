@@ -14,11 +14,12 @@ use nusb::{
 };
 
 use crate::usb::crc5;
+use crate::util::handle_thread_panic;
 
 use super::DeviceUsability::*;
 use super::{
     transfer_queue::TransferQueue,
-    handle_thread_panic, BackendStop, DeviceUsability, InterfaceSelection, Speed, TracePacket
+    BackendStop, DeviceUsability, InterfaceSelection, Speed, TracePacket
 };
 
 const VID: u16 = 0x1d50;
