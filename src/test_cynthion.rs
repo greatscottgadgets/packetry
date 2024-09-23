@@ -1,8 +1,5 @@
-use crate::backend::{DeviceUsability, Speed};
-use crate::backend::cynthion::{
-    CynthionDevice,
-    CynthionHandle,
-};
+use crate::backend::{BackendHandle, Speed};
+use crate::backend::cynthion::{CynthionDevice, CynthionHandle, VID_PID};
 use crate::capture::{
     create_capture,
     CaptureReader,
@@ -14,7 +11,7 @@ use crate::capture::{
 use crate::decoder::Decoder;
 use crate::pcap::Writer;
 
-use anyhow::{Context, Error, ensure};
+use anyhow::{Context, Error, bail, ensure};
 use futures_lite::future::block_on;
 use nusb::transfer::RequestBuffer;
 
@@ -58,12 +55,17 @@ fn test(save_capture: bool,
 
     // Open analyzer device.
     println!("Opening analyzer device");
-    let mut analyzer = CynthionDevice::scan()
-        .context("Failed to scan for analyzers")?
-        .iter()
-
-        .find(|dev| matches!(dev.usability, DeviceUsability::Usable(..)))
-        .context("No usable analyzer found")?
+    let mut candidates = nusb::list_devices()
+        .context("Failed to list USB devices")?
+        .filter(|info| (info.vendor_id(), info.product_id()) == VID_PID)
+        .collect::<Vec<_>>();
+    let target_info = match (candidates.len(), candidates.pop()) {
+        (0, None) => bail!("No Cynthion devices found"),
+        (1, Some(info)) => info,
+        (..) => bail!("Multiple Cynthion devices found"),
+    };
+    let mut analyzer = CynthionDevice::new(target_info)
+        .context("Failed to probe Cynthion device")?
         .open()
         .context("Failed to open analyzer")?;
 
@@ -74,9 +76,9 @@ fn test(save_capture: bool,
 
     // Start capture.
     let analyzer_start_time = Instant::now();
-    let (packets, stop_handle) = analyzer
-        .start(speed,
-               |err| err.context("Failure in capture thread").unwrap())
+    let (stream_handle, stop_handle) = analyzer
+        .start(speed, Box::new(|result|
+            result.context("Failure in capture thread").unwrap()))
         .context("Failed to start analyzer")?;
 
     // Attempt to open and read data from the test device.
@@ -92,7 +94,9 @@ fn test(save_capture: bool,
     let bytes_read = test_device_result?;
 
     // Decode all packets that were received.
-    for packet in packets {
+    for result in stream_handle {
+        let packet = result
+            .context("Error decoding raw capture data")?;
         decoder.handle_raw_packet(&packet.bytes, packet.timestamp_ns)
             .context("Error decoding packet")?;
     }
