@@ -22,7 +22,7 @@ use super::{handle_thread_panic, BackendStop, DeviceUsability, InterfaceSelectio
 
 const VID: u16 = 0x1d50;
 const PID: u16 = 0x617e;
-
+const INTERFACE: u8 = 1;
 const ENDPOINT: u8 = 0x81;
 
 const READ_LEN: usize = 1024;
@@ -75,7 +75,7 @@ fn check_device(device_info: &DeviceInfo) -> Result<(), Error> {
 
     // Try to claim the interface.
     let _interface = device
-        .claim_interface(1)
+        .claim_interface(INTERFACE)
         .context("Failed to claim interface")?;
 
     // Now we have a usable device.
@@ -92,7 +92,7 @@ impl Ice40UsbtraceDevice {
                     device_info,
                     usability: Usable(
                         InterfaceSelection {
-                            interface_number: 1,
+                            interface_number: INTERFACE,
                             alt_setting_number: 0,
                         },
                         vec![Speed::Full],
