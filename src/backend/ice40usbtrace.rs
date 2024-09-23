@@ -331,17 +331,18 @@ pub enum Pid {
 
 impl std::fmt::Display for Pid {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use Pid::*;
         let s = match self {
-            Pid::Out => "OUT",
-            Pid::In => "IN",
-            Pid::Sof => "SOF",
-            Pid::Setup => "SETUP",
-            Pid::Data0 => "DATA0",
-            Pid::Data1 => "DATA1",
-            Pid::Ack => "ACK",
-            Pid::Nak => "NAK",
-            Pid::Stall => "STALL",
-            Pid::TsOverflow => "TS OVERFLOW",
+            Out => "OUT",
+            In => "IN",
+            Sof => "SOF",
+            Setup => "SETUP",
+            Data0 => "DATA0",
+            Data1 => "DATA1",
+            Ack => "ACK",
+            Nak => "NAK",
+            Stall => "STALL",
+            TsOverflow => "TS OVERFLOW",
         };
         write!(f, "{}", s)
     }
@@ -357,6 +358,9 @@ impl Ice40UsbtraceStream {
     }
 
     fn parse_packet(&mut self) -> ParseResult<TracePacket> {
+        use Pid::*;
+        use ParseResult::*;
+
         let header: Vec<u8> = self.buffer.drain(0..4).collect();
         let header = Header(&header);
 
@@ -364,14 +368,14 @@ impl Ice40UsbtraceStream {
 
         let pkt = match (header.pid().try_into(), header.ok()) {
             // The packet header could not even be decoded, skip it
-            (Ok(Pid::TsOverflow), false) => {
+            (Ok(TsOverflow), false) => {
                 println!("Bad packet!\n{header:?}");
-                return ParseResult::Ignored;
+                return Ignored;
             }
             // Need to increment self.ts
-            (Ok(Pid::TsOverflow), true) => ParseResult::Ignored,
+            (Ok(TsOverflow), true) => Ignored,
             // Handle Data packet. If the CRC16 is wrong get_ok() returns false - push broken packet regardless
-            (Ok(Pid::Data0 | Pid::Data1), data_ok) => {
+            (Ok(Data0 | Data1), data_ok) => {
                 if !data_ok {
                     println!("Data packet with corrupt checksum:\n{header:?}");
                 }
@@ -382,15 +386,15 @@ impl Ice40UsbtraceStream {
                     for byte in header.0.iter().rev() {
                         self.buffer.push_front(*byte);
                     }
-                    return ParseResult::NeedMoreData;
+                    return NeedMoreData;
                 }
                 bytes.extend(self.buffer.drain(0..data_len));
-                ParseResult::Parsed(TracePacket {
+                Parsed(TracePacket {
                     timestamp_ns: self.ns(),
                     bytes,
                 })
             }
-            (Ok(Pid::Sof | Pid::Setup | Pid::In | Pid::Out), data_ok) => {
+            (Ok(Sof | Setup | In | Out), data_ok) => {
                 let mut bytes = vec![header.pid_byte()];
                 let mut data = header.dat().to_le_bytes();
                 let crc = crc5(u32::from_le_bytes([data[0], data[1], 0, 0]), 11);
@@ -402,20 +406,20 @@ impl Ice40UsbtraceStream {
                 }
                 bytes.extend(data);
 
-                ParseResult::Parsed(TracePacket {
+                Parsed(TracePacket {
                     timestamp_ns: self.ns(),
                     bytes,
                 })
             }
-            (Ok(Pid::Ack | Pid::Nak | Pid::Stall), data_ok) => {
+            (Ok(Ack | Nak | Stall), data_ok) => {
                 assert!(data_ok, "PID is all there is to decode!");
                 let bytes = vec![header.pid_byte()];
-                ParseResult::Parsed(TracePacket {
+                Parsed(TracePacket {
                     timestamp_ns: self.ns(),
                     bytes,
                 })
             }
-            (Err(_), _) => ParseResult::ParseError(
+            (Err(_), _) => ParseError(
                 anyhow!("Error decoding PID for header:\n{header:?}")
             )
         };
@@ -424,6 +428,7 @@ impl Ice40UsbtraceStream {
     }
 
     fn next_buffered_packet(&mut self) -> Option<TracePacket> {
+        use ParseResult::*;
         loop {
             // Need more bytes for the header
             if self.buffer.len() < 4 {
@@ -431,10 +436,10 @@ impl Ice40UsbtraceStream {
             }
 
             match self.parse_packet() {
-                ParseResult::Parsed(pkt) => return Some(pkt),
-                ParseResult::Ignored => continue,
-                ParseResult::NeedMoreData => return None,
-                ParseResult::ParseError(e) => {
+                Parsed(pkt) => return Some(pkt),
+                Ignored => continue,
+                NeedMoreData => return None,
+                ParseError(e) => {
                     println!("{e}");
                 }
             }
