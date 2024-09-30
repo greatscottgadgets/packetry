@@ -39,6 +39,7 @@ use gtk::{
     ColumnViewColumn,
     MenuButton,
     MessageType,
+    PopoverMenu,
     ProgressBar,
     ResponseType,
     ScrolledWindow,
@@ -625,6 +626,7 @@ fn create_view<Item, Model, RowData, ViewMode>(
         title: &str,
         capture: &CaptureReader,
         view_mode: ViewMode,
+        context_menu_fn: fn(&Item) -> Option<PopoverMenu>,
         #[cfg(any(test, feature="record-ui-test"))]
         recording_args: (&Rc<RefCell<Recording>>, &'static str))
     -> (Model, SingleSelection, ColumnView)
@@ -676,8 +678,9 @@ fn create_view<Item, Model, RowData, ViewMode>(
         match row.node() {
             Ok(node_ref) => {
                 let node = node_ref.borrow();
-                let summary = model.description(&node.item, false);
-                let connectors = model.connectors(&node.item);
+                let item = node.item.clone();
+                let summary = model.description(&item, false);
+                let connectors = model.connectors(&item);
                 item_widget.set_text(summary);
                 item_widget.set_connectors(connectors);
                 expander.set_visible(node.expandable());
@@ -700,6 +703,7 @@ fn create_view<Item, Model, RowData, ViewMode>(
                     )
                 );
                 item_widget.set_handler(handler);
+                item_widget.set_context_menu_fn(move || context_menu_fn(&item));
                 node.attach_widget(&item_widget);
             },
             Err(msg) => {
@@ -804,6 +808,7 @@ pub fn reset_capture() -> Result<CaptureWriter, Error> {
                     "Traffic",
                     &reader,
                     mode,
+                    traffic_context_menu,
                     #[cfg(any(test, feature="record-ui-test"))]
                     (&ui.recording, mode.log_name())
                 );
@@ -844,6 +849,7 @@ pub fn reset_capture() -> Result<CaptureWriter, Error> {
                 "Devices",
                 &reader,
                 (),
+                device_context_menu,
                 #[cfg(any(test, feature="record-ui-test"))]
                 (&ui.recording, "devices")
             );
@@ -1164,6 +1170,14 @@ pub fn start_capture() -> Result<(), Error> {
             || display_error(update_view()));
         Ok(())
     })
+}
+
+fn traffic_context_menu(_item: &TrafficItem) -> Option<PopoverMenu> {
+    None
+}
+
+fn device_context_menu(_item: &DeviceItem) -> Option<PopoverMenu> {
+    None
 }
 
 fn show_about() -> Result<(), Error> {
