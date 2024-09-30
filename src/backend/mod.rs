@@ -3,7 +3,7 @@ use std::sync::mpsc;
 use std::thread::{JoinHandle, spawn, sleep};
 use std::time::Duration;
 
-use anyhow::{Context, Error, bail};
+use anyhow::{Context, Error};
 use futures_channel::oneshot;
 use futures_lite::future::block_on;
 use nusb::{self, DeviceInfo};
@@ -208,9 +208,9 @@ pub trait BackendHandle: Send + Sync {
             block_on(transfer_queue.process(queue_stop_rx))
         );
 
-        // Wait until this thread is signalled to stop.
-        block_on(stop_rx)
-            .context("Sender was dropped")?;
+        // Wait until this thread is signalled to stop, or the stop request
+        // sender is dropped.
+        let _ = block_on(stop_rx);
 
         // End capture.
         self.end_capture()?;
@@ -219,9 +219,9 @@ pub trait BackendHandle: Send + Sync {
         // Leave queue worker running briefly to receive flushed data.
         sleep(Duration::from_millis(100));
 
-        // Signal queue processing to stop, then join the worker thread.
-        queue_stop_tx.send(())
-            .or_else(|_| bail!("Failed sending stop signal to queue worker"))?;
+        // Signal queue processing to stop, then join the worker thread. If
+        // sending fails, assume the thread is already stopping.
+        let _ = queue_stop_tx.send(());
 
         handle_thread_panic(queue_worker.join())?
             .context("Error in queue worker thread")?;
@@ -237,8 +237,9 @@ impl BackendStop {
     /// Stop the capture associated with this handle.
     pub fn stop(self) -> Result<(), Error> {
         println!("Requesting capture stop");
-        self.stop_tx.send(())
-            .or_else(|_| bail!("Failed sending stop request"))?;
+        // Signal the capture thread to stop, then join it. If sending fails,
+        // assume the thread is already stopping.
+        let _ = self.stop_tx.send(());
         handle_thread_panic(self.worker.join())?;
         Ok(())
     }
