@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::io::Write;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
@@ -75,6 +76,7 @@ use crate::capture::{
     ItemSource,
     TrafficItem,
     TrafficViewMode::{self,*},
+    TransferId,
     DeviceItem,
     DeviceViewMode,
 };
@@ -1182,12 +1184,73 @@ pub fn start_capture() -> Result<(), Error> {
     })
 }
 
-fn traffic_context_menu(_item: &TrafficItem) -> Option<PopoverMenu> {
-    None
+fn traffic_context_menu(item: &TrafficItem) -> Option<PopoverMenu> {
+    use TrafficItem::*;
+    match item {
+        Transfer(transfer_id) => {
+            let context_menu = Menu::new();
+            let save_payload_item = MenuItem::new(
+                Some("Save payload data..."),
+                Some("context.save-payload"));
+            context_menu.append_item(&save_payload_item);
+            let popover = PopoverMenu::from_model(Some(&context_menu));
+            let context_actions = SimpleActionGroup::new();
+            let id = *transfer_id;
+            let save_payload_action = ActionEntry::builder("save-payload")
+                .activate(move |_,_,_| display_error(choose_payload_file(id)))
+                .build();
+            context_actions.add_action_entries([save_payload_action]);
+            popover.insert_action_group("context", Some(&context_actions));
+            Some(popover)
+        },
+        _ => None
+    }
 }
 
 fn device_context_menu(_item: &DeviceItem) -> Option<PopoverMenu> {
     None
+}
+
+fn choose_payload_file(transfer_id: TransferId) -> Result<(), Error> {
+    use FileAction::Save;
+    choose_file(Save, "payload file", move |file| save_payload(file, transfer_id))
+}
+
+fn save_payload(file: gio::File, transfer_id: TransferId)
+    -> Result<(), Error>
+{
+    with_ui(|ui| {
+        let cap = &mut ui.capture;
+        let entry = cap.transfer_index.get(transfer_id)?;
+        let endpoint_id = entry.endpoint_id();
+        let ep_transfer_id = entry.transfer_id();
+        let ep_traf = cap.endpoint_traffic(endpoint_id)?;
+        let ep_transaction_range = ep_traf.transfer_index.target_range(
+            ep_transfer_id, ep_traf.transaction_ids.len())?;
+        let data_range = ep_traf.transfer_data_range(&ep_transaction_range)?;
+        let mut dest = file
+            .replace(None, false, FileCreateFlags::NONE, Cancellable::NONE)?
+            .into_write();
+        let mut length = 0;
+        for data_id in data_range {
+            let ep_traf = cap.endpoint_traffic(endpoint_id)?;
+            let ep_transaction_id = ep_traf.data_transactions.get(data_id)?;
+            let transaction_id = ep_traf.transaction_ids.get(ep_transaction_id)?;
+            let transaction = cap.transaction(transaction_id)?;
+            let transaction_bytes = cap.transaction_bytes(&transaction)?;
+            dest.write_all(&transaction_bytes)?;
+            length += transaction_bytes.len();
+        }
+        println!(
+            "Saved {} of payload data to {}",
+            fmt_size(length as u64),
+            file.basename()
+                .map_or(
+                    "<unnamed>".to_string(),
+                    |path| path.to_string_lossy().to_string())
+        );
+        Ok(())
+    })
 }
 
 fn show_about() -> Result<(), Error> {
