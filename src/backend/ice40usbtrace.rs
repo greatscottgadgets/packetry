@@ -6,7 +6,7 @@ use anyhow::{Context, Error, anyhow};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use nusb::{
     self,
-    transfer::{Control, ControlType, Recipient},
+    transfer::{Control, ControlType, Recipient, TransferError},
     DeviceInfo, Interface,
 };
 
@@ -100,8 +100,8 @@ impl BackendHandle for Ice40UsbtraceHandle {
         assert_eq!(speed, Speed::Full);
 
         // Stop the device if it was left running before and ignore any errors
-        let _ = self.write_request(Command::CaptureStop);
-        let _ = self.write_request(Command::BufferFlush);
+        self.write_request(Command::CaptureStop)?;
+        self.write_request(Command::BufferFlush)?;
 
         // Start capture.
         self.write_request(Command::CaptureStart)?;
@@ -137,6 +137,7 @@ impl BackendHandle for Ice40UsbtraceHandle {
 
 impl Ice40UsbtraceHandle {
     fn write_request(&mut self, request: Command) -> Result<(), Error> {
+        use Command::*;
         let control = Control {
             control_type: ControlType::Vendor,
             recipient: Recipient::Interface,
@@ -146,10 +147,22 @@ impl Ice40UsbtraceHandle {
         };
         let data = &[];
         let timeout = Duration::from_secs(1);
-        self.interface
-            .control_out_blocking(control, data, timeout)
-            .context("Write request failed")?;
-        Ok(())
+        match self.interface.control_out_blocking(control, data, timeout) {
+            Ok(_) => Ok(()),
+            Err(err) => match (request, err) {
+                (CaptureStop | BufferFlush, TransferError::Stall) => {
+                    // Ignore a STALL for these commands. This can happen when
+                    // the device was already stopped (e.g. because it went
+                    // into the overrun state, or because we just haven't
+                    // started it yet).
+                    Ok(())
+                }
+                _ => {
+                    // Propagate any other error.
+                    Err(anyhow!("{request:?} command failed: {err}"))
+                }
+            }
+        }
     }
 }
 
