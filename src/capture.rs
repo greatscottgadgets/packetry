@@ -12,7 +12,7 @@ use crate::data_stream::{
     data_stream, data_stream_with_block_size, DataWriter, DataReader};
 use crate::compact_index::{compact_index, CompactWriter, CompactReader};
 use crate::rcu::SingleWriterRcu;
-use crate::vec_map::VecMap;
+use crate::vec_map::{Key, VecMap};
 use crate::usb::{self, prelude::*, validate_packet};
 use crate::util::{fmt_count, fmt_size};
 
@@ -28,6 +28,7 @@ const PACKET_DATA_BLOCK_SIZE: usize = 0x200000;
 /// Capture state shared between readers and writers.
 pub struct CaptureShared {
     pub device_data: ArcSwap<VecMap<DeviceId, Arc<DeviceData>>>,
+    pub endpoint_index: ArcSwap<VecMap<EndpointKey, EndpointId>>,
     pub endpoint_readers: ArcSwap<VecMap<EndpointId, Arc<EndpointReader>>>,
     pub complete: AtomicBool,
 }
@@ -89,6 +90,7 @@ pub fn create_capture()
     // Create the state shared by readers and writer.
     let shared = Arc::new(CaptureShared {
         device_data: ArcSwap::new(Arc::new(VecMap::new())),
+        endpoint_index: ArcSwap::new(Arc::new(VecMap::new())),
         endpoint_readers: ArcSwap::new(Arc::new(VecMap::new())),
         complete: AtomicBool::from(false),
     });
@@ -216,8 +218,49 @@ pub type DeviceVersion = u32;
 #[derive(Copy, Clone, Debug)]
 pub enum TrafficItem {
     Transfer(TransferId),
-    Transaction(TransferId, TransactionId),
-    Packet(TransferId, TransactionId, PacketId),
+    Transaction(Option<TransferId>, TransactionId),
+    Packet(Option<TransferId>, Option<TransactionId>, PacketId),
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+pub enum TrafficViewMode {
+    Hierarchical,
+    Transactions,
+    Packets,
+}
+
+pub type DeviceViewMode = ();
+
+impl TrafficViewMode {
+    pub const fn display_name(&self) -> &'static str {
+        use TrafficViewMode::*;
+        match self {
+            Hierarchical => "Hierarchical",
+            Transactions => "Transactions",
+            Packets      => "Packets",
+        }
+    }
+
+    #[cfg(any(test, feature="record-ui-test"))]
+    pub const fn log_name(&self) -> &'static str {
+        use TrafficViewMode::*;
+        match self {
+            Hierarchical => "traffic-hierarchical",
+            Transactions => "traffic-transactions",
+            Packets      => "traffic-packets",
+        }
+    }
+
+    #[cfg(any(test, feature="record-ui-test"))]
+    pub fn from_log_name(log_name: &str) -> TrafficViewMode {
+        use TrafficViewMode::*;
+        match log_name {
+            "traffic-hierarchical" => Hierarchical,
+            "traffic-transactions" => Transactions,
+            "traffic-packets"      => Packets,
+            _ => panic!("Unrecognised log name '{log_name}'")
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -322,6 +365,29 @@ impl std::fmt::Display for EndpointType {
 }
 
 type EndpointDetails = (usb::EndpointType, Option<usize>);
+
+#[derive(Copy, Clone)]
+pub struct EndpointKey {
+    pub dev_addr: DeviceAddr,
+    pub direction: Direction,
+    pub ep_num: EndpointNum,
+}
+
+impl Key for EndpointKey {
+    fn id(self) -> usize {
+        self.dev_addr.0 as usize * 32 +
+            self.direction as usize * 16 +
+                self.ep_num.0 as usize
+    }
+
+    fn key(id: usize) -> EndpointKey {
+        EndpointKey {
+            dev_addr: DeviceAddr((id / 32) as u8),
+            direction: Direction::from(((id / 16) % 2) as u8),
+            ep_num: EndpointNum((id % 16) as u8),
+        }
+    }
+}
 
 #[derive(Default)]
 pub struct DeviceData {
@@ -771,6 +837,38 @@ impl std::fmt::Display for Bytes<'_> {
     }
 }
 
+impl CaptureShared {
+    pub fn packet_endpoint(&self, pid: PID, packet: &[u8])
+        -> Result<EndpointId, EndpointKey>
+    {
+        match PacketFields::from_packet(packet) {
+            PacketFields::SOF(_) => Ok(FRAMING_EP_ID),
+            PacketFields::Token(token) => {
+                let dev_addr = token.device_address();
+                let ep_num = token.endpoint_number();
+                let direction = match (ep_num.0, pid) {
+                    (0, _)          => Direction::Out,
+                    (_, PID::SETUP) => Direction::Out,
+                    (_, PID::IN)    => Direction::In,
+                    (_, PID::OUT)   => Direction::Out,
+                    (_, PID::PING)  => Direction::Out,
+                    _ => panic!("PID {pid} does not indicate a direction")
+                };
+                let key = EndpointKey {
+                    dev_addr,
+                    ep_num,
+                    direction
+                };
+                match self.endpoint_index.load().get(key) {
+                    Some(id) => Ok(*id),
+                    None => Err(key),
+                }
+            },
+            _ => Ok(INVALID_EP_ID),
+        }
+    }
+}
+
 impl CaptureWriter {
     pub fn device_data(&self, id: DeviceId)
         -> Result<Arc<DeviceData>, Error>
@@ -1149,33 +1247,52 @@ impl CompletionStatus {
     }
 }
 
-pub trait ItemSource<Item> {
-    fn item(&mut self, parent: Option<&Item>, index: u64)
+pub trait ItemSource<Item, ViewMode> {
+    fn item(&mut self,
+            parent: Option<&Item>,
+            view_mode: ViewMode,
+            index: u64)
         -> Result<Item, Error>;
     fn item_update(&mut self, item: &Item)
         -> Result<Option<Item>, Error>;
     fn child_item(&mut self, parent: &Item, index: u64)
         -> Result<Item, Error>;
-    fn item_children(&mut self, parent: Option<&Item>)
+    fn item_children(&mut self,
+                     parent: Option<&Item>,
+                     view_mode: ViewMode)
         -> Result<(CompletionStatus, u64), Error>;
     fn description(&mut self,
                    item: &Item,
                    detail: bool)
         -> Result<String, Error>;
-    fn connectors(&mut self, item: &Item) -> Result<String, Error>;
+    fn connectors(&mut self,
+                  view_mode: ViewMode,
+                  item: &Item)
+        -> Result<String, Error>;
     fn timestamp(&mut self, item: &Item) -> Result<Timestamp, Error>;
 }
 
-impl ItemSource<TrafficItem> for CaptureReader {
-    fn item(&mut self, parent: Option<&TrafficItem>, index: u64)
+impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
+    fn item(&mut self,
+            parent: Option<&TrafficItem>,
+            view_mode: TrafficViewMode,
+            index: u64)
         -> Result<TrafficItem, Error>
     {
+        use TrafficItem::*;
+        use TrafficViewMode::*;
         match parent {
-            None => {
-                let item_id = TrafficItemId::from(index);
-                let transfer_id = self.item_index.get(item_id)?;
-                Ok(TrafficItem::Transfer(transfer_id))
-            },
+            None => Ok(match view_mode {
+                Hierarchical => {
+                    let item_id = TrafficItemId::from(index);
+                    let transfer_id = self.item_index.get(item_id)?;
+                    Transfer(transfer_id)
+                },
+                Transactions =>
+                    Transaction(None, TransactionId::from(index)),
+                Packets =>
+                    Packet(None, None, PacketId::from(index)),
+            }),
             Some(item) => self.child_item(item, index)
         }
     }
@@ -1192,7 +1309,7 @@ impl ItemSource<TrafficItem> for CaptureReader {
         use TrafficItem::*;
         Ok(match parent {
             Transfer(transfer_id) =>
-                Transaction(*transfer_id, {
+                Transaction(Some(*transfer_id), {
                     let entry = self.transfer_index.get(*transfer_id)?;
                     let endpoint_id = entry.endpoint_id();
                     let ep_transfer_id = entry.transfer_id();
@@ -1200,21 +1317,28 @@ impl ItemSource<TrafficItem> for CaptureReader {
                     let offset = ep_traf.transfer_index.get(ep_transfer_id)?;
                     ep_traf.transaction_ids.get(offset + index)?
                 }),
-            Transaction(transfer_id, transaction_id) =>
-                Packet(*transfer_id, *transaction_id, {
+            Transaction(transfer_id_opt, transaction_id) =>
+                Packet(*transfer_id_opt, Some(*transaction_id), {
                     self.transaction_index.get(*transaction_id)? + index}),
             Packet(..) => bail!("Packets have no child items")
         })
     }
 
-    fn item_children(&mut self, parent: Option<&TrafficItem>)
+    fn item_children(&mut self,
+                     parent: Option<&TrafficItem>,
+                     view_mode: TrafficViewMode)
         -> Result<(CompletionStatus, u64), Error>
     {
         use TrafficItem::*;
+        use TrafficViewMode::*;
         use CompletionStatus::*;
         Ok(match parent {
             None => {
-                (self.completion(), self.item_index.len())
+                (self.completion(), match view_mode {
+                    Hierarchical => self.item_index.len(),
+                    Transactions => self.transaction_index.len(),
+                    Packets => self.packet_index.len(),
+                })
             },
             Some(Transfer(transfer_id)) => {
                 let entry = self.transfer_index.get(*transfer_id)?;
@@ -1369,12 +1493,10 @@ impl ItemSource<TrafficItem> for CaptureReader {
                 }
                 s
             },
-            Transaction(transfer_id, transaction_id) => {
-                let entry = self.transfer_index.get(*transfer_id)?;
-                let endpoint_id = entry.endpoint_id();
-                let endpoint = self.endpoints.get(endpoint_id)?;
+            Transaction(transfer_id_opt, transaction_id) => {
+                let num_packets = self.packet_index.len();
                 let packet_id_range = self.transaction_index.target_range(
-                    *transaction_id, self.packet_index.len())?;
+                    *transaction_id, num_packets)?;
                 let start_packet_id = packet_id_range.start;
                 let start_packet = self.packet(start_packet_id)?;
                 let packet_count = packet_id_range.len();
@@ -1391,7 +1513,34 @@ impl ItemSource<TrafficItem> for CaptureReader {
                     }
                     writeln!(s)?;
                 }
-                if validate_packet(&start_packet).is_ok() {
+                if let Ok(pid) = validate_packet(&start_packet) {
+                    if pid == SPLIT && start_packet_id.value + 1 == num_packets {
+                        // We can't know the endpoint yet.
+                        let split = SplitFields::from_packet(&start_packet);
+                        return Ok(format!(
+                            "{} {} speed {} transaction on hub {} port {}",
+                            match split.sc() {
+                                Start => "Starting",
+                                Complete => "Completing",
+                            },
+                            format!("{:?}", split.speed()).to_lowercase(),
+                            format!("{:?}", split.endpoint_type()).to_lowercase(),
+                            split.hub_address(),
+                            split.port()))
+                    }
+                    let endpoint_id = match transfer_id_opt {
+                        Some(transfer_id) => {
+                            let entry = self.transfer_index.get(*transfer_id)?;
+                            entry.endpoint_id()
+                        },
+                        None => match self.shared.packet_endpoint(
+                            pid, &start_packet)
+                        {
+                            Ok(endpoint_id) => endpoint_id,
+                            Err(_) => INVALID_EP_ID
+                        }
+                    };
+                    let endpoint = self.endpoints.get(endpoint_id)?;
                     let transaction = self.transaction(*transaction_id)?;
                     s += &transaction.description(self, &endpoint, detail)?
                 } else {
@@ -1527,16 +1676,36 @@ impl ItemSource<TrafficItem> for CaptureReader {
         })
     }
 
-    fn connectors(&mut self, item: &TrafficItem)
+    fn connectors(&mut self, view_mode: TrafficViewMode, item: &TrafficItem)
         -> Result<String, Error>
     {
         use EndpointState::*;
         use TrafficItem::*;
+        use TrafficViewMode::*;
+        if view_mode == Packets {
+            return Ok(String::from(""));
+        }
+        let last_packet = match item {
+            Packet(_, Some(transaction_id), packet_id) => {
+                let range = self.transaction_index.target_range(
+                    *transaction_id, self.packet_index.len())?;
+                *packet_id == range.end - 1
+            }, _ => false
+        };
+        if view_mode == Transactions {
+            return Ok(String::from(match (item, last_packet) {
+                (Transfer(_), _)     => unreachable!(),
+                (Transaction(..), _) => "○",
+                (Packet(..), false)  => "├──",
+                (Packet(..), true )  => "└──",
+            }));
+        }
         let endpoint_count = self.endpoints.len() as usize;
         let max_string_length = endpoint_count + "    └──".len();
         let mut connectors = String::with_capacity(max_string_length);
         let transfer_id = match item {
-            Transfer(i) | Transaction(i, _) | Packet(i, ..) => *i
+            Transfer(i) | Transaction(Some(i), _) | Packet(Some(i), ..) => *i,
+            _ => unreachable!()
         };
         let entry = self.transfer_index.get(transfer_id)?;
         let endpoint_id = entry.endpoint_id();
@@ -1544,19 +1713,13 @@ impl ItemSource<TrafficItem> for CaptureReader {
         let extended = self.transfer_extended(endpoint_id, transfer_id)?;
         let ep_traf = self.endpoint_traffic(endpoint_id)?;
         let last_transaction = match item {
-            Transaction(_, transaction_id) | Packet(_, transaction_id, _) => {
+            Transaction(_, transaction_id) |
+            Packet(_, Some(transaction_id), _) => {
                 let range = ep_traf.transfer_index.target_range(
                     entry.transfer_id(), ep_traf.transaction_ids.len())?;
                 let last_transaction_id =
                     ep_traf.transaction_ids.get(range.end - 1)?;
                 *transaction_id == last_transaction_id
-            }, _ => false
-        };
-        let last_packet = match item {
-            Packet(_, transaction_id, packet_id) => {
-                let range = self.transaction_index.target_range(
-                    *transaction_id, self.packet_index.len())?;
-                *packet_id == range.end - 1
             }, _ => false
         };
         let last = last_transaction && !extended;
@@ -1643,8 +1806,11 @@ impl ItemSource<TrafficItem> for CaptureReader {
     }
 }
 
-impl ItemSource<DeviceItem> for CaptureReader {
-    fn item(&mut self, parent: Option<&DeviceItem>, index: u64)
+impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
+    fn item(&mut self,
+            parent: Option<&DeviceItem>,
+            _view_mode: DeviceViewMode,
+            index: u64)
         -> Result<DeviceItem, Error>
     {
         match parent {
@@ -1730,7 +1896,9 @@ impl ItemSource<DeviceItem> for CaptureReader {
         })
     }
 
-    fn item_children(&mut self, parent: Option<&DeviceItem>)
+    fn item_children(&mut self,
+                     parent: Option<&DeviceItem>,
+                     _view_mode: DeviceViewMode)
         -> Result<(CompletionStatus, u64), Error>
     {
         use DeviceItem::*;
@@ -1851,7 +2019,9 @@ impl ItemSource<DeviceItem> for CaptureReader {
         })
     }
 
-    fn connectors(&mut self, item: &DeviceItem) -> Result<String, Error> {
+    fn connectors(&mut self, _view_mode: (), item: &DeviceItem)
+        -> Result<String, Error>
+    {
         use DeviceItem::*;
         let depth = match item {
             Device(..) => 0,
@@ -1890,7 +2060,7 @@ mod tests {
     {
         let mut summary = cap.description(item, false).unwrap();
         let (_completion, num_children) =
-            cap.item_children(Some(item)).unwrap();
+            cap.item_children(Some(item), TrafficViewMode::Hierarchical).unwrap();
         let child_ids = 0..num_children;
         for (n, child_summary) in child_ids
             .map(|child_id| {
@@ -1952,7 +2122,8 @@ mod tests {
                 let mut out_writer = BufWriter::new(out_file);
                 let num_items = reader.item_index.len();
                 for item_id in 0 .. num_items {
-                    let item = reader.item(None, item_id).unwrap();
+                    let item = reader.item(
+                        None, TrafficViewMode::Hierarchical, item_id).unwrap();
                     write_item(&mut reader, &item, 0, &mut out_writer);
                 }
             }
@@ -1982,6 +2153,7 @@ pub mod prelude {
         DeviceData,
         Endpoint,
         EndpointId,
+        EndpointKey,
         EndpointType,
         EndpointState,
         EndpointReader,

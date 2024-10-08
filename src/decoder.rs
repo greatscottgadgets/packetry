@@ -6,7 +6,7 @@ use anyhow::{Context, Error, bail};
 use crate::capture::prelude::*;
 use crate::rcu::SingleWriterRcu;
 use crate::usb::{self, prelude::*, validate_packet};
-use crate::vec_map::{VecMap, Key};
+use crate::vec_map::VecMap;
 
 struct EndpointData {
     device_id: DeviceId,
@@ -504,33 +504,9 @@ impl EndpointData {
     }
 }
 
-#[derive(Copy, Clone)]
-struct EndpointKey {
-    dev_addr: DeviceAddr,
-    direction: Direction,
-    ep_num: EndpointNum,
-}
-
-impl Key for EndpointKey {
-    fn id(self) -> usize {
-        self.dev_addr.0 as usize * 32 +
-            self.direction as usize * 16 +
-                self.ep_num.0 as usize
-    }
-
-    fn key(id: usize) -> EndpointKey {
-        EndpointKey {
-            dev_addr: DeviceAddr((id / 32) as u8),
-            direction: Direction::from(((id / 16) % 2) as u8),
-            ep_num: EndpointNum((id % 16) as u8),
-        }
-    }
-}
-
 pub struct Decoder {
     capture: CaptureWriter,
     device_index: VecMap<DeviceAddr, DeviceId>,
-    endpoint_index: VecMap<EndpointKey, EndpointId>,
     endpoint_data: VecMap<EndpointId, EndpointData>,
     last_endpoint_state: Vec<u8>,
     last_item_endpoint: Option<EndpointId>,
@@ -543,7 +519,6 @@ impl Decoder {
         let mut decoder = Decoder {
             capture,
             device_index: VecMap::new(),
-            endpoint_index: VecMap::new(),
             endpoint_data: VecMap::new(),
             last_endpoint_state: Vec::new(),
             last_item_endpoint: None,
@@ -604,43 +579,18 @@ impl Decoder {
         Ok(self.capture)
     }
 
-    pub fn token_endpoint(&mut self, pid: PID, token: &TokenFields)
-        -> Result<EndpointId, Error>
-    {
-        let dev_addr = token.device_address();
-        let ep_num = token.endpoint_number();
-        let direction = match (ep_num.0, pid) {
-            (0, _)          => Direction::Out,
-            (_, PID::SETUP) => Direction::Out,
-            (_, PID::IN)    => Direction::In,
-            (_, PID::OUT)   => Direction::Out,
-            (_, PID::PING)  => Direction::Out,
-            _ => bail!("PID {pid} does not indicate a direction")
-        };
-        let key = EndpointKey {
-            dev_addr,
-            ep_num,
-            direction
-        };
-        Ok(match self.endpoint_index.get(key) {
-            Some(id) => *id,
-            None => {
-                let id = self.add_endpoint(
-                    key.dev_addr, key.ep_num, key.direction)?;
-                self.endpoint_index.set(key, id);
-                id
-            }
-        })
-    }
-
     fn packet_endpoint(&mut self, pid: PID, packet: &[u8])
         -> Result<EndpointId, Error>
     {
-        Ok(match PacketFields::from_packet(packet) {
-            PacketFields::SOF(_) => FRAMING_EP_ID,
-            PacketFields::Token(token) =>
-                self.token_endpoint(pid, &token)?,
-            _ => INVALID_EP_ID,
+        Ok(match self.capture.shared.packet_endpoint(pid, packet) {
+            Ok(id) => id,
+            Err(key) => {
+                let id = self.add_endpoint(
+                    key.dev_addr, key.ep_num, key.direction)?;
+                self.capture.shared.endpoint_index
+                    .update(|map| map.set(key, id));
+                id
+            }
         })
     }
 
