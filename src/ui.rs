@@ -385,8 +385,8 @@ pub fn activate(application: &Application) -> Result<(), Error> {
         .build();
 
     window.add_action_entries([
-        button_action!("open", open_button, choose_file(Load)),
-        button_action!("save", save_button, choose_file(Save)),
+        button_action!("open", open_button, choose_pcap_file(Load)),
+        button_action!("save", save_button, choose_pcap_file(Save)),
         button_action!("scan", scan_button, detect_hardware()),
         button_action!("capture", capture_button, start_capture()),
         button_action!("stop", stop_button, stop_operation()),
@@ -956,20 +956,26 @@ pub fn update_view() -> Result<(), Error> {
     })
 }
 
-fn choose_file(action: FileAction) -> Result<(), Error> {
+fn choose_file<F>(
+    action: FileAction,
+    description: &str,
+    handler: F
+) -> Result<(), Error>
+    where F: Fn(gio::File) -> Result<(), Error> + 'static
+{
     use FileAction::*;
     let chooser = WINDOW.with(|cell| {
         let borrow = cell.borrow();
         let window = borrow.as_ref();
         match action {
             Load => gtk::FileChooserDialog::new(
-                Some("Open pcap file"),
+                Some(&format!("Open {description}")),
                 window,
                 gtk::FileChooserAction::Open,
                 &[("Open", gtk::ResponseType::Accept)]
             ),
             Save => gtk::FileChooserDialog::new(
-                Some("Save pcap file"),
+                Some(&format!("Save {description}")),
                 window,
                 gtk::FileChooserAction::Save,
                 &[("Save", gtk::ResponseType::Accept)]
@@ -979,13 +985,17 @@ fn choose_file(action: FileAction) -> Result<(), Error> {
     chooser.connect_response(move |dialog, response| {
         if response == gtk::ResponseType::Accept {
             if let Some(file) = dialog.file() {
-                display_error(start_pcap(action, file));
+                display_error(handler(file));
             }
             dialog.destroy();
         }
     });
     chooser.show();
     Ok(())
+}
+
+fn choose_pcap_file(action: FileAction) -> Result<(), Error> {
+    choose_file(action, "pcap file", move |file| start_pcap(action, file))
 }
 
 fn start_pcap(action: FileAction, file: gio::File) -> Result<(), Error> {
