@@ -23,16 +23,42 @@ Traffic Pane
 ------------
 
 Beneath the Action Bar is the Traffic Pane. This is Packetry's main view of captured USB data.
+At the top of the Traffic Pane there are buttons to switch between different views of the captured data.
 
-.. image:: ../images/traffic-pane.png
-  :alt: Traffic Pane
-
-The Traffic Pane displays packets in an interactive hierarchical view, allowing you to expand high level events to explore their constituent low level transactions and packets.
-
-Each packet is displayed with a precise time stamp relative to the start of capture. Higher level groups have a time stamp matching the first packet that is a part of the group.
+Each packet is displayed with a precise time stamp relative to the start of capture.
+Higher level groups have a time stamp matching the first packet that is a part of the group.
 
 The Traffic Pane is cleared at the start of each capture or when a file is loaded.
 
+Hierarchical View
+^^^^^^^^^^^^^^^^^
+
+.. image:: ../images/traffic-pane-hierarchical.png
+  :alt: Traffic Pane Hierarchical View
+
+This displays an interactive hierarchical view, allowing you to expand high level events to explore their constituent low level transactions and packets.
+
+  .. note::
+
+      Since multiple high level events can be happening at the same time, this view may show packets out of chronological order.
+      An interleaved view that still shows packets in order is in progress, tracked here: https://github.com/greatscottgadgets/packetry/pull/150
+
+Transactions View
+^^^^^^^^^^^^^^^^^
+
+.. image:: ../images/traffic-pane-transactions.png
+  :alt: Traffic Pane Transactions View
+
+This combines packets into expandable groups for each USB transaction.
+It is more verbose than the hierarchical view, but guarantees that all items are shown in chronological order.
+
+Packets View
+^^^^^^^^^^^^
+
+.. image:: ../images/traffic-pane-packets.png
+  :alt: Traffic Pane Packets View
+
+This shows all packets captured on the wire in order, with no grouping.
 
 Device Pane
 -----------
