@@ -8,6 +8,7 @@ use num_enum::{IntoPrimitive, FromPrimitive};
 use derive_more::{From, Into, Display};
 use usb_ids::FromId;
 
+use crate::util::titlecase;
 use crate::vec_map::VecMap;
 
 fn crc16(bytes: &[u8]) -> u16 {
@@ -137,10 +138,12 @@ byte_type!(StringId);
 byte_type!(ConfigNum);
 byte_type!(ConfigField);
 byte_type!(ConfigIfaceNum);
+byte_type!(ConfigOtherNum);
 byte_type!(InterfaceNum);
 byte_type!(InterfaceAlt);
 byte_type!(InterfaceField);
 byte_type!(InterfaceEpNum);
+byte_type!(IfaceOtherNum);
 byte_type!(EndpointNum);
 byte_type!(EndpointField);
 byte_type!(EndpointAddr);
@@ -713,6 +716,46 @@ pub enum Descriptor {
     Malformed(DescriptorType, Vec<u8>),
 }
 
+impl Descriptor {
+    pub fn description(&self) -> String {
+        use Descriptor::*;
+        match self {
+            Device(_) => "Device descriptor".to_string(),
+            Configuration(_) => "Configuration descriptor".to_string(),
+            Interface(_) => "Interface descriptor".to_string(),
+            Endpoint(_) => "Endpoint descriptor".to_string(),
+            Other(desc_type, bytes) =>
+                if *desc_type == DescriptorType::Unknown {
+                    let type_code = bytes[1];
+                    let type_group = match type_code {
+                        0x00..=0x1F => "Standard",
+                        0x20..=0x3F => "Class",
+                        0x40..=0x5F => "Custom",
+                        0x60..=0xFF => "Reserved",
+                    };
+                    format!("{} descriptor 0x{:02X}, {} bytes",
+                        type_group, type_code, bytes.len())
+                } else {
+                    format!("{} descriptor, {} bytes",
+                        titlecase(desc_type.description()), bytes.len())
+                },
+            Malformed(desc_type, bytes) => {
+                let description = desc_type.description();
+                let length = bytes.len();
+                if let Some(expected) = desc_type.expected_length() {
+                    format!(
+                        "Malformed {} descriptor (only {}/{} bytes)",
+                        description, length, expected)
+                } else {
+                    format!(
+                        "Malformed {} descriptor ({} bytes)",
+                        description, length)
+                }
+            },
+        }
+    }
+}
+
 pub struct DescriptorIterator<'bytes> {
     bytes: &'bytes [u8],
     offset: usize,
@@ -731,7 +774,7 @@ impl Iterator for DescriptorIterator<'_> {
     type Item = Descriptor;
 
     fn next(&mut self) -> Option<Descriptor> {
-        while self.offset < self.bytes.len() - 2 {
+        if self.offset < self.bytes.len() - 2 {
             let remaining_bytes = &self.bytes[self.offset .. self.bytes.len()];
             let desc_length = remaining_bytes[0] as usize;
             let desc_type = DescriptorType::from(remaining_bytes[1]);
@@ -764,6 +807,7 @@ impl Iterator for DescriptorIterator<'_> {
                 _ => Descriptor::Other(desc_type, bytes.to_vec())
             });
         }
+        // Not enough data for another descriptor.
         None
     }
 }
@@ -1041,6 +1085,7 @@ pub mod prelude {
         StandardRequest,
         RequestType,
         Recipient,
+        Descriptor,
         DescriptorType,
         DeviceDescriptor,
         ConfigDescriptor,
@@ -1055,11 +1100,13 @@ pub mod prelude {
         StringId,
         ConfigNum,
         ConfigIfaceNum,
+        ConfigOtherNum,
         ConfigField,
         InterfaceNum,
         InterfaceAlt,
         InterfaceField,
         InterfaceEpNum,
+        IfaceOtherNum,
         EndpointNum,
         EndpointField,
         UTF16ByteVec,

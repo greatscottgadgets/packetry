@@ -43,6 +43,7 @@ Device 14: USB Device
     Attributes: 0x03
     Max packet size: 8 bytes
     Interval: 0x0A
+   Class descriptor 0x21, 9 bytes
   Interface 1
    Interface descriptor
     Length: 9 bytes
@@ -61,3 +62,4 @@ Device 14: USB Device
     Attributes: 0x03
     Max packet size: 5 bytes
     Interval: 0x0A
+   Class descriptor 0x21, 9 bytes

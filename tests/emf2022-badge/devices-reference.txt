@@ -23,6 +23,7 @@ Device 1: USB JTAG/serial debug unit\u{0}
    Configuration string: (none)
    Attributes: 0xC0
    Max power: 500mA
+  Standard descriptor 0x0B, 8 bytes
   Interface 0
    Interface descriptor
     Length: 9 bytes
@@ -41,6 +42,9 @@ Device 1: USB JTAG/serial debug unit\u{0}
     Attributes: 0x03
     Max packet size: 64 bytes
     Interval: 0x01
+   Class descriptor 0x24, 5 bytes
+   Class descriptor 0x24, 4 bytes
+   2 times: Class descriptor 0x24, 5 bytes
   Interface 1
    Interface descriptor
     Length: 9 bytes
@@ -116,6 +120,7 @@ Device 2: TiDAL
    Configuration string: (none)
    Attributes: 0x80
    Max power: 500mA
+  Standard descriptor 0x0B, 8 bytes
   Interface 0
    Interface descriptor
     Length: 9 bytes
@@ -134,6 +139,9 @@ Device 2: TiDAL
     Attributes: 0x03
     Max packet size: 8 bytes
     Interval: 0x10
+   2 times: Class descriptor 0x24, 5 bytes
+   Class descriptor 0x24, 4 bytes
+   Class descriptor 0x24, 5 bytes
   Interface 1
    Interface descriptor
     Length: 9 bytes
@@ -177,3 +185,4 @@ Device 2: TiDAL
     Attributes: 0x03
     Max packet size: 8 bytes
     Interval: 0x0A
+   Class descriptor 0x21, 9 bytes
