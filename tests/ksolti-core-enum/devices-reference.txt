@@ -23,7 +23,26 @@ Device 27: Ksoloti Core
    Configuration string: #5 'Ksoloti Core'
    Attributes: 0xC0
    Max power: 100mA
-  Interface association descriptor, 8 bytes
+  Function 0: Audio
+   Interface association descriptor
+    Length: 8 bytes
+    Type: 0x0B
+    First interface: 0
+    Interface count: 4
+    Function class: 0x01: Audio
+    Function subclass: 0x00
+    Function protocol: 0x20
+    Function number: 0
+  Function 4: Vendor Specific Class
+   Interface association descriptor
+    Length: 8 bytes
+    Type: 0x0B
+    First interface: 4
+    Interface count: 1
+    Function class: 0xFF: Vendor Specific Class
+    Function subclass: 0x00
+    Function protocol: 0x00
+    Function number: 4
   Interface 0
    Interface descriptor
     Length: 9 bytes
@@ -177,7 +196,6 @@ Device 27: Ksoloti Core
    2 times: Class descriptor 0x24, 6 bytes
    2 times: Class descriptor 0x24, 9 bytes
    2 times: Class descriptor 0x25, 5 bytes
-   Interface association descriptor, 8 bytes
   Interface 4
    Interface descriptor
     Length: 9 bytes

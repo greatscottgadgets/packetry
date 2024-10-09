@@ -137,6 +137,7 @@ byte_type!(DeviceField);
 byte_type!(StringId);
 byte_type!(ConfigNum);
 byte_type!(ConfigField);
+byte_type!(ConfigFuncNum);
 byte_type!(ConfigIfaceNum);
 byte_type!(ConfigOtherNum);
 byte_type!(InterfaceNum);
@@ -148,6 +149,7 @@ byte_type!(EndpointNum);
 byte_type!(EndpointField);
 byte_type!(EndpointAddr);
 byte_type!(EndpointAttr);
+byte_type!(IfaceAssocField);
 
 impl EndpointAddr {
     pub fn number(&self) -> EndpointNum {
@@ -482,6 +484,8 @@ impl DescriptorType {
                 Some(size_of::<DeviceDescriptor>()),
             Configuration =>
                 Some(size_of::<ConfigDescriptor>()),
+            InterfaceAssociation =>
+                Some(size_of::<InterfaceAssociationDescriptor>()),
             Interface =>
                 Some(size_of::<InterfaceDescriptor>()),
             Endpoint =>
@@ -640,6 +644,48 @@ impl ConfigDescriptor {
 
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
 #[repr(C, packed)]
+pub struct InterfaceAssociationDescriptor {
+    pub length: u8,
+    pub descriptor_type: u8,
+    pub first_interface: u8,
+    pub interface_count: u8,
+    pub function_class: u8,
+    pub function_subclass: u8,
+    pub function_protocol: u8,
+    pub function: u8,
+}
+
+#[allow(dead_code)]
+impl InterfaceAssociationDescriptor {
+    pub fn field_text(&self, id: IfaceAssocField) -> String
+    {
+        match id.0 {
+        0 => format!("Length: {} bytes", self.length),
+        1 => format!("Type: 0x{:02X}", self.descriptor_type),
+        2 => format!("First interface: {}", self.first_interface),
+        3 => format!("Interface count: {}", self.interface_count),
+        4 => format!("Function class: 0x{:02X}{}", self.function_class,
+            usb_ids::Class::from_id(self.function_class)
+                .map_or_else(String::new, |c| format!(": {}", c.name()))),
+        5  => format!("Function subclass: 0x{:02X}{}", self.function_subclass,
+            usb_ids::SubClass::from_cid_scid(
+                    self.function_class, self.function_subclass)
+                .map_or_else(String::new, |s| format!(": {}", s.name()))),
+        6  => format!("Function protocol: 0x{:02X}{}", self.function_protocol,
+            usb_ids::Protocol::from_cid_scid_pid(
+                    self.function_class, self.function_subclass,
+                    self.function_protocol)
+                .map_or_else(String::new, |p| format!(": {}", p.name()))),
+        7 => format!("Function number: {}", self.function),
+        i => format!("Error: Invalid field ID {i}")
+        }
+    }
+
+    pub const NUM_FIELDS: usize = 8;
+}
+
+#[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
+#[repr(C, packed)]
 pub struct InterfaceDescriptor {
     pub length: u8,
     pub descriptor_type: u8,
@@ -719,6 +765,7 @@ impl EndpointDescriptor {
 pub enum Descriptor {
     Device(DeviceDescriptor),
     Configuration(ConfigDescriptor),
+    InterfaceAssociation(InterfaceAssociationDescriptor),
     Interface(InterfaceDescriptor),
     Endpoint(EndpointDescriptor),
     Other(DescriptorType, Vec<u8>),
@@ -733,6 +780,8 @@ impl Descriptor {
             Configuration(_) => "Configuration descriptor".to_string(),
             Interface(_) => "Interface descriptor".to_string(),
             Endpoint(_) => "Endpoint descriptor".to_string(),
+            InterfaceAssociation(_) =>
+                "Interface association descriptor".to_string(),
             Other(desc_type, bytes) =>
                 if *desc_type == DescriptorType::Unknown {
                     let type_code = bytes[1];
@@ -813,12 +862,19 @@ impl Iterator for DescriptorIterator<'_> {
                 DescriptorType::Endpoint =>
                     Descriptor::Endpoint(
                         pod_read_unaligned::<EndpointDescriptor>(bytes)),
+                DescriptorType::InterfaceAssociation =>
+                    Descriptor::InterfaceAssociation(
+                        pod_read_unaligned::<InterfaceAssociationDescriptor>(bytes)),
                 _ => Descriptor::Other(desc_type, bytes.to_vec())
             });
         }
         // Not enough data for another descriptor.
         None
     }
+}
+
+pub struct Function {
+    pub descriptor: InterfaceAssociationDescriptor,
 }
 
 pub struct Interface {
@@ -829,6 +885,7 @@ pub struct Interface {
 
 pub struct Configuration {
     pub descriptor: ConfigDescriptor,
+    pub functions: BTreeMap<u8, Function>,
     pub interfaces: BTreeMap<(InterfaceNum, InterfaceAlt), Interface>,
     pub other_descriptors: VecMap<ConfigOtherNum, Descriptor>,
 }
@@ -842,9 +899,20 @@ impl Configuration {
                 Descriptor::Configuration(config_desc) => {
                     result = Some(Configuration {
                         descriptor: config_desc,
+                        functions: BTreeMap::new(),
                         interfaces: BTreeMap::new(),
                         other_descriptors: VecMap::new(),
                     });
+                },
+                Descriptor::InterfaceAssociation(assoc_desc) => {
+                    if let Some(config) = result.as_mut() {
+                        config.functions.insert(
+                            assoc_desc.function,
+                            Function {
+                                descriptor: assoc_desc,
+                            }
+                        );
+                    }
                 },
                 Descriptor::Interface(iface_desc) => {
                     if let Some(config) = result.as_mut() {
@@ -1101,6 +1169,7 @@ pub mod prelude {
         InterfaceDescriptor,
         EndpointDescriptor,
         Configuration,
+        Function,
         Interface,
         ControlTransfer,
         ControlResult,
@@ -1108,9 +1177,11 @@ pub mod prelude {
         DeviceField,
         StringId,
         ConfigNum,
+        ConfigFuncNum,
         ConfigIfaceNum,
         ConfigOtherNum,
         ConfigField,
+        IfaceAssocField,
         InterfaceNum,
         InterfaceAlt,
         InterfaceField,
