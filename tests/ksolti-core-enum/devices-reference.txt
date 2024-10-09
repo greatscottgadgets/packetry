@@ -23,7 +23,7 @@ Device 27: Ksoloti Core
    Configuration string: #5 'Ksoloti Core'
    Attributes: 0xC0
    Max power: 100mA
-  Standard descriptor 0x0B, 8 bytes
+  Interface association descriptor, 8 bytes
   Interface 0
    Interface descriptor
     Length: 9 bytes
@@ -177,7 +177,7 @@ Device 27: Ksoloti Core
    2 times: Class descriptor 0x24, 6 bytes
    2 times: Class descriptor 0x24, 9 bytes
    2 times: Class descriptor 0x25, 5 bytes
-   Standard descriptor 0x0B, 8 bytes
+   Interface association descriptor, 8 bytes
   Interface 4
    Interface descriptor
     Length: 9 bytes
