@@ -2115,11 +2115,15 @@ mod tests {
             let mut test_path = test_dir.clone();
             test_path.push(test_name.unwrap());
             let mut cap_path = test_path.clone();
-            let mut ref_path = test_path.clone();
-            let mut out_path = test_path.clone();
+            let mut traf_ref_path = test_path.clone();
+            let mut traf_out_path = test_path.clone();
+            let mut dev_ref_path = test_path.clone();
+            let mut dev_out_path = test_path.clone();
             cap_path.push("capture.pcap");
-            ref_path.push("reference.txt");
-            out_path.push("output.txt");
+            traf_ref_path.push("reference.txt");
+            traf_out_path.push("output.txt");
+            dev_ref_path.push("devices-reference.txt");
+            dev_out_path.push("devices-output.txt");
             {
                 let file = File::open(cap_path).unwrap();
                 let mut loader = Loader::open(file).unwrap();
@@ -2132,23 +2136,35 @@ mod tests {
                         .unwrap();
                 }
                 decoder.finish().unwrap();
-                let out_file = File::create(out_path.clone()).unwrap();
-                let mut out_writer = BufWriter::new(out_file);
+                let traf_out_file = File::create(traf_out_path.clone()).unwrap();
+                let mut traf_out_writer = BufWriter::new(traf_out_file);
                 let num_items = reader.item_index.len();
                 for item_id in 0 .. num_items {
                     let item = reader.item(None, mode, item_id).unwrap();
-                    write_item(&mut reader, &item, mode, 0, &mut out_writer);
+                    write_item(&mut reader, &item, mode, 0, &mut traf_out_writer);
+                }
+                let dev_out_file = File::create(dev_out_path.clone()).unwrap();
+                let mut dev_out_writer = BufWriter::new(dev_out_file);
+                let num_devices = reader.devices.len() - 1;
+                for device_id in 0 .. num_devices {
+                    let item = reader.item(None, (), device_id).unwrap();
+                    write_item(&mut reader, &item, (), 0, &mut dev_out_writer);
                 }
             }
-            let ref_file = File::open(ref_path).unwrap();
-            let out_file = File::open(out_path.clone()).unwrap();
-            let ref_reader = BufReader::new(ref_file);
-            let out_reader = BufReader::new(out_file);
-            let mut out_lines = out_reader.lines();
-            for line in ref_reader.lines() {
-                let expected = line.unwrap();
-                let actual = out_lines.next().unwrap().unwrap();
-                assert_eq!(actual, expected);
+            for (ref_path, out_path) in [
+                (traf_ref_path, traf_out_path),
+                (dev_ref_path, dev_out_path),
+            ] {
+                let ref_file = File::open(ref_path).unwrap();
+                let out_file = File::open(out_path.clone()).unwrap();
+                let ref_reader = BufReader::new(ref_file);
+                let out_reader = BufReader::new(out_file);
+                let mut out_lines = out_reader.lines();
+                for line in ref_reader.lines() {
+                    let expected = line.unwrap();
+                    let actual = out_lines.next().unwrap().unwrap();
+                    assert_eq!(actual, expected);
+                }
             }
         }
     }

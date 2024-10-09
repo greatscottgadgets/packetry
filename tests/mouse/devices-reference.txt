@@ -1,0 +1,43 @@
+Device 4: USB Optical Mouse
+ Device descriptor
+  Length: 18 bytes
+  Type: 0x01
+  USB Version: 2.00
+  Class: 0x00: (Defined at Interface level)
+  Subclass: 0x00
+  Protocol: 0x00
+  Max EP0 packet size: 8 bytes
+  Vendor ID: 0x1BCF: Sunplus Innovation Technology Inc.
+  Product ID: 0x0005: Optical Mouse
+  Version: 0.14
+  Manufacturer string: (none)
+  Product string: #2 'USB Optical Mouse'
+  Serial string: (none)
+ Configuration 1
+  Configuration descriptor
+   Length: 9 bytes
+   Type: 0x02
+   Total length: 34 bytes
+   Number of interfaces: 1
+   Configuration number: 1
+   Configuration string: (none)
+   Attributes: 0xA0
+   Max power: 98mA
+  Interface 0
+   Interface descriptor
+    Length: 9 bytes
+    Type: 0x04
+    Interface number: 0
+    Alternate setting: 0
+    Number of endpoints: 1
+    Class: 0x03: Human Interface Device
+    Subclass: 0x01: Boot Interface Subclass
+    Protocol: 0x02: Mouse
+    Interface string: (none)
+   Endpoint 1 IN (interrupt)
+    Length: 7 bytes
+    Type: 0x05
+    Endpoint address: 0x81
+    Attributes: 0x03
+    Max packet size: 7 bytes
+    Interval: 0x0A

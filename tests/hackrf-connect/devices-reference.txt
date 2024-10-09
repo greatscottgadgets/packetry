@@ -1,0 +1,50 @@
+Device 29: HackRF One
+ Device descriptor
+  Length: 18 bytes
+  Type: 0x01
+  USB Version: 2.00
+  Class: 0x00: (Defined at Interface level)
+  Subclass: 0x00
+  Protocol: 0x00
+  Max EP0 packet size: 64 bytes
+  Vendor ID: 0x1D50: OpenMoko, Inc.
+  Product ID: 0x6089: Great Scott Gadgets HackRF One SDR
+  Version: 1.06
+  Manufacturer string: #1 'Great Scott Gadgets'
+  Product string: #2 'HackRF One'
+  Serial string: #4 '0000000000000000325866e6215c4023'
+ Configuration 1
+  Configuration descriptor
+   Length: 9 bytes
+   Type: 0x02
+   Total length: 32 bytes
+   Number of interfaces: 1
+   Configuration number: 1
+   Configuration string: #3 'Transceiver'
+   Attributes: 0x80
+   Max power: 500mA
+  Interface 0
+   Interface descriptor
+    Length: 9 bytes
+    Type: 0x04
+    Interface number: 0
+    Alternate setting: 0
+    Number of endpoints: 2
+    Class: 0xFF: Vendor Specific Class
+    Subclass: 0xFF: Vendor Specific Subclass
+    Protocol: 0xFF: Vendor Specific Protocol
+    Interface string: (none)
+   Endpoint 1 IN (bulk)
+    Length: 7 bytes
+    Type: 0x05
+    Endpoint address: 0x81
+    Attributes: 0x02
+    Max packet size: 512 bytes
+    Interval: 0x00
+   Endpoint 2 OUT (bulk)
+    Length: 7 bytes
+    Type: 0x05
+    Endpoint address: 0x02
+    Attributes: 0x02
+    Max packet size: 512 bytes
+    Interval: 0x00
