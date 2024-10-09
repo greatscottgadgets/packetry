@@ -703,12 +703,14 @@ impl EndpointDescriptor {
 }
 
 #[allow(dead_code)]
+#[derive(Debug)]
 pub enum Descriptor {
     Device(DeviceDescriptor),
     Configuration(ConfigDescriptor),
     Interface(InterfaceDescriptor),
     Endpoint(EndpointDescriptor),
-    Other(DescriptorType)
+    Other(DescriptorType, Vec<u8>),
+    Malformed(DescriptorType, Vec<u8>),
 }
 
 pub struct DescriptorIterator<'bytes> {
@@ -734,30 +736,33 @@ impl Iterator for DescriptorIterator<'_> {
             let desc_length = remaining_bytes[0] as usize;
             let desc_type = DescriptorType::from(remaining_bytes[1]);
             self.offset += desc_length;
-            // The expected length is the minimum length, but sometimes the
-            // descriptors have extra padding/garbage data at the end.
-            // Handle this by trimming off the extra data.
+            let mut bytes = &remaining_bytes[0 .. desc_length];
             if let Some(expected) = desc_type.expected_length() {
+                // If there aren't enough bytes for the descriptor type, it is
+                // malformed and we can't interpret it.
                 if desc_length < expected {
-                    continue
+                    return Some(Descriptor::Malformed(desc_type, bytes.to_vec()))
                 }
-                let bytes = &remaining_bytes[0 .. expected];
-                return Some(match desc_type {
-                    DescriptorType::Device =>
-                        Descriptor::Device(
-                            DeviceDescriptor::from_bytes(bytes)),
-                    DescriptorType::Configuration =>
-                        Descriptor::Configuration(
-                            pod_read_unaligned::<ConfigDescriptor>(bytes)),
-                    DescriptorType::Interface =>
-                        Descriptor::Interface(
-                            pod_read_unaligned::<InterfaceDescriptor>(bytes)),
-                    DescriptorType::Endpoint =>
-                        Descriptor::Endpoint(
-                            pod_read_unaligned::<EndpointDescriptor>(bytes)),
-                    _ => Descriptor::Other(desc_type)
-                });
-            }
+                // The expected length is the minimum length, but sometimes the
+                // descriptors have extra padding/garbage data at the end.
+                // Handle this by trimming off the extra data.
+                bytes = &bytes[0 .. expected];
+            };
+            return Some(match desc_type {
+                DescriptorType::Device =>
+                    Descriptor::Device(
+                        DeviceDescriptor::from_bytes(bytes)),
+                DescriptorType::Configuration =>
+                    Descriptor::Configuration(
+                        pod_read_unaligned::<ConfigDescriptor>(bytes)),
+                DescriptorType::Interface =>
+                    Descriptor::Interface(
+                        pod_read_unaligned::<InterfaceDescriptor>(bytes)),
+                DescriptorType::Endpoint =>
+                    Descriptor::Endpoint(
+                        pod_read_unaligned::<EndpointDescriptor>(bytes)),
+                _ => Descriptor::Other(desc_type, bytes.to_vec())
+            });
         }
         None
     }
@@ -765,12 +770,14 @@ impl Iterator for DescriptorIterator<'_> {
 
 pub struct Interface {
     pub descriptor: InterfaceDescriptor,
-    pub endpoint_descriptors: VecMap<InterfaceEpNum, EndpointDescriptor>
+    pub endpoint_descriptors: VecMap<InterfaceEpNum, EndpointDescriptor>,
+    pub other_descriptors: VecMap<IfaceOtherNum, Descriptor>,
 }
 
 pub struct Configuration {
     pub descriptor: ConfigDescriptor,
     pub interfaces: BTreeMap<(InterfaceNum, InterfaceAlt), Interface>,
+    pub other_descriptors: VecMap<ConfigOtherNum, Descriptor>,
 }
 
 impl Configuration {
@@ -783,6 +790,7 @@ impl Configuration {
                     result = Some(Configuration {
                         descriptor: config_desc,
                         interfaces: BTreeMap::new(),
+                        other_descriptors: VecMap::new(),
                     });
                 },
                 Descriptor::Interface(iface_desc) => {
@@ -798,20 +806,26 @@ impl Configuration {
                                 endpoint_descriptors:
                                     VecMap::with_capacity(
                                         iface_desc.num_endpoints),
+                                other_descriptors: VecMap::new(),
                             }
                         );
                     }
                 },
-                Descriptor::Endpoint(ep_desc) => {
-                    if let (Some(config), Some(key)) =
-                        (result.as_mut(), iface_key)
-                    {
+                _ => match (result.as_mut(), iface_key) {
+                    (Some(config), Some(key)) => {
                         if let Some(iface) = config.interfaces.get_mut(&key) {
-                            iface.endpoint_descriptors.push(ep_desc);
+                            if let Descriptor::Endpoint(ep_desc) = descriptor {
+                                iface.endpoint_descriptors.push(ep_desc);
+                            } else {
+                                iface.other_descriptors.push(descriptor);
+                            }
                         }
                     }
+                    (Some(config), None) => {
+                        config.other_descriptors.push(descriptor);
+                    }
+                    _ => {}
                 },
-                _ => {},
             };
         }
         result
