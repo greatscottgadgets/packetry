@@ -21,6 +21,7 @@ use arc_swap::{ArcSwap, ArcSwapOption};
 use bytemuck_derive::{Pod, Zeroable};
 use itertools::Itertools;
 use num_enum::{IntoPrimitive, FromPrimitive};
+use usb_ids::FromId;
 
 // Use 2MB block size for packet data, which is a large page size on x86_64.
 const PACKET_DATA_BLOCK_SIZE: usize = 0x200000;
@@ -272,6 +273,10 @@ pub enum DeviceItem {
     ConfigurationDescriptor(DeviceId, ConfigNum),
     ConfigurationDescriptorField(DeviceId, ConfigNum,
                                  ConfigField, DeviceVersion),
+    Function(DeviceId, ConfigNum, ConfigFuncNum),
+    FunctionDescriptor(DeviceId, ConfigNum, ConfigFuncNum),
+    FunctionDescriptorField(DeviceId, ConfigNum, ConfigFuncNum,
+                            IfaceAssocField, DeviceVersion),
     Interface(DeviceId, ConfigNum, ConfigIfaceNum),
     InterfaceDescriptor(DeviceId, ConfigNum, ConfigIfaceNum),
     InterfaceDescriptorField(DeviceId, ConfigNum, ConfigIfaceNum,
@@ -597,6 +602,16 @@ impl DeviceData {
 }
 
 impl Configuration {
+    pub fn function(&self, number: &ConfigFuncNum)
+        -> Result<&Function, Error>
+    {
+        let index = number.0 as usize;
+        match self.functions.values().nth(index) {
+            Some(function) => Ok(function),
+            _ => bail!("Configuration has no function with index {index}")
+        }
+    }
+
     pub fn interface(&self, number: &ConfigIfaceNum)
         -> Result<&Interface, Error>
     {
@@ -1895,20 +1910,33 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                 let data = self.device_data(dev)?;
                 let config = data.configuration(conf)?;
                 let other_count = config.other_descriptors.len() as u64;
+                let func_count = config.functions.len() as u64;
                 match index {
                     0 => ConfigurationDescriptor(*dev, *conf),
                     n if n < 1 + other_count =>
                         ConfigOtherDescriptor(*dev, *conf,
                             ConfigOtherNum((n - 1).try_into()?),
                             data.version()),
+                    n if n < 1 + other_count + func_count =>
+                        Function(*dev, *conf,
+                            ConfigFuncNum((n - 1 - other_count).try_into()?)),
                     n => Interface(*dev, *conf,
-                        ConfigIfaceNum((n - 1 - other_count).try_into()?))
+                        ConfigIfaceNum(
+                            (n - 1 - other_count - func_count).try_into()?))
                 }
             },
             ConfigurationDescriptor(dev, conf) =>
                 ConfigurationDescriptorField(*dev, *conf,
                     ConfigField(index.try_into()?),
                     self.device_version(dev)?),
+            Function(dev, conf, func) =>
+                FunctionDescriptor(*dev, *conf, *func),
+            FunctionDescriptor(dev, conf, func) => {
+                let data = self.device_data(dev)?;
+                FunctionDescriptorField(*dev, *conf, *func,
+                    IfaceAssocField(index.try_into()?),
+                    data.version())
+            },
             Interface(dev, conf, iface) => {
                 let data = self.device_data(dev)?;
                 let config = data.configuration(conf)?;
@@ -1961,6 +1989,7 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                 match self.try_configuration(dev, conf) {
                     Some(conf) => (Ongoing,
                         1 + conf.other_descriptors.len()
+                          + conf.functions.len()
                           + conf.interfaces.len()),
                     None => (Ongoing, 0)
                 },
@@ -1969,6 +1998,9 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                     Some(_) => (Ongoing, usb::ConfigDescriptor::NUM_FIELDS),
                     None => (Ongoing, 0)
                 },
+            Some(Function(..)) => (Ongoing, 1),
+            Some(FunctionDescriptor(..)) =>
+                 (Ongoing, usb::InterfaceAssociationDescriptor::NUM_FIELDS),
             Some(Interface(dev, conf, iface)) =>
                 match self.try_configuration(dev, conf) {
                     Some(conf) => (Ongoing, {
@@ -2023,6 +2055,24 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                 let config_descriptor = data.configuration(conf)?.descriptor;
                 let strings = data.strings.load();
                 config_descriptor.field_text(*field, strings.as_ref())
+            },
+            Function(dev, conf, func) => {
+                let data = self.device_data(dev)?;
+                let config = data.configuration(conf)?;
+                let function = config.function(func)?;
+                format!("Function {}: {}",
+                    function.descriptor.function,
+                    usb_ids::Class::from_id(function.descriptor.function_class)
+                        .map_or("Unknown", |c| c.name())
+                )
+            },
+            FunctionDescriptor(..) =>
+                "Interface association descriptor".to_string(),
+            FunctionDescriptorField(dev, conf, func, field, _ver) => {
+                let data = self.device_data(dev)?;
+                let config = data.configuration(conf)?;
+                let function = config.function(func)?;
+                function.descriptor.field_text(*field)
             },
             Interface(dev, conf, iface) => {
                 let data = self.device_data(dev)?;
@@ -2084,6 +2134,9 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
             Configuration(..) => 1,
             ConfigurationDescriptor(..) => 2,
             ConfigurationDescriptorField(..) => 3,
+            Function(..) => 2,
+            FunctionDescriptor(..) => 3,
+            FunctionDescriptorField(..) => 4,
             Interface(..) => 2,
             InterfaceDescriptor(..) => 3,
             InterfaceDescriptorField(..) => 4,
