@@ -456,16 +456,22 @@ fn language_name(code: u16) -> Option<String> {
 #[derive(Copy, Clone, Debug, FromPrimitive, PartialEq, Eq)]
 #[repr(u8)]
 pub enum DescriptorType {
-    Device = 1,
-    Configuration = 2,
-    String = 3,
-    Interface = 4,
-    Endpoint = 5,
-    DeviceQualifier = 6,
-    OtherSpeedConfiguration = 7,
-    InterfacePower = 8,
+    Invalid = 0x00,
+    Device = 0x01,
+    Configuration = 0x02,
+    String = 0x03,
+    Interface = 0x04,
+    Endpoint = 0x05,
+    DeviceQualifier = 0x06,
+    OtherSpeedConfiguration = 0x07,
+    InterfacePower = 0x08,
+    OnTheGo = 0x09,
+    Debug = 0x0A,
+    InterfaceAssociation = 0x0B,
+    BinaryObjectStore = 0x0F,
+    DeviceCapability = 0x10,
     #[default]
-    Unknown = 9
+    Unknown = 0xFF,
 }
 
 impl DescriptorType {
@@ -484,23 +490,26 @@ impl DescriptorType {
                 None
         }
     }
-}
 
-impl DescriptorType {
-    pub fn description(self) -> &'static str {
-        const STRINGS: [&str; 10] = [
-            "invalid",
-            "device",
-            "configuration",
-            "string",
-            "interface",
-            "endpoint",
-            "device qualifier",
-            "other speed configuration",
-            "interface power",
-            "unknown",
-        ];
-        STRINGS[self as usize]
+    pub fn description(&self) -> &'static str {
+        use DescriptorType::*;
+        match self {
+            Invalid => "invalid",
+            Device => "device",
+            Configuration => "configuration",
+            String => "string",
+            Interface => "interface",
+            Endpoint => "endpoint",
+            DeviceQualifier => "device qualifier",
+            OtherSpeedConfiguration => "other speed",
+            InterfacePower => "interface power",
+            OnTheGo => "OTG",
+            Debug => "debug",
+            InterfaceAssociation => "interface association",
+            BinaryObjectStore => "BOS",
+            DeviceCapability => "device capability",
+            Unknown => "unknown",
+        }
     }
 }
 
