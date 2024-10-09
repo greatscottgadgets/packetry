@@ -2055,17 +2055,23 @@ mod tests {
     use crate::decoder::Decoder;
     use crate::pcap::Loader;
 
-    fn summarize_item(cap: &mut CaptureReader, item: &TrafficItem, depth: usize)
-        -> String
+    fn summarize_item<Item, ViewMode>(
+        cap: &mut CaptureReader,
+        item: &Item,
+        mode: ViewMode,
+        depth: usize
+    ) -> String
+        where CaptureReader: ItemSource<Item, ViewMode>,
+              ViewMode: Copy
     {
         let mut summary = cap.description(item, false).unwrap();
         let (_completion, num_children) =
-            cap.item_children(Some(item), TrafficViewMode::Hierarchical).unwrap();
+            cap.item_children(Some(item), mode).unwrap();
         let child_ids = 0..num_children;
         for (n, child_summary) in child_ids
             .map(|child_id| {
                 let child = cap.child_item(item, child_id).unwrap();
-                summarize_item(cap, &child, depth + 1)
+                summarize_item(cap, &child, mode, depth + 1)
             })
             .dedup_with_count()
         {
@@ -2080,10 +2086,17 @@ mod tests {
         summary
     }
 
-    fn write_item(cap: &mut CaptureReader, item: &TrafficItem, depth: usize,
-                  writer: &mut dyn Write)
+    fn write_item<Item, ViewMode>(
+        cap: &mut CaptureReader,
+        item: &Item,
+        mode: ViewMode,
+        depth: usize,
+        writer: &mut dyn Write
+    )
+        where CaptureReader: ItemSource<Item, ViewMode>,
+              ViewMode: Copy
     {
-        let summary = summarize_item(cap, item, depth);
+        let summary = summarize_item(cap, item, mode, depth);
         for _ in 0..depth {
             writer.write(b" ").unwrap();
         }
@@ -2097,6 +2110,7 @@ mod tests {
         let mut list_path = test_dir.clone();
         list_path.push("tests.txt");
         let list_file = File::open(list_path).unwrap();
+        let mode = TrafficViewMode::Hierarchical;
         for test_name in BufReader::new(list_file).lines() {
             let mut test_path = test_dir.clone();
             test_path.push(test_name.unwrap());
@@ -2122,9 +2136,8 @@ mod tests {
                 let mut out_writer = BufWriter::new(out_file);
                 let num_items = reader.item_index.len();
                 for item_id in 0 .. num_items {
-                    let item = reader.item(
-                        None, TrafficViewMode::Hierarchical, item_id).unwrap();
-                    write_item(&mut reader, &item, 0, &mut out_writer);
+                    let item = reader.item(None, mode, item_id).unwrap();
+                    write_item(&mut reader, &item, mode, 0, &mut out_writer);
                 }
             }
             let ref_file = File::open(ref_path).unwrap();
