@@ -1,6 +1,7 @@
 use anyhow::{Error, bail};
 use num_format::{Locale, ToFormattedString};
 use humansize::{SizeFormatter, BINARY};
+use itertools::Itertools;
 
 pub fn fmt_count(count: u64) -> String {
     count.to_formatted_string(&Locale::en)
@@ -33,4 +34,18 @@ pub fn handle_thread_panic<T>(result: std::thread::Result<T>)
             bail!("Worker thread panic: {msg}");
         }
     }
+}
+
+pub fn titlecase(text: &str) -> String {
+    format!("{}{}",
+        text
+            .chars()
+            .take(1)
+            .map(|c| c.to_uppercase().to_string())
+            .join(""),
+        text
+            .chars()
+            .skip(1)
+            .collect::<String>()
+    )
 }

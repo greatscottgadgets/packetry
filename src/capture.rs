@@ -279,6 +279,9 @@ pub enum DeviceItem {
     EndpointDescriptor(DeviceId, ConfigNum, ConfigIfaceNum, InterfaceEpNum),
     EndpointDescriptorField(DeviceId, ConfigNum, ConfigIfaceNum,
                             InterfaceEpNum, EndpointField, DeviceVersion),
+    ConfigOtherDescriptor(DeviceId, ConfigNum, ConfigOtherNum, DeviceVersion),
+    IfaceOtherDescriptor(DeviceId, ConfigNum, ConfigIfaceNum,
+                         IfaceOtherNum, DeviceVersion),
 }
 
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
@@ -603,6 +606,15 @@ impl Configuration {
             _ => bail!("Configuration has no interface with index {index}")
         }
     }
+
+    pub fn other_descriptor(&self, number: &ConfigOtherNum)
+        -> Result<&Descriptor, Error>
+    {
+        match self.other_descriptors.get(*number) {
+            Some(desc) => Ok(desc),
+            _ => bail!("Configuration has no other descriptor {number}")
+        }
+    }
 }
 
 impl Interface {
@@ -612,6 +624,15 @@ impl Interface {
         match self.endpoint_descriptors.get(*number) {
             Some(desc) => Ok(desc),
             _ => bail!("Interface has no endpoint descriptor {number}")
+        }
+    }
+
+    pub fn other_descriptor(&self, number: &IfaceOtherNum)
+        -> Result<&Descriptor, Error>
+    {
+        match self.other_descriptors.get(*number) {
+            Some(desc) => Ok(desc),
+            _ => bail!("Interface has no other descriptor {number}")
         }
     }
 }
@@ -1870,19 +1891,37 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                 DeviceDescriptorField(*dev,
                     DeviceField(index.try_into()?),
                     self.device_version(dev)?),
-            Configuration(dev, conf) => match index {
-                0 => ConfigurationDescriptor(*dev, *conf),
-                n => Interface(*dev, *conf,
-                    ConfigIfaceNum((n - 1).try_into()?)),
+            Configuration(dev, conf) => {
+                let data = self.device_data(dev)?;
+                let config = data.configuration(conf)?;
+                let other_count = config.other_descriptors.len() as u64;
+                match index {
+                    0 => ConfigurationDescriptor(*dev, *conf),
+                    n if n < 1 + other_count =>
+                        ConfigOtherDescriptor(*dev, *conf,
+                            ConfigOtherNum((n - 1).try_into()?),
+                            data.version()),
+                    n => Interface(*dev, *conf,
+                        ConfigIfaceNum((n - 1 - other_count).try_into()?))
+                }
             },
             ConfigurationDescriptor(dev, conf) =>
                 ConfigurationDescriptorField(*dev, *conf,
                     ConfigField(index.try_into()?),
                     self.device_version(dev)?),
-            Interface(dev, conf, iface) => match index {
-                0 => InterfaceDescriptor(*dev, *conf, *iface),
-                n => EndpointDescriptor(*dev, *conf, *iface,
-                    InterfaceEpNum((n - 1).try_into()?))
+            Interface(dev, conf, iface) => {
+                let data = self.device_data(dev)?;
+                let config = data.configuration(conf)?;
+                let interface = config.interface(iface)?;
+                let ep_count = interface.endpoint_descriptors.len() as u64;
+                match index {
+                    0 => InterfaceDescriptor(*dev, *conf, *iface),
+                    n if n < 1 + ep_count => EndpointDescriptor(*dev, *conf, *iface,
+                        InterfaceEpNum((n - 1).try_into()?)),
+                    n => IfaceOtherDescriptor(*dev, *conf, *iface,
+                        IfaceOtherNum((n - 1 - ep_count).try_into()?),
+                        data.version())
+                }
             },
             InterfaceDescriptor(dev, conf, iface) =>
                 InterfaceDescriptorField(*dev, *conf, *iface,
@@ -1920,7 +1959,9 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                 },
             Some(Configuration(dev, conf)) =>
                 match self.try_configuration(dev, conf) {
-                    Some(conf) => (Ongoing, 1 + conf.interfaces.len()),
+                    Some(conf) => (Ongoing,
+                        1 + conf.other_descriptors.len()
+                          + conf.interfaces.len()),
                     None => (Ongoing, 0)
                 },
             Some(ConfigurationDescriptor(dev, conf)) =>
@@ -1930,8 +1971,11 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                 },
             Some(Interface(dev, conf, iface)) =>
                 match self.try_configuration(dev, conf) {
-                    Some(conf) => (Ongoing,
-                        1 + conf.interface(iface)?.endpoint_descriptors.len()),
+                    Some(conf) => (Ongoing, {
+                        let interface = conf.interface(iface)?;
+                        1 + interface.endpoint_descriptors.len()
+                          + interface.other_descriptors.len()
+                    }),
                     None => (Ongoing, 0)
                 },
             Some(InterfaceDescriptor(..)) =>
@@ -2015,6 +2059,16 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                     .interface(iface)?
                     .endpoint_descriptor(ep)?
                     .field_text(*field)
+            },
+            IfaceOtherDescriptor(dev, conf, iface, other, _ver) => {
+                let config = self.device_data(dev)?.configuration(conf)?;
+                let desc = config.interface(iface)?.other_descriptor(other)?;
+                desc.description()
+            },
+            ConfigOtherDescriptor(dev, conf, other, _ver) => {
+                let config = self.device_data(dev)?.configuration(conf)?;
+                let desc = config.other_descriptor(other)?;
+                desc.description()
             }
         })
     }
@@ -2035,6 +2089,8 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
             InterfaceDescriptorField(..) => 4,
             EndpointDescriptor(..) => 3,
             EndpointDescriptorField(..) => 4,
+            IfaceOtherDescriptor(..) => 3,
+            ConfigOtherDescriptor(..) => 2,
         };
         Ok("   ".repeat(depth))
     }

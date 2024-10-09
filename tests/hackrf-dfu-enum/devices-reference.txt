@@ -34,3 +34,4 @@ Device 11: LPC
     Subclass: 0x01: Device Firmware Update
     Protocol: 0x01
     Interface string: #4 'DFU'
+   Class descriptor 0x21, 9 bytes

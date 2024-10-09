@@ -23,6 +23,7 @@ Device 27: Ksoloti Core
    Configuration string: #5 'Ksoloti Core'
    Attributes: 0xC0
    Max power: 100mA
+  Standard descriptor 0x0B, 8 bytes
   Interface 0
    Interface descriptor
     Length: 9 bytes
@@ -34,6 +35,13 @@ Device 27: Ksoloti Core
     Subclass: 0x01: Control Device
     Protocol: 0x20
     Interface string: (none)
+   Class descriptor 0x24, 9 bytes
+   Class descriptor 0x24, 8 bytes
+   Class descriptor 0x24, 17 bytes
+   Class descriptor 0x24, 18 bytes
+   Class descriptor 0x24, 12 bytes
+   Class descriptor 0x24, 17 bytes
+   Class descriptor 0x24, 12 bytes
   Interface 1
    Interface descriptor
     Length: 9 bytes
@@ -63,6 +71,9 @@ Device 27: Ksoloti Core
     Attributes: 0x09
     Max packet size: 196 bytes
     Interval: 0x01
+   Class descriptor 0x24, 16 bytes
+   Class descriptor 0x24, 6 bytes
+   Class descriptor 0x25, 8 bytes
   Interface 1 (alternate 2)
    Interface descriptor
     Length: 9 bytes
@@ -81,6 +92,9 @@ Device 27: Ksoloti Core
     Attributes: 0x09
     Max packet size: 392 bytes
     Interval: 0x01
+   Class descriptor 0x24, 16 bytes
+   Class descriptor 0x24, 6 bytes
+   Class descriptor 0x25, 8 bytes
   Interface 2
    Interface descriptor
     Length: 9 bytes
@@ -110,6 +124,9 @@ Device 27: Ksoloti Core
     Attributes: 0x05
     Max packet size: 196 bytes
     Interval: 0x01
+   Class descriptor 0x24, 16 bytes
+   Class descriptor 0x24, 6 bytes
+   Class descriptor 0x25, 8 bytes
   Interface 2 (alternate 2)
    Interface descriptor
     Length: 9 bytes
@@ -128,6 +145,9 @@ Device 27: Ksoloti Core
     Attributes: 0x05
     Max packet size: 392 bytes
     Interval: 0x01
+   Class descriptor 0x24, 16 bytes
+   Class descriptor 0x24, 6 bytes
+   Class descriptor 0x25, 8 bytes
   Interface 3
    Interface descriptor
     Length: 9 bytes
@@ -153,6 +173,11 @@ Device 27: Ksoloti Core
     Attributes: 0x02
     Max packet size: 64 bytes
     Interval: 0x00
+   Class descriptor 0x24, 7 bytes
+   2 times: Class descriptor 0x24, 6 bytes
+   2 times: Class descriptor 0x24, 9 bytes
+   2 times: Class descriptor 0x25, 5 bytes
+   Standard descriptor 0x0B, 8 bytes
   Interface 4
    Interface descriptor
     Length: 9 bytes
