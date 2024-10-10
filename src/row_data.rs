@@ -10,7 +10,7 @@ use crate::capture::{TrafficItem, DeviceItem};
 use crate::tree_list_model::ItemNodeRc;
 
 /// Trait implemented by each of our row data types.
-pub trait GenericRowData<Item> where Item: Copy {
+pub trait GenericRowData<Item> where Item: Clone {
     /// Create a row for the given node.
     fn new(node: Result<ItemNodeRc<Item>, String>) -> Self where Self: Sized;
 

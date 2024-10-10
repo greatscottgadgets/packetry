@@ -629,7 +629,7 @@ fn create_view<Item, Model, RowData, ViewMode>(
         recording_args: (&Rc<RefCell<Recording>>, &'static str))
     -> (Model, SingleSelection, ColumnView)
     where
-        Item: Copy + 'static,
+        Item: Clone + 'static,
         ViewMode: Copy,
         Model: GenericModel<Item, ViewMode> + IsA<ListModel> + IsA<Object>,
         RowData: GenericRowData<Item> + IsA<Object>,
