@@ -77,12 +77,13 @@ Device 27: Ksoloti Core
     Class descriptor 0x24, 6 bytes
     Class descriptor 0x25, 8 bytes
     Endpoint 3 OUT (isochronous)
-     Length: 7 bytes
-     Type: 0x05
-     Endpoint address: 0x03
-     Attributes: 0x09
-     Max packet size: 196 bytes
-     Interval: 0x01
+     Endpoint descriptor
+      Length: 7 bytes
+      Type: 0x05
+      Endpoint address: 0x03
+      Attributes: 0x09
+      Max packet size: 196 bytes
+      Interval: 0x01
    Interface 1 (alternate 2)
     Interface descriptor
      Length: 9 bytes
@@ -98,12 +99,13 @@ Device 27: Ksoloti Core
     Class descriptor 0x24, 6 bytes
     Class descriptor 0x25, 8 bytes
     Endpoint 3 OUT (isochronous)
-     Length: 7 bytes
-     Type: 0x05
-     Endpoint address: 0x03
-     Attributes: 0x09
-     Max packet size: 392 bytes
-     Interval: 0x01
+     Endpoint descriptor
+      Length: 7 bytes
+      Type: 0x05
+      Endpoint address: 0x03
+      Attributes: 0x09
+      Max packet size: 392 bytes
+      Interval: 0x01
    Interface 2
     Interface descriptor
      Length: 9 bytes
@@ -130,12 +132,13 @@ Device 27: Ksoloti Core
     Class descriptor 0x24, 6 bytes
     Class descriptor 0x25, 8 bytes
     Endpoint 3 IN (isochronous)
-     Length: 7 bytes
-     Type: 0x05
-     Endpoint address: 0x83
-     Attributes: 0x05
-     Max packet size: 196 bytes
-     Interval: 0x01
+     Endpoint descriptor
+      Length: 7 bytes
+      Type: 0x05
+      Endpoint address: 0x83
+      Attributes: 0x05
+      Max packet size: 196 bytes
+      Interval: 0x01
    Interface 2 (alternate 2)
     Interface descriptor
      Length: 9 bytes
@@ -151,12 +154,13 @@ Device 27: Ksoloti Core
     Class descriptor 0x24, 6 bytes
     Class descriptor 0x25, 8 bytes
     Endpoint 3 IN (isochronous)
-     Length: 7 bytes
-     Type: 0x05
-     Endpoint address: 0x83
-     Attributes: 0x05
-     Max packet size: 392 bytes
-     Interval: 0x01
+     Endpoint descriptor
+      Length: 7 bytes
+      Type: 0x05
+      Endpoint address: 0x83
+      Attributes: 0x05
+      Max packet size: 392 bytes
+      Interval: 0x01
    Interface 3
     Interface descriptor
      Length: 9 bytes
@@ -173,19 +177,21 @@ Device 27: Ksoloti Core
     2 times: Class descriptor 0x24, 9 bytes
     2 times: Class descriptor 0x25, 5 bytes
     Endpoint 1 OUT (bulk)
-     Length: 9 bytes
-     Type: 0x05
-     Endpoint address: 0x01
-     Attributes: 0x02
-     Max packet size: 64 bytes
-     Interval: 0x00
+     Endpoint descriptor
+      Length: 9 bytes
+      Type: 0x05
+      Endpoint address: 0x01
+      Attributes: 0x02
+      Max packet size: 64 bytes
+      Interval: 0x00
     Endpoint 1 IN (bulk)
-     Length: 9 bytes
-     Type: 0x05
-     Endpoint address: 0x81
-     Attributes: 0x02
-     Max packet size: 64 bytes
-     Interval: 0x00
+     Endpoint descriptor
+      Length: 9 bytes
+      Type: 0x05
+      Endpoint address: 0x81
+      Attributes: 0x02
+      Max packet size: 64 bytes
+      Interval: 0x00
   Function 4: Vendor Specific Class
    Interface association descriptor
     Length: 8 bytes
@@ -208,16 +214,18 @@ Device 27: Ksoloti Core
      Protocol: 0x00
      Interface string: #4 'Ksoloti Bulk Interface'
     Endpoint 2 OUT (bulk)
-     Length: 7 bytes
-     Type: 0x05
-     Endpoint address: 0x02
-     Attributes: 0x02
-     Max packet size: 64 bytes
-     Interval: 0x00
+     Endpoint descriptor
+      Length: 7 bytes
+      Type: 0x05
+      Endpoint address: 0x02
+      Attributes: 0x02
+      Max packet size: 64 bytes
+      Interval: 0x00
     Endpoint 2 IN (bulk)
-     Length: 7 bytes
-     Type: 0x05
-     Endpoint address: 0x82
-     Attributes: 0x02
-     Max packet size: 64 bytes
-     Interval: 0x00
+     Endpoint descriptor
+      Length: 7 bytes
+      Type: 0x05
+      Endpoint address: 0x82
+      Attributes: 0x02
+      Max packet size: 64 bytes
+      Interval: 0x00
