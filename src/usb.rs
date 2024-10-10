@@ -138,14 +138,9 @@ byte_type!(DeviceField);
 byte_type!(StringId);
 byte_type!(ConfigNum);
 byte_type!(ConfigField);
-byte_type!(ConfigFuncNum);
-byte_type!(ConfigIfaceNum);
-byte_type!(ConfigOtherNum);
 byte_type!(InterfaceNum);
 byte_type!(InterfaceAlt);
 byte_type!(InterfaceField);
-byte_type!(InterfaceEpNum);
-byte_type!(IfaceOtherNum);
 byte_type!(EndpointNum);
 byte_type!(EndpointField);
 byte_type!(EndpointAddr);
@@ -894,15 +889,15 @@ pub struct Function {
 
 pub struct Interface {
     pub descriptor: InterfaceDescriptor,
-    pub endpoint_descriptors: VecMap<InterfaceEpNum, EndpointDescriptor>,
-    pub other_descriptors: VecMap<IfaceOtherNum, Descriptor>,
+    pub endpoint_descriptors: Vec<EndpointDescriptor>,
+    pub other_descriptors: Vec<Descriptor>,
 }
 
 pub struct Configuration {
     pub descriptor: ConfigDescriptor,
     pub functions: BTreeMap<u8, Function>,
     pub interfaces: BTreeMap<InterfaceKey, Interface>,
-    pub other_descriptors: VecMap<ConfigOtherNum, Descriptor>,
+    pub other_descriptors: Vec<Descriptor>,
 }
 
 impl Configuration {
@@ -916,7 +911,7 @@ impl Configuration {
                         descriptor: config_desc,
                         functions: BTreeMap::new(),
                         interfaces: BTreeMap::new(),
-                        other_descriptors: VecMap::new(),
+                        other_descriptors: Vec::new(),
                     });
                 },
                 Descriptor::InterfaceAssociation(assoc_desc) => {
@@ -940,9 +935,9 @@ impl Configuration {
                             Interface {
                                 descriptor: iface_desc,
                                 endpoint_descriptors:
-                                    VecMap::with_capacity(
-                                        iface_desc.num_endpoints),
-                                other_descriptors: VecMap::new(),
+                                    Vec::with_capacity(
+                                        iface_desc.num_endpoints as usize),
+                                other_descriptors: Vec::new(),
                             }
                         );
                     }
@@ -1193,17 +1188,12 @@ pub mod prelude {
         DeviceField,
         StringId,
         ConfigNum,
-        ConfigFuncNum,
-        ConfigIfaceNum,
-        ConfigOtherNum,
         ConfigField,
         IfaceAssocField,
         InterfaceNum,
         InterfaceAlt,
         InterfaceKey,
         InterfaceField,
-        InterfaceEpNum,
-        IfaceOtherNum,
         EndpointNum,
         EndpointField,
         UTF16ByteVec,
