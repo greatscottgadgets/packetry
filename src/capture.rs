@@ -614,6 +614,15 @@ impl Configuration {
         }
     }
 
+    pub fn interface(&self, desc: &InterfaceDescriptor)
+        -> Result<&Interface, Error>
+    {
+        let key = (desc.interface_number, desc.alternate_setting);
+        self.interfaces
+            .get(&key)
+            .context("Configuration has no interface matching {key:?}")
+    }
+
     pub fn associated_interfaces(&self, desc: &InterfaceAssociationDescriptor)
         -> impl Iterator<Item=&Interface>
     {
@@ -1953,9 +1962,7 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                     IfaceAssocField(index.try_into()?)),
             Interface(conf, desc) => {
                 let config = data.configuration(conf)?;
-                let key = (desc.interface_number, desc.alternate_setting);
-                let interface = config.interfaces.get(&key)
-                    .context("Configuration has no matching interface")?;
+                let interface = config.interface(&desc)?;
                 let ep_count = interface.endpoint_descriptors.len() as u64;
                 match index {
                     0 => InterfaceDescriptor(desc),
@@ -2029,13 +2036,11 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                         (Complete,
                          usb::InterfaceAssociationDescriptor::NUM_FIELDS),
                     Interface(conf, desc) => {
-                        let key = (desc.interface_number, desc.alternate_setting);
                         let config = data.configuration(conf)?;
-                        let interface = config.interfaces.get(&key)
-                            .context("Configuration has no matching interface")?;
-                    (Ongoing,
-                     1 + interface.endpoint_descriptors.len()
-                       + interface.other_descriptors.len())
+                        let interface = config.interface(&desc)?;
+                        (Ongoing,
+                         1 + interface.endpoint_descriptors.len()
+                           + interface.other_descriptors.len())
                     },
                     InterfaceDescriptor(_) =>
                         (Ongoing, usb::InterfaceDescriptor::NUM_FIELDS),
