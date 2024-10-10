@@ -152,6 +152,8 @@ byte_type!(EndpointAddr);
 byte_type!(EndpointAttr);
 byte_type!(IfaceAssocField);
 
+pub type InterfaceKey = (InterfaceNum, InterfaceAlt);
+
 impl EndpointAddr {
     pub fn number(&self) -> EndpointNum {
         EndpointNum(self.0 & 0x7F)
@@ -684,7 +686,7 @@ impl InterfaceAssociationDescriptor {
 
     pub const NUM_FIELDS: usize = 8;
 
-    pub fn interface_range(&self) -> Range<(InterfaceNum, InterfaceAlt)> {
+    pub fn interface_range(&self) -> Range<InterfaceKey> {
         let start = self.first_interface;
         let count = self.interface_count;
         let start_key = (InterfaceNum(start), InterfaceAlt(0));
@@ -895,14 +897,14 @@ pub struct Interface {
 pub struct Configuration {
     pub descriptor: ConfigDescriptor,
     pub functions: BTreeMap<u8, Function>,
-    pub interfaces: BTreeMap<(InterfaceNum, InterfaceAlt), Interface>,
+    pub interfaces: BTreeMap<InterfaceKey, Interface>,
     pub other_descriptors: VecMap<ConfigOtherNum, Descriptor>,
 }
 
 impl Configuration {
     pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
         let mut result: Option<Configuration> = None;
-        let mut iface_key: Option<(InterfaceNum, InterfaceAlt)> = None;
+        let mut iface_key: Option<InterfaceKey> = None;
         for descriptor in DescriptorIterator::from(bytes) {
             match descriptor {
                 Descriptor::Configuration(config_desc) => {
@@ -1194,6 +1196,7 @@ pub mod prelude {
         IfaceAssocField,
         InterfaceNum,
         InterfaceAlt,
+        InterfaceKey,
         InterfaceField,
         InterfaceEpNum,
         IfaceOtherNum,
