@@ -761,7 +761,7 @@ impl EndpointDescriptor {
 }
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Descriptor {
     Device(DeviceDescriptor),
     Configuration(ConfigDescriptor),
@@ -1166,6 +1166,7 @@ pub mod prelude {
         DescriptorType,
         DeviceDescriptor,
         ConfigDescriptor,
+        InterfaceAssociationDescriptor,
         InterfaceDescriptor,
         EndpointDescriptor,
         Configuration,

@@ -265,28 +265,30 @@ impl TrafficViewMode {
 }
 
 #[derive(Clone, Debug)]
-pub enum DeviceItem {
-    Device(DeviceId, DeviceVersion),
-    DeviceDescriptor(DeviceId),
-    DeviceDescriptorField(DeviceId, DeviceField, DeviceVersion),
-    Configuration(DeviceId, ConfigNum),
-    ConfigurationDescriptor(DeviceId, ConfigNum),
-    ConfigurationDescriptorField(DeviceId, ConfigNum,
-                                 ConfigField, DeviceVersion),
-    Function(DeviceId, ConfigNum, ConfigFuncNum),
-    FunctionDescriptor(DeviceId, ConfigNum, ConfigFuncNum),
-    FunctionDescriptorField(DeviceId, ConfigNum, ConfigFuncNum,
-                            IfaceAssocField, DeviceVersion),
-    Interface(DeviceId, ConfigNum, ConfigIfaceNum),
-    InterfaceDescriptor(DeviceId, ConfigNum, ConfigIfaceNum),
-    InterfaceDescriptorField(DeviceId, ConfigNum, ConfigIfaceNum,
-                             InterfaceField, DeviceVersion),
-    EndpointDescriptor(DeviceId, ConfigNum, ConfigIfaceNum, InterfaceEpNum),
-    EndpointDescriptorField(DeviceId, ConfigNum, ConfigIfaceNum,
-                            InterfaceEpNum, EndpointField, DeviceVersion),
-    ConfigOtherDescriptor(DeviceId, ConfigNum, ConfigOtherNum, DeviceVersion),
-    IfaceOtherDescriptor(DeviceId, ConfigNum, ConfigIfaceNum,
-                         IfaceOtherNum, DeviceVersion),
+pub struct DeviceItem {
+    device_id: DeviceId,
+    version: DeviceVersion,
+    content: DeviceItemContent,
+}
+
+#[derive(Clone, Debug)]
+pub enum DeviceItemContent {
+    Device(Option<DeviceDescriptor>),
+    DeviceDescriptor(Option<DeviceDescriptor>),
+    DeviceDescriptorField(DeviceDescriptor, DeviceField),
+    Configuration(ConfigNum, ConfigDescriptor),
+    ConfigurationDescriptor(ConfigDescriptor),
+    ConfigurationDescriptorField(ConfigDescriptor, ConfigField),
+    Function(InterfaceAssociationDescriptor),
+    FunctionDescriptor(InterfaceAssociationDescriptor),
+    FunctionDescriptorField(InterfaceAssociationDescriptor, IfaceAssocField),
+    Interface(ConfigNum, InterfaceDescriptor),
+    InterfaceDescriptor(InterfaceDescriptor),
+    InterfaceDescriptorField(InterfaceDescriptor, InterfaceField),
+    EndpointDescriptor(EndpointDescriptor),
+    EndpointDescriptorField(EndpointDescriptor, EndpointField),
+    ConfigOtherDescriptor(Descriptor),
+    IfaceOtherDescriptor(Descriptor),
 }
 
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
@@ -1200,21 +1202,6 @@ impl CaptureReader {
             .clone())
     }
 
-    fn device_version(&self, id: &DeviceId) -> Result<u32, Error> {
-        Ok(self.device_data(id)?.version())
-    }
-
-    pub fn try_configuration(&self, dev: &DeviceId, conf: &ConfigNum)
-        -> Option<Arc<Configuration>>
-    {
-        self.device_data(dev)
-            .ok()?
-            .configurations
-            .load()
-            .get(*conf)
-            .cloned()
-    }
-
     fn transfer_extended(&mut self,
                          endpoint_id: EndpointId,
                          transfer_id: TransferId)
@@ -1853,7 +1840,14 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
             None => {
                 let device_id = DeviceId::from(index + 1);
                 let data = self.device_data(&device_id)?;
-                Ok(DeviceItem::Device(device_id, data.version()))
+                let descriptor = data.device_descriptor.load_full();
+                Ok(DeviceItem {
+                    device_id,
+                    version: data.version(),
+                    content: DeviceItemContent::Device(
+                        descriptor.map(|arc| *arc)
+                    )
+                })
             },
             Some(item) => self.child_item(item, index)
         }
@@ -1862,104 +1856,108 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
     fn item_update(&mut self, item: &DeviceItem)
         -> Result<Option<DeviceItem>, Error>
     {
-        use DeviceItem::*;
-        Ok(match item {
-            Device(dev, version) |
-            DeviceDescriptorField(dev, .., version) |
-            ConfigurationDescriptorField(dev, .., version) |
-            InterfaceDescriptorField(dev, .., version) |
-            EndpointDescriptorField(dev, .., version) => {
-                let new = self.device_version(dev)?;
-                if *version != new {
-                    Some(match *item {
-                        Device(dev, _) =>
-                            Device(dev, new),
-                        DeviceDescriptorField(dev, field, _) =>
-                            DeviceDescriptorField(dev, field, new),
-                        ConfigurationDescriptorField(dev, conf, field, _) =>
-                            ConfigurationDescriptorField(dev, conf, field, new),
-                        InterfaceDescriptorField(dev, conf, iface, field, _) =>
-                            InterfaceDescriptorField(dev, conf, iface, field, new),
-                        EndpointDescriptorField(dev, conf, iface, ep, field, _) =>
-                            EndpointDescriptorField(dev, conf, iface, ep, field, new),
-                        _ => unreachable!()
-                    })
-                } else {
-                    None
+        use DeviceItemContent::*;
+        let data = self.device_data(&item.device_id)?;
+        if data.version() == item.version {
+            return Ok(None)
+        }
+        // These items may have changed because we saw a new descriptor.
+        Ok(match item.content {
+            Device(_) |
+            DeviceDescriptorField(..) |
+            ConfigurationDescriptorField(..) |
+            InterfaceDescriptorField(..) => Some(
+                DeviceItem {
+                    device_id: item.device_id,
+                    version: data.version(),
+                    content: item.content.clone(),
                 }
-            },
-            _ => None
+            ),
+            _ => None,
         })
     }
 
     fn child_item(&mut self, parent: &DeviceItem, index: u64)
         -> Result<DeviceItem, Error>
     {
-        use DeviceItem::*;
-        Ok(match parent {
-            Device(dev, _version) => match index {
-                0 => DeviceDescriptor(*dev),
-                conf => Configuration(*dev,
-                    ConfigNum(conf.try_into()?)),
+        use DeviceItemContent::*;
+        let data = self.device_data(&parent.device_id)?;
+        let content = match parent.content {
+            Device(desc_opt) => match index {
+                0 => DeviceDescriptor(desc_opt),
+                n => {
+                    let conf = ConfigNum(n.try_into()?);
+                    let config = data.configuration(&conf)?;
+                    Configuration(conf, config.descriptor)
+                }
             },
-            DeviceDescriptor(dev) =>
-                DeviceDescriptorField(*dev,
-                    DeviceField(index.try_into()?),
-                    self.device_version(dev)?),
-            Configuration(dev, conf) => {
-                let data = self.device_data(dev)?;
-                let config = data.configuration(conf)?;
+            DeviceDescriptor(desc_opt) => match desc_opt {
+                Some(desc) =>
+                    DeviceDescriptorField(desc,
+                        DeviceField(index.try_into()?)),
+                None => bail!("Device descriptor fields not available")
+            },
+            Configuration(conf, desc) => {
+                let config = data.configuration(&conf)?;
                 let other_count = config.other_descriptors.len() as u64;
                 let func_count = config.functions.len() as u64;
                 match index {
-                    0 => ConfigurationDescriptor(*dev, *conf),
+                    0 => ConfigurationDescriptor(desc),
                     n if n < 1 + other_count =>
-                        ConfigOtherDescriptor(*dev, *conf,
-                            ConfigOtherNum((n - 1).try_into()?),
-                            data.version()),
+                        ConfigOtherDescriptor(config
+                            .other_descriptor(
+                                &ConfigOtherNum((n - 1).try_into()?))?
+                            .clone()),
                     n if n < 1 + other_count + func_count =>
-                        Function(*dev, *conf,
-                            ConfigFuncNum((n - 1 - other_count).try_into()?)),
-                    n => Interface(*dev, *conf,
-                        ConfigIfaceNum(
-                            (n - 1 - other_count - func_count).try_into()?))
+                        Function(config.function(
+                            &ConfigFuncNum((n - 1 - other_count).try_into()?))?
+                                .descriptor),
+                    n => Interface(conf, config.interface(
+                        &ConfigIfaceNum(
+                            (n - 1 - other_count - func_count).try_into()?))?
+                                .descriptor),
                 }
             },
-            ConfigurationDescriptor(dev, conf) =>
-                ConfigurationDescriptorField(*dev, *conf,
-                    ConfigField(index.try_into()?),
-                    self.device_version(dev)?),
-            Function(dev, conf, func) =>
-                FunctionDescriptor(*dev, *conf, *func),
-            FunctionDescriptor(dev, conf, func) => {
-                let data = self.device_data(dev)?;
-                FunctionDescriptorField(*dev, *conf, *func,
-                    IfaceAssocField(index.try_into()?),
-                    data.version())
-            },
-            Interface(dev, conf, iface) => {
-                let data = self.device_data(dev)?;
-                let config = data.configuration(conf)?;
-                let interface = config.interface(iface)?;
+            ConfigurationDescriptor(desc) =>
+                ConfigurationDescriptorField(desc,
+                    ConfigField(index.try_into()?)),
+            Function(desc) =>
+                FunctionDescriptor(desc),
+            FunctionDescriptor(desc) =>
+                FunctionDescriptorField(desc,
+                    IfaceAssocField(index.try_into()?)),
+            Interface(conf, desc) => {
+                let config = data.configuration(&conf)?;
+                let key = (desc.interface_number, desc.alternate_setting);
+                let interface = config.interfaces.get(&key)
+                    .context("Configuration has no matching interface")?;
                 let ep_count = interface.endpoint_descriptors.len() as u64;
                 match index {
-                    0 => InterfaceDescriptor(*dev, *conf, *iface),
-                    n if n < 1 + ep_count => EndpointDescriptor(*dev, *conf, *iface,
-                        InterfaceEpNum((n - 1).try_into()?)),
-                    n => IfaceOtherDescriptor(*dev, *conf, *iface,
-                        IfaceOtherNum((n - 1 - ep_count).try_into()?),
-                        data.version())
+                    0 => InterfaceDescriptor(desc),
+                    n if n < 1 + ep_count => {
+                        let num = InterfaceEpNum((n - 1).try_into()?);
+                        let desc = *interface.endpoint_descriptor(&num)?;
+                        EndpointDescriptor(desc)
+                    },
+                    n => {
+                        let num = IfaceOtherNum((n - 1 - ep_count).try_into()?);
+                        let desc = interface.other_descriptor(&num)?.clone();
+                        IfaceOtherDescriptor(desc)
+                    }
                 }
             },
-            InterfaceDescriptor(dev, conf, iface) =>
-                InterfaceDescriptorField(*dev, *conf, *iface,
-                    InterfaceField(index.try_into()?),
-                    self.device_version(dev)?),
-            EndpointDescriptor(dev, conf, iface, ep) =>
-                EndpointDescriptorField(*dev, *conf, *iface, *ep,
-                    EndpointField(index.try_into()?),
-                    self.device_version(dev)?),
+            InterfaceDescriptor(desc) =>
+                InterfaceDescriptorField(desc,
+                    InterfaceField(index.try_into()?)),
+            EndpointDescriptor(desc) =>
+                EndpointDescriptorField(desc,
+                    EndpointField(index.try_into()?)),
             _ => bail!("This device item type cannot have children")
+        };
+        Ok(DeviceItem {
+            device_id: parent.device_id,
+            version: data.version(),
+            content,
         })
     }
 
@@ -1968,53 +1966,56 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                      _view_mode: DeviceViewMode)
         -> Result<(CompletionStatus, u64), Error>
     {
-        use DeviceItem::*;
+        use DeviceItemContent::*;
         use CompletionStatus::*;
         let (completion, children) = match parent {
             None =>
                 (self.completion(),
                  self.devices.len().saturating_sub(1) as usize),
-            Some(Device(dev, _version)) =>
-                (Ongoing, {
-                    let configs = &self.device_data(dev)?.configurations;
-                    let count = configs.load().len();
-                    if count == 0 { 1 } else { count }
-                }),
-            Some(DeviceDescriptor(dev)) =>
-                match self.device_data(dev)?.device_descriptor.load().as_ref() {
-                    Some(_) => (Ongoing, usb::DeviceDescriptor::NUM_FIELDS),
-                    None => (Ongoing, 0),
-                },
-            Some(Configuration(dev, conf)) =>
-                match self.try_configuration(dev, conf) {
-                    Some(conf) => (Ongoing,
-                        1 + conf.other_descriptors.len()
-                          + conf.functions.len()
-                          + conf.interfaces.len()),
-                    None => (Ongoing, 0)
-                },
-            Some(ConfigurationDescriptor(dev, conf)) =>
-                match self.try_configuration(dev, conf) {
-                    Some(_) => (Ongoing, usb::ConfigDescriptor::NUM_FIELDS),
-                    None => (Ongoing, 0)
-                },
-            Some(Function(..)) => (Ongoing, 1),
-            Some(FunctionDescriptor(..)) =>
-                 (Ongoing, usb::InterfaceAssociationDescriptor::NUM_FIELDS),
-            Some(Interface(dev, conf, iface)) =>
-                match self.try_configuration(dev, conf) {
-                    Some(conf) => (Ongoing, {
-                        let interface = conf.interface(iface)?;
-                        1 + interface.endpoint_descriptors.len()
-                          + interface.other_descriptors.len()
-                    }),
-                    None => (Ongoing, 0)
-                },
-            Some(InterfaceDescriptor(..)) =>
-                (Ongoing, usb::InterfaceDescriptor::NUM_FIELDS),
-            Some(EndpointDescriptor(..)) =>
-                (Complete, usb::EndpointDescriptor::NUM_FIELDS),
-            _ => (Ongoing, 0)
+            Some(item) => {
+                let data = self.device_data(&item.device_id)?;
+                match item.content {
+                    Device(_) => {
+                        let count = data.configurations.load().len();
+                        (Ongoing, if count == 0 { 1 } else { count })
+                    },
+                    DeviceDescriptor(_) =>
+                        match data.device_descriptor.load().as_ref() {
+                            Some(_) =>
+                                (Ongoing, usb::DeviceDescriptor::NUM_FIELDS),
+                            None => (Ongoing, 0),
+                        },
+                    Configuration(conf, _) => {
+                        let config = data.configuration(&conf)?;
+                        (Ongoing,
+                         1 + config.other_descriptors.len()
+                           + config.functions.len()
+                           + config.interfaces.len())
+                    }
+                    ConfigurationDescriptor(_) =>
+                        (Ongoing, usb::ConfigDescriptor::NUM_FIELDS),
+                    Function(_) => (Complete, 1),
+                    FunctionDescriptor(_) =>
+                        (Complete,
+                         usb::InterfaceAssociationDescriptor::NUM_FIELDS),
+                    Interface(conf, desc) => {
+                        let key = (desc.interface_number, desc.alternate_setting);
+                        let config = data.configuration(&conf)?;
+                        let interface = config.interfaces.get(&key)
+                            .context("Configuration has no matching interface")?;
+                    (Ongoing,
+                     1 + interface.endpoint_descriptors.len()
+                       + interface.other_descriptors.len())
+                    },
+                    InterfaceDescriptor(_) =>
+                        (Ongoing, usb::InterfaceDescriptor::NUM_FIELDS),
+                    EndpointDescriptor(_) =>
+                        (Complete, usb::EndpointDescriptor::NUM_FIELDS),
+
+                    // Other types have no children.
+                    _ => (Complete, 0),
+                }
+            }
         };
         Ok((completion, children as u64))
     }
@@ -2022,112 +2023,73 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
     fn description(&mut self, item: &DeviceItem, _detail: bool)
         -> Result<String, Error>
     {
-        use DeviceItem::*;
-        Ok(match item {
-            Device(dev, _version) => {
-                let device = self.devices.get(*dev)?;
-                let data = self.device_data(dev)?;
+        use DeviceItemContent::*;
+        let data = self.device_data(&item.device_id)?;
+        Ok(match &item.content {
+            Device(_) => {
+                let device = self.devices.get(item.device_id)?;
                 format!("Device {}: {}", device.address, data.description())
             },
-            DeviceDescriptor(dev) => {
-                match self.device_data(dev)?.device_descriptor.load().as_ref() {
+            DeviceDescriptor(desc) => {
+                match desc {
                     Some(_) => "Device descriptor",
                     None => "No device descriptor"
                 }.to_string()
             },
-            DeviceDescriptorField(dev, field, _ver) => {
-                let data = self.device_data(dev)?;
-                let device_descriptor = data.device_descriptor.load();
-                match device_descriptor.as_ref() {
-                    Some(descriptor) => {
-                        let strings = data.strings.load();
-                        descriptor.field_text(*field, strings.as_ref())
-                    },
-                    None => bail!("Device descriptor missing")
-                }
-            },
-            Configuration(_, conf) => format!(
-                "Configuration {conf}"),
-            ConfigurationDescriptor(..) =>
-                "Configuration descriptor".to_string(),
-            ConfigurationDescriptorField(dev, conf, field, _ver) => {
-                let data = self.device_data(dev)?;
-                let config_descriptor = data.configuration(conf)?.descriptor;
+            DeviceDescriptorField(desc, field) => {
                 let strings = data.strings.load();
-                config_descriptor.field_text(*field, strings.as_ref())
+                desc.field_text(*field, strings.as_ref())
             },
-            Function(dev, conf, func) => {
-                let data = self.device_data(dev)?;
-                let config = data.configuration(conf)?;
-                let function = config.function(func)?;
+            Configuration(conf, _) => format!(
+                "Configuration {conf}"),
+            ConfigurationDescriptor(_) =>
+                "Configuration descriptor".to_string(),
+            ConfigurationDescriptorField(desc, field) => {
+                let strings = data.strings.load();
+                desc.field_text(*field, strings.as_ref())
+            },
+            Function(desc) => {
                 format!("Function {}: {}",
-                    function.descriptor.function,
-                    usb_ids::Class::from_id(function.descriptor.function_class)
+                    desc.function,
+                    usb_ids::Class::from_id(desc.function_class)
                         .map_or("Unknown", |c| c.name())
                 )
             },
-            FunctionDescriptor(..) =>
+            FunctionDescriptor(_) =>
                 "Interface association descriptor".to_string(),
-            FunctionDescriptorField(dev, conf, func, field, _ver) => {
-                let data = self.device_data(dev)?;
-                let config = data.configuration(conf)?;
-                let function = config.function(func)?;
-                function.descriptor.field_text(*field)
-            },
-            Interface(dev, conf, iface) => {
-                let data = self.device_data(dev)?;
-                let config = data.configuration(conf)?;
-                let iface_desc = config.interface(iface)?.descriptor;
-                let num = iface_desc.interface_number;
-                match iface_desc.alternate_setting {
+            FunctionDescriptorField(desc, field) => desc.field_text(*field),
+            Interface(_conf, desc) => {
+                let num = desc.interface_number;
+                match desc.alternate_setting {
                     InterfaceAlt(0) => format!(
                         "Interface {num}"),
                     InterfaceAlt(alt) => format!(
                         "Interface {num} (alternate {alt})"),
                 }
             },
-            InterfaceDescriptor(..) =>
+            InterfaceDescriptor(_) =>
                 "Interface descriptor".to_string(),
-            InterfaceDescriptorField(dev, conf, iface, field, _ver) => {
-                let data = self.device_data(dev)?;
-                let config = data.configuration(conf)?;
-                let interface = config.interface(iface)?;
+            InterfaceDescriptorField(desc, field) => {
                 let strings = data.strings.load();
-                interface.descriptor.field_text(*field, strings.as_ref())
+                desc.field_text(*field, strings.as_ref())
             },
-            EndpointDescriptor(dev, conf, iface, ep) => {
-                let config = self.device_data(dev)?.configuration(conf)?;
-                let desc = config.interface(iface)?.endpoint_descriptor(ep)?;
+            EndpointDescriptor(desc) => {
                 let addr = desc.endpoint_address;
                 let attrs = desc.attributes;
                 format!("Endpoint {} {} ({})", addr.number(),
                    addr.direction(), attrs.endpoint_type())
             },
-            EndpointDescriptorField(dev, conf, iface, ep, field, _ver) => {
-                self.device_data(dev)?
-                    .configuration(conf)?
-                    .interface(iface)?
-                    .endpoint_descriptor(ep)?
-                    .field_text(*field)
-            },
-            IfaceOtherDescriptor(dev, conf, iface, other, _ver) => {
-                let config = self.device_data(dev)?.configuration(conf)?;
-                let desc = config.interface(iface)?.other_descriptor(other)?;
-                desc.description()
-            },
-            ConfigOtherDescriptor(dev, conf, other, _ver) => {
-                let config = self.device_data(dev)?.configuration(conf)?;
-                let desc = config.other_descriptor(other)?;
-                desc.description()
-            }
+            EndpointDescriptorField(desc, field) => desc.field_text(*field),
+            IfaceOtherDescriptor(desc) => desc.description(),
+            ConfigOtherDescriptor(desc) => desc.description(),
         })
     }
 
     fn connectors(&mut self, _view_mode: (), item: &DeviceItem)
         -> Result<String, Error>
     {
-        use DeviceItem::*;
-        let depth = match item {
+        use DeviceItemContent::*;
+        let depth = match item.content {
             Device(..) => 0,
             DeviceDescriptor(..) => 1,
             DeviceDescriptorField(..) => 2,
