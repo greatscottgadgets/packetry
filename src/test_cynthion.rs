@@ -117,7 +117,7 @@ fn test(save_capture: bool,
 
     // Look for the test device in the capture.
     let device_id = DeviceId::from(1);
-    let device_data = reader.device_data(&device_id)?;
+    let device_data = reader.device_data(device_id)?;
     ensure!(device_data.description() == "USB Analyzer Test Device",
             "Device found did not have expected description");
     println!("Found test device in capture");
