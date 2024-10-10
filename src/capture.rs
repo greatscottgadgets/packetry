@@ -288,8 +288,7 @@ pub enum DeviceItemContent {
     InterfaceDescriptorField(InterfaceDescriptor, InterfaceField),
     EndpointDescriptor(EndpointDescriptor),
     EndpointDescriptorField(EndpointDescriptor, EndpointField),
-    ConfigOtherDescriptor(Descriptor),
-    IfaceOtherDescriptor(Descriptor),
+    OtherDescriptor(Descriptor),
 }
 
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
@@ -1907,7 +1906,7 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                 match index {
                     0 => ConfigurationDescriptor(desc),
                     n if n < 1 + other_count =>
-                        ConfigOtherDescriptor(config
+                        OtherDescriptor(config
                             .other_descriptor(
                                 ConfigOtherNum((n - 1).try_into()?))?
                             .clone()),
@@ -1945,7 +1944,7 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                     n => {
                         let num = IfaceOtherNum((n - 1 - ep_count).try_into()?);
                         let desc = interface.other_descriptor(num)?.clone();
-                        IfaceOtherDescriptor(desc)
+                        OtherDescriptor(desc)
                     }
                 }
             },
@@ -2084,8 +2083,7 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                    addr.direction(), attrs.endpoint_type())
             },
             EndpointDescriptorField(desc, field) => desc.field_text(*field),
-            IfaceOtherDescriptor(desc) => desc.description(),
-            ConfigOtherDescriptor(desc) => desc.description(),
+            OtherDescriptor(desc) => desc.description(),
         })
     }
 
