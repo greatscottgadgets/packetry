@@ -23,7 +23,7 @@ Device 1: USB Analyzer Test Device
    Configuration string: (none)
    Attributes: 0x80
    Max power: 500mA
-  Interface 0
+  Interface 0: Vendor Specific Class
    Interface descriptor
     Length: 9 bytes
     Type: 0x04
