@@ -887,9 +887,14 @@ pub struct Function {
     pub descriptor: InterfaceAssociationDescriptor,
 }
 
+pub struct Endpoint {
+    pub descriptor: EndpointDescriptor,
+    pub other_descriptors: Vec<Descriptor>,
+}
+
 pub struct Interface {
     pub descriptor: InterfaceDescriptor,
-    pub endpoint_descriptors: Vec<EndpointDescriptor>,
+    pub endpoints: Vec<Endpoint>,
     pub other_descriptors: Vec<Descriptor>,
 }
 
@@ -904,6 +909,7 @@ impl Configuration {
     pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
         let mut result: Option<Configuration> = None;
         let mut iface_key: Option<InterfaceKey> = None;
+        let mut ep_index: Option<usize> = None;
         for descriptor in DescriptorIterator::from(bytes) {
             match descriptor {
                 Descriptor::Configuration(config_desc) => {
@@ -930,11 +936,12 @@ impl Configuration {
                         let iface_alt = iface_desc.alternate_setting;
                         let key = (iface_num, iface_alt);
                         iface_key = Some(key);
+                        ep_index = None;
                         config.interfaces.insert(
                             key,
                             Interface {
                                 descriptor: iface_desc,
-                                endpoint_descriptors:
+                                endpoints:
                                     Vec::with_capacity(
                                         iface_desc.num_endpoints as usize),
                                 other_descriptors: Vec::new(),
@@ -946,7 +953,18 @@ impl Configuration {
                     (Some(config), Some(key)) => {
                         if let Some(iface) = config.interfaces.get_mut(&key) {
                             if let Descriptor::Endpoint(ep_desc) = descriptor {
-                                iface.endpoint_descriptors.push(ep_desc);
+                                ep_index = Some(iface.endpoints.len());
+                                iface.endpoints.push(
+                                    Endpoint {
+                                        descriptor: ep_desc,
+                                        other_descriptors: Vec::new()
+                                    }
+                                );
+                            } else if let Some(i) = ep_index {
+                                iface
+                                    .endpoints[i]
+                                    .other_descriptors
+                                    .push(descriptor);
                             } else {
                                 iface.other_descriptors.push(descriptor);
                             }
