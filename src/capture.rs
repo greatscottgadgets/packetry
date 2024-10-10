@@ -279,7 +279,7 @@ pub enum DeviceItemContent {
     Configuration(ConfigNum, ConfigDescriptor),
     ConfigurationDescriptor(ConfigDescriptor),
     ConfigurationDescriptorField(ConfigDescriptor, ConfigField),
-    Function(InterfaceAssociationDescriptor),
+    Function(ConfigNum, InterfaceAssociationDescriptor),
     FunctionDescriptor(InterfaceAssociationDescriptor),
     FunctionDescriptorField(InterfaceAssociationDescriptor, IfaceAssocField),
     Interface(ConfigNum, InterfaceDescriptor),
@@ -1909,7 +1909,7 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                                 ConfigOtherNum((n - 1).try_into()?))?
                             .clone()),
                     n if n < 1 + other_count + func_count =>
-                        Function(config.function(
+                        Function(conf, config.function(
                             ConfigFuncNum((n - 1 - other_count).try_into()?))?
                                 .descriptor),
                     n => Interface(conf, config.interface(
@@ -1921,7 +1921,7 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
             ConfigurationDescriptor(desc) =>
                 ConfigurationDescriptorField(desc,
                     ConfigField(index.try_into()?)),
-            Function(desc) =>
+            Function(_conf, desc) =>
                 FunctionDescriptor(desc),
             FunctionDescriptor(desc) =>
                 FunctionDescriptorField(desc,
@@ -1994,7 +1994,7 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                     }
                     ConfigurationDescriptor(_) =>
                         (Ongoing, usb::ConfigDescriptor::NUM_FIELDS),
-                    Function(_) => (Complete, 1),
+                    Function(..) => (Complete, 1),
                     FunctionDescriptor(_) =>
                         (Complete,
                          usb::InterfaceAssociationDescriptor::NUM_FIELDS),
@@ -2048,7 +2048,7 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                 let strings = data.strings.load();
                 desc.field_text(*field, strings.as_ref())
             },
-            Function(desc) => {
+            Function(_conf, desc) => {
                 format!("Function {}: {}",
                     desc.function,
                     usb_ids::Class::from_id(desc.function_class)
