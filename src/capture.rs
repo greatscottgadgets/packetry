@@ -614,14 +614,26 @@ impl Configuration {
         }
     }
 
-    pub fn interface(&self, number: ConfigIfaceNum)
-        -> Result<&Interface, Error>
+    pub fn associated_interfaces(&self, desc: &InterfaceAssociationDescriptor)
+        -> impl Iterator<Item=&Interface>
     {
-        let index = number.0 as usize;
-        match self.interfaces.values().nth(index) {
-            Some(iface) => Ok(iface),
-            _ => bail!("Configuration has no interface with index {index}")
-        }
+        self.interfaces.range(desc.interface_range()).map(|(_k, v)| v)
+    }
+
+    pub fn unassociated_interfaces(&self)  -> impl Iterator<Item=&Interface> {
+        let associated_ranges = self.functions
+            .values()
+            .map(|f| f.descriptor.interface_range())
+            .collect::<Vec<_>>();
+        self.interfaces
+            .iter()
+            .filter_map(move |(key, interface)| {
+                if associated_ranges.iter().any(|range| range.contains(key)) {
+                    None
+                } else {
+                    Some(interface)
+                }
+            })
     }
 
     pub fn other_descriptor(&self, number: ConfigOtherNum)
@@ -1914,17 +1926,28 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                         Function(conf, config.function(
                             ConfigFuncNum((n - 1 - other_count).try_into()?))?
                                 .descriptor),
-                    n => Interface(conf, config.interface(
-                        ConfigIfaceNum(
-                            (n - 1 - other_count - func_count).try_into()?))?
-                                .descriptor),
+                    n => Interface(conf, config
+                            .unassociated_interfaces()
+                            .nth((n - 1 - other_count - func_count).try_into()?)
+                            .context("Failed to find unassociated interface")?
+                            .descriptor)
                 }
             },
             ConfigurationDescriptor(desc) =>
                 ConfigurationDescriptorField(desc,
                     ConfigField(index.try_into()?)),
-            Function(_conf, desc) =>
-                FunctionDescriptor(desc),
+            Function(conf, desc) => {
+                let config = data.configuration(conf)?;
+                match index.try_into()? {
+                    0 => FunctionDescriptor(desc),
+                    n => match config.associated_interfaces(&desc).nth(n - 1) {
+                        Some(interface) =>
+                            Interface(conf, interface.descriptor),
+                        None => bail!(
+                            "Function has no interface with index {n}")
+                    }
+                }
+            },
             FunctionDescriptor(desc) =>
                 FunctionDescriptorField(desc,
                     IfaceAssocField(index.try_into()?)),
@@ -1993,11 +2016,15 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                         (Ongoing,
                          1 + config.other_descriptors.len()
                            + config.functions.len()
-                           + config.interfaces.len())
+                           + config.unassociated_interfaces().count())
                     }
                     ConfigurationDescriptor(_) =>
                         (Ongoing, usb::ConfigDescriptor::NUM_FIELDS),
-                    Function(..) => (Complete, 1),
+                    Function(conf, desc) => {
+                        let config = data.configuration(conf)?;
+                        let interfaces = config.associated_interfaces(&desc);
+                        (Complete, 1 + interfaces.count())
+                    }
                     FunctionDescriptor(_) =>
                         (Complete,
                          usb::InterfaceAssociationDescriptor::NUM_FIELDS),
