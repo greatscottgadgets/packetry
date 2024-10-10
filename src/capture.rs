@@ -269,6 +269,7 @@ pub struct DeviceItem {
     device_id: DeviceId,
     version: DeviceVersion,
     content: DeviceItemContent,
+    indent: u8,
 }
 
 #[derive(Clone, Debug)]
@@ -1846,7 +1847,8 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                     version: data.version(),
                     content: DeviceItemContent::Device(
                         descriptor.map(|arc| *arc)
-                    )
+                    ),
+                    indent: 0,
                 })
             },
             Some(item) => self.child_item(item, index)
@@ -1871,6 +1873,7 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                     device_id: item.device_id,
                     version: data.version(),
                     content: item.content.clone(),
+                    indent: item.indent,
                 }
             ),
             _ => None,
@@ -1958,6 +1961,7 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
             device_id: parent.device_id,
             version: data.version(),
             content,
+            indent: parent.indent + 1,
         })
     }
 
@@ -2088,26 +2092,7 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
     fn connectors(&mut self, _view_mode: (), item: &DeviceItem)
         -> Result<String, Error>
     {
-        use DeviceItemContent::*;
-        let depth = match item.content {
-            Device(..) => 0,
-            DeviceDescriptor(..) => 1,
-            DeviceDescriptorField(..) => 2,
-            Configuration(..) => 1,
-            ConfigurationDescriptor(..) => 2,
-            ConfigurationDescriptorField(..) => 3,
-            Function(..) => 2,
-            FunctionDescriptor(..) => 3,
-            FunctionDescriptorField(..) => 4,
-            Interface(..) => 2,
-            InterfaceDescriptor(..) => 3,
-            InterfaceDescriptorField(..) => 4,
-            EndpointDescriptor(..) => 3,
-            EndpointDescriptorField(..) => 4,
-            IfaceOtherDescriptor(..) => 3,
-            ConfigOtherDescriptor(..) => 2,
-        };
-        Ok("   ".repeat(depth))
+        Ok("   ".repeat(item.indent as usize))
     }
 
     fn timestamp(&mut self, _item: &DeviceItem)
