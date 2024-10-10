@@ -286,6 +286,7 @@ pub enum DeviceItemContent {
     Interface(ConfigNum, InterfaceDescriptor),
     InterfaceDescriptor(InterfaceDescriptor),
     InterfaceDescriptorField(InterfaceDescriptor, InterfaceField),
+    Endpoint(ConfigNum, InterfaceKey, EndpointDescriptor),
     EndpointDescriptor(EndpointDescriptor),
     EndpointDescriptorField(EndpointDescriptor, EndpointField),
     OtherDescriptor(Descriptor),
@@ -617,9 +618,8 @@ impl Configuration {
     pub fn interface(&self, desc: &InterfaceDescriptor)
         -> Result<&Interface, Error>
     {
-        let key = (desc.interface_number, desc.alternate_setting);
         self.interfaces
-            .get(&key)
+            .get(&desc.key())
             .context("Configuration has no interface matching {key:?}")
     }
 
@@ -1960,12 +1960,12 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
             FunctionDescriptor(desc) =>
                 FunctionDescriptorField(desc,
                     IfaceAssocField(index.try_into()?)),
-            Interface(conf, desc) => {
+            Interface(conf, if_desc) => {
                 let config = data.configuration(conf)?;
-                let interface = config.interface(&desc)?;
+                let interface = config.interface(&if_desc)?;
                 let desc_count = interface.other_descriptors.len() as u64;
                 match index {
-                    0 => InterfaceDescriptor(desc),
+                    0 => InterfaceDescriptor(if_desc),
                     n if n < 1 + desc_count => {
                         let num = IfaceOtherNum((n - 1).try_into()?);
                         let desc = interface.other_descriptor(num)?.clone();
@@ -1973,11 +1973,12 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                     },
                     n => {
                         let num = InterfaceEpNum((n - 1 - desc_count).try_into()?);
-                        let desc = *interface.endpoint_descriptor(num)?;
-                        EndpointDescriptor(desc)
+                        let ep_desc = *interface.endpoint_descriptor(num)?;
+                        Endpoint(conf, if_desc.key(), ep_desc)
                     }
                 }
             },
+            Endpoint(_conf, _key, desc) => EndpointDescriptor(desc),
             InterfaceDescriptor(desc) =>
                 InterfaceDescriptorField(desc,
                     InterfaceField(index.try_into()?)),
@@ -2042,6 +2043,7 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                          1 + interface.endpoint_descriptors.len()
                            + interface.other_descriptors.len())
                     },
+                    Endpoint(..) => (Complete, 1),
                     InterfaceDescriptor(_) =>
                         (Ongoing, usb::InterfaceDescriptor::NUM_FIELDS),
                     EndpointDescriptor(_) =>
@@ -2108,12 +2110,14 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                 let strings = data.strings.load();
                 desc.field_text(*field, strings.as_ref())
             },
-            EndpointDescriptor(desc) => {
+            Endpoint(.., desc) => {
                 let addr = desc.endpoint_address;
                 let attrs = desc.attributes;
                 format!("Endpoint {} {} ({})", addr.number(),
                    addr.direction(), attrs.endpoint_type())
             },
+            EndpointDescriptor(_) =>
+                "Endpoint descriptor".to_string(),
             EndpointDescriptorField(desc, field) => desc.field_text(*field),
             OtherDescriptor(desc) => desc.description(),
         })

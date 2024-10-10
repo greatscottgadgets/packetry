@@ -740,6 +740,10 @@ impl InterfaceDescriptor {
     }
 
     pub const NUM_FIELDS: usize = 9;
+
+    pub fn key(&self) -> InterfaceKey {
+        (self.interface_number, self.alternate_setting)
+    }
 }
 
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]

@@ -38,12 +38,13 @@ Device 14: USB Device
     Interface string: (none)
    Class descriptor 0x21, 9 bytes
    Endpoint 1 IN (interrupt)
-    Length: 7 bytes
-    Type: 0x05
-    Endpoint address: 0x81
-    Attributes: 0x03
-    Max packet size: 8 bytes
-    Interval: 0x0A
+    Endpoint descriptor
+     Length: 7 bytes
+     Type: 0x05
+     Endpoint address: 0x81
+     Attributes: 0x03
+     Max packet size: 8 bytes
+     Interval: 0x0A
   Interface 1
    Interface descriptor
     Length: 9 bytes
@@ -57,9 +58,10 @@ Device 14: USB Device
     Interface string: (none)
    Class descriptor 0x21, 9 bytes
    Endpoint 2 IN (interrupt)
-    Length: 7 bytes
-    Type: 0x05
-    Endpoint address: 0x82
-    Attributes: 0x03
-    Max packet size: 5 bytes
-    Interval: 0x0A
+    Endpoint descriptor
+     Length: 7 bytes
+     Type: 0x05
+     Endpoint address: 0x82
+     Attributes: 0x03
+     Max packet size: 5 bytes
+     Interval: 0x0A
