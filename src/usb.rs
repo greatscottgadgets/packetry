@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 use std::mem::size_of;
+use std::ops::Range;
 
 use bytemuck_derive::{Pod, Zeroable};
 use bytemuck::pod_read_unaligned;
@@ -682,6 +683,14 @@ impl InterfaceAssociationDescriptor {
     }
 
     pub const NUM_FIELDS: usize = 8;
+
+    pub fn interface_range(&self) -> Range<(InterfaceNum, InterfaceAlt)> {
+        let start = self.first_interface;
+        let count = self.interface_count;
+        let start_key = (InterfaceNum(start), InterfaceAlt(0));
+        let end_key = (InterfaceNum(start + count), InterfaceAlt(0));
+        start_key..end_key
+    }
 }
 
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
