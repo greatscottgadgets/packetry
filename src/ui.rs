@@ -22,7 +22,7 @@ use gtk::gio::{
     MenuItem,
     SimpleActionGroup
 };
-use gtk::glib::{Object, SignalHandlerId};
+use gtk::glib::{Object, SignalHandlerId, clone};
 use gtk::{
     prelude::*,
     AboutDialog,
@@ -653,14 +653,13 @@ fn create_view<Item, Model, RowData, ViewMode>(
                         .log_item_updated(name, position, summary)
             )
         )).expect("Failed to create model");
-    let bind_model = model.clone();
     let selection_model = SingleSelection::new(Some(model.clone()));
     let factory = SignalListItemFactory::new();
     factory.connect_setup(move |_, list_item| {
         let widget = ItemWidget::new();
         list_item.set_child(Some(&widget));
     });
-    let bind = move |list_item: &ListItem| -> Result<(), Error> {
+    let bind = clone!(@strong model => move |list_item: &ListItem| {
         let row = list_item
             .item()
             .context("ListItem has no item")?
@@ -677,28 +676,29 @@ fn create_view<Item, Model, RowData, ViewMode>(
         match row.node() {
             Ok(node_ref) => {
                 let node = node_ref.borrow();
-                let summary = bind_model.description(&node.item, false);
-                let connectors = bind_model.connectors(&node.item);
+                let summary = model.description(&node.item, false);
+                let connectors = model.connectors(&node.item);
                 item_widget.set_text(summary);
                 item_widget.set_connectors(connectors);
                 expander.set_visible(node.expandable());
                 expander.set_expanded(node.expanded());
-                let model = bind_model.clone();
-                let node_ref = node_ref.clone();
-                let list_item = list_item.clone();
                 #[cfg(any(test,
                           feature="record-ui-test"))]
                 let recording = expand_rec.clone();
-                let handler = expander.connect_expanded_notify(move |expander| {
-                    let position = list_item.position();
-                    let expanded = expander.is_expanded();
-                    #[cfg(any(test,
-                              feature="record-ui-test"))]
-                    recording.borrow_mut().log_item_expanded(
-                        name, position, expanded);
-                    display_error(
-                        model.set_expanded(&node_ref, position, expanded))
-                });
+                let handler = expander.connect_expanded_notify(
+                    clone!(@strong model, @strong node_ref, @strong list_item =>
+                        move |expander| {
+                            let position = list_item.position();
+                            let expanded = expander.is_expanded();
+                            #[cfg(any(test,
+                                      feature="record-ui-test"))]
+                            recording.borrow_mut().log_item_expanded(
+                                name, position, expanded);
+                            display_error(
+                                model.set_expanded(&node_ref, position, expanded))
+                        }
+                    )
+                );
                 item_widget.set_handler(handler);
                 node.attach_widget(&item_widget);
             },
@@ -709,7 +709,7 @@ fn create_view<Item, Model, RowData, ViewMode>(
             }
         };
         Ok(())
-    };
+    });
     let unbind = move |list_item: &ListItem| {
         let row = list_item
             .item()
