@@ -216,7 +216,7 @@ pub type EndpointDataEvent = u64;
 pub type EndpointByteCount = u64;
 pub type DeviceVersion = u32;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub enum TrafficItem {
     Transfer(TransferId),
     Transaction(Option<TransferId>, TransactionId),
@@ -264,7 +264,7 @@ impl TrafficViewMode {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub enum DeviceItem {
     Device(DeviceId, DeviceVersion),
     DeviceDescriptor(DeviceId),
