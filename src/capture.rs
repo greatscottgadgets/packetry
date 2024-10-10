@@ -1963,18 +1963,18 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
             Interface(conf, desc) => {
                 let config = data.configuration(conf)?;
                 let interface = config.interface(&desc)?;
-                let ep_count = interface.endpoint_descriptors.len() as u64;
+                let desc_count = interface.other_descriptors.len() as u64;
                 match index {
                     0 => InterfaceDescriptor(desc),
-                    n if n < 1 + ep_count => {
-                        let num = InterfaceEpNum((n - 1).try_into()?);
-                        let desc = *interface.endpoint_descriptor(num)?;
-                        EndpointDescriptor(desc)
-                    },
-                    n => {
-                        let num = IfaceOtherNum((n - 1 - ep_count).try_into()?);
+                    n if n < 1 + desc_count => {
+                        let num = IfaceOtherNum((n - 1).try_into()?);
                         let desc = interface.other_descriptor(num)?.clone();
                         OtherDescriptor(desc)
+                    },
+                    n => {
+                        let num = InterfaceEpNum((n - 1 - desc_count).try_into()?);
+                        let desc = *interface.endpoint_descriptor(num)?;
+                        EndpointDescriptor(desc)
                     }
                 }
             },

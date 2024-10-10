@@ -73,6 +73,9 @@ Device 27: Ksoloti Core
      Subclass: 0x02: Streaming
      Protocol: 0x20
      Interface string: (none)
+    Class descriptor 0x24, 16 bytes
+    Class descriptor 0x24, 6 bytes
+    Class descriptor 0x25, 8 bytes
     Endpoint 3 OUT (isochronous)
      Length: 7 bytes
      Type: 0x05
@@ -80,9 +83,6 @@ Device 27: Ksoloti Core
      Attributes: 0x09
      Max packet size: 196 bytes
      Interval: 0x01
-    Class descriptor 0x24, 16 bytes
-    Class descriptor 0x24, 6 bytes
-    Class descriptor 0x25, 8 bytes
    Interface 1 (alternate 2)
     Interface descriptor
      Length: 9 bytes
@@ -94,6 +94,9 @@ Device 27: Ksoloti Core
      Subclass: 0x02: Streaming
      Protocol: 0x20
      Interface string: (none)
+    Class descriptor 0x24, 16 bytes
+    Class descriptor 0x24, 6 bytes
+    Class descriptor 0x25, 8 bytes
     Endpoint 3 OUT (isochronous)
      Length: 7 bytes
      Type: 0x05
@@ -101,9 +104,6 @@ Device 27: Ksoloti Core
      Attributes: 0x09
      Max packet size: 392 bytes
      Interval: 0x01
-    Class descriptor 0x24, 16 bytes
-    Class descriptor 0x24, 6 bytes
-    Class descriptor 0x25, 8 bytes
    Interface 2
     Interface descriptor
      Length: 9 bytes
@@ -126,6 +126,9 @@ Device 27: Ksoloti Core
      Subclass: 0x02: Streaming
      Protocol: 0x20
      Interface string: (none)
+    Class descriptor 0x24, 16 bytes
+    Class descriptor 0x24, 6 bytes
+    Class descriptor 0x25, 8 bytes
     Endpoint 3 IN (isochronous)
      Length: 7 bytes
      Type: 0x05
@@ -133,9 +136,6 @@ Device 27: Ksoloti Core
      Attributes: 0x05
      Max packet size: 196 bytes
      Interval: 0x01
-    Class descriptor 0x24, 16 bytes
-    Class descriptor 0x24, 6 bytes
-    Class descriptor 0x25, 8 bytes
    Interface 2 (alternate 2)
     Interface descriptor
      Length: 9 bytes
@@ -147,6 +147,9 @@ Device 27: Ksoloti Core
      Subclass: 0x02: Streaming
      Protocol: 0x20
      Interface string: (none)
+    Class descriptor 0x24, 16 bytes
+    Class descriptor 0x24, 6 bytes
+    Class descriptor 0x25, 8 bytes
     Endpoint 3 IN (isochronous)
      Length: 7 bytes
      Type: 0x05
@@ -154,9 +157,6 @@ Device 27: Ksoloti Core
      Attributes: 0x05
      Max packet size: 392 bytes
      Interval: 0x01
-    Class descriptor 0x24, 16 bytes
-    Class descriptor 0x24, 6 bytes
-    Class descriptor 0x25, 8 bytes
    Interface 3
     Interface descriptor
      Length: 9 bytes
@@ -168,6 +168,10 @@ Device 27: Ksoloti Core
      Subclass: 0x03: MIDI Streaming
      Protocol: 0x00
      Interface string: (none)
+    Class descriptor 0x24, 7 bytes
+    2 times: Class descriptor 0x24, 6 bytes
+    2 times: Class descriptor 0x24, 9 bytes
+    2 times: Class descriptor 0x25, 5 bytes
     Endpoint 1 OUT (bulk)
      Length: 9 bytes
      Type: 0x05
@@ -182,10 +186,6 @@ Device 27: Ksoloti Core
      Attributes: 0x02
      Max packet size: 64 bytes
      Interval: 0x00
-    Class descriptor 0x24, 7 bytes
-    2 times: Class descriptor 0x24, 6 bytes
-    2 times: Class descriptor 0x24, 9 bytes
-    2 times: Class descriptor 0x25, 5 bytes
   Function 4: Vendor Specific Class
    Interface association descriptor
     Length: 8 bytes
