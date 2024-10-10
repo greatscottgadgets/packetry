@@ -2112,11 +2112,13 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
             FunctionDescriptorField(desc, field) => desc.field_text(*field),
             Interface(_conf, desc) => {
                 let num = desc.interface_number;
+                let class = usb_ids::Class::from_id(desc.interface_class)
+                    .map_or("Unknown", |c| c.name());
                 match desc.alternate_setting {
                     InterfaceAlt(0) => format!(
-                        "Interface {num}"),
+                        "Interface {num}: {class}"),
                     InterfaceAlt(alt) => format!(
-                        "Interface {num} (alternate {alt})"),
+                        "Interface {num} alt {alt}: {class}"),
                 }
             },
             InterfaceDescriptor(_) =>
