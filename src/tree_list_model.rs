@@ -157,7 +157,7 @@ impl<Item> Node<Item> for RootNode<Item> {
     }
 }
 
-impl<Item> Node<Item> for ItemNode<Item> where Item: Copy {
+impl<Item> Node<Item> for ItemNode<Item> where Item: Clone {
     fn item(&self) -> Option<&Item> {
         Some(&self.item)
     }
@@ -205,7 +205,7 @@ trait UpdateTotal<Item> {
 }
 
 impl<T, Item> UpdateTotal<Item> for Rc<RefCell<T>>
-where T: Node<Item> + 'static, Item: Copy + 'static
+where T: Node<Item> + 'static, Item: Clone + 'static
 {
     fn update_total(&self, expanded: bool, rows_affected: u64)
         -> Result<(), Error>
@@ -232,7 +232,7 @@ trait NodeRcOps<Item>: UpdateTotal<Item> {
 }
 
 impl<Item> NodeRcOps<Item> for RootNodeRc<Item>
-where Item: Copy + 'static
+where Item: Clone + 'static
 {
     fn source(&self) -> Source<Item> {
         TopLevelItems()
@@ -244,7 +244,7 @@ where Item: Copy + 'static
 }
 
 impl<Item> NodeRcOps<Item> for ItemNodeRc<Item>
-where Item: Copy + 'static
+where Item: Clone + 'static
 {
     fn source(&self) -> Source<Item> {
         ChildrenOf(self.clone())
@@ -255,7 +255,7 @@ where Item: Copy + 'static
     }
 }
 
-impl<Item> ItemNode<Item> where Item: Copy {
+impl<Item> ItemNode<Item> where Item: Clone {
 
     pub fn expanded(&self) -> bool {
         Node::<Item>::expanded(self)
@@ -357,7 +357,7 @@ pub struct TreeListModel<Item, Model, RowData, ViewMode> {
 }
 
 impl<Item, Model, RowData, ViewMode> TreeListModel<Item, Model, RowData, ViewMode>
-where Item: 'static + Copy + Debug,
+where Item: 'static + Clone + Debug,
       ViewMode: Copy,
       Model: GenericModel<Item, ViewMode> + ListModelExt,
       RowData: GenericRowData<Item> + IsA<Object> + Cast,

@@ -160,7 +160,7 @@ impl Recording {
         Model: ListModelExt + GenericModel<Item, ViewMode>,
         CaptureReader: ItemSource<Item, ViewMode>,
         Object: ToGenericRowData<Item>,
-        Item: Copy,
+        Item: Clone,
         ViewMode: Copy,
     {
         if (removed, added) == (0, 0) {
@@ -204,17 +204,16 @@ impl Recording {
         where Model: ListModelExt + GenericModel<Item, ViewMode>,
               CaptureReader: ItemSource<Item, ViewMode>,
               Object: ToGenericRowData<Item>,
-              Item: Copy,
+              Item: Clone,
               ViewMode: Copy
     {
-        let item = model
+        let node = &model
             .item(position)
             .expect("Failed to retrieve row data")
             .to_generic_row_data()
             .node()
-            .expect("Failed to fetch item node from row data")
-            .borrow()
-            .item;
+            .expect("Failed to fetch item node from row data");
+        let item = &node.borrow().item;
         self.capture
             .description(&item, false)
             .expect("Failed to generate item summary")

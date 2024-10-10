@@ -1,0 +1,37 @@
+Device 11: LPC
+ Device descriptor
+  Length: 18 bytes
+  Type: 0x01
+  USB Version: 2.00
+  Class: 0x00: (Defined at Interface level)
+  Subclass: 0x00
+  Protocol: 0x00
+  Max EP0 packet size: 64 bytes
+  Vendor ID: 0x1FC9: NXP Semiconductors
+  Product ID: 0x000C: LPC4330FET180 [ARM Cortex M4 + M0] (device firmware upgrade mode)
+  Version: 1.00
+  Manufacturer string: #1 'NXP'
+  Product string: #2 'LPC'
+  Serial string: #3 'ABCD'
+ Configuration 1
+  Configuration descriptor
+   Length: 9 bytes
+   Type: 0x02
+   Total length: 27 bytes
+   Number of interfaces: 1
+   Configuration number: 1
+   Configuration string: (none)
+   Attributes: 0xC0
+   Max power: 100mA
+  Interface 0: Application Specific Interface
+   Interface descriptor
+    Length: 9 bytes
+    Type: 0x04
+    Interface number: 0
+    Alternate setting: 0
+    Number of endpoints: 0
+    Class: 0xFE: Application Specific Interface
+    Subclass: 0x01: Device Firmware Update
+    Protocol: 0x01
+    Interface string: #4 'DFU'
+   Class descriptor 0x21, 9 bytes

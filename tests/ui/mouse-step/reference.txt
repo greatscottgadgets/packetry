@@ -386,9 +386,6 @@ At traffic-packets row 34:
 + SETUP packet on 4.0, CRC 05
 At devices row 0:
 + Device 4: Unknown
-Expanding devices view, row 0: Device 4: Unknown
-At devices row 1:
-+ No device descriptor
 Updating after 36 packets decoded
 At traffic-transactions row 14:
 - SETUP transaction on 4.0
@@ -554,24 +551,6 @@ At traffic-packets row 58:
 At devices row 0:
 - Device 4: Unknown
 + Device 4: 1BCF:0005
-At devices row 1:
-- No device descriptor
-+ Device descriptor
-Expanding devices view, row 1: No device descriptor
-At devices row 2:
-+ Length: 18 bytes
-+ Type: 0x01
-+ USB Version: 2.00
-+ Class: 0x00: (Defined at Interface level)
-+ Subclass: 0x00
-+ Protocol: 0x00
-+ Max EP0 packet size: 8 bytes
-+ Vendor ID: 0x1BCF: Sunplus Innovation Technology Inc.
-+ Product ID: 0x0005: Optical Mouse
-+ Version: 0.14
-+ Manufacturer string: (none)
-+ Product string: #2 (not seen)
-+ Serial string: (none)
 Updating after 60 packets decoded
 At traffic-hierarchical row 26:
 + Incomplete control transfer on device 4
@@ -696,21 +675,6 @@ At traffic-packets row 76:
 At devices row 0:
 - Device 4: Unknown
 + Device 4: 1BCF:0005
-At devices row 15:
-+ Configuration 1
-Expanding devices view, row 15: Configuration 1
-At devices row 16:
-+ Configuration descriptor
-Expanding devices view, row 16: Configuration descriptor
-At devices row 17:
-+ Length: 9 bytes
-+ Type: 0x02
-+ Total length: 34 bytes
-+ Number of interfaces: 1
-+ Configuration number: 1
-+ Configuration string: (none)
-+ Attributes: 0xA0
-+ Max power: 98mA
 Updating after 78 packets decoded
 At traffic-hierarchical row 27:
 + Incomplete control transfer on device 4
@@ -982,31 +946,6 @@ At traffic-packets row 115:
 At devices row 0:
 - Device 4: Unknown
 + Device 4: 1BCF:0005
-At devices row 25:
-+ Interface 0
-Expanding devices view, row 25: Interface 0
-At devices row 26:
-+ Interface descriptor
-+ Endpoint 1 IN (interrupt)
-Expanding devices view, row 26: Interface descriptor
-At devices row 27:
-+ Length: 9 bytes
-+ Type: 0x04
-+ Interface number: 0
-+ Alternate setting: 0
-+ Number of endpoints: 1
-+ Class: 0x03: Human Interface Device
-+ Subclass: 0x01: Boot Interface Subclass
-+ Protocol: 0x02: Mouse
-+ Interface string: (none)
-Expanding devices view, row 36: Endpoint 1 IN (interrupt)
-At devices row 37:
-+ Length: 7 bytes
-+ Type: 0x05
-+ Endpoint address: 0x81
-+ Attributes: 0x03
-+ Max packet size: 7 bytes
-+ Interval: 0x0A
 Updating after 117 packets decoded
 At traffic-hierarchical row 28:
 + Incomplete control transfer on device 4
@@ -1337,9 +1276,6 @@ At traffic-packets row 163:
 At devices row 0:
 - Device 4: Unknown
 + Device 4: USB Optical Mouse
-At devices row 13:
-- Product string: #2 (not seen)
-+ Product string: #2 'USB Optical Mouse'
 Expanding traffic-hierarchical view, row 29: Incomplete control transfer on device 4
 At traffic-hierarchical row 30:
 + SETUP transaction on 4.0 with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, FF, 00]
@@ -1353,57 +1289,6 @@ At traffic-hierarchical row 30:
 + IN transaction on 4.0, NAK
 + IN transaction on 4.0 with 4 data bytes, ACK: [73, 00, 65, 00]
 + OUT transaction on 4.0 with no data, ACK
-Collapsing devices view, row 15: Configuration 1
-At devices row 17:
-- Length: 9 bytes
-- Type: 0x02
-- Total length: 34 bytes
-- Number of interfaces: 1
-- Configuration number: 1
-- Configuration string: (none)
-- Attributes: 0xA0
-- Max power: 98mA
-At devices row 19:
-- Length: 9 bytes
-- Type: 0x04
-- Interface number: 0
-- Alternate setting: 0
-- Number of endpoints: 1
-- Class: 0x03: Human Interface Device
-- Subclass: 0x01: Boot Interface Subclass
-- Protocol: 0x02: Mouse
-- Interface string: (none)
-At devices row 20:
-- Length: 7 bytes
-- Type: 0x05
-- Endpoint address: 0x81
-- Attributes: 0x03
-- Max packet size: 7 bytes
-- Interval: 0x0A
-At devices row 18:
-- Interface descriptor
-- Endpoint 1 IN (interrupt)
-At devices row 16:
-- Configuration descriptor
-- Interface 0
-Collapsing devices view, row 0: Device 4: Unknown
-At devices row 2:
-- Length: 18 bytes
-- Type: 0x01
-- USB Version: 2.00
-- Class: 0x00: (Defined at Interface level)
-- Subclass: 0x00
-- Protocol: 0x00
-- Max EP0 packet size: 8 bytes
-- Vendor ID: 0x1BCF: Sunplus Innovation Technology Inc.
-- Product ID: 0x0005: Optical Mouse
-- Version: 0.14
-- Manufacturer string: (none)
-- Product string: #2 (not seen)
-- Serial string: (none)
-At devices row 1:
-- No device descriptor
-- Configuration 1
 Collapsing traffic-hierarchical view, row 29: Incomplete control transfer on device 4
 At traffic-hierarchical row 30:
 - SETUP transaction on 4.0 with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, FF, 00]

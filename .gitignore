@@ -1,6 +1,7 @@
 /docs/build/
 /target
 /tests/*/output.txt
+/tests/*/devices-output.txt
 /tests/ui/*/output.txt
 /vcpkg
 /wix/LICENSE-dynamic-libraries.txt

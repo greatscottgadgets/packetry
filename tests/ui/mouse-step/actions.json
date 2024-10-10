@@ -41,7 +41,6 @@
 {"Update":33}
 {"Update":34}
 {"Update":35}
-{"SetExpanded":["devices",0,true]}
 {"Update":36}
 {"Update":37}
 {"Update":38}
@@ -66,7 +65,6 @@
 {"Update":57}
 {"Update":58}
 {"Update":59}
-{"SetExpanded":["devices",1,true]}
 {"Update":60}
 {"Update":61}
 {"Update":62}
@@ -85,8 +83,6 @@
 {"Update":75}
 {"Update":76}
 {"Update":77}
-{"SetExpanded":["devices",15,true]}
-{"SetExpanded":["devices",16,true]}
 {"Update":78}
 {"Update":79}
 {"Update":80}
@@ -126,9 +122,6 @@
 {"Update":114}
 {"Update":115}
 {"Update":116}
-{"SetExpanded":["devices",25,true]}
-{"SetExpanded":["devices",26,true]}
-{"SetExpanded":["devices",36,true]}
 {"Update":117}
 {"Update":118}
 {"Update":119}
@@ -178,8 +171,6 @@
 {"Update":163}
 {"Update":164}
 {"SetExpanded":["traffic-hierarchical",29,true]}
-{"SetExpanded":["devices",15,false]}
-{"SetExpanded":["devices",0,false]}
 {"SetExpanded":["traffic-hierarchical",29,false]}
 {"SetExpanded":["traffic-hierarchical",3,false]}
 {"SetExpanded":["traffic-hierarchical",0,false]}
