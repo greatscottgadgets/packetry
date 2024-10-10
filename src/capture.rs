@@ -605,13 +605,10 @@ impl DeviceData {
 }
 
 impl Configuration {
-    pub fn function(&self, number: ConfigFuncNum)
-        -> Result<&Function, Error>
-    {
-        let index = number.0 as usize;
-        match self.functions.values().nth(index) {
+    pub fn function(&self, number: usize) -> Result<&Function, Error> {
+        match self.functions.values().nth(number) {
             Some(function) => Ok(function),
-            _ => bail!("Configuration has no function with index {index}")
+            _ => bail!("Configuration has no function with index {number}")
         }
     }
 
@@ -645,7 +642,7 @@ impl Configuration {
             })
     }
 
-    pub fn other_descriptor(&self, number: ConfigOtherNum)
+    pub fn other_descriptor(&self, number: usize)
         -> Result<&Descriptor, Error>
     {
         match self.other_descriptors.get(number) {
@@ -656,7 +653,7 @@ impl Configuration {
 }
 
 impl Interface {
-    pub fn endpoint_descriptor(&self, number: InterfaceEpNum)
+    pub fn endpoint_descriptor(&self, number: usize)
         -> Result<&EndpointDescriptor, Error>
     {
         match self.endpoint_descriptors.get(number) {
@@ -665,7 +662,7 @@ impl Interface {
         }
     }
 
-    pub fn other_descriptor(&self, number: IfaceOtherNum)
+    pub fn other_descriptor(&self, number: usize)
         -> Result<&Descriptor, Error>
     {
         match self.other_descriptors.get(number) {
@@ -1922,22 +1919,21 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
             },
             Configuration(conf, desc) => {
                 let config = data.configuration(conf)?;
-                let other_count = config.other_descriptors.len() as u64;
-                let func_count = config.functions.len() as u64;
-                match index {
+                let other_count = config.other_descriptors.len();
+                let func_count = config.functions.len();
+                match index.try_into()? {
                     0 => ConfigurationDescriptor(desc),
                     n if n < 1 + other_count =>
                         OtherDescriptor(config
-                            .other_descriptor(
-                                ConfigOtherNum((n - 1).try_into()?))?
+                            .other_descriptor(n - 1)?
                             .clone()),
                     n if n < 1 + other_count + func_count =>
-                        Function(conf, config.function(
-                            ConfigFuncNum((n - 1 - other_count).try_into()?))?
-                                .descriptor),
+                        Function(conf, config
+                            .function(n - 1 - other_count)?
+                            .descriptor),
                     n => Interface(conf, config
                             .unassociated_interfaces()
-                            .nth((n - 1 - other_count - func_count).try_into()?)
+                            .nth(n - 1 - other_count - func_count)
                             .context("Failed to find unassociated interface")?
                             .descriptor)
                 }
@@ -1963,16 +1959,15 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
             Interface(conf, if_desc) => {
                 let config = data.configuration(conf)?;
                 let interface = config.interface(&if_desc)?;
-                let desc_count = interface.other_descriptors.len() as u64;
-                match index {
+                let desc_count = interface.other_descriptors.len();
+                match index.try_into()? {
                     0 => InterfaceDescriptor(if_desc),
                     n if n < 1 + desc_count => {
-                        let num = IfaceOtherNum((n - 1).try_into()?);
-                        let desc = interface.other_descriptor(num)?.clone();
+                        let desc = interface.other_descriptor(n - 1)?.clone();
                         OtherDescriptor(desc)
                     },
                     n => {
-                        let num = InterfaceEpNum((n - 1 - desc_count).try_into()?);
+                        let num = n - 1 - desc_count;
                         let ep_desc = *interface.endpoint_descriptor(num)?;
                         Endpoint(conf, if_desc.key(), ep_desc)
                     }
