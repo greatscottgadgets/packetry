@@ -60,13 +60,13 @@ use gtk::{
     ButtonsType,
 };
 
-use crate::backend::cynthion::{
-    CynthionDevice,
-    CynthionHandle,
-    CynthionStop,
-    CynthionUsability::*,
-    Speed};
-
+use crate::backend::{
+    BackendHandle,
+    BackendStop,
+    ProbeResult,
+    Speed,
+    scan
+};
 use crate::capture::{
     create_capture,
     CaptureReader,
@@ -122,11 +122,11 @@ enum FileAction {
 enum StopState {
     Disabled,
     Pcap(Cancellable),
-    Cynthion(CynthionStop),
+    Backend(BackendStop),
 }
 
 struct DeviceSelector {
-    devices: Vec<CynthionDevice>,
+    devices: Vec<ProbeResult>,
     dev_strings: Vec<String>,
     dev_speeds: Vec<Vec<&'static str>>,
     dev_dropdown: DropDown,
@@ -165,7 +165,7 @@ impl DeviceSelector {
         Ok(selector)
     }
 
-    fn current_device(&self) -> Option<&CynthionDevice> {
+    fn current_device(&self) -> Option<&ProbeResult> {
         if self.devices.is_empty() {
             None
         } else {
@@ -176,20 +176,14 @@ impl DeviceSelector {
     fn device_available(&self) -> bool {
         match self.current_device() {
             None => false,
-            Some(device) => match device.usability {
-                Usable(..) => true,
-                Unusable(..) => false,
-            }
+            Some(probe) => probe.result.is_ok()
         }
     }
 
     fn device_unusable(&self) -> Option<&str> {
         match self.current_device() {
-            None => None,
-            Some(device) => match &device.usability {
-                Usable(..) => None,
-                Unusable(string) => Some(string),
-            }
+            Some(ProbeResult {result: Err(msg), ..}) => Some(msg),
+            _ => None
         }
     }
 
@@ -207,28 +201,33 @@ impl DeviceSelector {
         if let Some(handler) = self.change_handler.take() {
             self.dev_dropdown.disconnect(handler);
         }
-        self.devices = CynthionDevice::scan()?;
+        self.devices = scan()?;
         let count = self.devices.len();
         self.dev_strings = Vec::with_capacity(count);
         self.dev_speeds = Vec::with_capacity(count);
-        for device in self.devices.iter() {
+        for probe in self.devices.iter() {
             self.dev_strings.push(
                 if count <= 1 {
-                    String::from("Cynthion")
+                    probe.name.to_string()
                 } else {
-                    let info = &device.device_info;
+                    let info = &probe.info;
                     if let Some(serial) = info.serial_number() {
-                        format!("Cynthion #{}", serial)
+                        format!("{} #{}", probe.name, serial)
                     } else {
-                        format!("Cynthion (bus {}, device {})",
+                        format!("{} (bus {}, device {})",
+                            probe.name,
                             info.bus_number(),
                             info.device_address())
                     }
                 }
             );
-            if let Usable(_, speeds) = &device.usability {
+            if let Ok(device) = &probe.result {
                 self.dev_speeds.push(
-                    speeds.iter().map(Speed::description).collect()
+                    device
+                        .supported_speeds()
+                        .iter()
+                        .map(Speed::description)
+                        .collect()
                 )
             } else {
                 self.dev_speeds.push(vec![]);
@@ -253,17 +252,18 @@ impl DeviceSelector {
         self.speed_dropdown.set_sensitive(!speed_strings.is_empty());
     }
 
-    fn open(&self) -> Result<(CynthionHandle, Speed), Error> {
+    fn open(&self) -> Result<(Box<dyn BackendHandle>, Speed), Error> {
         let device_id = self.dev_dropdown.selected();
-        let device = &self.devices[device_id as usize];
-        match &device.usability {
-            Usable(_, speeds) => {
+        let probe = &self.devices[device_id as usize];
+        match &probe.result {
+            Ok(device) => {
+                let speeds = device.supported_speeds();
                 let speed_id = self.speed_dropdown.selected() as usize;
                 let speed = speeds[speed_id];
-                let cynthion = device.open()?;
-                Ok((cynthion, speed))
+                let handle = device.open_as_generic()?;
+                Ok((handle, speed))
             },
-            Unusable(reason) => {
+            Err(reason) => {
                 bail!("Device not usable: {}", reason)
             }
         }
@@ -387,7 +387,7 @@ pub fn activate(application: &Application) -> Result<(), Error> {
         button_action!("open", open_button, choose_file(Load)),
         button_action!("save", save_button, choose_file(Save)),
         button_action!("scan", scan_button, detect_hardware()),
-        button_action!("capture", capture_button, start_cynthion()),
+        button_action!("capture", capture_button, start_capture()),
         button_action!("stop", stop_button, stop_operation()),
     ]);
 
@@ -1020,24 +1020,7 @@ fn start_pcap(action: FileAction, file: gio::File) -> Result<(), Error> {
                 );
             }
             display_error(result);
-            gtk::glib::idle_add_once(|| {
-                STOP.store(false, Ordering::Relaxed);
-                display_error(
-                    with_ui(|ui| {
-                        ui.show_progress = None;
-                        ui.vbox.remove(&ui.separator);
-                        ui.vbox.remove(&ui.progress_bar);
-                        ui.stop_state = StopState::Disabled;
-                        ui.stop_button.set_sensitive(false);
-                        ui.open_button.set_sensitive(true);
-                        ui.save_button.set_sensitive(true);
-                        ui.scan_button.set_sensitive(true);
-                        ui.selector.set_sensitive(true);
-                        ui.capture_button.set_sensitive(ui.selector.device_available());
-                        Ok(())
-                    })
-                );
-            });
+            gtk::glib::idle_add_once(|| display_error(stop_operation()));
         });
         gtk::glib::timeout_add_once(
             UPDATE_INTERVAL,
@@ -1115,13 +1098,19 @@ pub fn stop_operation() -> Result<(), Error> {
                 STOP.store(true, Ordering::Relaxed);
                 cancel_handle.cancel();
             },
-            StopState::Cynthion(stop_handle) => {
+            StopState::Backend(stop_handle) => {
                 stop_handle.stop()?;
             }
         };
         ui.stop_button.set_sensitive(false);
         ui.scan_button.set_sensitive(true);
         ui.save_button.set_sensitive(true);
+        ui.selector.set_sensitive(true);
+        ui.capture_button.set_sensitive(ui.selector.device_available());
+        if ui.show_progress.take().is_some() {
+            ui.vbox.remove(&ui.separator);
+            ui.vbox.remove(&ui.progress_bar);
+        }
         Ok(())
     })
 }
@@ -1144,40 +1133,31 @@ fn device_selection_changed() -> Result<(), Error> {
     })
 }
 
-pub fn start_cynthion() -> Result<(), Error> {
+pub fn start_capture() -> Result<(), Error> {
     let writer = reset_capture()?;
     with_ui(|ui| {
-        let (cynthion, speed) = ui.selector.open()?;
+        let (device, speed) = ui.selector.open()?;
         let (stream_handle, stop_handle) =
-            cynthion.start(speed, display_error)?;
+            device.start(speed, Box::new(display_error))?;
         ui.open_button.set_sensitive(false);
         ui.scan_button.set_sensitive(false);
         ui.selector.set_sensitive(false);
         ui.capture_button.set_sensitive(false);
         ui.stop_button.set_sensitive(true);
-        ui.stop_state = StopState::Cynthion(stop_handle);
-        let read_cynthion = move || {
+        ui.stop_state = StopState::Backend(stop_handle);
+        let read_packets = move || {
             let mut decoder = Decoder::new(writer)?;
-            for packet in stream_handle {
+            for result in stream_handle {
+                let packet = result
+                    .context("Error processing raw capture data")?;
                 decoder.handle_raw_packet(&packet.bytes, packet.timestamp_ns)?;
             }
             decoder.finish()?;
             Ok(())
         };
         std::thread::spawn(move || {
-            display_error(read_cynthion());
-            gtk::glib::idle_add_once(|| {
-                display_error(
-                    with_ui(|ui| {
-                        ui.stop_state = StopState::Disabled;
-                        ui.stop_button.set_sensitive(false);
-                        ui.open_button.set_sensitive(true);
-                        ui.selector.set_sensitive(true);
-                        ui.capture_button.set_sensitive(ui.selector.device_available());
-                        Ok(())
-                    })
-                );
-            });
+            display_error(read_packets());
+            gtk::glib::idle_add_once(|| display_error(stop_operation()));
         });
         gtk::glib::timeout_add_once(
             UPDATE_INTERVAL,

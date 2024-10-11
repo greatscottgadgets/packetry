@@ -1,3 +1,4 @@
+use anyhow::{Error, bail};
 use num_format::{Locale, ToFormattedString};
 use humansize::{SizeFormatter, BINARY};
 
@@ -12,5 +13,24 @@ pub fn fmt_size(size: u64) -> String {
         format!("{size} bytes")
     } else {
         format!("{}", SizeFormatter::new(size, BINARY))
+    }
+}
+
+pub fn handle_thread_panic<T>(result: std::thread::Result<T>)
+    -> Result<T, Error>
+{
+    match result {
+        Ok(x) => Ok(x),
+        Err(panic) => {
+            let msg = match (
+                panic.downcast_ref::<&str>(),
+                panic.downcast_ref::<String>())
+            {
+                (Some(&s), _) => s,
+                (_,  Some(s)) => s,
+                (None,  None) => "<No panic message>"
+            };
+            bail!("Worker thread panic: {msg}");
+        }
     }
 }
