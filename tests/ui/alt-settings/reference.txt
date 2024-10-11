@@ -16,6 +16,22 @@ At traffic-hierarchical row 0:
 + Setting configuration 1 for device 27
 + Getting string descriptor #4, language 0x0409 (English/US) for device 27, reading 2 bytes
 + Getting string descriptor #4, language 0x0409 (English/US) for device 27, reading 46 bytes: 'Ksoloti Bulk Interface'
+At traffic-interleaved row 0:
++ 9 SOF groups
++ Setting address to 27 for device 0
++ Getting device descriptor #0 for device 27, reading 8 bytes
++ Getting device descriptor #0 for device 27, reading 18 bytes
++ Getting string descriptor #5, language 0x0409 (English/US) for device 27, reading 2 bytes
++ Getting string descriptor #5, language 0x0409 (English/US) for device 27, reading 26 bytes: 'Ksoloti Core'
++ Getting string descriptor #1, language 0x0409 (English/US) for device 27, reading 2 bytes
++ Getting string descriptor #1, language 0x0409 (English/US) for device 27, reading 16 bytes: 'Ksoloti'
++ Getting string descriptor #3, language 0x0409 (English/US) for device 27, reading 2 bytes
++ Getting string descriptor #3, language 0x0409 (English/US) for device 27, reading 50 bytes: '002900193133510B33383438'
++ Getting configuration descriptor #0 for device 27, reading 9 bytes
++ Getting configuration descriptor #0 for device 27, reading 426 bytes
++ Setting configuration 1 for device 27
++ Getting string descriptor #4, language 0x0409 (English/US) for device 27, reading 2 bytes
++ Getting string descriptor #4, language 0x0409 (English/US) for device 27, reading 46 bytes: 'Ksoloti Bulk Interface'
 At traffic-transactions row 0:
 + 30 SOF packets
 + SETUP transaction on 0.0 with 8 data bytes, ACK: [00, 05, 1B, 00, 00, 00, 00, 00]
