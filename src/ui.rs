@@ -1105,6 +1105,7 @@ pub fn stop_operation() -> Result<(), Error> {
         ui.stop_button.set_sensitive(false);
         ui.scan_button.set_sensitive(true);
         ui.save_button.set_sensitive(true);
+        ui.open_button.set_sensitive(true);
         ui.selector.set_sensitive(true);
         ui.capture_button.set_sensitive(ui.selector.device_available());
         if ui.show_progress.take().is_some() {
