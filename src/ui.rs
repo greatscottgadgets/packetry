@@ -1020,7 +1020,7 @@ fn start_pcap(action: FileAction, file: gio::File) -> Result<(), Error> {
                 );
             }
             display_error(result);
-            gtk::glib::idle_add_once(|| display_error(stop_operation()));
+            gtk::glib::idle_add_once(|| display_error(rearm()));
         });
         gtk::glib::timeout_add_once(
             UPDATE_INTERVAL,
@@ -1102,6 +1102,14 @@ pub fn stop_operation() -> Result<(), Error> {
                 stop_handle.stop()?;
             }
         };
+        Ok(())
+    })
+}
+
+pub fn rearm() -> Result<(), Error> {
+    with_ui(|ui| {
+        STOP.store(false, Ordering::Relaxed);
+        ui.stop_state = StopState::Disabled;
         ui.stop_button.set_sensitive(false);
         ui.scan_button.set_sensitive(true);
         ui.save_button.set_sensitive(true);
@@ -1158,7 +1166,7 @@ pub fn start_capture() -> Result<(), Error> {
         };
         std::thread::spawn(move || {
             display_error(read_packets());
-            gtk::glib::idle_add_once(|| display_error(stop_operation()));
+            gtk::glib::idle_add_once(|| display_error(rearm()));
         });
         gtk::glib::timeout_add_once(
             UPDATE_INTERVAL,
