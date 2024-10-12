@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 use std::mem::size_of;
+use std::ops::Range;
 
 use bytemuck_derive::{Pod, Zeroable};
 use bytemuck::pod_read_unaligned;
@@ -8,6 +9,7 @@ use num_enum::{IntoPrimitive, FromPrimitive};
 use derive_more::{From, Into, Display};
 use usb_ids::FromId;
 
+use crate::util::titlecase;
 use crate::vec_map::VecMap;
 
 fn crc16(bytes: &[u8]) -> u16 {
@@ -136,15 +138,16 @@ byte_type!(DeviceField);
 byte_type!(StringId);
 byte_type!(ConfigNum);
 byte_type!(ConfigField);
-byte_type!(ConfigIfaceNum);
 byte_type!(InterfaceNum);
 byte_type!(InterfaceAlt);
 byte_type!(InterfaceField);
-byte_type!(InterfaceEpNum);
 byte_type!(EndpointNum);
 byte_type!(EndpointField);
 byte_type!(EndpointAddr);
 byte_type!(EndpointAttr);
+byte_type!(IfaceAssocField);
+
+pub type InterfaceKey = (InterfaceNum, InterfaceAlt);
 
 impl EndpointAddr {
     pub fn number(&self) -> EndpointNum {
@@ -453,16 +456,22 @@ fn language_name(code: u16) -> Option<String> {
 #[derive(Copy, Clone, Debug, FromPrimitive, PartialEq, Eq)]
 #[repr(u8)]
 pub enum DescriptorType {
-    Device = 1,
-    Configuration = 2,
-    String = 3,
-    Interface = 4,
-    Endpoint = 5,
-    DeviceQualifier = 6,
-    OtherSpeedConfiguration = 7,
-    InterfacePower = 8,
+    Invalid = 0x00,
+    Device = 0x01,
+    Configuration = 0x02,
+    String = 0x03,
+    Interface = 0x04,
+    Endpoint = 0x05,
+    DeviceQualifier = 0x06,
+    OtherSpeedConfiguration = 0x07,
+    InterfacePower = 0x08,
+    OnTheGo = 0x09,
+    Debug = 0x0A,
+    InterfaceAssociation = 0x0B,
+    BinaryObjectStore = 0x0F,
+    DeviceCapability = 0x10,
     #[default]
-    Unknown = 9
+    Unknown = 0xFF,
 }
 
 impl DescriptorType {
@@ -473,6 +482,8 @@ impl DescriptorType {
                 Some(size_of::<DeviceDescriptor>()),
             Configuration =>
                 Some(size_of::<ConfigDescriptor>()),
+            InterfaceAssociation =>
+                Some(size_of::<InterfaceAssociationDescriptor>()),
             Interface =>
                 Some(size_of::<InterfaceDescriptor>()),
             Endpoint =>
@@ -481,23 +492,26 @@ impl DescriptorType {
                 None
         }
     }
-}
 
-impl DescriptorType {
-    pub fn description(self) -> &'static str {
-        const STRINGS: [&str; 10] = [
-            "invalid",
-            "device",
-            "configuration",
-            "string",
-            "interface",
-            "endpoint",
-            "device qualifier",
-            "other speed configuration",
-            "interface power",
-            "unknown",
-        ];
-        STRINGS[self as usize]
+    pub fn description(&self) -> &'static str {
+        use DescriptorType::*;
+        match self {
+            Invalid => "invalid",
+            Device => "device",
+            Configuration => "configuration",
+            String => "string",
+            Interface => "interface",
+            Endpoint => "endpoint",
+            DeviceQualifier => "device qualifier",
+            OtherSpeedConfiguration => "other speed",
+            InterfacePower => "interface power",
+            OnTheGo => "OTG",
+            Debug => "debug",
+            InterfaceAssociation => "interface association",
+            BinaryObjectStore => "BOS",
+            DeviceCapability => "device capability",
+            Unknown => "unknown",
+        }
     }
 }
 
@@ -628,6 +642,56 @@ impl ConfigDescriptor {
 
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
 #[repr(C, packed)]
+pub struct InterfaceAssociationDescriptor {
+    pub length: u8,
+    pub descriptor_type: u8,
+    pub first_interface: u8,
+    pub interface_count: u8,
+    pub function_class: u8,
+    pub function_subclass: u8,
+    pub function_protocol: u8,
+    pub function: u8,
+}
+
+#[allow(dead_code)]
+impl InterfaceAssociationDescriptor {
+    pub fn field_text(&self, id: IfaceAssocField) -> String
+    {
+        match id.0 {
+        0 => format!("Length: {} bytes", self.length),
+        1 => format!("Type: 0x{:02X}", self.descriptor_type),
+        2 => format!("First interface: {}", self.first_interface),
+        3 => format!("Interface count: {}", self.interface_count),
+        4 => format!("Function class: 0x{:02X}{}", self.function_class,
+            usb_ids::Class::from_id(self.function_class)
+                .map_or_else(String::new, |c| format!(": {}", c.name()))),
+        5  => format!("Function subclass: 0x{:02X}{}", self.function_subclass,
+            usb_ids::SubClass::from_cid_scid(
+                    self.function_class, self.function_subclass)
+                .map_or_else(String::new, |s| format!(": {}", s.name()))),
+        6  => format!("Function protocol: 0x{:02X}{}", self.function_protocol,
+            usb_ids::Protocol::from_cid_scid_pid(
+                    self.function_class, self.function_subclass,
+                    self.function_protocol)
+                .map_or_else(String::new, |p| format!(": {}", p.name()))),
+        7 => format!("Function number: {}", self.function),
+        i => format!("Error: Invalid field ID {i}")
+        }
+    }
+
+    pub const NUM_FIELDS: usize = 8;
+
+    pub fn interface_range(&self) -> Range<InterfaceKey> {
+        let start = self.first_interface;
+        let count = self.interface_count;
+        let start_key = (InterfaceNum(start), InterfaceAlt(0));
+        let end_key = (InterfaceNum(start + count), InterfaceAlt(0));
+        start_key..end_key
+    }
+}
+
+#[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
+#[repr(C, packed)]
 pub struct InterfaceDescriptor {
     pub length: u8,
     pub descriptor_type: u8,
@@ -671,6 +735,10 @@ impl InterfaceDescriptor {
     }
 
     pub const NUM_FIELDS: usize = 9;
+
+    pub fn key(&self) -> InterfaceKey {
+        (self.interface_number, self.alternate_setting)
+    }
 }
 
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
@@ -703,12 +771,57 @@ impl EndpointDescriptor {
 }
 
 #[allow(dead_code)]
+#[derive(Clone, Debug)]
 pub enum Descriptor {
     Device(DeviceDescriptor),
     Configuration(ConfigDescriptor),
+    InterfaceAssociation(InterfaceAssociationDescriptor),
     Interface(InterfaceDescriptor),
     Endpoint(EndpointDescriptor),
-    Other(DescriptorType)
+    Other(DescriptorType, Vec<u8>),
+    Malformed(DescriptorType, Vec<u8>),
+}
+
+impl Descriptor {
+    pub fn description(&self) -> String {
+        use Descriptor::*;
+        match self {
+            Device(_) => "Device descriptor".to_string(),
+            Configuration(_) => "Configuration descriptor".to_string(),
+            Interface(_) => "Interface descriptor".to_string(),
+            Endpoint(_) => "Endpoint descriptor".to_string(),
+            InterfaceAssociation(_) =>
+                "Interface association descriptor".to_string(),
+            Other(desc_type, bytes) =>
+                if *desc_type == DescriptorType::Unknown {
+                    let type_code = bytes[1];
+                    let type_group = match type_code {
+                        0x00..=0x1F => "Standard",
+                        0x20..=0x3F => "Class",
+                        0x40..=0x5F => "Custom",
+                        0x60..=0xFF => "Reserved",
+                    };
+                    format!("{} descriptor 0x{:02X}, {} bytes",
+                        type_group, type_code, bytes.len())
+                } else {
+                    format!("{} descriptor, {} bytes",
+                        titlecase(desc_type.description()), bytes.len())
+                },
+            Malformed(desc_type, bytes) => {
+                let description = desc_type.description();
+                let length = bytes.len();
+                if let Some(expected) = desc_type.expected_length() {
+                    format!(
+                        "Malformed {} descriptor (only {}/{} bytes)",
+                        description, length, expected)
+                } else {
+                    format!(
+                        "Malformed {} descriptor ({} bytes)",
+                        description, length)
+                }
+            },
+        }
+    }
 }
 
 pub struct DescriptorIterator<'bytes> {
@@ -729,61 +842,93 @@ impl Iterator for DescriptorIterator<'_> {
     type Item = Descriptor;
 
     fn next(&mut self) -> Option<Descriptor> {
-        while self.offset < self.bytes.len() - 2 {
+        if self.offset < self.bytes.len() - 2 {
             let remaining_bytes = &self.bytes[self.offset .. self.bytes.len()];
             let desc_length = remaining_bytes[0] as usize;
             let desc_type = DescriptorType::from(remaining_bytes[1]);
             self.offset += desc_length;
-            // The expected length is the minimum length, but sometimes the
-            // descriptors have extra padding/garbage data at the end.
-            // Handle this by trimming off the extra data.
+            let mut bytes = &remaining_bytes[0 .. desc_length];
             if let Some(expected) = desc_type.expected_length() {
+                // If there aren't enough bytes for the descriptor type, it is
+                // malformed and we can't interpret it.
                 if desc_length < expected {
-                    continue
+                    return Some(Descriptor::Malformed(desc_type, bytes.to_vec()))
                 }
-                let bytes = &remaining_bytes[0 .. expected];
-                return Some(match desc_type {
-                    DescriptorType::Device =>
-                        Descriptor::Device(
-                            DeviceDescriptor::from_bytes(bytes)),
-                    DescriptorType::Configuration =>
-                        Descriptor::Configuration(
-                            pod_read_unaligned::<ConfigDescriptor>(bytes)),
-                    DescriptorType::Interface =>
-                        Descriptor::Interface(
-                            pod_read_unaligned::<InterfaceDescriptor>(bytes)),
-                    DescriptorType::Endpoint =>
-                        Descriptor::Endpoint(
-                            pod_read_unaligned::<EndpointDescriptor>(bytes)),
-                    _ => Descriptor::Other(desc_type)
-                });
-            }
+                // The expected length is the minimum length, but sometimes the
+                // descriptors have extra padding/garbage data at the end.
+                // Handle this by trimming off the extra data.
+                bytes = &bytes[0 .. expected];
+            };
+            return Some(match desc_type {
+                DescriptorType::Device =>
+                    Descriptor::Device(
+                        DeviceDescriptor::from_bytes(bytes)),
+                DescriptorType::Configuration =>
+                    Descriptor::Configuration(
+                        pod_read_unaligned::<ConfigDescriptor>(bytes)),
+                DescriptorType::Interface =>
+                    Descriptor::Interface(
+                        pod_read_unaligned::<InterfaceDescriptor>(bytes)),
+                DescriptorType::Endpoint =>
+                    Descriptor::Endpoint(
+                        pod_read_unaligned::<EndpointDescriptor>(bytes)),
+                DescriptorType::InterfaceAssociation =>
+                    Descriptor::InterfaceAssociation(
+                        pod_read_unaligned::<InterfaceAssociationDescriptor>(bytes)),
+                _ => Descriptor::Other(desc_type, bytes.to_vec())
+            });
         }
+        // Not enough data for another descriptor.
         None
     }
 }
 
+pub struct Function {
+    pub descriptor: InterfaceAssociationDescriptor,
+}
+
+pub struct Endpoint {
+    pub descriptor: EndpointDescriptor,
+    pub other_descriptors: Vec<Descriptor>,
+}
+
 pub struct Interface {
     pub descriptor: InterfaceDescriptor,
-    pub endpoint_descriptors: VecMap<InterfaceEpNum, EndpointDescriptor>
+    pub endpoints: Vec<Endpoint>,
+    pub other_descriptors: Vec<Descriptor>,
 }
 
 pub struct Configuration {
     pub descriptor: ConfigDescriptor,
-    pub interfaces: BTreeMap<(InterfaceNum, InterfaceAlt), Interface>,
+    pub functions: BTreeMap<u8, Function>,
+    pub interfaces: BTreeMap<InterfaceKey, Interface>,
+    pub other_descriptors: Vec<Descriptor>,
 }
 
 impl Configuration {
     pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
         let mut result: Option<Configuration> = None;
-        let mut iface_key: Option<(InterfaceNum, InterfaceAlt)> = None;
+        let mut iface_key: Option<InterfaceKey> = None;
+        let mut ep_index: Option<usize> = None;
         for descriptor in DescriptorIterator::from(bytes) {
             match descriptor {
                 Descriptor::Configuration(config_desc) => {
                     result = Some(Configuration {
                         descriptor: config_desc,
+                        functions: BTreeMap::new(),
                         interfaces: BTreeMap::new(),
+                        other_descriptors: Vec::new(),
                     });
+                },
+                Descriptor::InterfaceAssociation(assoc_desc) => {
+                    if let Some(config) = result.as_mut() {
+                        config.functions.insert(
+                            assoc_desc.function,
+                            Function {
+                                descriptor: assoc_desc,
+                            }
+                        );
+                    }
                 },
                 Descriptor::Interface(iface_desc) => {
                     if let Some(config) = result.as_mut() {
@@ -791,27 +936,45 @@ impl Configuration {
                         let iface_alt = iface_desc.alternate_setting;
                         let key = (iface_num, iface_alt);
                         iface_key = Some(key);
+                        ep_index = None;
                         config.interfaces.insert(
                             key,
                             Interface {
                                 descriptor: iface_desc,
-                                endpoint_descriptors:
-                                    VecMap::with_capacity(
-                                        iface_desc.num_endpoints),
+                                endpoints:
+                                    Vec::with_capacity(
+                                        iface_desc.num_endpoints as usize),
+                                other_descriptors: Vec::new(),
                             }
                         );
                     }
                 },
-                Descriptor::Endpoint(ep_desc) => {
-                    if let (Some(config), Some(key)) =
-                        (result.as_mut(), iface_key)
-                    {
+                _ => match (result.as_mut(), iface_key) {
+                    (Some(config), Some(key)) => {
                         if let Some(iface) = config.interfaces.get_mut(&key) {
-                            iface.endpoint_descriptors.push(ep_desc);
+                            if let Descriptor::Endpoint(ep_desc) = descriptor {
+                                ep_index = Some(iface.endpoints.len());
+                                iface.endpoints.push(
+                                    Endpoint {
+                                        descriptor: ep_desc,
+                                        other_descriptors: Vec::new()
+                                    }
+                                );
+                            } else if let Some(i) = ep_index {
+                                iface
+                                    .endpoints[i]
+                                    .other_descriptors
+                                    .push(descriptor);
+                            } else {
+                                iface.other_descriptors.push(descriptor);
+                            }
                         }
                     }
+                    (Some(config), None) => {
+                        config.other_descriptors.push(descriptor);
+                    }
+                    _ => {}
                 },
-                _ => {},
             };
         }
         result
@@ -1027,12 +1190,15 @@ pub mod prelude {
         StandardRequest,
         RequestType,
         Recipient,
+        Descriptor,
         DescriptorType,
         DeviceDescriptor,
         ConfigDescriptor,
+        InterfaceAssociationDescriptor,
         InterfaceDescriptor,
         EndpointDescriptor,
         Configuration,
+        Function,
         Interface,
         ControlTransfer,
         ControlResult,
@@ -1040,12 +1206,12 @@ pub mod prelude {
         DeviceField,
         StringId,
         ConfigNum,
-        ConfigIfaceNum,
         ConfigField,
+        IfaceAssocField,
         InterfaceNum,
         InterfaceAlt,
+        InterfaceKey,
         InterfaceField,
-        InterfaceEpNum,
         EndpointNum,
         EndpointField,
         UTF16ByteVec,
