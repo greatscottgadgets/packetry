@@ -1,2 +1,2 @@
-Device 7: Unknown
- No device descriptor
+ Device 7: Unknown
+    No device descriptor

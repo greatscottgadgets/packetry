@@ -1,124 +1,124 @@
-Device 16: Unknown
- No device descriptor
- Configuration 1
-  Configuration descriptor
-   Length: 9 bytes
-   Type: 0x02
-   Total length: 285 bytes
-   Number of interfaces: 3
-   Configuration number: 1
-   Configuration string: #4 (not seen)
-   Attributes: 0xA0
-   Max power: 100mA
-  Function 5: Audio
-   Interface association descriptor
-    Length: 8 bytes
-    Type: 0x0B
-    First interface: 0
-    Interface count: 2
-    Function class: 0x01: Audio
-    Function subclass: 0x00
-    Function protocol: 0x20
-    Function number: 5
-   Interface 0: Audio
-    Interface descriptor
-     Length: 9 bytes
-     Type: 0x04
-     Interface number: 0
-     Alternate setting: 0
-     Number of endpoints: 1
-     Class: 0x01: Audio
-     Subclass: 0x01: Control Device
-     Protocol: 0x20
-     Interface string: #5 (not seen)
-    Class descriptor 0x24, 9 bytes
-    Class descriptor 0x24, 8 bytes
-    Class descriptor 0x24, 17 bytes
-    Class descriptor 0x24, 12 bytes
-    Class descriptor 0x24, 18 bytes
-    Class descriptor 0x24, 16 bytes
-    Endpoint 7 IN (interrupt)
-     Endpoint descriptor
-      Length: 7 bytes
-      Type: 0x05
-      Endpoint address: 0x87
-      Attributes: 0x03
-      Max packet size: 16 bytes
-      Interval: 0x08
-   Interface 1: Audio
-    Interface descriptor
-     Length: 9 bytes
-     Type: 0x04
-     Interface number: 1
-     Alternate setting: 0
-     Number of endpoints: 0
-     Class: 0x01: Audio
-     Subclass: 0x02: Streaming
-     Protocol: 0x20
-     Interface string: #5 (not seen)
-   Interface 1 alt 1: Audio
-    Interface descriptor
-     Length: 9 bytes
-     Type: 0x04
-     Interface number: 1
-     Alternate setting: 1
-     Number of endpoints: 1
-     Class: 0x01: Audio
-     Subclass: 0x02: Streaming
-     Protocol: 0x20
-     Interface string: #5 (not seen)
-    Class descriptor 0x24, 16 bytes
-    Class descriptor 0x24, 6 bytes
-    Endpoint 4 OUT (isochronous)
-     Endpoint descriptor
-      Length: 7 bytes
-      Type: 0x05
-      Endpoint address: 0x04
-      Attributes: 0x09
-      Max packet size: 248 bytes
-      Interval: 0x01
-     Class descriptor 0x25, 8 bytes
-   Interface 1 alt 2: Audio
-    Interface descriptor
-     Length: 9 bytes
-     Type: 0x04
-     Interface number: 1
-     Alternate setting: 2
-     Number of endpoints: 1
-     Class: 0x01: Audio
-     Subclass: 0x02: Streaming
-     Protocol: 0x20
-     Interface string: #5 (not seen)
-    Class descriptor 0x24, 16 bytes
-    Class descriptor 0x24, 6 bytes
-    Endpoint 4 OUT (isochronous)
-     Endpoint descriptor
-      Length: 7 bytes
-      Type: 0x05
-      Endpoint address: 0x04
-      Attributes: 0x09
-      Max packet size: 372 bytes
-      Interval: 0x01
-     Class descriptor 0x25, 8 bytes
-   Interface 1 alt 3: Audio
-    Interface descriptor
-     Length: 9 bytes
-     Type: 0x04
-     Interface number: 1
-     Alternate setting: 3
-     Number of endpoints: 1
-     Class: 0x01: Audio
-     Subclass: 0x02: Streaming
-     Protocol: 0x20
-     Interface string: #5 (not seen)
-    Class descriptor 0x24, 16 bytes
-    Class descriptor 0x24, 6 bytes
-    Endpoint 4 OUT (isochronous)
-     Endpoint descriptor
-      Length: 7 bytes
-      Type: 0x05
-      Endpoint address: 0x04
-      Attributes: 0x09
-      Max packet size: 496 bytes
-      Interval: 0x01
-     Truncated class descriptor 0x25 (3 of 8 bytes)
+ Device 16: Unknown
+    No device descriptor
+    Configuration 1
+       Configuration descriptor
+          Length: 9 bytes
+          Type: 0x02
+          Total length: 285 bytes
+          Number of interfaces: 3
+          Configuration number: 1
+          Configuration string: #4 (not seen)
+          Attributes: 0xA0
+          Max power: 100mA
+       Function 5: Audio
+          Interface association descriptor
+             Length: 8 bytes
+             Type: 0x0B
+             First interface: 0
+             Interface count: 2
+             Function class: 0x01: Audio
+             Function subclass: 0x00
+             Function protocol: 0x20
+             Function number: 5
+          Interface 0: Audio
+             Interface descriptor
+                Length: 9 bytes
+                Type: 0x04
+                Interface number: 0
+                Alternate setting: 0
+                Number of endpoints: 1
+                Class: 0x01: Audio
+                Subclass: 0x01: Control Device
+                Protocol: 0x20
+                Interface string: #5 (not seen)
+             Class descriptor 0x24, 9 bytes
+             Class descriptor 0x24, 8 bytes
+             Class descriptor 0x24, 17 bytes
+             Class descriptor 0x24, 12 bytes
+             Class descriptor 0x24, 18 bytes
+             Class descriptor 0x24, 16 bytes
+             Endpoint 7 IN (interrupt)
+                Endpoint descriptor
+                   Length: 7 bytes
+                   Type: 0x05
+                   Endpoint address: 0x87
+                   Attributes: 0x03
+                   Max packet size: 16 bytes
+                   Interval: 0x08
+          Interface 1: Audio
+             Interface descriptor
+                Length: 9 bytes
+                Type: 0x04
+                Interface number: 1
+                Alternate setting: 0
+                Number of endpoints: 0
+                Class: 0x01: Audio
+                Subclass: 0x02: Streaming
+                Protocol: 0x20
+                Interface string: #5 (not seen)
+          Interface 1 alt 1: Audio
+             Interface descriptor
+                Length: 9 bytes
+                Type: 0x04
+                Interface number: 1
+                Alternate setting: 1
+                Number of endpoints: 1
+                Class: 0x01: Audio
+                Subclass: 0x02: Streaming
+                Protocol: 0x20
+                Interface string: #5 (not seen)
+             Class descriptor 0x24, 16 bytes
+             Class descriptor 0x24, 6 bytes
+             Endpoint 4 OUT (isochronous)
+                Endpoint descriptor
+                   Length: 7 bytes
+                   Type: 0x05
+                   Endpoint address: 0x04
+                   Attributes: 0x09
+                   Max packet size: 248 bytes
+                   Interval: 0x01
+                Class descriptor 0x25, 8 bytes
+          Interface 1 alt 2: Audio
+             Interface descriptor
+                Length: 9 bytes
+                Type: 0x04
+                Interface number: 1
+                Alternate setting: 2
+                Number of endpoints: 1
+                Class: 0x01: Audio
+                Subclass: 0x02: Streaming
+                Protocol: 0x20
+                Interface string: #5 (not seen)
+             Class descriptor 0x24, 16 bytes
+             Class descriptor 0x24, 6 bytes
+             Endpoint 4 OUT (isochronous)
+                Endpoint descriptor
+                   Length: 7 bytes
+                   Type: 0x05
+                   Endpoint address: 0x04
+                   Attributes: 0x09
+                   Max packet size: 372 bytes
+                   Interval: 0x01
+                Class descriptor 0x25, 8 bytes
+          Interface 1 alt 3: Audio
+             Interface descriptor
+                Length: 9 bytes
+                Type: 0x04
+                Interface number: 1
+                Alternate setting: 3
+                Number of endpoints: 1
+                Class: 0x01: Audio
+                Subclass: 0x02: Streaming
+                Protocol: 0x20
+                Interface string: #5 (not seen)
+             Class descriptor 0x24, 16 bytes
+             Class descriptor 0x24, 6 bytes
+             Endpoint 4 OUT (isochronous)
+                Endpoint descriptor
+                   Length: 7 bytes
+                   Type: 0x05
+                   Endpoint address: 0x04
+                   Attributes: 0x09
+                   Max packet size: 496 bytes
+                   Interval: 0x01
+                Truncated class descriptor 0x25 (3 of 8 bytes)

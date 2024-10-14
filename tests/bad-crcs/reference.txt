@@ -1,13 +1,13 @@
-Polling 1 times for unidentified transfer on endpoint 7.1 IN
- IN transaction on 7.1, NAK
-  IN packet on 7.1, CRC 1B
-  NAK packet
-1 invalid groups
- 1 malformed packet
-  Malformed packet (possibly IN, but bad CRC) of 3 bytes: [69, B7, DB]
-1 invalid groups
- 1 malformed packet
-  Malformed packet (possibly IN, but bad CRC) of 3 bytes: [69, B7, DB]
-1 invalid groups
- 1 malformed packet
-  Malformed packet (possibly SOF, but bad CRC) of 3 bytes: [A5, BB, CE]
+  ○─ Polling 1 times for unidentified transfer on endpoint 7.1 IN
+  ├─── IN transaction on 7.1, NAK
+  │    ├── IN packet on 7.1, CRC 1B
+  │    └── NAK packet
+○─┼─ 1 invalid groups
+└─┼─── 1 malformed packet
+  │    └── Malformed packet (possibly IN, but bad CRC) of 3 bytes: [69, B7, DB]
+○─┼─ 1 invalid groups
+└─┼─── 1 malformed packet
+  │    └── Malformed packet (possibly IN, but bad CRC) of 3 bytes: [69, B7, DB]
+○─┼─ 1 invalid groups
+└─┼─── 1 malformed packet
+  │    └── Malformed packet (possibly SOF, but bad CRC) of 3 bytes: [A5, BB, CE]
