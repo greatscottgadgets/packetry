@@ -5,7 +5,7 @@ use crate::capture::{
     CaptureReader,
     DeviceId,
     EndpointId,
-    EndpointTransferId,
+    EndpointGroupId,
     PacketId,
 };
 use crate::decoder::Decoder;
@@ -138,10 +138,11 @@ fn test(save_capture: bool,
         // SOF packets are assigned to endpoint ID 1.
         // We're looking for the first and only transfer on the endpoint.
         let endpoint_id = EndpointId::from(1);
-        let ep_transfer_id = EndpointTransferId::from(0);
+        let ep_group_id = EndpointGroupId::from(0);
         let ep_traf = reader.endpoint_traffic(endpoint_id)?;
-        let ep_transaction_ids = ep_traf.transfer_index
-            .target_range(ep_transfer_id, ep_traf.transaction_ids.len())?;
+        let ep_transaction_ids = ep_traf
+            .group_index
+            .target_range(ep_group_id, ep_traf.transaction_ids.len())?;
         let mut sof_count = 0;
         let mut last = None;
         let mut gaps = Vec::new();
@@ -238,10 +239,11 @@ fn bytes_on_endpoint(reader: &mut CaptureReader) -> Result<Vec<u8>, Error> {
     // The first normal endpoint in the capture will have endpoint ID 4.
     let endpoint_id = EndpointId::from(4);
     // We're looking for the first and only transfer on the endpoint.
-    let ep_transfer_id = EndpointTransferId::from(0);
+    let ep_group_id = EndpointGroupId::from(0);
     let ep_traf = reader.endpoint_traffic(endpoint_id)?;
-    let ep_transaction_ids = ep_traf.transfer_index.target_range(
-        ep_transfer_id, ep_traf.transaction_ids.len())?;
+    let ep_transaction_ids = ep_traf
+        .group_index
+        .target_range(ep_group_id, ep_traf.transaction_ids.len())?;
     let data_range = ep_traf.transfer_data_range(&ep_transaction_ids)?;
     let data_length = ep_traf
         .transfer_data_length(&data_range)?

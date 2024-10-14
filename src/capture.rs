@@ -41,14 +41,14 @@ pub struct CaptureWriter {
     pub packet_index: CompactWriter<PacketId, PacketByteId, 2>,
     pub packet_times: CompactWriter<PacketId, Timestamp, 3>,
     pub transaction_index: CompactWriter<TransactionId, PacketId>,
-    pub transfer_index: DataWriter<TransferIndexEntry>,
-    pub item_index: CompactWriter<TrafficItemId, TransferId>,
+    pub group_index: DataWriter<GroupIndexEntry>,
+    pub item_index: CompactWriter<TrafficItemId, GroupId>,
     pub devices: DataWriter<Device>,
     pub endpoints: DataWriter<Endpoint>,
     pub endpoint_states: DataWriter<u8>,
-    pub endpoint_state_index: CompactWriter<TransferId, Id<u8>>,
+    pub endpoint_state_index: CompactWriter<GroupId, Id<u8>>,
     #[allow(dead_code)]
-    pub end_index: CompactWriter<TransferId, TrafficItemId>,
+    pub end_index: CompactWriter<GroupId, TrafficItemId>,
 }
 
 /// Cloneable handle for read access to a capture.
@@ -60,14 +60,14 @@ pub struct CaptureReader {
     pub packet_index: CompactReader<PacketId, PacketByteId>,
     pub packet_times: CompactReader<PacketId, Timestamp>,
     pub transaction_index: CompactReader<TransactionId, PacketId>,
-    pub transfer_index: DataReader<TransferIndexEntry>,
-    pub item_index: CompactReader<TrafficItemId, TransferId>,
+    pub group_index: DataReader<GroupIndexEntry>,
+    pub item_index: CompactReader<TrafficItemId, GroupId>,
     pub devices: DataReader<Device>,
     pub endpoints: DataReader<Endpoint>,
     pub endpoint_states: DataReader<u8>,
-    pub endpoint_state_index: CompactReader<TransferId, Id<u8>>,
+    pub endpoint_state_index: CompactReader<GroupId, Id<u8>>,
     #[allow(dead_code)]
-    pub end_index: CompactReader<TransferId, TrafficItemId>,
+    pub end_index: CompactReader<GroupId, TrafficItemId>,
 }
 
 /// Create a capture reader-writer pair.
@@ -80,7 +80,7 @@ pub fn create_capture()
     let (packets_writer, packets_reader) = compact_index()?;
     let (timestamp_writer, timestamp_reader) = compact_index()?;
     let (transactions_writer, transactions_reader) = compact_index()?;
-    let (transfers_writer, transfers_reader) = data_stream()?;
+    let (groups_writer, groups_reader) = data_stream()?;
     let (items_writer, items_reader) = compact_index()?;
     let (devices_writer, devices_reader) = data_stream()?;
     let (endpoints_writer, endpoints_reader) = data_stream()?;
@@ -103,7 +103,7 @@ pub fn create_capture()
         packet_index: packets_writer,
         packet_times: timestamp_writer,
         transaction_index: transactions_writer,
-        transfer_index: transfers_writer,
+        group_index: groups_writer,
         item_index: items_writer,
         devices: devices_writer,
         endpoints: endpoints_writer,
@@ -120,7 +120,7 @@ pub fn create_capture()
         packet_index: packets_reader,
         packet_times: timestamp_reader,
         transaction_index: transactions_reader,
-        transfer_index: transfers_reader,
+        group_index: groups_reader,
         item_index: items_reader,
         devices: devices_reader,
         endpoints: endpoints_reader,
@@ -144,10 +144,10 @@ pub struct EndpointShared {
 pub struct EndpointWriter {
     pub shared: Arc<EndpointShared>,
     pub transaction_ids: CompactWriter<EndpointTransactionId, TransactionId>,
-    pub transfer_index: CompactWriter<EndpointTransferId, EndpointTransactionId>,
+    pub group_index: CompactWriter<EndpointGroupId, EndpointTransactionId>,
     pub data_transactions: CompactWriter<EndpointDataEvent, EndpointTransactionId>,
     pub data_byte_counts: CompactWriter<EndpointDataEvent, EndpointByteCount>,
-    pub end_index: CompactWriter<EndpointTransferId, TrafficItemId>,
+    pub end_index: CompactWriter<EndpointGroupId, TrafficItemId>,
 }
 
 /// Cloneable handle for read access to endpoint data.
@@ -155,10 +155,10 @@ pub struct EndpointWriter {
 pub struct EndpointReader {
     pub shared: Arc<EndpointShared>,
     pub transaction_ids: CompactReader<EndpointTransactionId, TransactionId>,
-    pub transfer_index: CompactReader<EndpointTransferId, EndpointTransactionId>,
+    pub group_index: CompactReader<EndpointGroupId, EndpointTransactionId>,
     pub data_transactions: CompactReader<EndpointDataEvent, EndpointTransactionId>,
     pub data_byte_counts: CompactReader<EndpointDataEvent, EndpointByteCount>,
-    pub end_index: CompactReader<EndpointTransferId, TrafficItemId>,
+    pub end_index: CompactReader<EndpointGroupId, TrafficItemId>,
 }
 
 /// Create a per-endpoint reader-writer pair.
@@ -167,7 +167,7 @@ pub fn create_endpoint()
 {
     // Create all the required streams.
     let (transactions_writer, transactions_reader) = compact_index()?;
-    let (transfers_writer, transfers_reader) = compact_index()?;
+    let (groups_writer, groups_reader) = compact_index()?;
     let (data_transaction_writer, data_transaction_reader) = compact_index()?;
     let (data_byte_count_writer, data_byte_count_reader) = compact_index()?;
     let (end_writer, end_reader) = compact_index()?;
@@ -182,7 +182,7 @@ pub fn create_endpoint()
     let writer = EndpointWriter {
         shared: shared.clone(),
         transaction_ids: transactions_writer,
-        transfer_index: transfers_writer,
+        group_index: groups_writer,
         data_transactions: data_transaction_writer,
         data_byte_counts: data_byte_count_writer,
         end_index: end_writer,
@@ -192,7 +192,7 @@ pub fn create_endpoint()
     let reader = EndpointReader {
         shared,
         transaction_ids: transactions_reader,
-        transfer_index: transfers_reader,
+        group_index: groups_reader,
         data_transactions: data_transaction_reader,
         data_byte_counts: data_byte_count_reader,
         end_index: end_reader,
@@ -206,10 +206,10 @@ pub type PacketByteId = Id<u8>;
 pub type PacketId = Id<PacketByteId>;
 pub type Timestamp = u64;
 pub type TransactionId = Id<PacketId>;
-pub type TransferId = Id<TransferIndexEntry>;
+pub type GroupId = Id<GroupIndexEntry>;
 pub type EndpointTransactionId = Id<TransactionId>;
-pub type EndpointTransferId = Id<EndpointTransactionId>;
-pub type TrafficItemId = Id<TransferId>;
+pub type EndpointGroupId = Id<EndpointTransactionId>;
+pub type TrafficItemId = Id<GroupId>;
 pub type DeviceId = Id<Device>;
 pub type EndpointId = Id<Endpoint>;
 pub type EndpointDataEvent = u64;
@@ -218,9 +218,9 @@ pub type DeviceVersion = u32;
 
 #[derive(Clone, Debug)]
 pub enum TrafficItem {
-    Transfer(TransferId),
-    Transaction(Option<TransferId>, TransactionId),
-    Packet(Option<TransferId>, Option<TransactionId>, PacketId),
+    TransactionGroup(GroupId),
+    Transaction(Option<GroupId>, TransactionId),
+    Packet(Option<GroupId>, Option<TransactionId>, PacketId),
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
@@ -329,13 +329,13 @@ impl std::fmt::Display for Endpoint {
 bitfield! {
     #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
     #[repr(C)]
-    pub struct TransferIndexEntry(u64);
-    pub u64, from into EndpointTransferId, transfer_id, set_transfer_id: 51, 0;
+    pub struct GroupIndexEntry(u64);
+    pub u64, from into EndpointGroupId, group_id, set_group_id: 51, 0;
     pub u64, from into EndpointId, endpoint_id, set_endpoint_id: 62, 52;
     pub u8, _is_start, _set_is_start: 63, 63;
 }
 
-impl TransferIndexEntry {
+impl GroupIndexEntry {
     pub fn is_start(&self) -> bool {
         self._is_start() != 0
     }
@@ -943,7 +943,7 @@ impl CaptureWriter {
         let mut overhead: u64 =
             self.packet_index.size() +
             self.transaction_index.size() +
-            self.transfer_index.size() +
+            self.group_index.size() +
             self.endpoint_states.size() +
             self.endpoint_state_index.size();
         let mut trx_count = 0;
@@ -953,8 +953,8 @@ impl CaptureWriter {
         for ep_traf in self.shared.endpoint_readers.load().as_ref() {
             trx_count += ep_traf.transaction_ids.len();
             trx_size += ep_traf.transaction_ids.size();
-            xfr_count += ep_traf.transfer_index.len();
-            xfr_size += ep_traf.transfer_index.size();
+            xfr_count += ep_traf.group_index.len();
+            xfr_size += ep_traf.group_index.size();
             overhead += trx_size + xfr_size;
         }
         let ratio = (overhead as f32) / (self.packet_data.size() as f32);
@@ -964,16 +964,16 @@ impl CaptureWriter {
             "  Packet data: {}\n",
             "  Packet index: {}\n",
             "  Transaction index: {}\n",
-            "  Transfer index: {}\n",
+            "  Transaction group index: {}\n",
             "  Endpoint states: {}\n",
             "  Endpoint state index: {}\n",
             "  Endpoint transaction indices: {} values, {}\n",
-            "  Endpoint transfer indices: {} values, {}\n",
+            "  Endpoint transaction group indices: {} values, {}\n",
             "Total overhead: {:.1}% ({})\n"),
             fmt_size(self.packet_data.size()),
             &self.packet_index,
             &self.transaction_index,
-            &self.transfer_index,
+            &self.group_index,
             &self.endpoint_states,
             &self.endpoint_state_index,
             fmt_count(trx_count), fmt_size(trx_size),
@@ -1004,14 +1004,14 @@ impl CaptureReader {
         Ok(self.endpoint_readers.get_mut(endpoint_id).unwrap())
     }
 
-    fn transfer_range(&mut self, entry: &TransferIndexEntry)
+    fn group_range(&mut self, entry: &GroupIndexEntry)
         -> Result<Range<EndpointTransactionId>, Error>
     {
         let endpoint_id = entry.endpoint_id();
-        let ep_transfer_id = entry.transfer_id();
+        let ep_group_id = entry.group_id();
         let ep_traf = self.endpoint_traffic(endpoint_id)?;
-        ep_traf.transfer_index.target_range(
-            ep_transfer_id, ep_traf.transaction_ids.len())
+        ep_traf.group_index.target_range(
+            ep_group_id, ep_traf.transaction_ids.len())
     }
 
     fn transaction_fields(&mut self, transaction: &Transaction)
@@ -1077,11 +1077,11 @@ impl CaptureReader {
         Ok(transfer_bytes)
     }
 
-    fn endpoint_state(&mut self, transfer_id: TransferId)
+    fn endpoint_state(&mut self, group_id: GroupId)
         -> Result<Vec<u8>, Error>
     {
         let range = self.endpoint_state_index.target_range(
-            transfer_id, self.endpoint_states.len())?;
+            group_id, self.endpoint_states.len())?;
         self.endpoint_states.get_range(&range)
     }
 
@@ -1223,17 +1223,17 @@ impl CaptureReader {
             .clone())
     }
 
-    fn transfer_extended(&mut self,
-                         endpoint_id: EndpointId,
-                         transfer_id: TransferId)
-        -> Result<bool, Error>
-    {
+    fn group_extended(
+        &mut self,
+        endpoint_id: EndpointId,
+        group_id: GroupId
+    ) -> Result<bool, Error> {
         use EndpointState::*;
-        let count = self.transfer_index.len();
-        if transfer_id.value + 1 >= count {
+        let count = self.group_index.len();
+        if group_id.value + 1 >= count {
             return Ok(false);
         };
-        let state = self.endpoint_state(transfer_id + 1)?;
+        let state = self.endpoint_state(group_id + 1)?;
         Ok(match state.get(endpoint_id.value as usize) {
             Some(ep_state) => EndpointState::from(*ep_state) == Ongoing,
             None => false
@@ -1329,8 +1329,8 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
             None => Ok(match view_mode {
                 Hierarchical => {
                     let item_id = TrafficItemId::from(index);
-                    let transfer_id = self.item_index.get(item_id)?;
-                    Transfer(transfer_id)
+                    let group_id = self.item_index.get(item_id)?;
+                    TransactionGroup(group_id)
                 },
                 Transactions =>
                     Transaction(None, TransactionId::from(index)),
@@ -1352,17 +1352,17 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
     {
         use TrafficItem::*;
         Ok(match parent {
-            Transfer(transfer_id) =>
-                Transaction(Some(*transfer_id), {
-                    let entry = self.transfer_index.get(*transfer_id)?;
+            TransactionGroup(group_id) =>
+                Transaction(Some(*group_id), {
+                    let entry = self.group_index.get(*group_id)?;
                     let endpoint_id = entry.endpoint_id();
-                    let ep_transfer_id = entry.transfer_id();
+                    let ep_group_id = entry.group_id();
                     let ep_traf = self.endpoint_traffic(endpoint_id)?;
-                    let offset = ep_traf.transfer_index.get(ep_transfer_id)?;
+                    let offset = ep_traf.group_index.get(ep_group_id)?;
                     ep_traf.transaction_ids.get(offset + index)?
                 }),
-            Transaction(transfer_id_opt, transaction_id) =>
-                Packet(*transfer_id_opt, Some(*transaction_id), {
+            Transaction(group_id_opt, transaction_id) =>
+                Packet(*group_id_opt, Some(*transaction_id), {
                     self.transaction_index.get(*transaction_id)? + index}),
             Packet(..) => bail!("Packets have no child items")
         })
@@ -1384,14 +1384,14 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                     Packets => self.packet_index.len(),
                 })
             },
-            Some(Transfer(transfer_id)) => {
-                let entry = self.transfer_index.get(*transfer_id)?;
+            Some(TransactionGroup(group_id)) => {
+                let entry = self.group_index.get(*group_id)?;
                 if !entry.is_start() {
                     return Ok((Complete, 0));
                 }
-                let transaction_count = self.transfer_range(&entry)?.len();
+                let transaction_count = self.group_range(&entry)?.len();
                 let ep_traf = self.endpoint_traffic(entry.endpoint_id())?;
-                if entry.transfer_id().value >= ep_traf.end_index.len() {
+                if entry.group_id().value >= ep_traf.end_index.len() {
                     (Ongoing, transaction_count)
                 } else {
                     (Complete, transaction_count)
@@ -1537,7 +1537,7 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                 }
                 s
             },
-            Transaction(transfer_id_opt, transaction_id) => {
+            Transaction(group_id_opt, transaction_id) => {
                 let num_packets = self.packet_index.len();
                 let packet_id_range = self.transaction_index.target_range(
                     *transaction_id, num_packets)?;
@@ -1572,9 +1572,9 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                             split.hub_address(),
                             split.port()))
                     }
-                    let endpoint_id = match transfer_id_opt {
-                        Some(transfer_id) => {
-                            let entry = self.transfer_index.get(*transfer_id)?;
+                    let endpoint_id = match group_id_opt {
+                        Some(group_id) => {
+                            let entry = self.group_index.get(*group_id)?;
                             entry.endpoint_id()
                         },
                         None => match self.shared.packet_endpoint(
@@ -1596,23 +1596,23 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                 }
                 s
             },
-            Transfer(transfer_id) => {
+            TransactionGroup(group_id) => {
                 use EndpointType::*;
                 use usb::EndpointType::*;
                 use TransactionResult::*;
-                let entry = self.transfer_index.get(*transfer_id)?;
+                let entry = self.group_index.get(*group_id)?;
                 let endpoint_id = entry.endpoint_id();
                 let endpoint = self.endpoints.get(endpoint_id)?;
                 let device_id = endpoint.device_id();
                 let dev_data = self.device_data(device_id)?;
                 let ep_addr = endpoint.address();
                 let (ep_type, _) = dev_data.endpoint_details(ep_addr);
-                let range = self.transfer_range(&entry)?;
+                let range = self.group_range(&entry)?;
                 let count = range.len();
                 if detail && entry.is_start() {
                     let ep_traf = self.endpoint_traffic(entry.endpoint_id())?;
                     let start_ep_transaction_id =
-                        ep_traf.transfer_index.get(entry.transfer_id())?;
+                        ep_traf.group_index.get(entry.group_id())?;
                     let start_transaction_id =
                         ep_traf.transaction_ids.get(start_ep_transaction_id)?;
                     let start_packet_id =
@@ -1655,10 +1655,10 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                         write!(s, "End of control transfer on device {addr}")
                     },
                     (endpoint_type, starting) => {
-                        let ep_transfer_id = entry.transfer_id();
+                        let ep_group_id = entry.group_id();
                         let ep_traf = self.endpoint_traffic(endpoint_id)?;
-                        let range = ep_traf.transfer_index.target_range(
-                            ep_transfer_id, ep_traf.transaction_ids.len())?;
+                        let range = ep_traf.group_index.target_range(
+                            ep_group_id, ep_traf.transaction_ids.len())?;
                         let first_transaction_id =
                             ep_traf.transaction_ids.get(range.start)?;
                         let first_transaction =
@@ -1738,29 +1738,31 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
         };
         if view_mode == Transactions {
             return Ok(String::from(match (item, last_packet) {
-                (Transfer(_), _)     => unreachable!(),
-                (Transaction(..), _) => "○",
-                (Packet(..), false)  => "├──",
-                (Packet(..), true )  => "└──",
+                (TransactionGroup(_), _) => unreachable!(),
+                (Transaction(..), _)     => "○",
+                (Packet(..), false)      => "├──",
+                (Packet(..), true )      => "└──",
             }));
         }
         let endpoint_count = self.endpoints.len() as usize;
         let max_string_length = endpoint_count + "    └──".len();
         let mut connectors = String::with_capacity(max_string_length);
-        let transfer_id = match item {
-            Transfer(i) | Transaction(Some(i), _) | Packet(Some(i), ..) => *i,
+        let group_id = match item {
+            TransactionGroup(i) |
+            Transaction(Some(i), _) |
+            Packet(Some(i), ..) => *i,
             _ => unreachable!()
         };
-        let entry = self.transfer_index.get(transfer_id)?;
+        let entry = self.group_index.get(group_id)?;
         let endpoint_id = entry.endpoint_id();
-        let endpoint_state = self.endpoint_state(transfer_id)?;
-        let extended = self.transfer_extended(endpoint_id, transfer_id)?;
+        let endpoint_state = self.endpoint_state(group_id)?;
+        let extended = self.group_extended(endpoint_id, group_id)?;
         let ep_traf = self.endpoint_traffic(endpoint_id)?;
         let last_transaction = match item {
             Transaction(_, transaction_id) |
             Packet(_, Some(transaction_id), _) => {
-                let range = ep_traf.transfer_index.target_range(
-                    entry.transfer_id(), ep_traf.transaction_ids.len())?;
+                let range = ep_traf.group_index.target_range(
+                    entry.group_id(), ep_traf.transaction_ids.len())?;
                 let last_transaction_id =
                     ep_traf.transaction_ids.get(range.end - 1)?;
                 *transaction_id == last_transaction_id
@@ -1773,12 +1775,12 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
             let active = state != Idle;
             let on_endpoint = i == endpoint_id.value as usize;
             thru |= match (item, state, on_endpoint) {
-                (Transfer(..), Starting | Ending, _) => true,
+                (TransactionGroup(..), Starting | Ending, _) => true,
                 (Transaction(..) | Packet(..), _, true) => on_endpoint,
                 _ => false,
             };
             connectors.push(match item {
-                Transfer(..) => {
+                TransactionGroup(..) => {
                     match (state, thru) {
                         (Idle,     false) => ' ',
                         (Idle,     true ) => '─',
@@ -1811,18 +1813,18 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
         let state_length = endpoint_state.len();
         for _ in state_length..endpoint_count {
             connectors.push(match item {
-                Transfer(..)    => '─',
-                Transaction(..) => '─',
-                Packet(..)      => ' ',
+                TransactionGroup(..)    => '─',
+                Transaction(..)         => '─',
+                Packet(..)              => ' ',
             });
         }
         connectors.push_str(
             match (item, last_packet) {
-                (Transfer(_), _) if entry.is_start() => "─",
-                (Transfer(_), _)                     => "──□ ",
-                (Transaction(..), _)                 => "───",
-                (Packet(..), false)                  => "    ├──",
-                (Packet(..), true)                   => "    └──",
+                (TransactionGroup(_), _) if entry.is_start() => "─",
+                (TransactionGroup(_), _)                     => "──□ ",
+                (Transaction(..), _)                         => "───",
+                (Packet(..), false)                          => "    ├──",
+                (Packet(..), true)                           => "    └──",
             }
         );
         Ok(connectors)
@@ -1833,11 +1835,11 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
     {
         use TrafficItem::*;
         let packet_id = match item {
-            Transfer(transfer_id) => {
-                let entry = self.transfer_index.get(*transfer_id)?;
+            TransactionGroup(group_id) => {
+                let entry = self.group_index.get(*group_id)?;
                 let ep_traf = self.endpoint_traffic(entry.endpoint_id())?;
                 let ep_transaction_id =
-                    ep_traf.transfer_index.get(entry.transfer_id())?;
+                    ep_traf.group_index.get(entry.group_id())?;
                 let transaction_id =
                     ep_traf.transaction_ids.get(ep_transaction_id)?;
                 self.transaction_index.get(transaction_id)?
@@ -2296,12 +2298,12 @@ pub mod prelude {
         EndpointReader,
         EndpointWriter,
         EndpointTransactionId,
-        EndpointTransferId,
+        EndpointGroupId,
         PacketId,
         TrafficItemId,
         TransactionId,
-        TransferId,
-        TransferIndexEntry,
+        GroupId,
+        GroupIndexEntry,
         INVALID_EP_NUM,
         FRAMING_EP_NUM,
         INVALID_EP_ID,
