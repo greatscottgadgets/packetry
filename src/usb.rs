@@ -410,13 +410,13 @@ impl StandardRequest {
                 let descriptor_type =
                     DescriptorType::from((fields.value >> 8) as u8);
                 format!(
-                    "{} {} descriptor #{}{}",
+                    "{} {} #{}{}",
                     match self {
                         GetDescriptor => "Getting",
                         SetDescriptor => "Setting",
                         _ => ""
                     },
-                    descriptor_type.description(),
+                    descriptor_type.description(None),
                     fields.value & 0xFF,
                     match (descriptor_type, fields.index) {
                         (DescriptorType::String, language) if language > 0 =>
@@ -493,9 +493,9 @@ impl DescriptorType {
         }
     }
 
-    pub fn description(&self) -> &'static str {
+    fn description(&self, bytes: Option<&[u8]>) -> String {
         use DescriptorType::*;
-        match self {
+        format!("{} descriptor", match self {
             Invalid => "invalid",
             Device => "device",
             Configuration => "configuration",
@@ -510,8 +510,19 @@ impl DescriptorType {
             InterfaceAssociation => "interface association",
             BinaryObjectStore => "BOS",
             DeviceCapability => "device capability",
-            Unknown => "unknown",
-        }
+            Unknown => if let Some(type_code) = bytes.and_then(|b| b.get(1)) {
+                let type_group = match type_code {
+                    0x00..=0x1F => "standard",
+                    0x20..=0x3F => "class",
+                    0x40..=0x5F => "custom",
+                    0x60..=0xFF => "reserved",
+                };
+                return format!("{} descriptor 0x{:02X}",
+                               type_group, type_code)
+            } else {
+                "unknown"
+            }
+        })
     }
 }
 
@@ -779,7 +790,7 @@ pub enum Descriptor {
     Interface(InterfaceDescriptor),
     Endpoint(EndpointDescriptor),
     Other(DescriptorType, Vec<u8>),
-    Malformed(DescriptorType, Vec<u8>),
+    Truncated(DescriptorType, Vec<u8>),
 }
 
 impl Descriptor {
@@ -792,34 +803,18 @@ impl Descriptor {
             Endpoint(_) => "Endpoint descriptor".to_string(),
             InterfaceAssociation(_) =>
                 "Interface association descriptor".to_string(),
-            Other(desc_type, bytes) =>
-                if *desc_type == DescriptorType::Unknown {
-                    let type_code = bytes[1];
-                    let type_group = match type_code {
-                        0x00..=0x1F => "Standard",
-                        0x20..=0x3F => "Class",
-                        0x40..=0x5F => "Custom",
-                        0x60..=0xFF => "Reserved",
-                    };
-                    format!("{} descriptor 0x{:02X}, {} bytes",
-                        type_group, type_code, bytes.len())
-                } else {
-                    format!("{} descriptor, {} bytes",
-                        titlecase(desc_type.description()), bytes.len())
-                },
-            Malformed(desc_type, bytes) => {
-                let description = desc_type.description();
+            Other(desc_type, bytes) => format!("{}, {} bytes",
+                titlecase(&desc_type.description(Some(bytes))), bytes.len()),
+            Truncated(desc_type, bytes) => {
+                let description = desc_type.description(Some(bytes));
+                let desc_length = bytes[0] as usize;
                 let length = bytes.len();
-                if let Some(expected) = desc_type.expected_length() {
-                    format!(
-                        "Malformed {} descriptor (only {}/{} bytes)",
-                        description, length, expected)
-                } else {
-                    format!(
-                        "Malformed {} descriptor ({} bytes)",
-                        description, length)
-                }
-            },
+                let expected = desc_type
+                    .expected_length()
+                    .unwrap_or(desc_length);
+                format!("Truncated {} ({} of {} bytes)",
+                    description, length, expected)
+            }
         }
     }
 }
@@ -836,50 +831,73 @@ impl<'bytes> DescriptorIterator<'bytes> {
             offset: 0
         }
     }
+
+    fn decode_descriptor(
+        &mut self,
+        desc_type: DescriptorType,
+        desc_bytes: &[u8],
+    ) -> Descriptor {
+        // Decide how many bytes to decode.
+        let bytes = match desc_type.expected_length() {
+            // There aren't enough bytes for this descriptor type.
+            Some(expected) if desc_bytes.len() < expected =>
+                return Descriptor::Truncated(desc_type, desc_bytes.to_vec()),
+            // We have an expected length for this descriptor type.
+            // We'll only decode the part we're expecting.
+            Some(expected) => &desc_bytes[0 .. expected],
+            // We don't have an expected length for this descriptor type.
+            // We'll decode all the bytes as a generic descriptor.
+            None => desc_bytes,
+        };
+        match desc_type {
+            DescriptorType::Device =>
+                Descriptor::Device(
+                    DeviceDescriptor::from_bytes(bytes)),
+            DescriptorType::Configuration =>
+                Descriptor::Configuration(
+                    pod_read_unaligned::<ConfigDescriptor>(bytes)),
+            DescriptorType::Interface =>
+                Descriptor::Interface(
+                    pod_read_unaligned::<InterfaceDescriptor>(bytes)),
+            DescriptorType::Endpoint =>
+                Descriptor::Endpoint(
+                    pod_read_unaligned::<EndpointDescriptor>(bytes)),
+            DescriptorType::InterfaceAssociation =>
+                Descriptor::InterfaceAssociation(
+                    pod_read_unaligned::<InterfaceAssociationDescriptor>(bytes)),
+            _ => Descriptor::Other(desc_type, bytes.to_vec())
+        }
+    }
 }
 
 impl Iterator for DescriptorIterator<'_> {
     type Item = Descriptor;
 
     fn next(&mut self) -> Option<Descriptor> {
-        if self.offset < self.bytes.len() - 2 {
-            let remaining_bytes = &self.bytes[self.offset .. self.bytes.len()];
-            let desc_length = remaining_bytes[0] as usize;
-            let desc_type = DescriptorType::from(remaining_bytes[1]);
-            self.offset += desc_length;
-            let mut bytes = &remaining_bytes[0 .. desc_length];
-            if let Some(expected) = desc_type.expected_length() {
-                // If there aren't enough bytes for the descriptor type, it is
-                // malformed and we can't interpret it.
-                if desc_length < expected {
-                    return Some(Descriptor::Malformed(desc_type, bytes.to_vec()))
+        use Descriptor::Truncated;
+        use DescriptorType::Unknown;
+        let remaining = self.bytes.len() - self.offset;
+        let (descriptor, bytes_consumed) = match remaining {
+            // All bytes consumed by descriptors, none left over.
+            0 => return None,
+            // Not enough bytes for type and length.
+            1 => (Truncated(Unknown, self.bytes[self.offset..].to_vec()), 1),
+            _ => {
+                let remaining_bytes = &self.bytes[self.offset..];
+                let desc_length = remaining_bytes[0] as usize;
+                let desc_type = DescriptorType::from(remaining_bytes[1]);
+                if desc_length > remaining {
+                    // We don't have all the bytes of this descriptor.
+                    (Truncated(desc_type, remaining_bytes.to_vec()), remaining)
+                } else {
+                    // This looks like a valid descriptor, decode it.
+                    let bytes = &remaining_bytes[0 .. desc_length];
+                    (self.decode_descriptor(desc_type, bytes), desc_length)
                 }
-                // The expected length is the minimum length, but sometimes the
-                // descriptors have extra padding/garbage data at the end.
-                // Handle this by trimming off the extra data.
-                bytes = &bytes[0 .. expected];
-            };
-            return Some(match desc_type {
-                DescriptorType::Device =>
-                    Descriptor::Device(
-                        DeviceDescriptor::from_bytes(bytes)),
-                DescriptorType::Configuration =>
-                    Descriptor::Configuration(
-                        pod_read_unaligned::<ConfigDescriptor>(bytes)),
-                DescriptorType::Interface =>
-                    Descriptor::Interface(
-                        pod_read_unaligned::<InterfaceDescriptor>(bytes)),
-                DescriptorType::Endpoint =>
-                    Descriptor::Endpoint(
-                        pod_read_unaligned::<EndpointDescriptor>(bytes)),
-                DescriptorType::InterfaceAssociation =>
-                    Descriptor::InterfaceAssociation(
-                        pod_read_unaligned::<InterfaceAssociationDescriptor>(bytes)),
-                _ => Descriptor::Other(desc_type, bytes.to_vec())
-            });
-        }
-        // Not enough data for another descriptor.
-        None
+            }
+        };
+        self.offset += bytes_consumed;
+        Some(descriptor)
     }
 }
 

@@ -1,5 +1,6 @@
 analyzer-test-bad-cable
 bad-crcs
+bad-descriptor-length
 emf2022-badge
 hackrf-connect
 hackrf-dfu-enum
