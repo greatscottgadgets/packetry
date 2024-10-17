@@ -1,0 +1,37 @@
+Getting configuration descriptor #0 for device 16, reading 255 bytes
+ SETUP transaction on 16.0 with 8 data bytes, ACK: [80, 06, 00, 02, 00, 00, FF, 00]
+  SETUP packet on 16.0, CRC 1E
+  DATA0 packet with CRC A4E9 and 8 data bytes: [80, 06, 00, 02, 00, 00, FF, 00]
+  ACK packet
+ 9 times: IN transaction on 16.0, NAK
+  IN packet on 16.0, CRC 1E
+  NAK packet
+ IN transaction on 16.0 with 64 data bytes, ACK: [09, 02, 1D, 01, 03, 01, 04, A0, 32, 08, 0B, 00, 02, 01, 00, 20, 05, 09, 04, 00, 00, 01, 01, 01, 20, 05, 09, 24, 01, 00, 02, 04, 50, 00, 00, 08, 24, 0A, 04, 07, 07, 00, 00, 11, 24, 02, 0A, 01, 01, 00, 04, 02, 03, 00, 00, 00, 00, 00, 00, 00, 0C, 24, 03, 10]
+  IN packet on 16.0, CRC 1E
+  DATA1 packet with CRC C464 and 64 data bytes: [09, 02, 1D, 01, 03, 01, 04, A0, 32, 08, 0B, 00, 02, 01, 00, 20, 05, 09, 04, 00, 00, 01, 01, 01, 20, 05, 09, 24, 01, 00, 02, 04, 50, 00, 00, 08, 24, 0A, 04, 07, 07, 00, 00, 11, 24, 02, 0A, 01, 01, 00, 04, 02, 03, 00, 00, 00, 00, 00, 00, 00, 0C, 24, 03, 10]
+  ACK packet
+ 5 times: IN transaction on 16.0, NAK
+  IN packet on 16.0, CRC 1E
+  NAK packet
+ IN transaction on 16.0 with 64 data bytes, ACK: [02, 03, 0A, 16, 04, 00, 00, 00, 12, 24, 06, 16, 0A, 03, 00, 00, 00, 0C, 00, 00, 00, 0C, 00, 00, 00, 00, 10, 24, 09, 19, DA, 0B, 01, 16, 02, 03, 00, 00, 00, 00, 00, 00, 07, 05, 87, 03, 10, 00, 08, 09, 04, 01, 00, 00, 01, 02, 20, 05, 09, 04, 01, 01, 01, 01]
+  IN packet on 16.0, CRC 1E
+  DATA0 packet with CRC 0D37 and 64 data bytes: [02, 03, 0A, 16, 04, 00, 00, 00, 12, 24, 06, 16, 0A, 03, 00, 00, 00, 0C, 00, 00, 00, 0C, 00, 00, 00, 00, 10, 24, 09, 19, DA, 0B, 01, 16, 02, 03, 00, 00, 00, 00, 00, 00, 07, 05, 87, 03, 10, 00, 08, 09, 04, 01, 00, 00, 01, 02, 20, 05, 09, 04, 01, 01, 01, 01]
+  ACK packet
+ 10 times: IN transaction on 16.0, NAK
+  IN packet on 16.0, CRC 1E
+  NAK packet
+ IN transaction on 16.0 with 64 data bytes, ACK: [02, 20, 05, 10, 24, 01, 0A, 00, 01, 01, 00, 00, 00, 02, 03, 00, 00, 00, 00, 06, 24, 02, 01, 02, 10, 07, 05, 04, 09, F8, 00, 01, 08, 25, 01, 00, 00, 00, 00, 00, 09, 04, 01, 02, 01, 01, 02, 20, 05, 10, 24, 01, 0A, 00, 01, 01, 00, 00, 00, 02, 03, 00, 00, 00]
+  IN packet on 16.0, CRC 1E
+  DATA1 packet with CRC BBBE and 64 data bytes: [02, 20, 05, 10, 24, 01, 0A, 00, 01, 01, 00, 00, 00, 02, 03, 00, 00, 00, 00, 06, 24, 02, 01, 02, 10, 07, 05, 04, 09, F8, 00, 01, 08, 25, 01, 00, 00, 00, 00, 00, 09, 04, 01, 02, 01, 01, 02, 20, 05, 10, 24, 01, 0A, 00, 01, 01, 00, 00, 00, 02, 03, 00, 00, 00]
+  ACK packet
+ 16 times: IN transaction on 16.0, NAK
+  IN packet on 16.0, CRC 1E
+  NAK packet
+ IN transaction on 16.0 with 63 data bytes, ACK: [00, 06, 24, 02, 01, 03, 18, 07, 05, 04, 09, 74, 01, 01, 08, 25, 01, 00, 00, 00, 00, 00, 09, 04, 01, 03, 01, 01, 02, 20, 05, 10, 24, 01, 0A, 00, 01, 01, 00, 00, 00, 02, 03, 00, 00, 00, 00, 06, 24, 02, 01, 04, 20, 07, 05, 04, 09, F0, 01, 01, 08, 25, 01]
+  IN packet on 16.0, CRC 1E
+  DATA0 packet with CRC 1E7A and 63 data bytes: [00, 06, 24, 02, 01, 03, 18, 07, 05, 04, 09, 74, 01, 01, 08, 25, 01, 00, 00, 00, 00, 00, 09, 04, 01, 03, 01, 01, 02, 20, 05, 10, 24, 01, 0A, 00, 01, 01, 00, 00, 00, 02, 03, 00, 00, 00, 00, 06, 24, 02, 01, 04, 20, 07, 05, 04, 09, F0, 01, 01, 08, 25, 01]
+  ACK packet
+ OUT transaction on 16.0 with no data, ACK
+  OUT packet on 16.0, CRC 1E
+  DATA1 packet with CRC 0000 and no data
+  ACK packet
