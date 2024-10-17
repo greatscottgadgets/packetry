@@ -1,215 +1,215 @@
-Device 1: USB JTAG/serial debug unit\u{0}
- Device descriptor
-  Length: 18 bytes
-  Type: 0x01
-  USB Version: 2.00
-  Class: 0xEF: Miscellaneous Device
-  Subclass: 0x02: ?
-  Protocol: 0x01: Interface Association
-  Max EP0 packet size: 64 bytes
-  Vendor ID: 0x303A
-  Product ID: 0x1001
-  Version: 1.01
-  Manufacturer string: #1 'Espressif\u{0}'
-  Product string: #2 'USB JTAG/serial debug unit\u{0}'
-  Serial string: #3 'F4:12:FA:4D:F1:7C'
- Configuration 1
-  Configuration descriptor
-   Length: 9 bytes
-   Type: 0x02
-   Total length: 98 bytes
-   Number of interfaces: 3
-   Configuration number: 1
-   Configuration string: (none)
-   Attributes: 0xC0
-   Max power: 500mA
-  Function 0: Communications
-   Interface association descriptor
-    Length: 8 bytes
-    Type: 0x0B
-    First interface: 0
-    Interface count: 2
-    Function class: 0x02: Communications
-    Function subclass: 0x02: Abstract (modem)
-    Function protocol: 0x00: None
-    Function number: 0
-   Interface 0: Communications
-    Interface descriptor
-     Length: 9 bytes
-     Type: 0x04
-     Interface number: 0
-     Alternate setting: 0
-     Number of endpoints: 1
-     Class: 0x02: Communications
-     Subclass: 0x02: Abstract (modem)
-     Protocol: 0x00: None
-     Interface string: (none)
-    Class descriptor 0x24, 5 bytes
-    Class descriptor 0x24, 4 bytes
-    2 times: Class descriptor 0x24, 5 bytes
-    Endpoint 2 IN (interrupt)
-     Endpoint descriptor
-      Length: 7 bytes
-      Type: 0x05
-      Endpoint address: 0x82
-      Attributes: 0x03
-      Max packet size: 64 bytes
-      Interval: 0x01
-   Interface 1: CDC Data
-    Interface descriptor
-     Length: 9 bytes
-     Type: 0x04
-     Interface number: 1
-     Alternate setting: 0
-     Number of endpoints: 2
-     Class: 0x0A: CDC Data
-     Subclass: 0x02
-     Protocol: 0x00
-     Interface string: (none)
-    Endpoint 1 OUT (bulk)
-     Endpoint descriptor
-      Length: 7 bytes
-      Type: 0x05
-      Endpoint address: 0x01
-      Attributes: 0x02
-      Max packet size: 64 bytes
-      Interval: 0x01
-    Endpoint 1 IN (bulk)
-     Endpoint descriptor
-      Length: 7 bytes
-      Type: 0x05
-      Endpoint address: 0x81
-      Attributes: 0x02
-      Max packet size: 64 bytes
-      Interval: 0x01
-  Interface 2: Vendor Specific Class
-   Interface descriptor
-    Length: 9 bytes
-    Type: 0x04
-    Interface number: 2
-    Alternate setting: 0
-    Number of endpoints: 2
-    Class: 0xFF: Vendor Specific Class
-    Subclass: 0xFF: Vendor Specific Subclass
-    Protocol: 0x01
-    Interface string: (none)
-   Endpoint 2 OUT (bulk)
-    Endpoint descriptor
-     Length: 7 bytes
-     Type: 0x05
-     Endpoint address: 0x02
-     Attributes: 0x02
-     Max packet size: 64 bytes
-     Interval: 0x01
-   Endpoint 3 IN (bulk)
-    Endpoint descriptor
-     Length: 7 bytes
-     Type: 0x05
-     Endpoint address: 0x83
-     Attributes: 0x02
-     Max packet size: 64 bytes
-     Interval: 0x01
-Device 2: TiDAL
- Device descriptor
-  Length: 18 bytes
-  Type: 0x01
-  USB Version: 2.00
-  Class: 0xEF: Miscellaneous Device
-  Subclass: 0x02: ?
-  Protocol: 0x01: Interface Association
-  Max EP0 packet size: 64 bytes
-  Vendor ID: 0x16D0: MCS
-  Product ID: 0x1114
-  Version: 1.00
-  Manufacturer string: #1 'Electromagnetic Field'
-  Product string: #2 'TiDAL'
-  Serial string: #3 '123456'
- Configuration 1
-  Configuration descriptor
-   Length: 9 bytes
-   Type: 0x02
-   Total length: 100 bytes
-   Number of interfaces: 3
-   Configuration number: 1
-   Configuration string: (none)
-   Attributes: 0x80
-   Max power: 500mA
-  Function 0: Communications
-   Interface association descriptor
-    Length: 8 bytes
-    Type: 0x0B
-    First interface: 0
-    Interface count: 2
-    Function class: 0x02: Communications
-    Function subclass: 0x02: Abstract (modem)
-    Function protocol: 0x00: None
-    Function number: 0
-   Interface 0: Communications
-    Interface descriptor
-     Length: 9 bytes
-     Type: 0x04
-     Interface number: 0
-     Alternate setting: 0
-     Number of endpoints: 1
-     Class: 0x02: Communications
-     Subclass: 0x02: Abstract (modem)
-     Protocol: 0x00: None
-     Interface string: #4 'Espressif CDC Device'
-    2 times: Class descriptor 0x24, 5 bytes
-    Class descriptor 0x24, 4 bytes
-    Class descriptor 0x24, 5 bytes
-    Endpoint 1 IN (interrupt)
-     Endpoint descriptor
-      Length: 7 bytes
-      Type: 0x05
-      Endpoint address: 0x81
-      Attributes: 0x03
-      Max packet size: 8 bytes
-      Interval: 0x10
-   Interface 1: CDC Data
-    Interface descriptor
-     Length: 9 bytes
-     Type: 0x04
-     Interface number: 1
-     Alternate setting: 0
-     Number of endpoints: 2
-     Class: 0x0A: CDC Data
-     Subclass: 0x00: Unused
-     Protocol: 0x00
-     Interface string: (none)
-    Endpoint 2 OUT (bulk)
-     Endpoint descriptor
-      Length: 7 bytes
-      Type: 0x05
-      Endpoint address: 0x02
-      Attributes: 0x02
-      Max packet size: 64 bytes
-      Interval: 0x00
-    Endpoint 2 IN (bulk)
-     Endpoint descriptor
-      Length: 7 bytes
-      Type: 0x05
-      Endpoint address: 0x82
-      Attributes: 0x02
-      Max packet size: 64 bytes
-      Interval: 0x00
-  Interface 2: Human Interface Device
-   Interface descriptor
-    Length: 9 bytes
-    Type: 0x04
-    Interface number: 2
-    Alternate setting: 0
-    Number of endpoints: 1
-    Class: 0x03: Human Interface Device
-    Subclass: 0x01: Boot Interface Subclass
-    Protocol: 0x01: Keyboard
-    Interface string: #5 'TiDAL badge'
-   Class descriptor 0x21, 9 bytes
-   Endpoint 3 IN (interrupt)
-    Endpoint descriptor
-     Length: 7 bytes
-     Type: 0x05
-     Endpoint address: 0x83
-     Attributes: 0x03
-     Max packet size: 8 bytes
-     Interval: 0x0A
+ Device 1: USB JTAG/serial debug unit\u{0}
+    Device descriptor
+       Length: 18 bytes
+       Type: 0x01
+       USB Version: 2.00
+       Class: 0xEF: Miscellaneous Device
+       Subclass: 0x02: ?
+       Protocol: 0x01: Interface Association
+       Max EP0 packet size: 64 bytes
+       Vendor ID: 0x303A
+       Product ID: 0x1001
+       Version: 1.01
+       Manufacturer string: #1 'Espressif\u{0}'
+       Product string: #2 'USB JTAG/serial debug unit\u{0}'
+       Serial string: #3 'F4:12:FA:4D:F1:7C'
+    Configuration 1
+       Configuration descriptor
+          Length: 9 bytes
+          Type: 0x02
+          Total length: 98 bytes
+          Number of interfaces: 3
+          Configuration number: 1
+          Configuration string: (none)
+          Attributes: 0xC0
+          Max power: 500mA
+       Function 0: Communications
+          Interface association descriptor
+             Length: 8 bytes
+             Type: 0x0B
+             First interface: 0
+             Interface count: 2
+             Function class: 0x02: Communications
+             Function subclass: 0x02: Abstract (modem)
+             Function protocol: 0x00: None
+             Function number: 0
+          Interface 0: Communications
+             Interface descriptor
+                Length: 9 bytes
+                Type: 0x04
+                Interface number: 0
+                Alternate setting: 0
+                Number of endpoints: 1
+                Class: 0x02: Communications
+                Subclass: 0x02: Abstract (modem)
+                Protocol: 0x00: None
+                Interface string: (none)
+             Class descriptor 0x24, 5 bytes
+             Class descriptor 0x24, 4 bytes
+             Class descriptor 0x24, 5 bytes (2 times)
+             Endpoint 2 IN (interrupt)
+                Endpoint descriptor
+                   Length: 7 bytes
+                   Type: 0x05
+                   Endpoint address: 0x82
+                   Attributes: 0x03
+                   Max packet size: 64 bytes
+                   Interval: 0x01
+          Interface 1: CDC Data
+             Interface descriptor
+                Length: 9 bytes
+                Type: 0x04
+                Interface number: 1
+                Alternate setting: 0
+                Number of endpoints: 2
+                Class: 0x0A: CDC Data
+                Subclass: 0x02
+                Protocol: 0x00
+                Interface string: (none)
+             Endpoint 1 OUT (bulk)
+                Endpoint descriptor
+                   Length: 7 bytes
+                   Type: 0x05
+                   Endpoint address: 0x01
+                   Attributes: 0x02
+                   Max packet size: 64 bytes
+                   Interval: 0x01
+             Endpoint 1 IN (bulk)
+                Endpoint descriptor
+                   Length: 7 bytes
+                   Type: 0x05
+                   Endpoint address: 0x81
+                   Attributes: 0x02
+                   Max packet size: 64 bytes
+                   Interval: 0x01
+       Interface 2: Vendor Specific Class
+          Interface descriptor
+             Length: 9 bytes
+             Type: 0x04
+             Interface number: 2
+             Alternate setting: 0
+             Number of endpoints: 2
+             Class: 0xFF: Vendor Specific Class
+             Subclass: 0xFF: Vendor Specific Subclass
+             Protocol: 0x01
+             Interface string: (none)
+          Endpoint 2 OUT (bulk)
+             Endpoint descriptor
+                Length: 7 bytes
+                Type: 0x05
+                Endpoint address: 0x02
+                Attributes: 0x02
+                Max packet size: 64 bytes
+                Interval: 0x01
+          Endpoint 3 IN (bulk)
+             Endpoint descriptor
+                Length: 7 bytes
+                Type: 0x05
+                Endpoint address: 0x83
+                Attributes: 0x02
+                Max packet size: 64 bytes
+                Interval: 0x01
+ Device 2: TiDAL
+    Device descriptor
+       Length: 18 bytes
+       Type: 0x01
+       USB Version: 2.00
+       Class: 0xEF: Miscellaneous Device
+       Subclass: 0x02: ?
+       Protocol: 0x01: Interface Association
+       Max EP0 packet size: 64 bytes
+       Vendor ID: 0x16D0: MCS
+       Product ID: 0x1114
+       Version: 1.00
+       Manufacturer string: #1 'Electromagnetic Field'
+       Product string: #2 'TiDAL'
+       Serial string: #3 '123456'
+    Configuration 1
+       Configuration descriptor
+          Length: 9 bytes
+          Type: 0x02
+          Total length: 100 bytes
+          Number of interfaces: 3
+          Configuration number: 1
+          Configuration string: (none)
+          Attributes: 0x80
+          Max power: 500mA
+       Function 0: Communications
+          Interface association descriptor
+             Length: 8 bytes
+             Type: 0x0B
+             First interface: 0
+             Interface count: 2
+             Function class: 0x02: Communications
+             Function subclass: 0x02: Abstract (modem)
+             Function protocol: 0x00: None
+             Function number: 0
+          Interface 0: Communications
+             Interface descriptor
+                Length: 9 bytes
+                Type: 0x04
+                Interface number: 0
+                Alternate setting: 0
+                Number of endpoints: 1
+                Class: 0x02: Communications
+                Subclass: 0x02: Abstract (modem)
+                Protocol: 0x00: None
+                Interface string: #4 'Espressif CDC Device'
+             Class descriptor 0x24, 5 bytes (2 times)
+             Class descriptor 0x24, 4 bytes
+             Class descriptor 0x24, 5 bytes
+             Endpoint 1 IN (interrupt)
+                Endpoint descriptor
+                   Length: 7 bytes
+                   Type: 0x05
+                   Endpoint address: 0x81
+                   Attributes: 0x03
+                   Max packet size: 8 bytes
+                   Interval: 0x10
+          Interface 1: CDC Data
+             Interface descriptor
+                Length: 9 bytes
+                Type: 0x04
+                Interface number: 1
+                Alternate setting: 0
+                Number of endpoints: 2
+                Class: 0x0A: CDC Data
+                Subclass: 0x00: Unused
+                Protocol: 0x00
+                Interface string: (none)
+             Endpoint 2 OUT (bulk)
+                Endpoint descriptor
+                   Length: 7 bytes
+                   Type: 0x05
+                   Endpoint address: 0x02
+                   Attributes: 0x02
+                   Max packet size: 64 bytes
+                   Interval: 0x00
+             Endpoint 2 IN (bulk)
+                Endpoint descriptor
+                   Length: 7 bytes
+                   Type: 0x05
+                   Endpoint address: 0x82
+                   Attributes: 0x02
+                   Max packet size: 64 bytes
+                   Interval: 0x00
+       Interface 2: Human Interface Device
+          Interface descriptor
+             Length: 9 bytes
+             Type: 0x04
+             Interface number: 2
+             Alternate setting: 0
+             Number of endpoints: 1
+             Class: 0x03: Human Interface Device
+             Subclass: 0x01: Boot Interface Subclass
+             Protocol: 0x01: Keyboard
+             Interface string: #5 'TiDAL badge'
+          Class descriptor 0x21, 9 bytes
+          Endpoint 3 IN (interrupt)
+             Endpoint descriptor
+                Length: 7 bytes
+                Type: 0x05
+                Endpoint address: 0x83
+                Attributes: 0x03
+                Max packet size: 8 bytes
+                Interval: 0x0A

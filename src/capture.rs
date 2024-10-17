@@ -2170,26 +2170,27 @@ mod tests {
         cap: &mut CaptureReader,
         item: &Item,
         mode: ViewMode,
-        depth: usize
     ) -> String
         where CaptureReader: ItemSource<Item, ViewMode>,
               ViewMode: Copy
     {
-        let mut summary = cap.description(item, false).unwrap();
+        let mut summary = format!("{} {}",
+            cap.connectors(mode, item).unwrap(),
+            cap.description(item, false).unwrap()
+        );
         let (_completion, num_children) =
             cap.item_children(Some(item), mode).unwrap();
         let child_ids = 0..num_children;
         for (n, child_summary) in child_ids
             .map(|child_id| {
                 let child = cap.child_item(item, child_id).unwrap();
-                summarize_item(cap, &child, mode, depth + 1)
+                summarize_item(cap, &child, mode)
             })
             .dedup_with_count()
         {
             summary += "\n";
-            summary += &" ".repeat(depth + 1);
             if n > 1 {
-                summary += &format!("{} times: {}", n, &child_summary);
+                summary += &format!("{} ({} times)", &child_summary, n);
             } else {
                 summary += &child_summary;
             }
@@ -2201,16 +2202,12 @@ mod tests {
         cap: &mut CaptureReader,
         item: &Item,
         mode: ViewMode,
-        depth: usize,
         writer: &mut dyn Write
     )
         where CaptureReader: ItemSource<Item, ViewMode>,
               ViewMode: Copy
     {
-        let summary = summarize_item(cap, item, mode, depth);
-        for _ in 0..depth {
-            writer.write(b" ").unwrap();
-        }
+        let summary = summarize_item(cap, item, mode);
         writer.write(summary.as_bytes()).unwrap();
         writer.write(b"\n").unwrap();
     }
@@ -2252,14 +2249,14 @@ mod tests {
                 let num_items = reader.item_index.len();
                 for item_id in 0 .. num_items {
                     let item = reader.item(None, mode, item_id).unwrap();
-                    write_item(&mut reader, &item, mode, 0, &mut traf_out_writer);
+                    write_item(&mut reader, &item, mode, &mut traf_out_writer);
                 }
                 let dev_out_file = File::create(dev_out_path.clone()).unwrap();
                 let mut dev_out_writer = BufWriter::new(dev_out_file);
                 let num_devices = reader.devices.len() - 1;
                 for device_id in 0 .. num_devices {
                     let item = reader.item(None, (), device_id).unwrap();
-                    write_item(&mut reader, &item, (), 0, &mut dev_out_writer);
+                    write_item(&mut reader, &item, (), &mut dev_out_writer);
                 }
             }
             for (ref_path, out_path) in [
