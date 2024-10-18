@@ -1209,6 +1209,28 @@ pub fn start_capture() -> Result<(), Error> {
     })
 }
 
+fn context_popover<F>(
+    name: &str,
+    description: &str,
+    action_fn: F
+) -> PopoverMenu
+    where F: Fn() -> Result<(), Error> + 'static
+{
+    let context_menu = Menu::new();
+    let menu_item = MenuItem::new(
+        Some(description),
+        Some(&format!("context.{name}")));
+    context_menu.append_item(&menu_item);
+    let popover = PopoverMenu::from_model(Some(&context_menu));
+    let context_actions = SimpleActionGroup::new();
+    let action = ActionEntry::builder(name)
+        .activate(move |_,_,_| display_error(action_fn()))
+        .build();
+    context_actions.add_action_entries([action]);
+    popover.insert_action_group("context", Some(&context_actions));
+    popover
+}
+
 fn traffic_context_menu(
     capture: &mut CaptureReader,
     item: &TrafficItem,
@@ -1219,37 +1241,20 @@ fn traffic_context_menu(
             let group = capture.group(*group_id)?;
             match group {
                 Group {
+                    endpoint_id,
                     content:
                         GroupContent::Data(data_range) |
                         GroupContent::Ambiguous(data_range, _),
                     is_start: true,
                     ..
-                } => {
-                    let context_menu = Menu::new();
-                    let save_payload_item = MenuItem::new(
-                        Some("Save data transfer payload..."),
-                        Some("context.save-data-transfer-payload"));
-                    context_menu.append_item(&save_payload_item);
-                    let popover =
-                        PopoverMenu::from_model(Some(&context_menu));
-                    let context_actions = SimpleActionGroup::new();
-                    let endpoint_id = group.endpoint_id;
-                    let save_payload_action =
-                        ActionEntry::builder("save-data-transfer-payload")
-                            .activate(move |_,_,_|
-                                display_error(
-                                    choose_data_transfer_payload_file(
-                                        endpoint_id,
-                                        data_range.clone())
-                                    )
-                                )
-                            .build();
-                    context_actions.add_action_entries(
-                        [save_payload_action]);
-                    popover.insert_action_group(
-                        "context", Some(&context_actions));
-                    Some(popover)
-                }
+                } => Some(
+                    context_popover(
+                        "save-data-transfer-payload",
+                        "Save data transfer payload to file...",
+                        move || choose_data_transfer_payload_file(
+                            endpoint_id, data_range.clone())
+                    )
+                ),
                 _ => None,
             }
         },
