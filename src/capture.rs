@@ -1189,12 +1189,12 @@ impl CaptureReader {
     fn control_transfer(&mut self,
                         address: DeviceAddr,
                         endpoint_id: EndpointId,
-                        range: Range<EndpointTransactionId>)
+                        range: &Range<EndpointTransactionId>)
         -> Result<ControlTransfer, Error>
     {
         let ep_traf = self.endpoint_traffic(endpoint_id)?;
-        let transaction_ids = ep_traf.transaction_ids.get_range(&range)?;
-        let data_range = ep_traf.transfer_data_range(&range)?;
+        let transaction_ids = ep_traf.transaction_ids.get_range(range)?;
+        let data_range = ep_traf.transfer_data_range(range)?;
         let data_length = ep_traf
             .transfer_data_length(&data_range)?
             .try_into()?;
@@ -1640,7 +1640,7 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                         "End of SOF groups"),
                     (Normal(Control), true) => {
                         let addr = endpoint.device_address();
-                        match self.control_transfer(addr, endpoint_id, range) {
+                        match self.control_transfer(addr, endpoint_id, &range) {
                             Ok(transfer) if detail => write!(s,
                                 "Control transfer on device {addr}\n{}",
                                 transfer.summary()),
