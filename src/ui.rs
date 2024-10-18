@@ -1,5 +1,7 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::io::Write;
+use std::ops::Range;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
@@ -72,6 +74,10 @@ use crate::capture::{
     create_capture,
     CaptureReader,
     CaptureWriter,
+    EndpointId,
+    EndpointDataEvent,
+    Group,
+    GroupContent,
     ItemSource,
     TrafficItem,
     TrafficViewMode::{self,*},
@@ -1204,10 +1210,51 @@ pub fn start_capture() -> Result<(), Error> {
 }
 
 fn traffic_context_menu(
-    _capture: &mut CaptureReader,
-    _item: &TrafficItem,
+    capture: &mut CaptureReader,
+    item: &TrafficItem,
 ) -> Result<Option<PopoverMenu>, Error> {
-    Ok(None)
+    use TrafficItem::*;
+    Ok(match item {
+        TransactionGroup(group_id) => {
+            let group = capture.group(*group_id)?;
+            match group {
+                Group {
+                    content:
+                        GroupContent::Data(data_range) |
+                        GroupContent::Ambiguous(data_range, _),
+                    is_start: true,
+                    ..
+                } => {
+                    let context_menu = Menu::new();
+                    let save_payload_item = MenuItem::new(
+                        Some("Save data transfer payload..."),
+                        Some("context.save-data-transfer-payload"));
+                    context_menu.append_item(&save_payload_item);
+                    let popover =
+                        PopoverMenu::from_model(Some(&context_menu));
+                    let context_actions = SimpleActionGroup::new();
+                    let endpoint_id = group.endpoint_id;
+                    let save_payload_action =
+                        ActionEntry::builder("save-data-transfer-payload")
+                            .activate(move |_,_,_|
+                                display_error(
+                                    choose_data_transfer_payload_file(
+                                        endpoint_id,
+                                        data_range.clone())
+                                    )
+                                )
+                            .build();
+                    context_actions.add_action_entries(
+                        [save_payload_action]);
+                    popover.insert_action_group(
+                        "context", Some(&context_actions));
+                    Some(popover)
+                }
+                _ => None,
+            }
+        },
+        _ => None
+    })
 }
 
 fn device_context_menu(
@@ -1215,6 +1262,47 @@ fn device_context_menu(
     _item: &DeviceItem,
 ) -> Result<Option<PopoverMenu>, Error> {
     Ok(None)
+}
+
+fn choose_data_transfer_payload_file(
+    endpoint_id: EndpointId,
+    data_range: Range<EndpointDataEvent>
+) -> Result<(), Error> {
+    use FileAction::Save;
+    choose_file(Save, "data transfer payload file", move |file|
+        save_data_transfer_payload(file, endpoint_id, data_range.clone()))
+}
+
+fn save_data_transfer_payload(
+    file: gio::File,
+    endpoint_id: EndpointId,
+    data_range: Range<EndpointDataEvent>
+) -> Result<(), Error> {
+    with_ui(|ui| {
+        let cap = &mut ui.capture;
+        let mut dest = file
+            .replace(None, false, FileCreateFlags::NONE, Cancellable::NONE)?
+            .into_write();
+        let mut length = 0;
+        for data_id in data_range {
+            let ep_traf = cap.endpoint_traffic(endpoint_id)?;
+            let ep_transaction_id = ep_traf.data_transactions.get(data_id)?;
+            let transaction_id = ep_traf.transaction_ids.get(ep_transaction_id)?;
+            let transaction = cap.transaction(transaction_id)?;
+            let transaction_bytes = cap.transaction_bytes(&transaction)?;
+            dest.write_all(&transaction_bytes)?;
+            length += transaction_bytes.len();
+        }
+        println!(
+            "Saved {} of data transfer payload to {}",
+            fmt_size(length as u64),
+            file.basename()
+                .map_or(
+                    "<unnamed>".to_string(),
+                    |path| path.to_string_lossy().to_string())
+        );
+        Ok(())
+    })
 }
 
 fn show_about() -> Result<(), Error> {

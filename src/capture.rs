@@ -1062,7 +1062,7 @@ impl CaptureReader {
         }
     }
 
-    fn transaction_bytes(&mut self, transaction: &Transaction)
+    pub fn transaction_bytes(&mut self, transaction: &Transaction)
         -> Result<Vec<u8>, Error>
     {
         let data_packet_id = transaction.data_packet_id
