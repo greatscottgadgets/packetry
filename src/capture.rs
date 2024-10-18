@@ -684,7 +684,7 @@ pub struct Transaction {
     split: Option<(SplitFields, PID)>,
     pub packet_id_range: Range<PacketId>,
     data_packet_id: Option<PacketId>,
-    payload_byte_range: Option<Range<Id<u8>>>,
+    pub payload_byte_range: Option<Range<Id<u8>>>,
 }
 
 #[derive(PartialEq)]

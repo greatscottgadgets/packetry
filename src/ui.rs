@@ -1275,6 +1275,22 @@ fn traffic_context_menu(
                 _ => None,
             }
         },
+        Transaction(_, transaction_id) => {
+            let transaction = capture.transaction(*transaction_id)?;
+            if let Some(range) = transaction.payload_byte_range {
+                let payload = capture.packet_data.get_range(&range)?;
+                Some(context_popover(
+                    "save-transaction-payload",
+                    "Save transaction payload to file...",
+                    move || choose_data_file(
+                        "transaction payload",
+                        payload.clone()
+                    )
+                ))
+            } else {
+                None
+            }
+        },
         _ => None
     })
 }
