@@ -837,6 +837,26 @@ impl Transaction {
     }
 }
 
+pub struct Group {
+    pub endpoint_id: EndpointId,
+    pub endpoint: Endpoint,
+    pub endpoint_type: EndpointType,
+    pub range: Range<EndpointTransactionId>,
+    pub count: u64,
+    pub content: GroupContent,
+    pub is_start: bool,
+}
+
+pub enum GroupContent {
+    Request(ControlTransfer),
+    Data(Range<EndpointDataEvent>),
+    Polling(u64),
+    Ambiguous(Range<EndpointDataEvent>, u64),
+    IncompleteRequest,
+    Framing,
+    Invalid,
+}
+
 struct Bytes<'src> {
     partial: bool,
     bytes: &'src [u8],
@@ -1186,6 +1206,66 @@ impl CaptureReader {
             data_packet_id,
             packet_id_range,
             payload_byte_range,
+        })
+    }
+
+    pub fn group(&mut self, group_id: GroupId) -> Result<Group, Error> {
+        let entry = self.group_index.get(group_id)?;
+        let endpoint_id = entry.endpoint_id();
+        let endpoint = self.endpoints.get(endpoint_id)?;
+        let device_id = endpoint.device_id();
+        let dev_data = self.device_data(device_id)?;
+        let ep_addr = endpoint.address();
+        let (endpoint_type, _) = dev_data.endpoint_details(ep_addr);
+        let range = self.group_range(&entry)?;
+        let count = range.len();
+        let content = match endpoint_type {
+            EndpointType::Invalid => GroupContent::Invalid,
+            EndpointType::Framing => GroupContent::Framing,
+            EndpointType::Normal(usb::EndpointType::Control) => {
+                let addr = endpoint.device_address();
+                match self.control_transfer(addr, endpoint_id, &range) {
+                    Ok(transfer) => GroupContent::Request(transfer),
+                    Err(_) => GroupContent::IncompleteRequest,
+                }
+            },
+            _ => {
+                let ep_group_id = entry.group_id();
+                let ep_traf = self.endpoint_traffic(endpoint_id)?;
+                let range = ep_traf.group_index.target_range(
+                    ep_group_id, ep_traf.transaction_ids.len())?;
+                let first_transaction_id =
+                    ep_traf.transaction_ids.get(range.start)?;
+                let first_transaction =
+                    self.transaction(first_transaction_id)?;
+                let count = if first_transaction.split.is_some() {
+                    (count + 1) / 2
+                } else {
+                    count
+                };
+                match first_transaction.result(endpoint_type) {
+                    TransactionResult::Success => {
+                        let ep_traf = self.endpoint_traffic(endpoint_id)?;
+                        let data_range = ep_traf.transfer_data_range(&range)?;
+                        GroupContent::Data(data_range)
+                    },
+                    TransactionResult::Ambiguous => {
+                        let ep_traf = self.endpoint_traffic(endpoint_id)?;
+                        let data_range = ep_traf.transfer_data_range(&range)?;
+                        GroupContent::Ambiguous(data_range, count)
+                    },
+                    TransactionResult::Failure => GroupContent::Polling(count),
+                }
+            }
+        };
+        Ok(Group {
+            endpoint_id,
+            endpoint,
+            endpoint_type,
+            range,
+            count,
+            content,
+            is_start: entry.is_start(),
         })
     }
 
@@ -1600,31 +1680,21 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                 s
             },
             TransactionGroup(group_id) => {
-                use EndpointType::*;
-                use usb::EndpointType::*;
-                use TransactionResult::*;
-                let entry = self.group_index.get(*group_id)?;
-                let endpoint_id = entry.endpoint_id();
-                let endpoint = self.endpoints.get(endpoint_id)?;
-                let device_id = endpoint.device_id();
-                let dev_data = self.device_data(device_id)?;
-                let ep_addr = endpoint.address();
-                let (ep_type, _) = dev_data.endpoint_details(ep_addr);
-                let range = self.group_range(&entry)?;
-                let count = range.len();
-                if detail && entry.is_start() {
-                    let ep_traf = self.endpoint_traffic(entry.endpoint_id())?;
-                    let start_ep_transaction_id =
-                        ep_traf.group_index.get(entry.group_id())?;
+                use GroupContent::*;
+                let group = self.group(*group_id)?;
+                if detail && group.is_start {
+                    let ep_traf =
+                        self.endpoint_traffic(group.endpoint_id)?;
+                    let start_ep_transaction_id = group.range.start;
                     let start_transaction_id =
                         ep_traf.transaction_ids.get(start_ep_transaction_id)?;
                     let start_packet_id =
                         self.transaction_index.get(start_transaction_id)?;
-                    if count == 1 {
+                    if group.count == 1 {
                         writeln!(s, "Transaction group with 1 transaction")?;
                     } else {
                         writeln!(s, "Transaction group with {} transactions",
-                            count)?;
+                            group.count)?;
                     }
                     writeln!(s, "Timestamp: {} ns from start of capture",
                         fmt_count(self.packet_time(start_packet_id)?))?;
@@ -1632,7 +1702,11 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                         start_transaction_id.value + 1,
                         start_packet_id.value + 1)?;
                 }
-                match (ep_type, entry.is_start()) {
+                let endpoint = &group.endpoint;
+                let endpoint_type = group.endpoint_type;
+                let addr = group.endpoint.device_address();
+                let count = group.count;
+                match (group.content, group.is_start) {
                     (Invalid, true) => write!(s,
                         "{count} invalid groups"),
                     (Invalid, false) => write!(s,
@@ -1641,82 +1715,56 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                         "{count} SOF groups"),
                     (Framing, false) => write!(s,
                         "End of SOF groups"),
-                    (Normal(Control), true) => {
-                        let addr = endpoint.device_address();
-                        match self.control_transfer(addr, endpoint_id, &range) {
-                            Ok(transfer) if detail => write!(s,
-                                "Control transfer on device {addr}\n{}",
-                                transfer.summary()),
-                            Ok(transfer) => write!(s,
-                                "{}", transfer.summary()),
-                            Err(_) => write!(s,
-                                "Incomplete control transfer on device {addr}")
-                        }
-                    },
-                    (Normal(Control), false) => {
-                        let addr = endpoint.device_address();
-                        write!(s, "End of control transfer on device {addr}")
-                    },
-                    (endpoint_type, starting) => {
-                        let ep_group_id = entry.group_id();
-                        let ep_traf = self.endpoint_traffic(endpoint_id)?;
-                        let range = ep_traf.group_index.target_range(
-                            ep_group_id, ep_traf.transaction_ids.len())?;
-                        let first_transaction_id =
-                            ep_traf.transaction_ids.get(range.start)?;
-                        let first_transaction =
-                            self.transaction(first_transaction_id)?;
-                        let ep_type_string =
-                            titlecase(&format!("{endpoint_type}"));
-                        let count = if first_transaction.split.is_some() {
-                            (count + 1) / 2
-                        } else {
-                            count
+                    (Request(transfer), true) if detail => write!(s,
+                        "Control transfer on device {addr}\n{}",
+                        transfer.summary()),
+                    (Request(transfer), true) => write!(s,
+                        "{}", transfer.summary()),
+                    (IncompleteRequest, true) => write!(s,
+                        "Incomplete control transfer on device {addr}"),
+                    (Request(_) | IncompleteRequest, false) => write!(s,
+                        "End of control transfer on device {addr}"),
+                    (Data(data_range), true) => {
+                        let ep_traf =
+                            self.endpoint_traffic(group.endpoint_id)?;
+                        let length =
+                            ep_traf.transfer_data_length(&data_range)?;
+                        let length_string = fmt_size(length);
+                        let max = if detail { 1024 } else { 100 };
+                        let display_length = min(length, max) as usize;
+                        let transfer_bytes = self.transfer_bytes(
+                            group.endpoint_id, &data_range, display_length)?;
+                        let display_bytes = Bytes {
+                            partial: length > display_length as u64,
+                            bytes: &transfer_bytes,
                         };
-                        match (first_transaction.result(ep_type), starting) {
-                            (Success, true) => {
-                                let ep_traf =
-                                    self.endpoint_traffic(endpoint_id)?;
-                                let data_range =
-                                    ep_traf.transfer_data_range(&range)?;
-                                let length =
-                                    ep_traf.transfer_data_length(&data_range)?;
-                                let length_string = fmt_size(length);
-                                let max = if detail { 1024 } else { 100 };
-                                let display_length = min(length, max) as usize;
-                                let transfer_bytes = self.transfer_bytes(
-                                    endpoint_id, &data_range, display_length)?;
-                                let display_bytes = Bytes {
-                                    partial: length > display_length as u64,
-                                    bytes: &transfer_bytes,
-                                };
-                                write!(s, "{ep_type_string} transfer ")?;
-                                write!(s, "of {length_string} ")?;
-                                write!(s, "on endpoint {endpoint}")?;
-                                if detail {
-                                    write!(s, "\nPayload: {display_bytes}")
-                                } else {
-                                    write!(s, ": {display_bytes}")
-                                }
-                            },
-                            (Success, false) => write!(s,
-                                "End of {endpoint_type} transfer on endpoint {endpoint}"),
-                            (Failure, true) => write!(s,
-                                "Polling {count} times for {endpoint_type} transfer on endpoint {endpoint}"),
-                            (Failure, false) => write!(s,
-                                "End polling for {endpoint_type} transfer on endpoint {endpoint}"),
-                            (Ambiguous, true) => {
-                                write!(s, "{count} ambiguous transactions on endpoint {endpoint}")?;
-                                if detail {
-                                    write!(s, "\nThe result of these transactions is ambiguous because the endpoint type is not known.")?;
-                                    write!(s, "\nTry starting the capture before this device is enumerated, so that its descriptors are captured.")?;
-                                }
-                                Ok(())
-                            },
-                            (Ambiguous, false) => write!(s,
-                                "End of ambiguous transactions."),
+                        let ep_type_string = titlecase(
+                            &format!("{endpoint_type}"));
+                        write!(s, "{ep_type_string} transfer ")?;
+                        write!(s, "of {length_string} ")?;
+                        write!(s, "on endpoint {endpoint}")?;
+                        if detail {
+                            write!(s, "\nPayload: {display_bytes}")
+                        } else {
+                            write!(s, ": {display_bytes}")
                         }
-                    }
+                    },
+                    (Data(_), false) => write!(s,
+                        "End of {endpoint_type} transfer on endpoint {endpoint}"),
+                    (Polling(count), true) => write!(s,
+                        "Polling {count} times for {endpoint_type} transfer on endpoint {endpoint}"),
+                    (Polling(_count), false) => write!(s,
+                        "End polling for {endpoint_type} transfer on endpoint {endpoint}"),
+                    (Ambiguous(_data_range, count), true) => {
+                        write!(s, "{count} ambiguous transactions on endpoint {endpoint}")?;
+                        if detail {
+                            write!(s, "\nThe result of these transactions is ambiguous because the endpoint type is not known.")?;
+                            write!(s, "\nTry starting the capture before this device is enumerated, so that its descriptors are captured.")?;
+                        }
+                        Ok(())
+                    },
+                    (Ambiguous(..), false) => write!(s,
+                        "End of ambiguous transactions."),
                 }?;
                 s
             }
@@ -2306,6 +2354,8 @@ pub mod prelude {
         TrafficItemId,
         TransactionId,
         GroupId,
+        Group,
+        GroupContent,
         GroupIndexEntry,
         INVALID_EP_NUM,
         FRAMING_EP_NUM,
