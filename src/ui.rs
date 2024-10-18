@@ -95,7 +95,7 @@ use crate::row_data::{
     ToGenericRowData,
     TrafficRowData,
     DeviceRowData};
-use crate::usb::{ControlTransfer, Descriptor};
+use crate::usb::Descriptor;
 use crate::util::{fmt_count, fmt_size};
 use crate::version::{version, version_info};
 
@@ -1266,8 +1266,10 @@ fn traffic_context_menu(
                     context_popover(
                         "save-control-transfer-payload",
                         "Save control transfer payload to file...",
-                        move || choose_control_transfer_payload_file(
-                            transfer.clone())
+                        move || choose_data_file(
+                            "control transfer payload",
+                            transfer.data.clone()
+                        )
                     )
                 ),
                 _ => None,
@@ -1296,7 +1298,7 @@ fn device_context_menu(
     Ok(Some(context_popover(
         "save-descriptor",
         "Save descriptor to file...",
-        move || choose_descriptor_file(descriptor_bytes.clone()))
+        move || choose_data_file("descriptor", descriptor_bytes.clone()))
     ))
 }
 
@@ -1341,48 +1343,26 @@ fn save_data_transfer_payload(
     })
 }
 
-fn choose_control_transfer_payload_file(
-    transfer: ControlTransfer,
+fn choose_data_file(
+    description: &'static str,
+    data: Vec<u8>,
 ) -> Result<(), Error> {
-    choose_file(FileAction::Save, "control transfer payload file",
-        move |file| save_control_transfer_payload(file, transfer.clone()))
+    choose_file(FileAction::Save, &format!("{description} file"),
+        move |file| save_data(file, description, data.clone()))
 }
 
-fn save_control_transfer_payload(
+fn save_data(
     file: gio::File,
-    transfer: ControlTransfer,
+    description: &'static str,
+    data: Vec<u8>,
 ) -> Result<(), Error> {
     let mut dest = file
         .replace(None, false, FileCreateFlags::NONE, Cancellable::NONE)?
         .into_write();
-    dest.write_all(&transfer.data)?;
+    dest.write_all(&data)?;
     println!(
-        "Saved {} of control transfer payload to {}",
-        fmt_size(transfer.data.len() as u64),
-        file.basename()
-            .map_or(
-                "<unnamed>".to_string(),
-                |path| path.to_string_lossy().to_string())
-    );
-    Ok(())
-}
-
-fn choose_descriptor_file(bytes: Vec<u8>) -> Result<(), Error> {
-    choose_file(FileAction::Save, "descriptor file",
-        move |file| save_descriptor(file, bytes.clone()))
-}
-
-fn save_descriptor(
-    file: gio::File,
-    bytes: Vec<u8>,
-) -> Result<(), Error> {
-    let mut dest = file
-        .replace(None, false, FileCreateFlags::NONE, Cancellable::NONE)?
-        .into_write();
-    dest.write_all(&bytes)?;
-    println!(
-        "Saved {} bytes of descriptor to {}",
-        fmt_size(bytes.len() as u64),
+        "Saved {} of {description} to {}",
+        fmt_size(data.len() as u64),
         file.basename()
             .map_or(
                 "<unnamed>".to_string(),
