@@ -95,7 +95,7 @@ use crate::row_data::{
     ToGenericRowData,
     TrafficRowData,
     DeviceRowData};
-use crate::usb::Descriptor;
+use crate::usb::{Descriptor, PacketFields, validate_packet};
 use crate::util::{fmt_count, fmt_size};
 use crate::version::{version, version_info};
 
@@ -1291,7 +1291,28 @@ fn traffic_context_menu(
                 None
             }
         },
-        _ => None
+        Packet(.., packet_id) => {
+            let packet = capture.packet(*packet_id)?;
+            let len = packet.len();
+            if validate_packet(&packet).is_ok() {
+                match PacketFields::from_packet(&packet) {
+                    PacketFields::Data(_) if len > 3 => {
+                        let payload = packet[1 .. len - 2].to_vec();
+                        Some(context_popover(
+                            "save-packet-payload",
+                            "Save packet payload to file...",
+                            move || choose_data_file(
+                                "packet payload",
+                                payload.clone()
+                            )
+                        ))
+                    },
+                    _ => None
+                }
+            } else {
+                None
+            }
+        },
     })
 }
 
