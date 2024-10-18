@@ -12,6 +12,7 @@ use std::{io::Read, net::TcpListener};
 use std::sync::Mutex;
 
 use anyhow::{Context as ErrorContext, Error, bail};
+use bytemuck::bytes_of;
 
 use gtk::gio::{
     self,
@@ -82,6 +83,7 @@ use crate::capture::{
     TrafficItem,
     TrafficViewMode::{self,*},
     DeviceItem,
+    DeviceItemContent,
     DeviceViewMode,
 };
 use crate::decoder::Decoder;
@@ -93,7 +95,7 @@ use crate::row_data::{
     ToGenericRowData,
     TrafficRowData,
     DeviceRowData};
-use crate::usb::ControlTransfer;
+use crate::usb::{ControlTransfer, Descriptor};
 use crate::util::{fmt_count, fmt_size};
 use crate::version::{version, version_info};
 
@@ -1277,9 +1279,25 @@ fn traffic_context_menu(
 
 fn device_context_menu(
     _capture: &mut CaptureReader,
-    _item: &DeviceItem,
+    item: &DeviceItem,
 ) -> Result<Option<PopoverMenu>, Error> {
-    Ok(None)
+    use DeviceItemContent::*;
+    use Descriptor::*;
+    let descriptor_bytes = match &item.content {
+        DeviceDescriptor(Some(desc)) => bytes_of(desc),
+        ConfigurationDescriptor(desc) => bytes_of(desc),
+        FunctionDescriptor(desc) => bytes_of(desc),
+        InterfaceDescriptor(desc) => bytes_of(desc),
+        EndpointDescriptor(desc) => bytes_of(desc),
+        OtherDescriptor(Other(_, bytes)) => bytes,
+        OtherDescriptor(Truncated(_, bytes)) => bytes,
+        _ => return Ok(None)
+    }.to_vec();
+    Ok(Some(context_popover(
+        "save-descriptor",
+        "Save descriptor to file...",
+        move || choose_descriptor_file(descriptor_bytes.clone()))
+    ))
 }
 
 fn choose_data_transfer_payload_file(
@@ -1349,6 +1367,29 @@ fn save_control_transfer_payload(
     Ok(())
 }
 
+fn choose_descriptor_file(bytes: Vec<u8>) -> Result<(), Error> {
+    choose_file(FileAction::Save, "descriptor file",
+        move |file| save_descriptor(file, bytes.clone()))
+}
+
+fn save_descriptor(
+    file: gio::File,
+    bytes: Vec<u8>,
+) -> Result<(), Error> {
+    let mut dest = file
+        .replace(None, false, FileCreateFlags::NONE, Cancellable::NONE)?
+        .into_write();
+    dest.write_all(&bytes)?;
+    println!(
+        "Saved {} bytes of descriptor to {}",
+        fmt_size(bytes.len() as u64),
+        file.basename()
+            .map_or(
+                "<unnamed>".to_string(),
+                |path| path.to_string_lossy().to_string())
+    );
+    Ok(())
+}
 
 fn show_about() -> Result<(), Error> {
     const LICENSE: &str = include_str!("../LICENSE");

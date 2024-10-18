@@ -266,10 +266,10 @@ impl TrafficViewMode {
 
 #[derive(Clone, Debug)]
 pub struct DeviceItem {
-    device_id: DeviceId,
-    version: DeviceVersion,
-    content: DeviceItemContent,
-    indent: u8,
+    pub device_id: DeviceId,
+    pub version: DeviceVersion,
+    pub content: DeviceItemContent,
+    pub indent: u8,
 }
 
 #[derive(Clone, Debug)]
