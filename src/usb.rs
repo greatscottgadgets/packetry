@@ -999,12 +999,14 @@ impl Configuration {
     }
 }
 
+#[derive(Clone)]
 pub enum ControlResult {
     Completed,
     Incomplete,
     Stalled,
 }
 
+#[derive(Clone)]
 pub struct ControlTransfer {
     pub address: DeviceAddr,
     pub fields: SetupFields,
