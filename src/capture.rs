@@ -14,7 +14,7 @@ use crate::compact_index::{compact_index, CompactWriter, CompactReader};
 use crate::rcu::SingleWriterRcu;
 use crate::vec_map::{Key, VecMap};
 use crate::usb::{self, prelude::*, validate_packet};
-use crate::util::{fmt_count, fmt_size};
+use crate::util::{fmt_count, fmt_size, titlecase};
 
 use anyhow::{Context, Error, bail};
 use arc_swap::{ArcSwap, ArcSwapOption};
@@ -370,9 +370,12 @@ pub enum EndpointType {
 
 impl std::fmt::Display for EndpointType {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        use EndpointType::*;
         match self {
-            EndpointType::Normal(usb_type) => write!(f, "{usb_type:?}"),
-            special_type => write!(f, "{special_type:?}"),
+            Normal(usb_type) => std::fmt::Display::fmt(&usb_type, f),
+            Unidentified => write!(f, "unidentified"),
+            Framing => write!(f, "framing"),
+            Invalid => write!(f, "invalid"),
         }
     }
 }
@@ -1663,8 +1666,8 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                             ep_traf.transaction_ids.get(range.start)?;
                         let first_transaction =
                             self.transaction(first_transaction_id)?;
-                        let ep_type_string = format!("{endpoint_type}");
-                        let ep_type_lower = ep_type_string.to_lowercase();
+                        let ep_type_string =
+                            titlecase(&format!("{endpoint_type}"));
                         let count = if first_transaction.split.is_some() {
                             (count + 1) / 2
                         } else {
@@ -1697,11 +1700,11 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                                 }
                             },
                             (Success, false) => write!(s,
-                                "End of {ep_type_lower} transfer on endpoint {endpoint}"),
+                                "End of {endpoint_type} transfer on endpoint {endpoint}"),
                             (Failure, true) => write!(s,
-                                "Polling {count} times for {ep_type_lower} transfer on endpoint {endpoint}"),
+                                "Polling {count} times for {endpoint_type} transfer on endpoint {endpoint}"),
                             (Failure, false) => write!(s,
-                                "End polling for {ep_type_lower} transfer on endpoint {endpoint}"),
+                                "End polling for {endpoint_type} transfer on endpoint {endpoint}"),
                             (Ambiguous, true) => {
                                 write!(s, "{count} ambiguous transactions on endpoint {endpoint}")?;
                                 if detail {
