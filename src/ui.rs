@@ -93,6 +93,7 @@ use crate::row_data::{
     ToGenericRowData,
     TrafficRowData,
     DeviceRowData};
+use crate::usb::ControlTransfer;
 use crate::util::{fmt_count, fmt_size};
 use crate::version::{version, version_info};
 
@@ -1255,6 +1256,18 @@ fn traffic_context_menu(
                             endpoint_id, data_range.clone())
                     )
                 ),
+                Group {
+                    content: GroupContent::Request(transfer),
+                    is_start: true,
+                    ..
+                } => Some(
+                    context_popover(
+                        "save-control-transfer-payload",
+                        "Save control transfer payload to file...",
+                        move || choose_control_transfer_payload_file(
+                            transfer.clone())
+                    )
+                ),
                 _ => None,
             }
         },
@@ -1309,6 +1322,33 @@ fn save_data_transfer_payload(
         Ok(())
     })
 }
+
+fn choose_control_transfer_payload_file(
+    transfer: ControlTransfer,
+) -> Result<(), Error> {
+    choose_file(FileAction::Save, "control transfer payload file",
+        move |file| save_control_transfer_payload(file, transfer.clone()))
+}
+
+fn save_control_transfer_payload(
+    file: gio::File,
+    transfer: ControlTransfer,
+) -> Result<(), Error> {
+    let mut dest = file
+        .replace(None, false, FileCreateFlags::NONE, Cancellable::NONE)?
+        .into_write();
+    dest.write_all(&transfer.data)?;
+    println!(
+        "Saved {} of control transfer payload to {}",
+        fmt_size(transfer.data.len() as u64),
+        file.basename()
+            .map_or(
+                "<unnamed>".to_string(),
+                |path| path.to_string_lossy().to_string())
+    );
+    Ok(())
+}
+
 
 fn show_about() -> Result<(), Error> {
     const LICENSE: &str = include_str!("../LICENSE");
