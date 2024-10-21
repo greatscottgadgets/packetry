@@ -12,9 +12,9 @@ struct EndpointData {
     device_id: DeviceId,
     address: EndpointAddr,
     writer: EndpointWriter,
-    early_start: Option<EndpointTransferId>,
-    active: Option<TransferState>,
-    ended: Option<EndpointTransferId>,
+    early_start: Option<EndpointGroupId>,
+    active: Option<GroupState>,
+    ended: Option<EndpointGroupId>,
     last_success: bool,
     setup: Option<SetupFields>,
     payload: Vec<u8>,
@@ -22,14 +22,14 @@ struct EndpointData {
     total_data: u64,
 }
 
-struct TransferState {
-    id: EndpointTransferId,
+struct GroupState {
+    id: EndpointGroupId,
     first: PID,
     last: Option<PID>,
 }
 
 #[derive(PartialEq, Eq)]
-enum TransferStatus {
+enum GroupStatus {
     Single,
     New,
     Continue,
@@ -271,13 +271,13 @@ enum TransactionSideEffect {
 }
 
 impl EndpointData {
-    fn transfer_status(&mut self,
-                       dev_data: &DeviceData,
-                       transaction: &mut TransactionState,
-                       success: bool,
-                       complete: bool)
-        -> Result<(TransferStatus, TransactionSideEffect), Error>
-    {
+    fn group_status(
+        &mut self,
+        dev_data: &DeviceData,
+        transaction: &mut TransactionState,
+        success: bool,
+        complete: bool
+    ) -> Result<(GroupStatus, TransactionSideEffect), Error> {
         use TransactionStyle::*;
         let (ep_type, ep_max) = dev_data.endpoint_details(self.address);
         let split_sc = match transaction.style {
@@ -302,7 +302,7 @@ impl EndpointData {
         use EndpointType::{Normal, Framing};
         use usb::EndpointType::*;
         use Direction::*;
-        use TransferStatus::*;
+        use GroupStatus::*;
         use StartComplete::*;
         use TransactionSideEffect::*;
         let mut effect = NoEffect;
@@ -321,7 +321,7 @@ impl EndpointData {
             },
 
             (Normal(Control),
-             Some(TransferState {
+             Some(GroupState {
                 last: Some(last), ..}), _) => match &self.setup
             {
                 // No control transaction is valid unless setup was done.
@@ -391,8 +391,8 @@ impl EndpointData {
             },
 
             // An IN or OUT transaction on a non-control endpoint,
-            // with no transfer in progress, starts a new transfer.
-            // This can be either an actual transfer, or a polling
+            // with no group in progress, starts a new group.
+            // This can be either a data transfer, or a polling
             // group used to collect NAKed transactions.
             (_, None, IN | OUT) => {
                 if success {
@@ -420,8 +420,8 @@ impl EndpointData {
             },
 
             // IN or OUT may then be repeated.
-            (_, Some(TransferState { first: IN,  ..}), IN) |
-            (_, Some(TransferState { first: OUT, ..}), OUT) => {
+            (_, Some(GroupState { first: IN,  ..}), IN) |
+            (_, Some(GroupState { first: OUT, ..}), OUT) => {
                 if success {
                     if let Some(data) = payload {
                         if split_sc == Some(Start) && next == OUT {
@@ -462,16 +462,16 @@ impl EndpointData {
             },
 
             // OUT may also be followed by PING.
-            (_, Some(TransferState { first: OUT, .. }), PING) => Retry,
+            (_, Some(GroupState { first: OUT, .. }), PING) => Retry,
 
-            // A SOF group starts a special transfer, unless
+            // A SOF transaction starts a singleton framing group, unless
             // one is already in progress.
             (Framing, None, SOF) => New,
 
-            // Further SOF groups continue this transfer.
+            // Further SOF transactions continue this singleton group.
             (Framing, _, SOF) => Continue,
 
-            // Any other case is not a valid part of a transfer.
+            // Any other case is not a valid part of a group.
             _ => Invalid
         };
         Ok((status, effect))
@@ -618,11 +618,11 @@ impl Decoder {
             New => {
                 self.transaction_end(false, false)?;
                 self.transaction_start(packet_id, pid, packet)?;
-                self.transfer_early_append()?;
+                self.group_early_append()?;
             },
             Continue => {
                 self.transaction_append(pid, packet)?;
-                self.transfer_early_append()?;
+                self.group_early_append()?;
             },
             Done | Retry | Fail => {
                 self.transaction_append(pid, packet)?;
@@ -677,8 +677,8 @@ impl Decoder {
             setup: None,
             payload: None,
         };
-        // Some packets start a new transfer immediately.
-        self.transfer_early_start(&mut state, pid)?;
+        // Some packets start a new group immediately.
+        self.group_early_start(&mut state, pid)?;
         self.transaction_state = Some(state);
         Ok(())
     }
@@ -716,7 +716,7 @@ impl Decoder {
     {
         if let Some(mut state) = self.transaction_state.take() {
             if state.endpoint_id.is_some() {
-                self.transfer_update(&mut state, success, complete)?;
+                self.group_update(&mut state, success, complete)?;
             }
         }
         Ok(())
@@ -762,16 +762,16 @@ impl Decoder {
         Ok(endpoint_id)
     }
 
-    fn transfer_early_start(&mut self,
-                            transaction: &mut TransactionState,
-                            start: PID)
-        -> Result<(), Error>
-    {
+    fn group_early_start(
+        &mut self,
+        transaction: &mut TransactionState,
+        start: PID
+    ) -> Result<(), Error> {
         use PID::*;
         let start_early = match (start, transaction.endpoint_id) {
-            // SETUP always starts a new transfer.
+            // SETUP always starts a new control transfer.
             (SETUP, Some(endpoint_id)) => Some(endpoint_id),
-            // Other PIDs always start a new transfer if there
+            // Other PIDs always start a new group if there
             // is no existing one on their endpoint.
             (IN | OUT | SOF | Malformed, Some(endpoint_id)) => {
                 let ep_data = &self.endpoint_data[endpoint_id];
@@ -786,20 +786,20 @@ impl Decoder {
         };
 
         if let Some(endpoint_id) = start_early {
-            let ep_transfer_id =
-                self.add_transfer(endpoint_id, transaction)?;
+            let ep_group_id =
+                self.add_group(endpoint_id, transaction)?;
             let ep_data = &mut self.endpoint_data[endpoint_id];
-            ep_data.early_start = Some(ep_transfer_id);
+            ep_data.early_start = Some(ep_group_id);
         }
 
         Ok(())
     }
 
-    fn transfer_early_append(&mut self) -> Result<(), Error> {
+    fn group_early_append(&mut self) -> Result<(), Error> {
         use PID::*;
         use TransactionStyle::*;
         // Decide whether to index this transaction now.
-        // If this transaction might change the transfer sequence
+        // If this transaction might change the group sequence
         // and we can't tell yet, we can't index it yet.
         let to_index = if let
             Some(TransactionState {
@@ -812,10 +812,10 @@ impl Decoder {
         {
             let ep_data = &self.endpoint_data[*endpoint_id];
             match ep_data.active {
-                // IN and OUT transfers may start and end depending on
+                // IN and OUT groups may start and end depending on
                 // transaction success and whether a packet is short.
-                Some(TransferState { first: IN | OUT, .. }) => None,
-                // In all other transfer states, it should be safe to index
+                Some(GroupState { first: IN | OUT, .. }) => None,
+                // In all other group states, it should be safe to index
                 // the current transaction immediately.
                 _ => Some((*endpoint_id, *transaction_id))
             }
@@ -835,63 +835,63 @@ impl Decoder {
         Ok(())
     }
 
-    fn transfer_update(&mut self,
-                       transaction: &mut TransactionState,
-                       success: bool,
-                       complete: bool)
-        -> Result<(), Error>
-    {
-        use TransferStatus::*;
+    fn group_update(
+        &mut self,
+        transaction: &mut TransactionState,
+        success: bool,
+        complete: bool
+    ) -> Result<(), Error> {
+        use GroupStatus::*;
         let endpoint_id = transaction.endpoint_id()?;
         let ep_data = &mut self.endpoint_data[endpoint_id];
         let dev_data = self.capture.device_data(ep_data.device_id)?;
-        let (status, effect) = ep_data.transfer_status(
+        let (status, effect) = ep_data.group_status(
             dev_data.as_ref(), transaction, success, complete)?;
         match status {
             Single => {
-                self.transfer_start(transaction, true)?;
-                self.transfer_end(transaction)?;
+                self.group_start(transaction, true)?;
+                self.group_end(transaction)?;
             },
             New => {
-                self.transfer_start(transaction, true)?;
+                self.group_start(transaction, true)?;
             },
             Continue => {
-                self.transfer_append(transaction, true)?;
+                self.group_append(transaction, true)?;
             },
             Retry => {
-                self.transfer_append(transaction, false)?;
+                self.group_append(transaction, false)?;
             },
             Done => {
-                self.transfer_append(transaction, true)?;
-                self.transfer_end(transaction)?;
+                self.group_append(transaction, true)?;
+                self.group_end(transaction)?;
             },
             Invalid => {
-                self.transfer_start(transaction, false)?;
-                self.transfer_end(transaction)?;
+                self.group_start(transaction, false)?;
+                self.group_end(transaction)?;
             }
         }
         self.endpoint_data[endpoint_id].apply_effect(transaction, effect)?;
         Ok(())
     }
 
-    fn transfer_start(&mut self,
-                      transaction: &mut TransactionState,
-                      done: bool)
-        -> Result<(), Error>
-    {
+    fn group_start(
+        &mut self,
+        transaction: &mut TransactionState,
+        done: bool
+    ) -> Result<(), Error> {
         let endpoint_id = transaction.endpoint_id()?;
         let ep_data = &mut self.endpoint_data[endpoint_id];
-        let ep_transfer_id =
-            if let Some(ep_transfer_id) = ep_data.early_start.take() {
-                ep_transfer_id
+        let ep_group_id =
+            if let Some(ep_group_id) = ep_data.early_start.take() {
+                ep_group_id
             } else {
-                self.add_transfer(endpoint_id, transaction)?
+                self.add_group(endpoint_id, transaction)?
             };
         let transaction_type = transaction.start_pid()?;
         let ep_data = &mut self.endpoint_data[endpoint_id];
         ep_data.active = Some(
-            TransferState {
-                id: ep_transfer_id,
+            GroupState {
+                id: ep_group_id,
                 first: transaction_type,
                 last: if done { Some(transaction_type) } else { None },
             }
@@ -900,55 +900,55 @@ impl Decoder {
         Ok(())
     }
 
-    fn transfer_append(&mut self,
-                       transaction: &mut TransactionState,
-                       done: bool)
-        -> Result<(), Error>
-    {
+    fn group_append(
+        &mut self,
+        transaction: &mut TransactionState,
+        done: bool
+    ) -> Result<(), Error> {
         let endpoint_id = transaction.endpoint_id()?;
         let ep_data = &mut self.endpoint_data[endpoint_id];
-        if let Some(transfer) = &mut ep_data.active {
+        if let Some(group) = &mut ep_data.active {
             if transaction.ep_transaction_id.is_none() {
                 let ep_transaction_id =
                     ep_data.writer.transaction_ids.push(transaction.id)?;
                 transaction.ep_transaction_id = Some(ep_transaction_id);
             }
             if done {
-                transfer.last = Some(transaction.start_pid()?);
+                group.last = Some(transaction.start_pid()?);
             }
         } else {
-            self.transfer_start(transaction, done)?;
+            self.group_start(transaction, done)?;
         }
         Ok(())
     }
 
-    fn transfer_end(&mut self, transaction: &TransactionState)
+    fn group_end(&mut self, transaction: &TransactionState)
         -> Result<(), Error>
     {
         let endpoint_id = transaction.endpoint_id()?;
         let ep_data = &mut self.endpoint_data[endpoint_id];
         ep_data.payload.clear();
-        if let Some(transfer) = ep_data.active.take() {
-            let ep_transfer_id = transfer.id;
-            ep_data.ended = Some(ep_transfer_id);
-            let transfer_end_id =
-                self.add_transfer_entry(endpoint_id, ep_transfer_id, false)?;
+        if let Some(group) = ep_data.active.take() {
+            let ep_group_id = group.id;
+            ep_data.ended = Some(ep_group_id);
+            let group_end_id =
+                self.add_group_entry(endpoint_id, ep_group_id, false)?;
             if self.last_item_endpoint != Some(endpoint_id) {
-                self.add_item(endpoint_id, transfer_end_id)?;
+                self.add_item(endpoint_id, group_end_id)?;
             }
         }
         Ok(())
     }
 
-    fn add_transfer(&mut self,
-                    endpoint_id: EndpointId,
-                    transaction: &mut TransactionState)
-        -> Result<EndpointTransferId, Error>
-    {
+    fn add_group(
+        &mut self,
+        endpoint_id: EndpointId,
+        transaction: &mut TransactionState
+    ) -> Result<EndpointGroupId, Error> {
         let ep_data = &mut self.endpoint_data[endpoint_id];
-        if let Some(transfer) = ep_data.active.take() {
-            ep_data.ended = Some(transfer.id);
-            self.add_transfer_entry(endpoint_id, transfer.id, false)?;
+        if let Some(group) = ep_data.active.take() {
+            ep_data.ended = Some(group.id);
+            self.add_group_entry(endpoint_id, group.id, false)?;
         }
         let ep_transaction_id =
             if let Some(ep_transaction_id) = transaction.ep_transaction_id {
@@ -961,33 +961,33 @@ impl Decoder {
                 ep_transaction_id
             };
         let ep_data = &mut self.endpoint_data[endpoint_id];
-        let ep_transfer_id =
-            ep_data.writer.transfer_index.push(ep_transaction_id)?;
-        let transfer_start_id =
-            self.add_transfer_entry(endpoint_id, ep_transfer_id, true)?;
-        self.add_item(endpoint_id, transfer_start_id)?;
-        Ok(ep_transfer_id)
+        let ep_group_id =
+            ep_data.writer.group_index.push(ep_transaction_id)?;
+        let group_start_id =
+            self.add_group_entry(endpoint_id, ep_group_id, true)?;
+        self.add_item(endpoint_id, group_start_id)?;
+        Ok(ep_group_id)
     }
 
-    fn add_transfer_entry(&mut self,
-                          endpoint_id: EndpointId,
-                          ep_transfer_id: EndpointTransferId,
-                          start: bool)
-        -> Result<TransferId, Error>
-    {
+    fn add_group_entry(
+        &mut self,
+        endpoint_id: EndpointId,
+        ep_group_id: EndpointGroupId,
+        start: bool
+    ) -> Result<GroupId, Error> {
         self.add_endpoint_state(endpoint_id, start)?;
-        let mut entry = TransferIndexEntry::default();
+        let mut entry = GroupIndexEntry::default();
         entry.set_endpoint_id(endpoint_id);
-        entry.set_transfer_id(ep_transfer_id);
+        entry.set_group_id(ep_group_id);
         entry.set_is_start(start);
-        let transfer_id = self.capture.transfer_index.push(&entry)?;
-        Ok(transfer_id)
+        let group_id = self.capture.group_index.push(&entry)?;
+        Ok(group_id)
     }
 
     fn add_endpoint_state(&mut self,
                           endpoint_id: EndpointId,
                           start: bool)
-        -> Result<TransferId, Error>
+        -> Result<GroupId, Error>
     {
         let endpoint_count = self.capture.endpoints.len() as usize;
         for i in 0..endpoint_count {
@@ -1011,21 +1011,21 @@ impl Decoder {
 
     fn add_item(&mut self,
                 item_endpoint_id: EndpointId,
-                transfer_id: TransferId)
+                group_id: GroupId)
         -> Result<TrafficItemId, Error>
     {
-        let item_id = self.capture.item_index.push(transfer_id)?;
+        let item_id = self.capture.item_index.push(group_id)?;
         self.last_item_endpoint = Some(item_endpoint_id);
 
-        // Look for ended transfers which still need to be linked to an item.
+        // Look for ended groups which still need to be linked to an item.
         let endpoint_count = self.capture.endpoints.len();
         for i in 0..endpoint_count {
             let endpoint_id = EndpointId::from(i);
             let ep_data = &mut self.endpoint_data[endpoint_id];
-            if let Some(ep_transfer_id) = ep_data.ended.take() {
-                // This transfer has ended and is not yet linked to an item.
+            if let Some(ep_group_id) = ep_data.ended.take() {
+                // This group has ended and is not yet linked to an item.
                 let end_id = ep_data.writer.end_index.push(item_id)?;
-                assert!(end_id == ep_transfer_id);
+                assert!(end_id == ep_group_id);
             }
         }
 

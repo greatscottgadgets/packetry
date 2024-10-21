@@ -1,5 +1,7 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::io::Write;
+use std::ops::Range;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
@@ -10,6 +12,7 @@ use std::{io::Read, net::TcpListener};
 use std::sync::Mutex;
 
 use anyhow::{Context as ErrorContext, Error, bail};
+use bytemuck::bytes_of;
 
 use gtk::gio::{
     self,
@@ -22,7 +25,7 @@ use gtk::gio::{
     MenuItem,
     SimpleActionGroup
 };
-use gtk::glib::{Object, SignalHandlerId};
+use gtk::glib::{Object, SignalHandlerId, clone};
 use gtk::{
     prelude::*,
     AboutDialog,
@@ -39,6 +42,7 @@ use gtk::{
     ColumnViewColumn,
     MenuButton,
     MessageType,
+    PopoverMenu,
     ProgressBar,
     ResponseType,
     ScrolledWindow,
@@ -71,10 +75,15 @@ use crate::capture::{
     create_capture,
     CaptureReader,
     CaptureWriter,
+    EndpointId,
+    EndpointDataEvent,
+    Group,
+    GroupContent,
     ItemSource,
     TrafficItem,
     TrafficViewMode::{self,*},
     DeviceItem,
+    DeviceItemContent,
     DeviceViewMode,
 };
 use crate::decoder::Decoder;
@@ -86,6 +95,7 @@ use crate::row_data::{
     ToGenericRowData,
     TrafficRowData,
     DeviceRowData};
+use crate::usb::{Descriptor, PacketFields, validate_packet};
 use crate::util::{fmt_count, fmt_size};
 use crate::version::{version, version_info};
 
@@ -384,8 +394,8 @@ pub fn activate(application: &Application) -> Result<(), Error> {
         .build();
 
     window.add_action_entries([
-        button_action!("open", open_button, choose_file(Load)),
-        button_action!("save", save_button, choose_file(Save)),
+        button_action!("open", open_button, choose_pcap_file(Load)),
+        button_action!("save", save_button, choose_pcap_file(Save)),
         button_action!("scan", scan_button, detect_hardware()),
         button_action!("capture", capture_button, start_capture()),
         button_action!("stop", stop_button, stop_operation()),
@@ -621,10 +631,14 @@ pub fn open(file: &gio::File) -> Result<(), Error> {
     start_pcap(FileAction::Load, file.clone())
 }
 
+type ContextFn<Item> =
+    fn(&mut CaptureReader, &Item) -> Result<Option<PopoverMenu>, Error>;
+
 fn create_view<Item, Model, RowData, ViewMode>(
         title: &str,
         capture: &CaptureReader,
         view_mode: ViewMode,
+        context_menu_fn: ContextFn<Item>,
         #[cfg(any(test, feature="record-ui-test"))]
         recording_args: (&Rc<RefCell<Recording>>, &'static str))
     -> (Model, SingleSelection, ColumnView)
@@ -653,14 +667,13 @@ fn create_view<Item, Model, RowData, ViewMode>(
                         .log_item_updated(name, position, summary)
             )
         )).expect("Failed to create model");
-    let bind_model = model.clone();
     let selection_model = SingleSelection::new(Some(model.clone()));
     let factory = SignalListItemFactory::new();
     factory.connect_setup(move |_, list_item| {
         let widget = ItemWidget::new();
         list_item.set_child(Some(&widget));
     });
-    let bind = move |list_item: &ListItem| -> Result<(), Error> {
+    let bind = clone!(@strong model => move |list_item: &ListItem| {
         let row = list_item
             .item()
             .context("ListItem has no item")?
@@ -677,29 +690,41 @@ fn create_view<Item, Model, RowData, ViewMode>(
         match row.node() {
             Ok(node_ref) => {
                 let node = node_ref.borrow();
-                let summary = bind_model.description(&node.item, false);
-                let connectors = bind_model.connectors(&node.item);
+                let item = node.item.clone();
+                let summary = model.description(&item, false);
+                let connectors = model.connectors(&item);
                 item_widget.set_text(summary);
                 item_widget.set_connectors(connectors);
                 expander.set_visible(node.expandable());
                 expander.set_expanded(node.expanded());
-                let model = bind_model.clone();
-                let node_ref = node_ref.clone();
-                let list_item = list_item.clone();
                 #[cfg(any(test,
                           feature="record-ui-test"))]
                 let recording = expand_rec.clone();
-                let handler = expander.connect_expanded_notify(move |expander| {
-                    let position = list_item.position();
-                    let expanded = expander.is_expanded();
-                    #[cfg(any(test,
-                              feature="record-ui-test"))]
-                    recording.borrow_mut().log_item_expanded(
-                        name, position, expanded);
-                    display_error(
-                        model.set_expanded(&node_ref, position, expanded))
-                });
+                let handler = expander.connect_expanded_notify(
+                    clone!(@strong model, @strong node_ref, @strong list_item =>
+                        move |expander| {
+                            let position = list_item.position();
+                            let expanded = expander.is_expanded();
+                            #[cfg(any(test,
+                                      feature="record-ui-test"))]
+                            recording.borrow_mut().log_item_expanded(
+                                name, position, expanded);
+                            display_error(
+                                model.set_expanded(&node_ref, position, expanded))
+                        }
+                    )
+                );
                 item_widget.set_handler(handler);
+                item_widget.set_context_menu_fn(move || {
+                    let mut popover = None;
+                    display_error(
+                        with_ui(|ui| {
+                            popover = context_menu_fn(&mut ui.capture, &item)?;
+                            Ok(())
+                        }).context("Failed to generate context menu")
+                    );
+                    popover
+                });
                 node.attach_widget(&item_widget);
             },
             Err(msg) => {
@@ -709,7 +734,7 @@ fn create_view<Item, Model, RowData, ViewMode>(
             }
         };
         Ok(())
-    };
+    });
     let unbind = move |list_item: &ListItem| {
         let row = list_item
             .item()
@@ -804,6 +829,7 @@ pub fn reset_capture() -> Result<CaptureWriter, Error> {
                     "Traffic",
                     &reader,
                     mode,
+                    traffic_context_menu,
                     #[cfg(any(test, feature="record-ui-test"))]
                     (&ui.recording, mode.log_name())
                 );
@@ -844,6 +870,7 @@ pub fn reset_capture() -> Result<CaptureWriter, Error> {
                 "Devices",
                 &reader,
                 (),
+                device_context_menu,
                 #[cfg(any(test, feature="record-ui-test"))]
                 (&ui.recording, "devices")
             );
@@ -938,20 +965,26 @@ pub fn update_view() -> Result<(), Error> {
     })
 }
 
-fn choose_file(action: FileAction) -> Result<(), Error> {
+fn choose_file<F>(
+    action: FileAction,
+    description: &str,
+    handler: F
+) -> Result<(), Error>
+    where F: Fn(gio::File) -> Result<(), Error> + 'static
+{
     use FileAction::*;
     let chooser = WINDOW.with(|cell| {
         let borrow = cell.borrow();
         let window = borrow.as_ref();
         match action {
             Load => gtk::FileChooserDialog::new(
-                Some("Open pcap file"),
+                Some(&format!("Open {description}")),
                 window,
                 gtk::FileChooserAction::Open,
                 &[("Open", gtk::ResponseType::Accept)]
             ),
             Save => gtk::FileChooserDialog::new(
-                Some("Save pcap file"),
+                Some(&format!("Save {description}")),
                 window,
                 gtk::FileChooserAction::Save,
                 &[("Save", gtk::ResponseType::Accept)]
@@ -961,13 +994,17 @@ fn choose_file(action: FileAction) -> Result<(), Error> {
     chooser.connect_response(move |dialog, response| {
         if response == gtk::ResponseType::Accept {
             if let Some(file) = dialog.file() {
-                display_error(start_pcap(action, file));
+                display_error(handler(file));
             }
             dialog.destroy();
         }
     });
     chooser.show();
     Ok(())
+}
+
+fn choose_pcap_file(action: FileAction) -> Result<(), Error> {
+    choose_file(action, "pcap file", move |file| start_pcap(action, file))
 }
 
 fn start_pcap(action: FileAction, file: gio::File) -> Result<(), Error> {
@@ -1173,6 +1210,202 @@ pub fn start_capture() -> Result<(), Error> {
             || display_error(update_view()));
         Ok(())
     })
+}
+
+fn context_popover<F>(
+    name: &str,
+    description: &str,
+    action_fn: F
+) -> PopoverMenu
+    where F: Fn() -> Result<(), Error> + 'static
+{
+    let context_menu = Menu::new();
+    let menu_item = MenuItem::new(
+        Some(description),
+        Some(&format!("context.{name}")));
+    context_menu.append_item(&menu_item);
+    let popover = PopoverMenu::from_model(Some(&context_menu));
+    let context_actions = SimpleActionGroup::new();
+    let action = ActionEntry::builder(name)
+        .activate(move |_,_,_| display_error(action_fn()))
+        .build();
+    context_actions.add_action_entries([action]);
+    popover.insert_action_group("context", Some(&context_actions));
+    popover
+}
+
+fn traffic_context_menu(
+    capture: &mut CaptureReader,
+    item: &TrafficItem,
+) -> Result<Option<PopoverMenu>, Error> {
+    use TrafficItem::*;
+    Ok(match item {
+        TransactionGroup(group_id) => {
+            let group = capture.group(*group_id)?;
+            match group {
+                Group {
+                    endpoint_id,
+                    content:
+                        GroupContent::Data(data_range) |
+                        GroupContent::Ambiguous(data_range, _),
+                    is_start: true,
+                    ..
+                } => Some(
+                    context_popover(
+                        "save-data-transfer-payload",
+                        "Save data transfer payload to file...",
+                        move || choose_data_transfer_payload_file(
+                            endpoint_id, data_range.clone())
+                    )
+                ),
+                Group {
+                    content: GroupContent::Request(transfer),
+                    is_start: true,
+                    ..
+                } => Some(
+                    context_popover(
+                        "save-control-transfer-payload",
+                        "Save control transfer payload to file...",
+                        move || choose_data_file(
+                            "control transfer payload",
+                            transfer.data.clone()
+                        )
+                    )
+                ),
+                _ => None,
+            }
+        },
+        Transaction(_, transaction_id) => {
+            let transaction = capture.transaction(*transaction_id)?;
+            if let Some(range) = transaction.payload_byte_range {
+                let payload = capture.packet_data.get_range(&range)?;
+                Some(context_popover(
+                    "save-transaction-payload",
+                    "Save transaction payload to file...",
+                    move || choose_data_file(
+                        "transaction payload",
+                        payload.clone()
+                    )
+                ))
+            } else {
+                None
+            }
+        },
+        Packet(.., packet_id) => {
+            let packet = capture.packet(*packet_id)?;
+            let len = packet.len();
+            if validate_packet(&packet).is_ok() {
+                match PacketFields::from_packet(&packet) {
+                    PacketFields::Data(_) if len > 3 => {
+                        let payload = packet[1 .. len - 2].to_vec();
+                        Some(context_popover(
+                            "save-packet-payload",
+                            "Save packet payload to file...",
+                            move || choose_data_file(
+                                "packet payload",
+                                payload.clone()
+                            )
+                        ))
+                    },
+                    _ => None
+                }
+            } else {
+                None
+            }
+        },
+    })
+}
+
+fn device_context_menu(
+    _capture: &mut CaptureReader,
+    item: &DeviceItem,
+) -> Result<Option<PopoverMenu>, Error> {
+    use DeviceItemContent::*;
+    use Descriptor::*;
+    let descriptor_bytes = match &item.content {
+        DeviceDescriptor(Some(desc)) => bytes_of(desc),
+        ConfigurationDescriptor(desc) => bytes_of(desc),
+        FunctionDescriptor(desc) => bytes_of(desc),
+        InterfaceDescriptor(desc) => bytes_of(desc),
+        EndpointDescriptor(desc) => bytes_of(desc),
+        OtherDescriptor(Other(_, bytes)) => bytes,
+        OtherDescriptor(Truncated(_, bytes)) => bytes,
+        _ => return Ok(None)
+    }.to_vec();
+    Ok(Some(context_popover(
+        "save-descriptor",
+        "Save descriptor to file...",
+        move || choose_data_file("descriptor", descriptor_bytes.clone()))
+    ))
+}
+
+fn choose_data_transfer_payload_file(
+    endpoint_id: EndpointId,
+    data_range: Range<EndpointDataEvent>
+) -> Result<(), Error> {
+    use FileAction::Save;
+    choose_file(Save, "data transfer payload file", move |file|
+        save_data_transfer_payload(file, endpoint_id, data_range.clone()))
+}
+
+fn save_data_transfer_payload(
+    file: gio::File,
+    endpoint_id: EndpointId,
+    data_range: Range<EndpointDataEvent>
+) -> Result<(), Error> {
+    with_ui(|ui| {
+        let cap = &mut ui.capture;
+        let mut dest = file
+            .replace(None, false, FileCreateFlags::NONE, Cancellable::NONE)?
+            .into_write();
+        let mut length = 0;
+        for data_id in data_range {
+            let ep_traf = cap.endpoint_traffic(endpoint_id)?;
+            let ep_transaction_id = ep_traf.data_transactions.get(data_id)?;
+            let transaction_id = ep_traf.transaction_ids.get(ep_transaction_id)?;
+            let transaction = cap.transaction(transaction_id)?;
+            let transaction_bytes = cap.transaction_bytes(&transaction)?;
+            dest.write_all(&transaction_bytes)?;
+            length += transaction_bytes.len();
+        }
+        println!(
+            "Saved {} of data transfer payload to {}",
+            fmt_size(length as u64),
+            file.basename()
+                .map_or(
+                    "<unnamed>".to_string(),
+                    |path| path.to_string_lossy().to_string())
+        );
+        Ok(())
+    })
+}
+
+fn choose_data_file(
+    description: &'static str,
+    data: Vec<u8>,
+) -> Result<(), Error> {
+    choose_file(FileAction::Save, &format!("{description} file"),
+        move |file| save_data(file, description, data.clone()))
+}
+
+fn save_data(
+    file: gio::File,
+    description: &'static str,
+    data: Vec<u8>,
+) -> Result<(), Error> {
+    let mut dest = file
+        .replace(None, false, FileCreateFlags::NONE, Cancellable::NONE)?
+        .into_write();
+    dest.write_all(&data)?;
+    println!(
+        "Saved {} of {description} to {}",
+        fmt_size(data.len() as u64),
+        file.basename()
+            .map_or(
+                "<unnamed>".to_string(),
+                |path| path.to_string_lossy().to_string())
+    );
+    Ok(())
 }
 
 fn show_about() -> Result<(), Error> {
