@@ -5,9 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-<!--
 ## [Unreleased]
--->
+
+### Added
+
+- Add keyboard shortcuts.
+- Add transaction-level and packet-level views of capture.
+- Update documentation for multiple traffic views.
+- Add backend API for USB capture devices.
+- Add support for iCE40-usbtrace capture device.
+- Display all descriptor types in device view.
+- Add connecting lines to test output.
+
+### Fixed
+
+- Fix handling of alternate interface settings.
+- Handle descriptors that are longer than defined in the specification.
+- Fix interpretation of isochronous transactions, including ambiguous cases.
+
 
 ## [0.2.2] - 2024-09-02
 
