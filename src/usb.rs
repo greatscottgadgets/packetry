@@ -451,7 +451,7 @@ impl StandardRequest {
                         SetDescriptor => "Setting",
                         _ => ""
                     },
-                    descriptor_type.description(None),
+                    descriptor_type.description(),
                     fields.value & 0xFF,
                     match (descriptor_type, fields.index) {
                         (DescriptorType::String, language) if language > 0 =>
@@ -488,28 +488,55 @@ fn language_name(code: u16) -> Option<String> {
     }
 }
 
-#[derive(Copy, Clone, Debug, FromPrimitive, PartialEq, Eq)]
-#[repr(u8)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum DescriptorType {
-    Invalid = 0x00,
-    Device = 0x01,
-    Configuration = 0x02,
-    String = 0x03,
-    Interface = 0x04,
-    Endpoint = 0x05,
-    DeviceQualifier = 0x06,
-    OtherSpeedConfiguration = 0x07,
-    InterfacePower = 0x08,
-    OnTheGo = 0x09,
-    Debug = 0x0A,
-    InterfaceAssociation = 0x0B,
-    BinaryObjectStore = 0x0F,
-    DeviceCapability = 0x10,
-    #[default]
-    Unknown = 0xFF,
+    Invalid,
+    Device,
+    Configuration,
+    String,
+    Interface,
+    Endpoint,
+    DeviceQualifier,
+    OtherSpeedConfiguration,
+    InterfacePower,
+    OnTheGo,
+    Debug,
+    InterfaceAssociation,
+    BinaryObjectStore,
+    DeviceCapability,
+    UnknownStandard(u8),
+    Class(u8),
+    Custom(u8),
+    Reserved(u8),
+    Unknown,
 }
 
 impl DescriptorType {
+    pub fn from(code: u8) -> DescriptorType {
+        use DescriptorType::*;
+        #[allow(clippy::match_overlapping_arm)]
+        match code {
+            0x00 => Invalid,
+            0x01 => Device,
+            0x02 => Configuration,
+            0x03 => String,
+            0x04 => Interface,
+            0x05 => Endpoint,
+            0x06 => DeviceQualifier,
+            0x07 => OtherSpeedConfiguration,
+            0x08 => InterfacePower,
+            0x09 => OnTheGo,
+            0x0A => Debug,
+            0x0B => InterfaceAssociation,
+            0x0F => BinaryObjectStore,
+            0x10 => DeviceCapability,
+            0x00..=0x1F => UnknownStandard(code),
+            0x20..=0x3F => Class(code),
+            0x40..=0x5F => Custom(code),
+            0x60..=0xFF => Reserved(code),
+        }
+    }
+
     fn expected_length(&self) -> Option<usize> {
         use DescriptorType::*;
         match self {
@@ -528,7 +555,7 @@ impl DescriptorType {
         }
     }
 
-    fn description(&self, bytes: Option<&[u8]>) -> String {
+    fn description(&self) -> String {
         use DescriptorType::*;
         format!("{} descriptor", match self {
             Invalid => "invalid",
@@ -545,18 +572,15 @@ impl DescriptorType {
             InterfaceAssociation => "interface association",
             BinaryObjectStore => "BOS",
             DeviceCapability => "device capability",
-            Unknown => if let Some(type_code) = bytes.and_then(|b| b.get(1)) {
-                let type_group = match type_code {
-                    0x00..=0x1F => "standard",
-                    0x20..=0x3F => "class",
-                    0x40..=0x5F => "custom",
-                    0x60..=0xFF => "reserved",
-                };
-                return format!("{} descriptor 0x{:02X}",
-                               type_group, type_code)
-            } else {
-                "unknown"
-            }
+            UnknownStandard(code) =>
+                return format!("standard descriptor 0x{:02X}", code),
+            Class(code) =>
+                return format!("class descriptor 0x{:02X}", code),
+            Custom(code) =>
+                return format!("custom descriptor 0x{:02X}", code),
+            Reserved(code) =>
+                return format!("reserved descriptor 0x{:02X}", code),
+            Unknown => "unknown",
         })
     }
 }
@@ -821,9 +845,9 @@ impl Descriptor {
             InterfaceAssociation(_) =>
                 "Interface association descriptor".to_string(),
             Other(desc_type, bytes) => format!("{}, {} bytes",
-                titlecase(&desc_type.description(Some(bytes))), bytes.len()),
+                titlecase(&desc_type.description()), bytes.len()),
             Truncated(desc_type, bytes) => {
-                let description = desc_type.description(Some(bytes));
+                let description = desc_type.description();
                 let desc_length = bytes[0] as usize;
                 let length = bytes.len();
                 let expected = desc_type
