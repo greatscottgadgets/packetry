@@ -146,6 +146,9 @@ byte_type!(EndpointField);
 byte_type!(EndpointAddr);
 byte_type!(EndpointAttr);
 byte_type!(IfaceAssocField);
+byte_type!(ClassId);
+byte_type!(SubclassId);
+byte_type!(ProtocolId);
 
 pub type InterfaceKey = (InterfaceNum, InterfaceAlt);
 
@@ -170,6 +173,38 @@ impl EndpointAddr {
 impl EndpointAttr {
     pub fn endpoint_type(&self) -> EndpointType {
         EndpointType::from(self.0 & 0x03)
+    }
+}
+
+impl ClassId {
+    pub fn name(self) -> &'static str {
+        usb_ids::Class::from_id(self.0)
+            .map_or("Unknown", usb_ids::Class::name)
+    }
+
+    fn description(self) -> String {
+        match usb_ids::Class::from_id(self.0) {
+            Some(c) => format!("0x{:02X}: {}", self.0, c.name()),
+            None    => format!("0x{:02X}", self.0)
+        }
+    }
+}
+
+impl SubclassId {
+    fn description(self, class: ClassId) -> String {
+        match usb_ids::SubClass::from_cid_scid(class.0, self.0) {
+            Some(s) => format!("0x{:02X}: {}", self.0, s.name()),
+            None    => format!("0x{:02X}", self.0)
+        }
+    }
+}
+
+impl ProtocolId {
+    fn description(self, class: ClassId, subclass: SubclassId) -> String {
+        match usb_ids::Protocol::from_cid_scid_pid(class.0, subclass.0, self.0) {
+            Some(p) => format!("0x{:02X}: {}", self.0, p.name()),
+            None    => format!("0x{:02X}", self.0)
+        }
     }
 }
 
@@ -554,9 +589,9 @@ pub struct DeviceDescriptor {
     pub length: u8,
     pub descriptor_type: u8,
     pub usb_version: BCDVersion,
-    pub device_class: u8,
-    pub device_subclass: u8,
-    pub device_protocol: u8,
+    pub device_class: ClassId,
+    pub device_subclass: SubclassId,
+    pub device_protocol: ProtocolId,
     pub max_packet_size_0: u8,
     pub vendor_id: u16,
     pub product_id: u16,
@@ -581,18 +616,12 @@ impl DeviceDescriptor {
         0  => format!("Length: {} bytes", self.length),
         1  => format!("Type: 0x{:02X}", self.descriptor_type),
         2  => format!("USB Version: {}", self.usb_version),
-        3  => format!("Class: 0x{:02X}{}", self.device_class,
-            usb_ids::Class::from_id(self.device_class)
-                .map_or_else(String::new, |c| format!(": {}", c.name()))),
-        4  => format!("Subclass: 0x{:02X}{}", self.device_subclass,
-            usb_ids::SubClass::from_cid_scid(
-                    self.device_class, self.device_subclass)
-                .map_or_else(String::new, |s| format!(": {}", s.name()))),
-        5  => format!("Protocol: 0x{:02X}{}", self.device_protocol,
-            usb_ids::Protocol::from_cid_scid_pid(
-                    self.device_class, self.device_subclass,
-                    self.device_protocol)
-                .map_or_else(String::new, |p| format!(": {}", p.name()))),
+        3  => format!("Class: {}", self.device_class
+                      .description()),
+        4  => format!("Subclass: {}", self.device_subclass
+                      .description(self.device_class)),
+        5  => format!("Protocol: {}", self.device_protocol
+                      .description(self.device_class, self.device_subclass)),
         6  => format!("Max EP0 packet size: {} bytes", self.max_packet_size_0),
         7  => format!("Vendor ID: 0x{:04X}{}", self.vendor_id,
             usb_ids::Vendor::from_id(self.vendor_id)
@@ -658,9 +687,9 @@ pub struct InterfaceAssociationDescriptor {
     pub descriptor_type: u8,
     pub first_interface: u8,
     pub interface_count: u8,
-    pub function_class: u8,
-    pub function_subclass: u8,
-    pub function_protocol: u8,
+    pub function_class: ClassId,
+    pub function_subclass: SubclassId,
+    pub function_protocol: ProtocolId,
     pub function: u8,
 }
 
@@ -673,18 +702,12 @@ impl InterfaceAssociationDescriptor {
         1 => format!("Type: 0x{:02X}", self.descriptor_type),
         2 => format!("First interface: {}", self.first_interface),
         3 => format!("Interface count: {}", self.interface_count),
-        4 => format!("Function class: 0x{:02X}{}", self.function_class,
-            usb_ids::Class::from_id(self.function_class)
-                .map_or_else(String::new, |c| format!(": {}", c.name()))),
-        5  => format!("Function subclass: 0x{:02X}{}", self.function_subclass,
-            usb_ids::SubClass::from_cid_scid(
-                    self.function_class, self.function_subclass)
-                .map_or_else(String::new, |s| format!(": {}", s.name()))),
-        6  => format!("Function protocol: 0x{:02X}{}", self.function_protocol,
-            usb_ids::Protocol::from_cid_scid_pid(
-                    self.function_class, self.function_subclass,
-                    self.function_protocol)
-                .map_or_else(String::new, |p| format!(": {}", p.name()))),
+        4 => format!("Function class: {}", self.function_class
+                     .description()),
+        5 => format!("Function subclass: {}", self.function_subclass
+                     .description(self.function_class)),
+        6 => format!("Function protocol: {}", self.function_protocol
+                     .description(self.function_class, self.function_subclass)),
         7 => format!("Function number: {}", self.function),
         i => format!("Error: Invalid field ID {i}")
         }
@@ -709,9 +732,9 @@ pub struct InterfaceDescriptor {
     pub interface_number: InterfaceNum,
     pub alternate_setting: InterfaceAlt,
     pub num_endpoints: u8,
-    pub interface_class: u8,
-    pub interface_subclass: u8,
-    pub interface_protocol: u8,
+    pub interface_class: ClassId,
+    pub interface_subclass: SubclassId,
+    pub interface_protocol: ProtocolId,
     pub interface_str_id: StringId,
 }
 
@@ -727,18 +750,12 @@ impl InterfaceDescriptor {
         2 => format!("Interface number: {}", self.interface_number),
         3 => format!("Alternate setting: {}", self.alternate_setting),
         4 => format!("Number of endpoints: {}", self.num_endpoints),
-        5 => format!("Class: 0x{:02X}{}", self.interface_class,
-            usb_ids::Class::from_id(self.interface_class)
-                .map_or_else(String::new, |c| format!(": {}", c.name()))),
-        6  => format!("Subclass: 0x{:02X}{}", self.interface_subclass,
-            usb_ids::SubClass::from_cid_scid(
-                    self.interface_class, self.interface_subclass)
-                .map_or_else(String::new, |s| format!(": {}", s.name()))),
-        7  => format!("Protocol: 0x{:02X}{}", self.interface_protocol,
-            usb_ids::Protocol::from_cid_scid_pid(
-                    self.interface_class, self.interface_subclass,
-                    self.interface_protocol)
-                .map_or_else(String::new, |p| format!(": {}", p.name()))),
+        5 => format!("Class: {}", self.interface_class
+                     .description()),
+        6 => format!("Subclass: {}", self.interface_subclass
+                     .description(self.interface_class)),
+        7 => format!("Protocol: {}", self.interface_protocol
+                     .description(self.interface_class, self.interface_subclass)),
         8 => format!("Interface string: {}",
                       fmt_str_id(strings, self.interface_str_id)),
         i => format!("Error: Invalid field ID {i}")

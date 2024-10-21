@@ -21,7 +21,6 @@ use arc_swap::{ArcSwap, ArcSwapOption};
 use bytemuck_derive::{Pod, Zeroable};
 use itertools::Itertools;
 use num_enum::{IntoPrimitive, FromPrimitive};
-use usb_ids::FromId;
 
 // Use 2MB block size for packet data, which is a large page size on x86_64.
 const PACKET_DATA_BLOCK_SIZE: usize = 0x200000;
@@ -2156,8 +2155,7 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
             Function(_conf, desc) => {
                 format!("Function {}: {}",
                     desc.function,
-                    usb_ids::Class::from_id(desc.function_class)
-                        .map_or("Unknown", |c| c.name())
+                    desc.function_class.name()
                 )
             },
             FunctionDescriptor(_) =>
@@ -2165,8 +2163,7 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
             FunctionDescriptorField(desc, field) => desc.field_text(*field),
             Interface(_conf, desc) => {
                 let num = desc.interface_number;
-                let class = usb_ids::Class::from_id(desc.interface_class)
-                    .map_or("Unknown", |c| c.name());
+                let class = desc.interface_class.name();
                 match desc.alternate_setting {
                     InterfaceAlt(0) => format!(
                         "Interface {num}: {class}"),
