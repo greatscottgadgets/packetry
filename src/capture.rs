@@ -1987,9 +1987,9 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
     {
         use DeviceItemContent::*;
         let data = self.device_data(parent.device_id)?;
-        let content = match parent.content {
+        let content = match &parent.content {
             Device(desc_opt) => match index {
-                0 => DeviceDescriptor(desc_opt),
+                0 => DeviceDescriptor(*desc_opt),
                 n => {
                     let conf = ConfigNum(n.try_into()?);
                     let config = data.configuration(conf)?;
@@ -2002,27 +2002,27 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
             },
             DeviceDescriptor(desc_opt) => match desc_opt {
                 Some(desc) =>
-                    DeviceDescriptorField(desc,
+                    DeviceDescriptorField(*desc,
                         DeviceField(index.try_into()?)),
                 None => bail!("Device descriptor fields not available")
             },
             Configuration(conf, desc, class) => {
-                let config = data.configuration(conf)?;
+                let config = data.configuration(*conf)?;
                 let other_count = config.other_descriptors.len();
                 let func_count = config.functions.len();
                 match index.try_into()? {
-                    0 => ConfigurationDescriptor(desc),
+                    0 => ConfigurationDescriptor(*desc),
                     n if n < 1 + other_count =>
                         OtherDescriptor(
                             config
                                 .other_descriptor(n - 1)?
                                 .clone(),
-                            class),
+                            *class),
                     n if n < 1 + other_count + func_count =>
-                        Function(conf, config
+                        Function(*conf, config
                             .function(n - 1 - other_count)?
                             .descriptor),
-                    n => Interface(conf, config
+                    n => Interface(*conf, config
                             .unassociated_interfaces()
                             .nth(n - 1 - other_count - func_count)
                             .context("Failed to find unassociated interface")?
@@ -2030,29 +2030,29 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                 }
             },
             ConfigurationDescriptor(desc) =>
-                ConfigurationDescriptorField(desc,
+                ConfigurationDescriptorField(*desc,
                     ConfigField(index.try_into()?)),
             Function(conf, desc) => {
-                let config = data.configuration(conf)?;
+                let config = data.configuration(*conf)?;
                 match index.try_into()? {
-                    0 => FunctionDescriptor(desc),
-                    n => match config.associated_interfaces(&desc).nth(n - 1) {
+                    0 => FunctionDescriptor(*desc),
+                    n => match config.associated_interfaces(desc).nth(n - 1) {
                         Some(interface) =>
-                            Interface(conf, interface.descriptor),
+                            Interface(*conf, interface.descriptor),
                         None => bail!(
                             "Function has no interface with index {n}")
                     }
                 }
             },
             FunctionDescriptor(desc) =>
-                FunctionDescriptorField(desc,
+                FunctionDescriptorField(*desc,
                     IfaceAssocField(index.try_into()?)),
             Interface(conf, if_desc) => {
-                let config = data.configuration(conf)?;
+                let config = data.configuration(*conf)?;
                 let interface = config.interface(if_desc.key())?;
                 let desc_count = interface.other_descriptors.len();
                 match index.try_into()? {
-                    0 => InterfaceDescriptor(if_desc),
+                    0 => InterfaceDescriptor(*if_desc),
                     n if n < 1 + desc_count => {
                         let desc = interface.other_descriptor(n - 1)?.clone();
                         OtherDescriptor(desc,
@@ -2060,14 +2060,14 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                     },
                     n => {
                         let ep_num = (n - 1 - desc_count).try_into()?;
-                        Endpoint(conf, if_desc.key(), ep_num)
+                        Endpoint(*conf, if_desc.key(), ep_num)
                     }
                 }
             },
             Endpoint(conf, if_key, ep_num) => {
-                let config = data.configuration(conf)?;
-                let interface = config.interface(if_key)?;
-                let endpoint = interface.endpoint(ep_num)?;
+                let config = data.configuration(*conf)?;
+                let interface = config.interface(*if_key)?;
+                let endpoint = interface.endpoint(*ep_num)?;
                 match index.try_into()? {
                     0 => EndpointDescriptor(endpoint.descriptor),
                     n => OtherDescriptor(
@@ -2080,10 +2080,10 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                 }
             },
             InterfaceDescriptor(desc) =>
-                InterfaceDescriptorField(desc,
+                InterfaceDescriptorField(*desc,
                     InterfaceField(index.try_into()?)),
             EndpointDescriptor(desc) =>
-                EndpointDescriptorField(desc,
+                EndpointDescriptorField(*desc,
                     EndpointField(index.try_into()?)),
             _ => bail!("This device item type cannot have children")
         };
@@ -2108,7 +2108,7 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                  self.devices.len().saturating_sub(1) as usize),
             Some(item) => {
                 let data = self.device_data(item.device_id)?;
-                match item.content {
+                match &item.content {
                     Device(_) => {
                         let count = data.configurations.load().len();
                         (Ongoing, if count == 0 { 1 } else { count })
@@ -2120,7 +2120,7 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                             None => (Ongoing, 0),
                         },
                     Configuration(conf, ..) => {
-                        let config = data.configuration(conf)?;
+                        let config = data.configuration(*conf)?;
                         (Ongoing,
                          1 + config.other_descriptors.len()
                            + config.functions.len()
@@ -2129,24 +2129,24 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                     ConfigurationDescriptor(_) =>
                         (Ongoing, usb::ConfigDescriptor::NUM_FIELDS),
                     Function(conf, desc) => {
-                        let config = data.configuration(conf)?;
-                        let interfaces = config.associated_interfaces(&desc);
+                        let config = data.configuration(*conf)?;
+                        let interfaces = config.associated_interfaces(desc);
                         (Complete, 1 + interfaces.count())
                     }
                     FunctionDescriptor(_) =>
                         (Complete,
                          usb::InterfaceAssociationDescriptor::NUM_FIELDS),
                     Interface(conf, desc) => {
-                        let config = data.configuration(conf)?;
+                        let config = data.configuration(*conf)?;
                         let interface = config.interface(desc.key())?;
                         (Ongoing,
                          1 + interface.endpoints.len()
                            + interface.other_descriptors.len())
                     },
                     Endpoint(conf, key, ep_num) => {
-                        let config = data.configuration(conf)?;
-                        let interface = config.interface(key)?;
-                        let endpoint = interface.endpoint(ep_num)?;
+                        let config = data.configuration(*conf)?;
+                        let interface = config.interface(*key)?;
+                        let endpoint = interface.endpoint(*ep_num)?;
                         (Complete, 1 + endpoint.other_descriptors.len())
                     }
                     InterfaceDescriptor(_) =>
