@@ -4246,7 +4246,7 @@
  │        ├── IN packet on 2.0, CRC 15
  │        ├── DATA1 packet with CRC 0000 and no data
  │        └── ACK packet
- │  ○── Getting class descriptor 0x22 #0 for interface 2.2, reading 144 bytes
+ │  ○── Getting HID report descriptor #0 for interface 2.2, reading 144 bytes
  │  ├──── SETUP transaction on 2.0 with 8 data bytes, ACK: [81, 06, 00, 22, 02, 00, 90, 00]
  │  │     ├── SETUP packet on 2.0, CRC 15
  │  │     ├── DATA0 packet with CRC E785 and 8 data bytes: [81, 06, 00, 22, 02, 00, 90, 00]

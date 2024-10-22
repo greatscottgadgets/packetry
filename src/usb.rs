@@ -425,7 +425,11 @@ pub enum StandardRequest {
 
 #[allow(clippy::useless_format)]
 impl StandardRequest {
-    pub fn description(&self, fields: &SetupFields) -> String {
+    pub fn description(
+        &self,
+        fields: &SetupFields,
+        recipient_class: Option<ClassId>,
+    ) -> String {
         use StandardRequest::*;
         match self {
             GetStatus => format!("Getting status"),
@@ -451,7 +455,12 @@ impl StandardRequest {
                         SetDescriptor => "Setting",
                         _ => ""
                     },
-                    descriptor_type.description(),
+                    match recipient_class {
+                        Some(class) =>
+                            descriptor_type.description_with_class(class),
+                        None =>
+                            descriptor_type.description(),
+                    },
                     fields.value & 0xFF,
                     match (descriptor_type, fields.index) {
                         (DescriptorType::String, language) if language > 0 =>
@@ -588,6 +597,7 @@ impl DescriptorType {
         if let (DescriptorType::Class(code), ClassId(class)) = (self, class) {
             let description = match (class, code) {
                 (0x03, 0x21) => "HID descriptor",
+                (0x03, 0x22) => "HID report descriptor",
                 _ => return self.description()
             };
             description.to_string()
@@ -1070,6 +1080,7 @@ pub struct ControlTransfer {
     pub fields: SetupFields,
     pub data: Vec<u8>,
     pub result: ControlResult,
+    pub recipient_class: Option<ClassId>,
 }
 
 impl ControlTransfer {
@@ -1088,7 +1099,8 @@ impl ControlTransfer {
         let mut parts = vec![format!(
             "{} {}",
             match request_type {
-                RequestType::Standard => std_req.description(&self.fields),
+                RequestType::Standard => std_req.description(
+                    &self.fields, self.recipient_class),
                 _ => format!(
                     "{:?} request #{}, index {}, value {}",
                     request_type, request,

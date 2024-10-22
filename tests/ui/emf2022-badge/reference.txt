@@ -30,7 +30,7 @@ At traffic-hierarchical row 0:
 + Getting string descriptor #5, language 0x0409 (English/US) for device 2, reading 24 of 255 requested bytes: 'TiDAL badge'
 + Getting string descriptor #3, language 0x0409 (English/US) for device 2, reading 14 of 255 requested bytes: '123456'
 + Class request #10, index 0, value 0 for interface 2.2
-+ Getting class descriptor 0x22 #0 for interface 2.2, reading 144 bytes
++ Getting HID report descriptor #0 for interface 2.2, reading 144 bytes
 + Class request #9, index 0, value 513 for interface 2.2, writing 2 bytes
 + Polling 194 times for interrupt transfer on endpoint 2.3 IN
 At traffic-transactions row 0:
