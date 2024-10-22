@@ -146,6 +146,7 @@ byte_type!(EndpointField);
 byte_type!(EndpointAddr);
 byte_type!(EndpointAttr);
 byte_type!(IfaceAssocField);
+byte_type!(HidField);
 byte_type!(ClassId);
 byte_type!(SubclassId);
 byte_type!(ProtocolId);
@@ -846,6 +847,59 @@ impl EndpointDescriptor {
     pub const NUM_FIELDS: usize = 6;
 }
 
+#[derive(Clone, Debug)]
+pub struct HidDescriptor {
+    pub length: u8,
+    pub descriptor_type: u8,
+    pub hid_version: BCDVersion,
+    pub country_code: u8,
+    pub available_descriptors: Vec<(DescriptorType, u16)>
+}
+
+impl HidDescriptor {
+    pub fn from(bytes: &[u8]) -> Option<HidDescriptor> {
+        // A valid HID descriptor has at least 9 bytes.
+        if bytes.len() < 9 {
+            return None
+        }
+        // It must list at least one descriptor.
+        let num_descriptors = bytes[5];
+        if num_descriptors == 0 {
+            return None
+        }
+        // There must be bytes for the number of descriptors specified.
+        if bytes.len() != 6 + (num_descriptors * 3) as usize {
+            return None
+        }
+        Some(HidDescriptor {
+            length: bytes[0],
+            descriptor_type: bytes[1],
+            hid_version: pod_read_unaligned::<BCDVersion>(&bytes[2..4]),
+            country_code: bytes[4],
+            available_descriptors: bytes[6..]
+                .chunks(3)
+                .map(|bytes| (
+                    DescriptorType::from(bytes[0]),
+                    u16::from_le_bytes([bytes[1], bytes[2]])))
+                .collect()
+        })
+    }
+
+    pub fn field_text(&self, id: HidField) -> String {
+        match id.0 {
+        0 => format!("Length: {} bytes", self.length),
+        1 => format!("Type: 0x{:02X}", self.descriptor_type),
+        2 => format!("HID Version: {}", self.hid_version),
+        3 => format!("Country code: 0x{:02X}{}", self.country_code,
+            usb_ids::HidCountryCode::from_id(self.country_code)
+                .map_or_else(String::new, |c| format!(": {}", c.name()))),
+        i => format!("Error: Invalid field ID {i}")
+        }
+    }
+
+    pub const NUM_FIELDS: usize = 4;
+}
+
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub enum Descriptor {
@@ -854,6 +908,7 @@ pub enum Descriptor {
     InterfaceAssociation(InterfaceAssociationDescriptor),
     Interface(InterfaceDescriptor),
     Endpoint(EndpointDescriptor),
+    Hid(HidDescriptor),
     Other(DescriptorType, Vec<u8>),
     Truncated(DescriptorType, Vec<u8>),
 }
@@ -868,6 +923,7 @@ impl Descriptor {
             Endpoint(_) => "Endpoint descriptor".to_string(),
             InterfaceAssociation(_) =>
                 "Interface association descriptor".to_string(),
+            Hid(_) => "HID descriptor".to_string(),
             Other(desc_type, bytes) => {
                 let description = match class {
                     Some(class) => desc_type.description_with_class(class),
@@ -892,13 +948,15 @@ impl Descriptor {
 pub struct DescriptorIterator<'bytes> {
     bytes: &'bytes [u8],
     offset: usize,
+    class: Option<ClassId>,
 }
 
 impl<'bytes> DescriptorIterator<'bytes> {
     fn from(bytes: &'bytes [u8]) -> Self {
         DescriptorIterator {
             bytes,
-            offset: 0
+            offset: 0,
+            class: None,
         }
     }
 
@@ -906,6 +964,7 @@ impl<'bytes> DescriptorIterator<'bytes> {
         &mut self,
         desc_type: DescriptorType,
         desc_bytes: &[u8],
+        class: Option<ClassId>,
     ) -> Descriptor {
         // Decide how many bytes to decode.
         let bytes = match desc_type.expected_length() {
@@ -935,6 +994,13 @@ impl<'bytes> DescriptorIterator<'bytes> {
             DescriptorType::InterfaceAssociation =>
                 Descriptor::InterfaceAssociation(
                     pod_read_unaligned::<InterfaceAssociationDescriptor>(bytes)),
+            DescriptorType::Class(code) => match (class, code) {
+                (Some(ClassId::HID), 0x21) => match HidDescriptor::from(bytes) {
+                    Some(hid_desc) => Descriptor::Hid(hid_desc),
+                    None => Descriptor::Truncated(desc_type, bytes.to_vec())
+                },
+                _ => Descriptor::Other(desc_type, bytes.to_vec())
+            },
             _ => Descriptor::Other(desc_type, bytes.to_vec())
         }
     }
@@ -962,7 +1028,15 @@ impl Iterator for DescriptorIterator<'_> {
                 } else {
                     // This looks like a valid descriptor, decode it.
                     let bytes = &remaining_bytes[0 .. desc_length];
-                    (self.decode_descriptor(desc_type, bytes), desc_length)
+                    let descriptor = self.decode_descriptor(
+                        desc_type, bytes, self.class);
+                    // If this was an interface descriptor, subsequent
+                    // descriptors will be interpreted in the context of
+                    // this interface's class.
+                    if let Descriptor::Interface(iface_desc) = descriptor {
+                        self.class = Some(iface_desc.interface_class);
+                    }
+                    (descriptor, desc_length)
                 }
             }
         };
@@ -1289,6 +1363,7 @@ pub mod prelude {
         InterfaceAssociationDescriptor,
         InterfaceDescriptor,
         EndpointDescriptor,
+        HidDescriptor,
         Configuration,
         Function,
         Interface,
@@ -1307,6 +1382,7 @@ pub mod prelude {
         InterfaceField,
         EndpointNum,
         EndpointField,
+        HidField,
         UTF16ByteVec,
     };
 }
