@@ -288,6 +288,10 @@ pub enum DeviceItemContent {
     Endpoint(ConfigNum, InterfaceKey, IfaceEpNum),
     EndpointDescriptor(EndpointDescriptor),
     EndpointDescriptorField(EndpointDescriptor, EndpointField),
+    HidDescriptor(HidDescriptor),
+    HidDescriptorField(HidDescriptor, HidField),
+    HidDescriptorList(HidDescriptor),
+    HidDescriptorEntry(HidDescriptor, HidField),
     OtherDescriptor(Descriptor, Option<ClassId>),
 }
 
@@ -2036,6 +2040,20 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
             EndpointDescriptor(desc) =>
                 EndpointDescriptorField(*desc,
                     EndpointField(index.try_into()?)),
+            HidDescriptor(desc) => {
+                const N: usize = usb::HidDescriptor::NUM_FIELDS;
+                const LAST_FIELD: usize = N - 1;
+                match index.try_into()? {
+                    0..=LAST_FIELD =>
+                        HidDescriptorField(desc.clone(),
+                            HidField(index.try_into()?)),
+                    N => HidDescriptorList(desc.clone()),
+                    _ => bail!("HID descriptor has no child with index {index}")
+                }
+            },
+            HidDescriptorList(desc) =>
+                HidDescriptorEntry(desc.clone(),
+                    HidField(index.try_into()?)),
             _ => bail!("This device item type cannot have children")
         };
         Ok(DeviceItem {
@@ -2104,7 +2122,10 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                         (Ongoing, usb::InterfaceDescriptor::NUM_FIELDS),
                     EndpointDescriptor(_) =>
                         (Complete, usb::EndpointDescriptor::NUM_FIELDS),
-
+                    HidDescriptor(_) =>
+                        (Complete, usb::HidDescriptor::NUM_FIELDS + 1),
+                    HidDescriptorList(desc) =>
+                        (Complete, desc.available_descriptors.len()),
                     // Other types have no children.
                     _ => (Complete, 0),
                 }
@@ -2179,6 +2200,17 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
             EndpointDescriptor(_) =>
                 "Endpoint descriptor".to_string(),
             EndpointDescriptorField(desc, field) => desc.field_text(*field),
+            HidDescriptor(_) => "HID descriptor".to_string(),
+            HidDescriptorField(desc, field) => desc.field_text(*field),
+            HidDescriptorList(_) => "Available descriptors".to_string(),
+            HidDescriptorEntry(desc, field) => {
+                let (desc_type, length) =
+                    desc.available_descriptors
+                        .get(field.0 as usize)
+                        .context("Not enough entries in descriptor list")?;
+                format!("{}, {} bytes",
+                    desc_type.description_with_class(ClassId::HID), length)
+            },
             OtherDescriptor(desc, class) => desc.description(*class),
         })
     }
