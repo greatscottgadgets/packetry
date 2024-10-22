@@ -1186,6 +1186,7 @@ impl CaptureReader {
     }
 
     fn control_transfer(&mut self,
+                        device_id: DeviceId,
                         address: DeviceAddr,
                         endpoint_id: EndpointId,
                         range: Range<EndpointTransactionId>)
@@ -1204,11 +1205,38 @@ impl CaptureReader {
         let last = transaction_ids.len() - 1;
         let last_transaction = self.transaction(transaction_ids[last])?;
         let result = last_transaction.control_result(direction);
+        let recipient = fields.type_fields.recipient();
+        let dev_data = self.device_data(device_id)?;
+        let recipient_class = match recipient {
+            Recipient::Device => dev_data.device_descriptor
+                .load()
+                .as_ref()
+                .map(|desc| desc.device_class),
+            Recipient::Interface => {
+                let iface_num = InterfaceNum(fields.index as u8);
+                if let (Some(config_num), Some(iface_alt)) = (
+                    dev_data.config_number.load().as_ref(),
+                    dev_data.interface_settings.load().get(iface_num))
+                {
+                    let iface_key = (iface_num, *iface_alt);
+                    dev_data
+                        .configurations
+                        .load()
+                        .get(**config_num)
+                        .and_then(|config| config.interfaces.get(&iface_key))
+                        .map(|interface| interface.descriptor.interface_class)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        };
         Ok(ControlTransfer {
             address,
             fields,
             data,
             result,
+            recipient_class,
         })
     }
 
@@ -1639,7 +1667,9 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                         "End of SOF groups"),
                     (Normal(Control), true) => {
                         let addr = endpoint.device_address();
-                        match self.control_transfer(addr, endpoint_id, range) {
+                        match self.control_transfer(
+                            device_id, addr, endpoint_id, range)
+                        {
                             Ok(transfer) if detail => write!(s,
                                 "Control transfer on device {addr}\n{}",
                                 transfer.summary()),
