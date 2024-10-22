@@ -36,7 +36,7 @@
              Subclass: 0x01: Boot Interface Subclass
              Protocol: 0x01: Keyboard
              Interface string: (none)
-          Class descriptor 0x21, 9 bytes
+          HID descriptor, 9 bytes
           Endpoint 1 IN (interrupt)
              Endpoint descriptor
                 Length: 7 bytes
@@ -56,7 +56,7 @@
              Subclass: 0x01: Boot Interface Subclass
              Protocol: 0x02: Mouse
              Interface string: (none)
-          Class descriptor 0x21, 9 bytes
+          HID descriptor, 9 bytes
           Endpoint 2 IN (interrupt)
              Endpoint descriptor
                 Length: 7 bytes
