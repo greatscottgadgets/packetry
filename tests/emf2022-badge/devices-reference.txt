@@ -204,7 +204,7 @@
              Subclass: 0x01: Boot Interface Subclass
              Protocol: 0x01: Keyboard
              Interface string: #5 'TiDAL badge'
-          Class descriptor 0x21, 9 bytes
+          HID descriptor, 9 bytes
           Endpoint 3 IN (interrupt)
              Endpoint descriptor
                 Length: 7 bytes

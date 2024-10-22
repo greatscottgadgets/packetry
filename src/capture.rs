@@ -276,7 +276,7 @@ pub enum DeviceItemContent {
     Device(Option<DeviceDescriptor>),
     DeviceDescriptor(Option<DeviceDescriptor>),
     DeviceDescriptorField(DeviceDescriptor, DeviceField),
-    Configuration(ConfigNum, ConfigDescriptor),
+    Configuration(ConfigNum, ConfigDescriptor, Option<ClassId>),
     ConfigurationDescriptor(ConfigDescriptor),
     ConfigurationDescriptorField(ConfigDescriptor, ConfigField),
     Function(ConfigNum, InterfaceAssociationDescriptor),
@@ -288,7 +288,7 @@ pub enum DeviceItemContent {
     Endpoint(ConfigNum, InterfaceKey, IfaceEpNum),
     EndpointDescriptor(EndpointDescriptor),
     EndpointDescriptorField(EndpointDescriptor, EndpointField),
-    OtherDescriptor(Descriptor),
+    OtherDescriptor(Descriptor, Option<ClassId>),
 }
 
 type IfaceEpNum = u8;
@@ -1963,7 +1963,11 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                 n => {
                     let conf = ConfigNum(n.try_into()?);
                     let config = data.configuration(conf)?;
-                    Configuration(conf, config.descriptor)
+                    Configuration(
+                        conf,
+                        config.descriptor,
+                        desc_opt.map(|desc| desc.device_class)
+                    )
                 }
             },
             DeviceDescriptor(desc_opt) => match desc_opt {
@@ -1972,16 +1976,18 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                         DeviceField(index.try_into()?)),
                 None => bail!("Device descriptor fields not available")
             },
-            Configuration(conf, desc) => {
+            Configuration(conf, desc, class) => {
                 let config = data.configuration(conf)?;
                 let other_count = config.other_descriptors.len();
                 let func_count = config.functions.len();
                 match index.try_into()? {
                     0 => ConfigurationDescriptor(desc),
                     n if n < 1 + other_count =>
-                        OtherDescriptor(config
-                            .other_descriptor(n - 1)?
-                            .clone()),
+                        OtherDescriptor(
+                            config
+                                .other_descriptor(n - 1)?
+                                .clone(),
+                            class),
                     n if n < 1 + other_count + func_count =>
                         Function(conf, config
                             .function(n - 1 - other_count)?
@@ -2019,7 +2025,8 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                     0 => InterfaceDescriptor(if_desc),
                     n if n < 1 + desc_count => {
                         let desc = interface.other_descriptor(n - 1)?.clone();
-                        OtherDescriptor(desc)
+                        OtherDescriptor(desc,
+                            Some(interface.descriptor.interface_class))
                     },
                     n => {
                         let ep_num = (n - 1 - desc_count).try_into()?;
@@ -2037,7 +2044,8 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                         endpoint.other_descriptors
                             .get(n - 1)
                             .context("Other endpoint descriptor not found")?
-                            .clone()
+                            .clone(),
+                        Some(interface.descriptor.interface_class)
                     )
                 }
             },
@@ -2081,7 +2089,7 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                                 (Ongoing, usb::DeviceDescriptor::NUM_FIELDS),
                             None => (Ongoing, 0),
                         },
-                    Configuration(conf, _) => {
+                    Configuration(conf, ..) => {
                         let config = data.configuration(conf)?;
                         (Ongoing,
                          1 + config.other_descriptors.len()
@@ -2144,7 +2152,7 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                 let strings = data.strings.load();
                 desc.field_text(*field, strings.as_ref())
             },
-            Configuration(conf, _) => format!(
+            Configuration(conf, ..) => format!(
                 "Configuration {conf}"),
             ConfigurationDescriptor(_) =>
                 "Configuration descriptor".to_string(),
@@ -2190,7 +2198,7 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
             EndpointDescriptor(_) =>
                 "Endpoint descriptor".to_string(),
             EndpointDescriptorField(desc, field) => desc.field_text(*field),
-            OtherDescriptor(desc) => desc.description(),
+            OtherDescriptor(desc, class) => desc.description(*class),
         })
     }
 

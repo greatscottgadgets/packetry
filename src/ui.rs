@@ -1328,8 +1328,8 @@ fn device_context_menu(
         FunctionDescriptor(desc) => bytes_of(desc),
         InterfaceDescriptor(desc) => bytes_of(desc),
         EndpointDescriptor(desc) => bytes_of(desc),
-        OtherDescriptor(Other(_, bytes)) => bytes,
-        OtherDescriptor(Truncated(_, bytes)) => bytes,
+        OtherDescriptor(Other(_, bytes), _) => bytes,
+        OtherDescriptor(Truncated(_, bytes), _) => bytes,
         _ => return Ok(None)
     }.to_vec();
     Ok(Some(context_popover(

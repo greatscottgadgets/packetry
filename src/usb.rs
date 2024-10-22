@@ -583,6 +583,18 @@ impl DescriptorType {
             Unknown => "unknown",
         })
     }
+
+    pub fn description_with_class(&self, class: ClassId) -> String {
+        if let (DescriptorType::Class(code), ClassId(class)) = (self, class) {
+            let description = match (class, code) {
+                (0x03, 0x21) => "HID descriptor",
+                _ => return self.description()
+            };
+            description.to_string()
+        } else {
+            self.description()
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, FromPrimitive)]
@@ -835,7 +847,7 @@ pub enum Descriptor {
 }
 
 impl Descriptor {
-    pub fn description(&self) -> String {
+    pub fn description(&self, class: Option<ClassId>) -> String {
         use Descriptor::*;
         match self {
             Device(_) => "Device descriptor".to_string(),
@@ -844,8 +856,13 @@ impl Descriptor {
             Endpoint(_) => "Endpoint descriptor".to_string(),
             InterfaceAssociation(_) =>
                 "Interface association descriptor".to_string(),
-            Other(desc_type, bytes) => format!("{}, {} bytes",
-                titlecase(&desc_type.description()), bytes.len()),
+            Other(desc_type, bytes) => {
+                let description = match class {
+                    Some(class) => desc_type.description_with_class(class),
+                    None => desc_type.description(),
+                };
+                format!("{}, {} bytes", titlecase(&description), bytes.len())
+            },
             Truncated(desc_type, bytes) => {
                 let description = desc_type.description();
                 let desc_length = bytes[0] as usize;
@@ -1261,6 +1278,7 @@ pub mod prelude {
         Configuration,
         Function,
         Interface,
+        ClassId,
         ControlTransfer,
         ControlResult,
         DeviceAddr,
