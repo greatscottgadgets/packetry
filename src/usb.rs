@@ -177,6 +177,8 @@ impl EndpointAttr {
 }
 
 impl ClassId {
+    pub const HID: ClassId = ClassId(0x03);
+
     pub fn name(self) -> &'static str {
         usb_ids::Class::from_id(self.0)
             .map_or("Unknown", usb_ids::Class::name)
@@ -594,10 +596,10 @@ impl DescriptorType {
     }
 
     pub fn description_with_class(&self, class: ClassId) -> String {
-        if let (DescriptorType::Class(code), ClassId(class)) = (self, class) {
+        if let DescriptorType::Class(code) = self {
             let description = match (class, code) {
-                (0x03, 0x21) => "HID descriptor",
-                (0x03, 0x22) => "HID report descriptor",
+                (ClassId::HID, 0x21) => "HID descriptor",
+                (ClassId::HID, 0x22) => "HID report descriptor",
                 _ => return self.description()
             };
             description.to_string()
