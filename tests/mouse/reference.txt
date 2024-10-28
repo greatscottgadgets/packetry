@@ -221,7 +221,7 @@
          ├── IN packet on 4.0, CRC 05
          ├── DATA1 packet with CRC 0000 and no data
          └── ACK packet
-   ○── Getting unknown descriptor #0 for interface 4.0, reading 75 bytes
+   ○── Getting HID report descriptor #0 for interface 4.0, reading 75 bytes
    ├──── SETUP transaction on 4.0 with 8 data bytes, ACK: [81, 06, 00, 22, 00, 00, 4B, 00]
    │     ├── SETUP packet on 4.0, CRC 05
    │     ├── DATA0 packet with CRC AFDE and 8 data bytes: [81, 06, 00, 22, 00, 00, 4B, 00]

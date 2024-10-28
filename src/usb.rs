@@ -146,6 +146,10 @@ byte_type!(EndpointField);
 byte_type!(EndpointAddr);
 byte_type!(EndpointAttr);
 byte_type!(IfaceAssocField);
+byte_type!(HidField);
+byte_type!(ClassId);
+byte_type!(SubclassId);
+byte_type!(ProtocolId);
 
 pub type InterfaceKey = (InterfaceNum, InterfaceAlt);
 
@@ -170,6 +174,40 @@ impl EndpointAddr {
 impl EndpointAttr {
     pub fn endpoint_type(&self) -> EndpointType {
         EndpointType::from(self.0 & 0x03)
+    }
+}
+
+impl ClassId {
+    pub const HID: ClassId = ClassId(0x03);
+
+    pub fn name(self) -> &'static str {
+        usb_ids::Class::from_id(self.0)
+            .map_or("Unknown", usb_ids::Class::name)
+    }
+
+    fn description(self) -> String {
+        match usb_ids::Class::from_id(self.0) {
+            Some(c) => format!("0x{:02X}: {}", self.0, c.name()),
+            None    => format!("0x{:02X}", self.0)
+        }
+    }
+}
+
+impl SubclassId {
+    fn description(self, class: ClassId) -> String {
+        match usb_ids::SubClass::from_cid_scid(class.0, self.0) {
+            Some(s) => format!("0x{:02X}: {}", self.0, s.name()),
+            None    => format!("0x{:02X}", self.0)
+        }
+    }
+}
+
+impl ProtocolId {
+    fn description(self, class: ClassId, subclass: SubclassId) -> String {
+        match usb_ids::Protocol::from_cid_scid_pid(class.0, subclass.0, self.0) {
+            Some(p) => format!("0x{:02X}: {}", self.0, p.name()),
+            None    => format!("0x{:02X}", self.0)
+        }
     }
 }
 
@@ -390,7 +428,11 @@ pub enum StandardRequest {
 
 #[allow(clippy::useless_format)]
 impl StandardRequest {
-    pub fn description(&self, fields: &SetupFields) -> String {
+    pub fn description(
+        &self,
+        fields: &SetupFields,
+        recipient_class: Option<ClassId>,
+    ) -> String {
         use StandardRequest::*;
         match self {
             GetStatus => format!("Getting status"),
@@ -416,7 +458,12 @@ impl StandardRequest {
                         SetDescriptor => "Setting",
                         _ => ""
                     },
-                    descriptor_type.description(None),
+                    match recipient_class {
+                        Some(class) =>
+                            descriptor_type.description_with_class(class),
+                        None =>
+                            descriptor_type.description(),
+                    },
                     fields.value & 0xFF,
                     match (descriptor_type, fields.index) {
                         (DescriptorType::String, language) if language > 0 =>
@@ -453,28 +500,55 @@ fn language_name(code: u16) -> Option<String> {
     }
 }
 
-#[derive(Copy, Clone, Debug, FromPrimitive, PartialEq, Eq)]
-#[repr(u8)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum DescriptorType {
-    Invalid = 0x00,
-    Device = 0x01,
-    Configuration = 0x02,
-    String = 0x03,
-    Interface = 0x04,
-    Endpoint = 0x05,
-    DeviceQualifier = 0x06,
-    OtherSpeedConfiguration = 0x07,
-    InterfacePower = 0x08,
-    OnTheGo = 0x09,
-    Debug = 0x0A,
-    InterfaceAssociation = 0x0B,
-    BinaryObjectStore = 0x0F,
-    DeviceCapability = 0x10,
-    #[default]
-    Unknown = 0xFF,
+    Invalid,
+    Device,
+    Configuration,
+    String,
+    Interface,
+    Endpoint,
+    DeviceQualifier,
+    OtherSpeedConfiguration,
+    InterfacePower,
+    OnTheGo,
+    Debug,
+    InterfaceAssociation,
+    BinaryObjectStore,
+    DeviceCapability,
+    UnknownStandard(u8),
+    Class(u8),
+    Custom(u8),
+    Reserved(u8),
+    Unknown,
 }
 
 impl DescriptorType {
+    pub fn from(code: u8) -> DescriptorType {
+        use DescriptorType::*;
+        #[allow(clippy::match_overlapping_arm)]
+        match code {
+            0x00 => Invalid,
+            0x01 => Device,
+            0x02 => Configuration,
+            0x03 => String,
+            0x04 => Interface,
+            0x05 => Endpoint,
+            0x06 => DeviceQualifier,
+            0x07 => OtherSpeedConfiguration,
+            0x08 => InterfacePower,
+            0x09 => OnTheGo,
+            0x0A => Debug,
+            0x0B => InterfaceAssociation,
+            0x0F => BinaryObjectStore,
+            0x10 => DeviceCapability,
+            0x00..=0x1F => UnknownStandard(code),
+            0x20..=0x3F => Class(code),
+            0x40..=0x5F => Custom(code),
+            0x60..=0xFF => Reserved(code),
+        }
+    }
+
     fn expected_length(&self) -> Option<usize> {
         use DescriptorType::*;
         match self {
@@ -493,7 +567,7 @@ impl DescriptorType {
         }
     }
 
-    fn description(&self, bytes: Option<&[u8]>) -> String {
+    fn description(&self) -> String {
         use DescriptorType::*;
         format!("{} descriptor", match self {
             Invalid => "invalid",
@@ -510,19 +584,29 @@ impl DescriptorType {
             InterfaceAssociation => "interface association",
             BinaryObjectStore => "BOS",
             DeviceCapability => "device capability",
-            Unknown => if let Some(type_code) = bytes.and_then(|b| b.get(1)) {
-                let type_group = match type_code {
-                    0x00..=0x1F => "standard",
-                    0x20..=0x3F => "class",
-                    0x40..=0x5F => "custom",
-                    0x60..=0xFF => "reserved",
-                };
-                return format!("{} descriptor 0x{:02X}",
-                               type_group, type_code)
-            } else {
-                "unknown"
-            }
+            UnknownStandard(code) =>
+                return format!("standard descriptor 0x{:02X}", code),
+            Class(code) =>
+                return format!("class descriptor 0x{:02X}", code),
+            Custom(code) =>
+                return format!("custom descriptor 0x{:02X}", code),
+            Reserved(code) =>
+                return format!("reserved descriptor 0x{:02X}", code),
+            Unknown => "unknown",
         })
+    }
+
+    pub fn description_with_class(&self, class: ClassId) -> String {
+        if let DescriptorType::Class(code) = self {
+            let description = match (class, code) {
+                (ClassId::HID, 0x21) => "HID descriptor",
+                (ClassId::HID, 0x22) => "HID report descriptor",
+                _ => return self.description()
+            };
+            description.to_string()
+        } else {
+            self.description()
+        }
     }
 }
 
@@ -554,9 +638,9 @@ pub struct DeviceDescriptor {
     pub length: u8,
     pub descriptor_type: u8,
     pub usb_version: BCDVersion,
-    pub device_class: u8,
-    pub device_subclass: u8,
-    pub device_protocol: u8,
+    pub device_class: ClassId,
+    pub device_subclass: SubclassId,
+    pub device_protocol: ProtocolId,
     pub max_packet_size_0: u8,
     pub vendor_id: u16,
     pub product_id: u16,
@@ -581,18 +665,12 @@ impl DeviceDescriptor {
         0  => format!("Length: {} bytes", self.length),
         1  => format!("Type: 0x{:02X}", self.descriptor_type),
         2  => format!("USB Version: {}", self.usb_version),
-        3  => format!("Class: 0x{:02X}{}", self.device_class,
-            usb_ids::Class::from_id(self.device_class)
-                .map_or_else(String::new, |c| format!(": {}", c.name()))),
-        4  => format!("Subclass: 0x{:02X}{}", self.device_subclass,
-            usb_ids::SubClass::from_cid_scid(
-                    self.device_class, self.device_subclass)
-                .map_or_else(String::new, |s| format!(": {}", s.name()))),
-        5  => format!("Protocol: 0x{:02X}{}", self.device_protocol,
-            usb_ids::Protocol::from_cid_scid_pid(
-                    self.device_class, self.device_subclass,
-                    self.device_protocol)
-                .map_or_else(String::new, |p| format!(": {}", p.name()))),
+        3  => format!("Class: {}", self.device_class
+                      .description()),
+        4  => format!("Subclass: {}", self.device_subclass
+                      .description(self.device_class)),
+        5  => format!("Protocol: {}", self.device_protocol
+                      .description(self.device_class, self.device_subclass)),
         6  => format!("Max EP0 packet size: {} bytes", self.max_packet_size_0),
         7  => format!("Vendor ID: 0x{:04X}{}", self.vendor_id,
             usb_ids::Vendor::from_id(self.vendor_id)
@@ -658,9 +736,9 @@ pub struct InterfaceAssociationDescriptor {
     pub descriptor_type: u8,
     pub first_interface: u8,
     pub interface_count: u8,
-    pub function_class: u8,
-    pub function_subclass: u8,
-    pub function_protocol: u8,
+    pub function_class: ClassId,
+    pub function_subclass: SubclassId,
+    pub function_protocol: ProtocolId,
     pub function: u8,
 }
 
@@ -673,18 +751,12 @@ impl InterfaceAssociationDescriptor {
         1 => format!("Type: 0x{:02X}", self.descriptor_type),
         2 => format!("First interface: {}", self.first_interface),
         3 => format!("Interface count: {}", self.interface_count),
-        4 => format!("Function class: 0x{:02X}{}", self.function_class,
-            usb_ids::Class::from_id(self.function_class)
-                .map_or_else(String::new, |c| format!(": {}", c.name()))),
-        5  => format!("Function subclass: 0x{:02X}{}", self.function_subclass,
-            usb_ids::SubClass::from_cid_scid(
-                    self.function_class, self.function_subclass)
-                .map_or_else(String::new, |s| format!(": {}", s.name()))),
-        6  => format!("Function protocol: 0x{:02X}{}", self.function_protocol,
-            usb_ids::Protocol::from_cid_scid_pid(
-                    self.function_class, self.function_subclass,
-                    self.function_protocol)
-                .map_or_else(String::new, |p| format!(": {}", p.name()))),
+        4 => format!("Function class: {}", self.function_class
+                     .description()),
+        5 => format!("Function subclass: {}", self.function_subclass
+                     .description(self.function_class)),
+        6 => format!("Function protocol: {}", self.function_protocol
+                     .description(self.function_class, self.function_subclass)),
         7 => format!("Function number: {}", self.function),
         i => format!("Error: Invalid field ID {i}")
         }
@@ -709,9 +781,9 @@ pub struct InterfaceDescriptor {
     pub interface_number: InterfaceNum,
     pub alternate_setting: InterfaceAlt,
     pub num_endpoints: u8,
-    pub interface_class: u8,
-    pub interface_subclass: u8,
-    pub interface_protocol: u8,
+    pub interface_class: ClassId,
+    pub interface_subclass: SubclassId,
+    pub interface_protocol: ProtocolId,
     pub interface_str_id: StringId,
 }
 
@@ -727,18 +799,12 @@ impl InterfaceDescriptor {
         2 => format!("Interface number: {}", self.interface_number),
         3 => format!("Alternate setting: {}", self.alternate_setting),
         4 => format!("Number of endpoints: {}", self.num_endpoints),
-        5 => format!("Class: 0x{:02X}{}", self.interface_class,
-            usb_ids::Class::from_id(self.interface_class)
-                .map_or_else(String::new, |c| format!(": {}", c.name()))),
-        6  => format!("Subclass: 0x{:02X}{}", self.interface_subclass,
-            usb_ids::SubClass::from_cid_scid(
-                    self.interface_class, self.interface_subclass)
-                .map_or_else(String::new, |s| format!(": {}", s.name()))),
-        7  => format!("Protocol: 0x{:02X}{}", self.interface_protocol,
-            usb_ids::Protocol::from_cid_scid_pid(
-                    self.interface_class, self.interface_subclass,
-                    self.interface_protocol)
-                .map_or_else(String::new, |p| format!(": {}", p.name()))),
+        5 => format!("Class: {}", self.interface_class
+                     .description()),
+        6 => format!("Subclass: {}", self.interface_subclass
+                     .description(self.interface_class)),
+        7 => format!("Protocol: {}", self.interface_protocol
+                     .description(self.interface_class, self.interface_subclass)),
         8 => format!("Interface string: {}",
                       fmt_str_id(strings, self.interface_str_id)),
         i => format!("Error: Invalid field ID {i}")
@@ -781,6 +847,59 @@ impl EndpointDescriptor {
     pub const NUM_FIELDS: usize = 6;
 }
 
+#[derive(Clone, Debug)]
+pub struct HidDescriptor {
+    pub length: u8,
+    pub descriptor_type: u8,
+    pub hid_version: BCDVersion,
+    pub country_code: u8,
+    pub available_descriptors: Vec<(DescriptorType, u16)>
+}
+
+impl HidDescriptor {
+    pub fn from(bytes: &[u8]) -> Option<HidDescriptor> {
+        // A valid HID descriptor has at least 9 bytes.
+        if bytes.len() < 9 {
+            return None
+        }
+        // It must list at least one descriptor.
+        let num_descriptors = bytes[5];
+        if num_descriptors == 0 {
+            return None
+        }
+        // There must be bytes for the number of descriptors specified.
+        if bytes.len() != 6 + (num_descriptors * 3) as usize {
+            return None
+        }
+        Some(HidDescriptor {
+            length: bytes[0],
+            descriptor_type: bytes[1],
+            hid_version: pod_read_unaligned::<BCDVersion>(&bytes[2..4]),
+            country_code: bytes[4],
+            available_descriptors: bytes[6..]
+                .chunks(3)
+                .map(|bytes| (
+                    DescriptorType::from(bytes[0]),
+                    u16::from_le_bytes([bytes[1], bytes[2]])))
+                .collect()
+        })
+    }
+
+    pub fn field_text(&self, id: HidField) -> String {
+        match id.0 {
+        0 => format!("Length: {} bytes", self.length),
+        1 => format!("Type: 0x{:02X}", self.descriptor_type),
+        2 => format!("HID Version: {}", self.hid_version),
+        3 => format!("Country code: 0x{:02X}{}", self.country_code,
+            usb_ids::HidCountryCode::from_id(self.country_code)
+                .map_or_else(String::new, |c| format!(": {}", c.name()))),
+        i => format!("Error: Invalid field ID {i}")
+        }
+    }
+
+    pub const NUM_FIELDS: usize = 4;
+}
+
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub enum Descriptor {
@@ -789,12 +908,13 @@ pub enum Descriptor {
     InterfaceAssociation(InterfaceAssociationDescriptor),
     Interface(InterfaceDescriptor),
     Endpoint(EndpointDescriptor),
+    Hid(HidDescriptor),
     Other(DescriptorType, Vec<u8>),
     Truncated(DescriptorType, Vec<u8>),
 }
 
 impl Descriptor {
-    pub fn description(&self) -> String {
+    pub fn description(&self, class: Option<ClassId>) -> String {
         use Descriptor::*;
         match self {
             Device(_) => "Device descriptor".to_string(),
@@ -803,10 +923,16 @@ impl Descriptor {
             Endpoint(_) => "Endpoint descriptor".to_string(),
             InterfaceAssociation(_) =>
                 "Interface association descriptor".to_string(),
-            Other(desc_type, bytes) => format!("{}, {} bytes",
-                titlecase(&desc_type.description(Some(bytes))), bytes.len()),
+            Hid(_) => "HID descriptor".to_string(),
+            Other(desc_type, bytes) => {
+                let description = match class {
+                    Some(class) => desc_type.description_with_class(class),
+                    None => desc_type.description(),
+                };
+                format!("{}, {} bytes", titlecase(&description), bytes.len())
+            },
             Truncated(desc_type, bytes) => {
-                let description = desc_type.description(Some(bytes));
+                let description = desc_type.description();
                 let desc_length = bytes[0] as usize;
                 let length = bytes.len();
                 let expected = desc_type
@@ -822,13 +948,15 @@ impl Descriptor {
 pub struct DescriptorIterator<'bytes> {
     bytes: &'bytes [u8],
     offset: usize,
+    class: Option<ClassId>,
 }
 
 impl<'bytes> DescriptorIterator<'bytes> {
     fn from(bytes: &'bytes [u8]) -> Self {
         DescriptorIterator {
             bytes,
-            offset: 0
+            offset: 0,
+            class: None,
         }
     }
 
@@ -836,6 +964,7 @@ impl<'bytes> DescriptorIterator<'bytes> {
         &mut self,
         desc_type: DescriptorType,
         desc_bytes: &[u8],
+        class: Option<ClassId>,
     ) -> Descriptor {
         // Decide how many bytes to decode.
         let bytes = match desc_type.expected_length() {
@@ -865,6 +994,13 @@ impl<'bytes> DescriptorIterator<'bytes> {
             DescriptorType::InterfaceAssociation =>
                 Descriptor::InterfaceAssociation(
                     pod_read_unaligned::<InterfaceAssociationDescriptor>(bytes)),
+            DescriptorType::Class(code) => match (class, code) {
+                (Some(ClassId::HID), 0x21) => match HidDescriptor::from(bytes) {
+                    Some(hid_desc) => Descriptor::Hid(hid_desc),
+                    None => Descriptor::Truncated(desc_type, bytes.to_vec())
+                },
+                _ => Descriptor::Other(desc_type, bytes.to_vec())
+            },
             _ => Descriptor::Other(desc_type, bytes.to_vec())
         }
     }
@@ -892,7 +1028,15 @@ impl Iterator for DescriptorIterator<'_> {
                 } else {
                     // This looks like a valid descriptor, decode it.
                     let bytes = &remaining_bytes[0 .. desc_length];
-                    (self.decode_descriptor(desc_type, bytes), desc_length)
+                    let descriptor = self.decode_descriptor(
+                        desc_type, bytes, self.class);
+                    // If this was an interface descriptor, subsequent
+                    // descriptors will be interpreted in the context of
+                    // this interface's class.
+                    if let Descriptor::Interface(iface_desc) = descriptor {
+                        self.class = Some(iface_desc.interface_class);
+                    }
+                    (descriptor, desc_length)
                 }
             }
         };
@@ -1012,6 +1156,7 @@ pub struct ControlTransfer {
     pub fields: SetupFields,
     pub data: Vec<u8>,
     pub result: ControlResult,
+    pub recipient_class: Option<ClassId>,
 }
 
 impl ControlTransfer {
@@ -1030,7 +1175,8 @@ impl ControlTransfer {
         let mut parts = vec![format!(
             "{} {}",
             match request_type {
-                RequestType::Standard => std_req.description(&self.fields),
+                RequestType::Standard => std_req.description(
+                    &self.fields, self.recipient_class),
                 _ => format!(
                     "{:?} request #{}, index {}, value {}",
                     request_type, request,
@@ -1217,9 +1363,11 @@ pub mod prelude {
         InterfaceAssociationDescriptor,
         InterfaceDescriptor,
         EndpointDescriptor,
+        HidDescriptor,
         Configuration,
         Function,
         Interface,
+        ClassId,
         ControlTransfer,
         ControlResult,
         DeviceAddr,
@@ -1234,6 +1382,7 @@ pub mod prelude {
         InterfaceField,
         EndpointNum,
         EndpointField,
+        HidField,
         UTF16ByteVec,
     };
 }
