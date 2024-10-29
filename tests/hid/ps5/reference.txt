@@ -1,0 +1,139 @@
+
+○ Input report #1 (64 bytes):
+├── X: byte 1
+├── Y: byte 2
+├── Z: byte 3
+├── Rz: byte 4
+├── Rx: byte 5
+├── Ry: byte 6
+├── Vendor Usage 0x20: byte 7
+├── Hat Switch: byte 8 bits 0-3 (values 0 to 7)
+├── Button 1: byte 8 bit 4
+├── Button 2: byte 8 bit 5
+├── Button 3: byte 8 bit 6
+├── Button 4: byte 8 bit 7
+├── Button 5: byte 9 bit 0
+├── Button 6: byte 9 bit 1
+├── Button 7: byte 9 bit 2
+├── Button 8: byte 9 bit 3
+├── Button 9: byte 9 bit 4
+├── Button 10: byte 9 bit 5
+├── Button 11: byte 9 bit 6
+├── Button 12: byte 9 bit 7
+├── Button 13: byte 10 bit 0
+├── Button 14: byte 10 bit 1
+├── Button 15: byte 10 bit 2
+├── Vendor Usage 0x21: byte 10 bit 3
+├── Vendor Usage 0x21: byte 10 bit 4
+├── Vendor Usage 0x21: byte 10 bit 5
+├── Vendor Usage 0x21: byte 10 bit 6
+├── Vendor Usage 0x21: byte 10 bit 7
+├── Vendor Usage 0x21: byte 11 bit 0
+├── Vendor Usage 0x21: byte 11 bit 1
+├── Vendor Usage 0x21: byte 11 bit 2
+├── Vendor Usage 0x21: byte 11 bit 3
+├── Vendor Usage 0x21: byte 11 bit 4
+├── Vendor Usage 0x21: byte 11 bit 5
+├── Vendor Usage 0x21: byte 11 bit 6
+├── Vendor Usage 0x21: byte 11 bit 7
+├── Vendor Usage 0x22: byte 12
+├── Vendor Usage 0x22: byte 13
+├── Vendor Usage 0x22: byte 14
+├── Vendor Usage 0x22: byte 15
+├── Vendor Usage 0x22: byte 16
+├── Vendor Usage 0x22: byte 17
+├── Vendor Usage 0x22: byte 18
+├── Vendor Usage 0x22: byte 19
+├── Vendor Usage 0x22: byte 20
+├── Vendor Usage 0x22: byte 21
+├── Vendor Usage 0x22: byte 22
+├── Vendor Usage 0x22: byte 23
+├── Vendor Usage 0x22: byte 24
+├── Vendor Usage 0x22: byte 25
+├── Vendor Usage 0x22: byte 26
+├── Vendor Usage 0x22: byte 27
+├── Vendor Usage 0x22: byte 28
+├── Vendor Usage 0x22: byte 29
+├── Vendor Usage 0x22: byte 30
+├── Vendor Usage 0x22: byte 31
+├── Vendor Usage 0x22: byte 32
+├── Vendor Usage 0x22: byte 33
+├── Vendor Usage 0x22: byte 34
+├── Vendor Usage 0x22: byte 35
+├── Vendor Usage 0x22: byte 36
+├── Vendor Usage 0x22: byte 37
+├── Vendor Usage 0x22: byte 38
+├── Vendor Usage 0x22: byte 39
+├── Vendor Usage 0x22: byte 40
+├── Vendor Usage 0x22: byte 41
+├── Vendor Usage 0x22: byte 42
+├── Vendor Usage 0x22: byte 43
+├── Vendor Usage 0x22: byte 44
+├── Vendor Usage 0x22: byte 45
+├── Vendor Usage 0x22: byte 46
+├── Vendor Usage 0x22: byte 47
+├── Vendor Usage 0x22: byte 48
+├── Vendor Usage 0x22: byte 49
+├── Vendor Usage 0x22: byte 50
+├── Vendor Usage 0x22: byte 51
+├── Vendor Usage 0x22: byte 52
+├── Vendor Usage 0x22: byte 53
+├── Vendor Usage 0x22: byte 54
+├── Vendor Usage 0x22: byte 55
+├── Vendor Usage 0x22: byte 56
+├── Vendor Usage 0x22: byte 57
+├── Vendor Usage 0x22: byte 58
+├── Vendor Usage 0x22: byte 59
+├── Vendor Usage 0x22: byte 60
+├── Vendor Usage 0x22: byte 61
+├── Vendor Usage 0x22: byte 62
+└── Vendor Usage 0x22: byte 63
+
+○ Output report #2 (48 bytes):
+├── Vendor Usage 0x23: byte 1
+├── Vendor Usage 0x23: byte 2
+├── Vendor Usage 0x23: byte 3
+├── Vendor Usage 0x23: byte 4
+├── Vendor Usage 0x23: byte 5
+├── Vendor Usage 0x23: byte 6
+├── Vendor Usage 0x23: byte 7
+├── Vendor Usage 0x23: byte 8
+├── Vendor Usage 0x23: byte 9
+├── Vendor Usage 0x23: byte 10
+├── Vendor Usage 0x23: byte 11
+├── Vendor Usage 0x23: byte 12
+├── Vendor Usage 0x23: byte 13
+├── Vendor Usage 0x23: byte 14
+├── Vendor Usage 0x23: byte 15
+├── Vendor Usage 0x23: byte 16
+├── Vendor Usage 0x23: byte 17
+├── Vendor Usage 0x23: byte 18
+├── Vendor Usage 0x23: byte 19
+├── Vendor Usage 0x23: byte 20
+├── Vendor Usage 0x23: byte 21
+├── Vendor Usage 0x23: byte 22
+├── Vendor Usage 0x23: byte 23
+├── Vendor Usage 0x23: byte 24
+├── Vendor Usage 0x23: byte 25
+├── Vendor Usage 0x23: byte 26
+├── Vendor Usage 0x23: byte 27
+├── Vendor Usage 0x23: byte 28
+├── Vendor Usage 0x23: byte 29
+├── Vendor Usage 0x23: byte 30
+├── Vendor Usage 0x23: byte 31
+├── Vendor Usage 0x23: byte 32
+├── Vendor Usage 0x23: byte 33
+├── Vendor Usage 0x23: byte 34
+├── Vendor Usage 0x23: byte 35
+├── Vendor Usage 0x23: byte 36
+├── Vendor Usage 0x23: byte 37
+├── Vendor Usage 0x23: byte 38
+├── Vendor Usage 0x23: byte 39
+├── Vendor Usage 0x23: byte 40
+├── Vendor Usage 0x23: byte 41
+├── Vendor Usage 0x23: byte 42
+├── Vendor Usage 0x23: byte 43
+├── Vendor Usage 0x23: byte 44
+├── Vendor Usage 0x23: byte 45
+├── Vendor Usage 0x23: byte 46
+└── Vendor Usage 0x23: byte 47

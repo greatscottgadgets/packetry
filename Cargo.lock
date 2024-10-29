@@ -1126,12 +1126,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
+name = "hidreport"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c588dafe431c43a03779628a0214172caef9c3ee2de85aaaafa3ac0a4be24da7"
+dependencies = [
+ "thiserror",
+]
+
+[[package]]
 name = "humansize"
 version = "2.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6cb51c9a029ddc91b07a787f1d86b53ccfa49b0e86688c946ebe8d3555685dd7"
 dependencies = [
  "libm",
+]
+
+[[package]]
+name = "hut"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5e272cc642f49588d581cdb3e7bc2d087d5ce943d03c74dc304235c05ba83b30"
+dependencies = [
+ "thiserror",
 ]
 
 [[package]]
@@ -1548,7 +1566,9 @@ dependencies = [
  "futures-lite",
  "futures-util",
  "gtk4",
+ "hidreport",
  "humansize",
+ "hut",
  "itertools",
  "libfuzzer-sys",
  "lrumap",

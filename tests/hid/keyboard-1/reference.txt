@@ -1,0 +1,6 @@
+
+○ Input report #3 (3 bytes):
+└── Array of 1 button: bytes 1-2 [Pointer — System Display Toggle LCD Autoscale]
+
+○ Input report #4 (3 bytes):
+└── Array of 1 button: bytes 1-2 [Consumer Control — AC Soft Key Left]

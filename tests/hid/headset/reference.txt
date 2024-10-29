@@ -1,0 +1,19 @@
+
+○ Input report (4 bytes):
+├── Volume Increment: byte 0 bit 0
+├── Volume Decrement: byte 0 bit 1
+├── Mute: byte 0 bit 2
+├── Consumer usage 0x00: byte 0 bit 3
+├── Hook Switch: byte 0 bit 4
+├── Consumer usage 0x00: byte 0 bit 5
+├── Consumer usage 0x00: byte 0 bit 6
+├── Consumer usage 0x00: byte 0 bit 7
+├── Consumer usage 0x00: byte 1
+├── Consumer usage 0x00: byte 2
+└── Consumer usage 0x00: byte 3
+
+○ Output report (4 bytes):
+├── Consumer usage 0x00: byte 0
+├── Consumer usage 0x00: byte 1
+├── Consumer usage 0x00: byte 2
+└── Consumer usage 0x00: byte 3

@@ -1,0 +1,12 @@
+
+○ Input report #1 (7 bytes):
+├── Button 1: byte 1 bit 0
+├── Button 2: byte 1 bit 1
+├── Button 3: byte 1 bit 2
+├── Button 4: byte 1 bit 3
+├── Button 5: byte 1 bit 4
+├── Padding: byte 1 bits 5-7
+├── X: byte 2 bit 0 — byte 3 bit 3 (values -2047 to 2047)
+├── Y: byte 3 bit 4 — byte 4 bit 7 (values -2047 to 2047)
+├── Wheel: byte 5 (values -127 to 127)
+└── AC Pan: byte 6 (values -127 to 127)
