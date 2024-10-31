@@ -26,7 +26,7 @@ mod database;
 mod decoder;
 mod item;
 mod pcap;
-mod test_cynthion;
+mod testing;
 mod ui;
 mod usb;
 mod util;
@@ -36,6 +36,7 @@ use gtk::prelude::*;
 use gtk::gio::ApplicationFlags;
 use gtk::glib::{self, OptionArg, OptionFlags};
 
+use testing::test_cynthion;
 use ui::{
     activate,
     display_error,
@@ -62,7 +63,7 @@ fn main() {
                  version_info(have_argument("--dependencies")));
     } else if have_argument("--test-cynthion") {
         let save_captures = have_argument("--save-captures");
-        test_cynthion::run_test(save_captures);
+        test_cynthion(save_captures);
     } else {
         if gtk::init().is_err() {
             eprintln!("Failed to initialize GTK");

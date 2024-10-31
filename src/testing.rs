@@ -25,7 +25,7 @@ use std::time::{Duration, Instant};
 const US: Duration = Duration::from_micros(1);
 const MS: Duration = Duration::from_millis(1);
 
-pub fn run_test(save_captures: bool) {
+pub fn test_cynthion(save_captures: bool) {
     for (name, speed, ep_addr, length, sof) in [
         ("HS", Speed::High, 0x81, 4096, Some((124*US,  126*US))),
         ("FS", Speed::Full, 0x82,  512, Some((995*US, 1005*US))),
