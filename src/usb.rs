@@ -22,8 +22,10 @@ use num_enum::{IntoPrimitive, FromPrimitive};
 use derive_more::{From, Into, Display};
 use usb_ids::FromId;
 
-use crate::util::titlecase;
-use crate::vec_map::VecMap;
+use crate::util::{
+    vec_map::VecMap,
+    titlecase
+};
 
 fn crc16(bytes: &[u8]) -> u16 {
     const CRC16: Crc<u16> = Crc::<u16>::new(&CRC_16_USB);

@@ -9,7 +9,7 @@ use std::ops::{Deref, Range};
 use anyhow::Error;
 use bytemuck::{bytes_of, cast_slice, from_bytes, Pod};
 
-use crate::id::Id;
+use crate::util::id::Id;
 use crate::database::stream::{
     stream,
     StreamReader,

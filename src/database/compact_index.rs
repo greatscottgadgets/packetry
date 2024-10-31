@@ -17,8 +17,7 @@ use crate::database::{
     data_stream::{data_stream, DataReader, DataWriter, DataIterator},
     index_stream::{index_stream, IndexReader, IndexWriter, IndexIterator},
 };
-use crate::id::Id;
-use crate::util::{fmt_count, fmt_size};
+use crate::util::{id::Id, fmt_count, fmt_size};
 
 type Offset = Id<u8>;
 type SegmentId = Id<u8>;

@@ -24,15 +24,12 @@ mod backend;
 mod capture;
 mod database;
 mod decoder;
-mod id;
 mod item;
 mod pcap;
-mod rcu;
 mod test_cynthion;
 mod ui;
 mod usb;
 mod util;
-mod vec_map;
 mod version;
 
 use gtk::prelude::*;

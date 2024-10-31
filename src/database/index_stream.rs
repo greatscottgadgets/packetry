@@ -17,8 +17,7 @@ use crate::database::{
         DataIterator
     },
 };
-use crate::id::Id;
-use crate::util::{fmt_count, fmt_size};
+use crate::util::{id::Id, fmt_count, fmt_size};
 
 /// Unique handle for append-only write access to an index.
 pub struct IndexWriter<Position, Value, const S: usize = MIN_BLOCK> {

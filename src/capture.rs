@@ -9,7 +9,6 @@ use std::sync::atomic::Ordering::{Acquire, Release};
 use std::sync::Arc;
 use std::mem::size_of;
 
-use crate::id::{Id, HasLength};
 use crate::database::{
     CompactReader,
     CompactWriter,
@@ -19,10 +18,15 @@ use crate::database::{
     data_stream,
     data_stream_with_block_size,
 };
-use crate::rcu::SingleWriterRcu;
-use crate::vec_map::{Key, VecMap};
 use crate::usb::{self, prelude::*};
-use crate::util::{Bytes, fmt_count, fmt_size};
+use crate::util::{
+    id::{Id, HasLength},
+    rcu::SingleWriterRcu,
+    vec_map::{Key, VecMap},
+    Bytes,
+    fmt_count,
+    fmt_size,
+};
 
 use anyhow::{Context, Error, bail};
 use arc_swap::{ArcSwap, ArcSwapOption};

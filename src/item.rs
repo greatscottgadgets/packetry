@@ -20,9 +20,11 @@ use crate::capture::{
     PacketId,
     INVALID_EP_ID,
 };
-use crate::id::HasLength;
 use crate::usb::{self, prelude::*, validate_packet};
-use crate::util::{Bytes, fmt_count, fmt_size, titlecase};
+use crate::util::{
+    id::HasLength,
+    Bytes, fmt_count, fmt_size, titlecase
+};
 
 pub trait ItemSource<Item, ViewMode> {
     /// Fetch an item from the source by index, relative to either the root

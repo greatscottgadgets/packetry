@@ -11,12 +11,9 @@ use libfuzzer_sys::{arbitrary::{Arbitrary, Unstructured}, fuzz_target};
 mod capture;
 mod database;
 mod decoder;
-mod id;
 mod pcap;
-mod rcu;
 mod usb;
 mod util;
-mod vec_map;
 
 use capture::create_capture;
 use decoder::Decoder;

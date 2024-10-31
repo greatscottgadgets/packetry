@@ -5,7 +5,7 @@ use std::ops::{Index, IndexMut};
 use std::marker::PhantomData;
 use std::slice::Iter;
 
-use crate::id::Id;
+use crate::util::id::Id;
 
 pub trait Key {
     fn id(self) -> usize;

@@ -5,6 +5,10 @@ use num_format::{Locale, ToFormattedString};
 use humansize::{SizeFormatter, BINARY};
 use itertools::Itertools;
 
+pub mod id;
+pub mod vec_map;
+pub mod rcu;
+
 pub fn fmt_count(count: u64) -> String {
     count.to_formatted_string(&Locale::en)
 }
