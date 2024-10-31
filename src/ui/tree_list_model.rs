@@ -22,9 +22,9 @@ use itertools::Itertools;
 
 use crate::capture::CaptureReader;
 use crate::item::ItemSource;
-use crate::model::GenericModel;
-use crate::row_data::GenericRowData;
-use crate::item_widget::ItemWidget;
+use super::model::GenericModel;
+use super::row_data::GenericRowData;
+use super::item_widget::ItemWidget;
 
 type RootNodeRc<Item> = Rc<RefCell<RootNode<Item>>>;
 pub type ItemNodeRc<Item> = Rc<RefCell<ItemNode<Item>>>;

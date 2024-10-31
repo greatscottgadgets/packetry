@@ -7,7 +7,7 @@ use gtk::subclass::prelude::*;
 use gtk::prelude::Cast;
 
 use crate::item::{TrafficItem, DeviceItem};
-use crate::tree_list_model::ItemNodeRc;
+use crate::ui::tree_list_model::ItemNodeRc;
 
 /// Trait implemented by each of our row data types.
 pub trait GenericRowData<Item> where Item: Clone {
@@ -62,7 +62,7 @@ mod imp {
     use std::cell::RefCell;
 
     use crate::item::{TrafficItem, DeviceItem};
-    use crate::tree_list_model::ItemNodeRc;
+    use crate::ui::tree_list_model::ItemNodeRc;
 
     /// Define the inner type to be used in the GObject type system.
     macro_rules! row_data {

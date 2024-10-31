@@ -28,25 +28,15 @@ mod decoder;
 mod id;
 mod index_stream;
 mod item;
-mod item_widget;
-mod model;
 mod pcap;
 mod rcu;
-mod row_data;
 mod stream;
 mod test_cynthion;
-mod tree_list_model;
 mod ui;
 mod usb;
 mod util;
 mod vec_map;
 mod version;
-
-// Declare optional modules.
-#[cfg(any(test, feature="record-ui-test"))]
-mod record_ui;
-#[cfg(test)]
-mod test_replay;
 
 use gtk::prelude::*;
 use gtk::gio::ApplicationFlags;

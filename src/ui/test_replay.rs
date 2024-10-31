@@ -12,10 +12,10 @@ use serde_json::Deserializer;
 use crate::decoder::Decoder;
 use crate::item::TrafficViewMode;
 use crate::pcap::Loader;
-use crate::model::GenericModel;
-use crate::row_data::{GenericRowData, TrafficRowData, DeviceRowData};
-use crate::record_ui::UiAction;
 use crate::ui::{
+    model::GenericModel,
+    row_data::{GenericRowData, TrafficRowData, DeviceRowData},
+    record_ui::UiAction,
     UserInterface,
     activate,
     reset_capture,

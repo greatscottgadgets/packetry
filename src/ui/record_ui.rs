@@ -12,8 +12,8 @@ use serde::{Serialize, Deserialize};
 
 use crate::capture::CaptureReader;
 use crate::item::ItemSource;
-use crate::model::GenericModel;
-use crate::row_data::ToGenericRowData;
+use super::model::GenericModel;
+use super::row_data::ToGenericRowData;
 
 #[derive(Serialize, Deserialize)]
 pub enum UiAction {

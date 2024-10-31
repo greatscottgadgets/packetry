@@ -91,22 +91,33 @@ use crate::item::{
     DeviceViewMode,
 };
 use crate::decoder::Decoder;
-use crate::item_widget::ItemWidget;
 use crate::pcap::{Loader, Writer};
-use crate::model::{GenericModel, TrafficModel, DeviceModel};
-use crate::row_data::{
-    GenericRowData,
-    ToGenericRowData,
-    TrafficRowData,
-    DeviceRowData};
 use crate::usb::{Descriptor, PacketFields, validate_packet};
 use crate::util::{fmt_count, fmt_size};
 use crate::version::{version, version_info};
 
+pub mod item_widget;
+pub mod model;
+pub mod row_data;
+pub mod tree_list_model;
+#[cfg(any(test, feature="record-ui-test"))]
+pub mod record_ui;
+#[cfg(test)]
+mod test_replay;
+
+use item_widget::ItemWidget;
+use model::{GenericModel, TrafficModel, DeviceModel};
+use row_data::{
+    GenericRowData,
+    ToGenericRowData,
+    TrafficRowData,
+    DeviceRowData,
+};
+
 #[cfg(any(test, feature="record-ui-test"))]
 use {
     std::rc::Rc,
-    crate::record_ui::Recording,
+    record_ui::Recording,
 };
 
 const TRAFFIC_MODES: [TrafficViewMode; 3] =
@@ -1413,7 +1424,7 @@ fn save_data(
 }
 
 fn show_about() -> Result<(), Error> {
-    const LICENSE: &str = include_str!("../LICENSE");
+    const LICENSE: &str = include_str!("../../LICENSE");
     let about = AboutDialog::builder()
         .program_name("Packetry")
         .version(format!("Version: {}", version()))
