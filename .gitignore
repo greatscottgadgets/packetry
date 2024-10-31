@@ -3,6 +3,7 @@
 /tests/*/output.txt
 /tests/*/devices-output.txt
 /tests/ui/*/output.txt
+/tests/hid/*/output.txt
 /vcpkg
 /wix/LICENSE-dynamic-libraries.txt
 /wix/LICENSE-packetry.txt

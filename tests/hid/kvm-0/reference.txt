@@ -1,0 +1,20 @@
+
+○ Input report (8 bytes):
+├── Keyboard LeftControl: byte 0 bit 0
+├── Keyboard LeftShift: byte 0 bit 1
+├── Keyboard LeftAlt: byte 0 bit 2
+├── Keyboard Left GUI: byte 0 bit 3
+├── Keyboard RightControl: byte 0 bit 4
+├── Keyboard RightShift: byte 0 bit 5
+├── Keyboard RightAlt: byte 0 bit 6
+├── Keyboard Right GUI: byte 0 bit 7
+├── Padding: byte 1
+└── Array of 6 buttons: bytes 2-7 [Keyboard/Keypad usage 0x00 — Keyboard LANG2]
+
+○ Output report (1 byte):
+├── Num Lock: byte 0 bit 0
+├── Caps Lock: byte 0 bit 1
+├── Scroll Lock: byte 0 bit 2
+├── Compose: byte 0 bit 3
+├── Kana: byte 0 bit 4
+└── Padding: byte 0 bits 5-7

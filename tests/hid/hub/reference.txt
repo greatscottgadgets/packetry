@@ -1,0 +1,6 @@
+
+○ Input report (64 bytes):
+└── Array of 64 buttons: bytes 0-63 [Vendor Usage 0x01 — Vendor Usage 0x40]
+
+○ Output report (64 bytes):
+└── Array of 64 buttons: bytes 0-63 [Vendor Usage 0x01 — Vendor Usage 0x40]

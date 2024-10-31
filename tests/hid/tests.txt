@@ -1,0 +1,9 @@
+amp
+headset
+hub
+keyboard-0
+keyboard-1
+kvm-0
+kvm-1
+mouse
+ps5

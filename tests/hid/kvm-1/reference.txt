@@ -1,0 +1,17 @@
+
+○ Input report #1 (5 bytes):
+├── Button 1: byte 1 bit 0
+├── Button 2: byte 1 bit 1
+├── Button 3: byte 1 bit 2
+├── Button 4: byte 1 bit 3
+├── Button 5: byte 1 bit 4
+├── Padding: byte 1 bits 5-7
+├── X: byte 2 (values -127 to 127)
+├── Y: byte 3 (values -127 to 127)
+└── Wheel: byte 4 (values -127 to 127)
+
+○ Input report #2 (2 bytes):
+├── System Power Down: byte 1 bit 0
+├── System Sleep: byte 1 bit 1
+├── System Wake Up: byte 1 bit 2
+└── Padding: byte 1 bits 3-7

@@ -1,0 +1,67 @@
+
+○ Input report #3 (2 bytes):
+├── Volume Increment: byte 1 bit 0
+├── Volume Decrement: byte 1 bit 1
+├── Play/Pause: byte 1 bit 2
+├── Voice Command: byte 1 bit 3
+├── Scan Previous Track: byte 1 bit 4
+├── Scan Next Track: byte 1 bit 5
+└── Padding: byte 1 bits 6-7
+
+○ Input report #5 (17 bytes):
+├── Consumer usage 0x00: byte 1 (values 0 to 1)
+├── Consumer usage 0x00: byte 2 (values 0 to 1)
+├── Consumer usage 0x00: byte 3 (values 0 to 1)
+├── Consumer usage 0x00: byte 4 (values 0 to 1)
+├── Consumer usage 0x00: byte 5 (values 0 to 1)
+├── Consumer usage 0x00: byte 6 (values 0 to 1)
+├── Consumer usage 0x00: byte 7 (values 0 to 1)
+├── Consumer usage 0x00: byte 8 (values 0 to 1)
+├── Consumer usage 0x00: byte 9 (values 0 to 1)
+├── Consumer usage 0x00: byte 10 (values 0 to 1)
+├── Consumer usage 0x00: byte 11 (values 0 to 1)
+├── Consumer usage 0x00: byte 12 (values 0 to 1)
+├── Consumer usage 0x00: byte 13 (values 0 to 1)
+├── Consumer usage 0x00: byte 14 (values 0 to 1)
+├── Consumer usage 0x00: byte 15 (values 0 to 1)
+└── Consumer usage 0x00: byte 16 (values 0 to 1)
+
+○ Output report #4 (39 bytes):
+├── Consumer usage 0x00: byte 1 (values 0 to 1)
+├── Consumer usage 0x00: byte 2 (values 0 to 1)
+├── Consumer usage 0x00: byte 3 (values 0 to 1)
+├── Consumer usage 0x00: byte 4 (values 0 to 1)
+├── Consumer usage 0x00: byte 5 (values 0 to 1)
+├── Consumer usage 0x00: byte 6 (values 0 to 1)
+├── Consumer usage 0x00: byte 7 (values 0 to 1)
+├── Consumer usage 0x00: byte 8 (values 0 to 1)
+├── Consumer usage 0x00: byte 9 (values 0 to 1)
+├── Consumer usage 0x00: byte 10 (values 0 to 1)
+├── Consumer usage 0x00: byte 11 (values 0 to 1)
+├── Consumer usage 0x00: byte 12 (values 0 to 1)
+├── Consumer usage 0x00: byte 13 (values 0 to 1)
+├── Consumer usage 0x00: byte 14 (values 0 to 1)
+├── Consumer usage 0x00: byte 15 (values 0 to 1)
+├── Consumer usage 0x00: byte 16 (values 0 to 1)
+├── Consumer usage 0x00: byte 17 (values 0 to 1)
+├── Consumer usage 0x00: byte 18 (values 0 to 1)
+├── Consumer usage 0x00: byte 19 (values 0 to 1)
+├── Consumer usage 0x00: byte 20 (values 0 to 1)
+├── Consumer usage 0x00: byte 21 (values 0 to 1)
+├── Consumer usage 0x00: byte 22 (values 0 to 1)
+├── Consumer usage 0x00: byte 23 (values 0 to 1)
+├── Consumer usage 0x00: byte 24 (values 0 to 1)
+├── Consumer usage 0x00: byte 25 (values 0 to 1)
+├── Consumer usage 0x00: byte 26 (values 0 to 1)
+├── Consumer usage 0x00: byte 27 (values 0 to 1)
+├── Consumer usage 0x00: byte 28 (values 0 to 1)
+├── Consumer usage 0x00: byte 29 (values 0 to 1)
+├── Consumer usage 0x00: byte 30 (values 0 to 1)
+├── Consumer usage 0x00: byte 31 (values 0 to 1)
+├── Consumer usage 0x00: byte 32 (values 0 to 1)
+├── Consumer usage 0x00: byte 33 (values 0 to 1)
+├── Consumer usage 0x00: byte 34 (values 0 to 1)
+├── Consumer usage 0x00: byte 35 (values 0 to 1)
+├── Consumer usage 0x00: byte 36 (values 0 to 1)
+├── Consumer usage 0x00: byte 37 (values 0 to 1)
+└── Consumer usage 0x00: byte 38 (values 0 to 1)

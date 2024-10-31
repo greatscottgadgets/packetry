@@ -1,10 +1,21 @@
 use std::collections::BTreeMap;
+use std::fmt::Formatter;
 use std::mem::size_of;
 use std::ops::Range;
 
 use bytemuck_derive::{Pod, Zeroable};
 use bytemuck::pod_read_unaligned;
 use crc::{Crc, CRC_16_USB};
+use hidreport::{
+    Field,
+    LogicalMaximum,
+    LogicalMinimum,
+    ParserError,
+    Report,
+    ReportCount,
+    ReportDescriptor,
+};
+use itertools::{Itertools, Position};
 use num_enum::{IntoPrimitive, FromPrimitive};
 use derive_more::{From, Into, Display};
 use usb_ids::FromId;
@@ -1160,7 +1171,7 @@ pub struct ControlTransfer {
 }
 
 impl ControlTransfer {
-    pub fn summary(&self) -> String {
+    pub fn summary(&self, detail: bool) -> String {
         let request_type = self.fields.type_fields.request_type();
         let direction = self.fields.type_fields.direction();
         let request = self.fields.request;
@@ -1221,6 +1232,14 @@ impl ControlTransfer {
                 parts.push(
                     format!(": {}", UTF16Bytes(&self.data[2..size])));
             },
+            (RequestType::Standard,
+             StandardRequest::GetDescriptor,
+             DescriptorType::Class(0x22))
+                if detail && self.recipient_class == Some(ClassId::HID) =>
+            {
+                parts.push(
+                    format!("\n{}", HidReportDescriptor::from(&self.data)));
+            }
             (..) => {}
         };
         let summary = parts.concat();
@@ -1281,9 +1300,152 @@ impl std::fmt::Display for UTF16ByteVec {
     }
 }
 
+struct HidReportDescriptor(Result<ReportDescriptor, ParserError>);
+
+impl HidReportDescriptor {
+    fn from(data: &[u8]) -> Self {
+        Self(ReportDescriptor::try_from(data))
+    }
+}
+
+impl std::fmt::Display for HidReportDescriptor{
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        match &self.0 {
+            Ok(desc) => {
+                for report in desc.input_reports() {
+                    write_report(f, "Input", report)?;
+                }
+                for report in desc.output_reports() {
+                    write_report(f, "Output", report)?;
+                }
+            },
+            Err(parse_err) => write!(f,
+                "\nFailed to parse report descriptor: {parse_err}")?,
+        }
+        Ok(())
+    }
+}
+
+fn write_report(f: &mut Formatter<'_>, kind: &str, report: &impl Report)
+    -> Result<(), std::fmt::Error>
+{
+    use Field::*;
+    use Position::*;
+    write!(f, "\n○ {kind} report ")?;
+    match (report.report_id(), report.size_in_bytes()) {
+        (Some(id), 1) => writeln!(f, "#{id} (1 byte):")?,
+        (Some(id), n) => writeln!(f, "#{id} ({n} bytes):")?,
+        (None,     1) => writeln!(f, "(1 byte):")?,
+        (None,     n) => writeln!(f, "({n} bytes):")?,
+    }
+    for (position, field) in report.fields().iter().with_position() {
+        match position {
+            First | Middle => write!(f, "├── ")?,
+            Last  | Only   => write!(f, "└── ")?,
+        };
+        match &field {
+            Array(array) => {
+                write!(f, "Array of {} {}: ",
+                    array.report_count,
+                    if array.report_count == ReportCount::from(1) {
+                        "button"
+                    } else {
+                        "buttons"
+                    }
+                )?;
+                write_bits(f, &array.bits)?;
+                let usage_range = array.usage_range();
+                write!(f, " [")?;
+                write_usage(f, &usage_range.minimum())?;
+                write!(f, " — ")?;
+                write_usage(f, &usage_range.maximum())?;
+                write!(f, "]")?;
+            }
+            Variable(var) => {
+                write_usage(f, &var.usage)?;
+                write!(f, ": ")?;
+                write_bits(f, &var.bits)?;
+                let bit_count = var.bits.end - var.bits.start;
+                if bit_count > 1 {
+                    let max = (1 << bit_count) - 1;
+                    if var.logical_minimum != LogicalMinimum::from(0) ||
+                        var.logical_maximum != LogicalMaximum::from(max)
+                    {
+                        write!(f, " (values {} to {})",
+                            var.logical_minimum,
+                            var.logical_maximum)?;
+                    }
+                }
+            },
+            Constant(constant) => {
+                write!(f, "Padding: ")?;
+                write_bits(f, &constant.bits)?;
+            },
+        };
+        writeln!(f)?;
+    }
+    Ok(())
+}
+
+fn write_usage<T>(f: &mut Formatter, usage: T)
+    -> Result<(), std::fmt::Error>
+where u32: From<T>
+{
+    let usage_code: u32 = usage.into();
+    match hut::Usage::try_from(usage_code) {
+        Ok(usage) => write!(f, "{usage}")?,
+        Err(_) => {
+            let page: u16 = (usage_code >> 16) as u16;
+            let id: u16 = usage_code as u16;
+            match hut::UsagePage::try_from(page) {
+                Ok(page) => write!(f,
+                    "{} usage 0x{id:02X}", page.name())?,
+                Err(_) => write!(f,
+                    "Unknown page 0x{page:02X} usage 0x{id:02X}")?,
+            }
+        }
+    };
+    Ok(())
+}
+
+fn write_bits(f: &mut Formatter, bit_range: &Range<usize>)
+    -> Result<(), std::fmt::Error>
+{
+    let bit_count = bit_range.end - bit_range.start;
+    let byte_range = (bit_range.start / 8)..((bit_range.end - 1)/ 8);
+    let byte_count = byte_range.end - byte_range.start;
+    match (byte_count, bit_count) {
+        (_, 1) => write!(f,
+            "byte {} bit {}",
+            byte_range.start,
+            bit_range.start % 8)?,
+        (0, n) if n == 8 && bit_range.start % 8 == 0 => write!(f,
+            "byte {}",
+            byte_range.start)?,
+        (0, _) => write!(f,
+            "byte {} bits {}-{}",
+            byte_range.start,
+            bit_range.start % 8, (bit_range.end - 1) % 8)?,
+        (_, n) if n % 8 == 0 && bit_range.start % 8 == 0 => write!(f,
+            "bytes {}-{}",
+            byte_range.start,
+            byte_range.end)?,
+        (_, _) => write!(f,
+            "byte {} bit {} — byte {} bit {}",
+            byte_range.start,
+            bit_range.start % 8,
+            byte_range.end,
+            (bit_range.end - 1) % 8)?,
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs::File;
+    use std::io::{BufRead, BufReader, BufWriter, Write};
+    use std::path::PathBuf;
 
     #[test]
     fn test_parse_sof() {
@@ -1337,6 +1499,41 @@ mod tests {
             assert!(data.crc == 0xd5aa);
         } else {
             panic!("Expected Data but got {:?}", p);
+        }
+    }
+
+    #[test]
+    fn test_parse_hid() {
+        let test_dir = PathBuf::from("./tests/hid/");
+        let mut list_path = test_dir.clone();
+        list_path.push("tests.txt");
+        let list_file = File::open(list_path).unwrap();
+        for test_name in BufReader::new(list_file).lines() {
+            let mut test_path = test_dir.clone();
+            test_path.push(test_name.unwrap());
+            let mut desc_path = test_path.clone();
+            let mut ref_path = test_path.clone();
+            let mut out_path = test_path.clone();
+            desc_path.push("descriptor.bin");
+            ref_path.push("reference.txt");
+            out_path.push("output.txt");
+            {
+                let data = std::fs::read(desc_path).unwrap();
+                let descriptor = HidReportDescriptor::from(&data);
+                let out_file = File::create(out_path.clone()).unwrap();
+                let mut writer = BufWriter::new(out_file);
+                write!(writer, "{descriptor}").unwrap();
+            }
+            let ref_file = File::open(ref_path).unwrap();
+            let out_file = File::open(out_path.clone()).unwrap();
+            let ref_reader = BufReader::new(ref_file);
+            let out_reader = BufReader::new(out_file);
+            let mut out_lines = out_reader.lines();
+            for line in ref_reader.lines() {
+                let expected = line.unwrap();
+                let actual = out_lines.next().unwrap().unwrap();
+                assert_eq!(actual, expected);
+            }
         }
     }
 }
