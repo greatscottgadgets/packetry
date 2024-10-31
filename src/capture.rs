@@ -20,10 +20,11 @@ use crate::database::{
 };
 use crate::usb::{self, prelude::*};
 use crate::util::{
-    id::{Id, HasLength},
+    id::Id,
     rcu::SingleWriterRcu,
     vec_map::{Key, VecMap},
     Bytes,
+    RangeLength,
     fmt_count,
     fmt_size,
 };

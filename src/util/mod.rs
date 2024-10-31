@@ -1,5 +1,7 @@
 //! Utility code that doesn't belong anywhere specific.
 
+use std::ops::Range;
+
 use anyhow::{Error, bail};
 use num_format::{Locale, ToFormattedString};
 use humansize::{SizeFormatter, BINARY};
@@ -8,6 +10,8 @@ use itertools::Itertools;
 pub mod id;
 pub mod vec_map;
 pub mod rcu;
+
+use id::Id;
 
 pub fn fmt_count(count: u64) -> String {
     count.to_formatted_string(&Locale::en)
@@ -116,4 +120,20 @@ impl std::fmt::Display for Bytes<'_> {
             Ok(())
         }
     }
+}
+
+pub trait RangeLength {
+   fn len(&self) -> u64;
+}
+
+impl<T> RangeLength for Range<Id<T>> {
+   fn len(&self) -> u64 {
+      self.end.value - self.start.value
+   }
+}
+
+impl RangeLength for Range<u64> {
+   fn len(&self) -> u64 {
+      self.end - self.start
+   }
 }
