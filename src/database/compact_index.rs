@@ -13,9 +13,11 @@ use std::sync::Arc;
 use anyhow::{Context, Error, anyhow, bail};
 use itertools::{structs::Zip, multizip};
 
-use crate::data_stream::{data_stream, DataReader, DataWriter, DataIterator};
+use crate::database::{
+    data_stream::{data_stream, DataReader, DataWriter, DataIterator},
+    index_stream::{index_stream, IndexReader, IndexWriter, IndexIterator},
+};
 use crate::id::Id;
-use crate::index_stream::{index_stream, IndexReader, IndexWriter, IndexIterator};
 use crate::util::{fmt_count, fmt_size};
 
 type Offset = Id<u8>;

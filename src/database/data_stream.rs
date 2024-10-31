@@ -10,7 +10,13 @@ use anyhow::Error;
 use bytemuck::{bytes_of, cast_slice, from_bytes, Pod};
 
 use crate::id::Id;
-use crate::stream::{stream, StreamReader, StreamWriter, Data, MIN_BLOCK};
+use crate::database::stream::{
+    stream,
+    StreamReader,
+    StreamWriter,
+    Data,
+    MIN_BLOCK
+};
 use crate::util::{fmt_count, fmt_size};
 
 /// Unique handle for append-only write access to a data stream.

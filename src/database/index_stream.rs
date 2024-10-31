@@ -8,9 +8,16 @@ use std::ops::Range;
 
 use anyhow::Error;
 
-use crate::data_stream::{data_stream, DataReader, DataWriter, DataIterator};
+use crate::database::{
+    stream::MIN_BLOCK,
+    data_stream::{
+        data_stream,
+        DataReader,
+        DataWriter,
+        DataIterator
+    },
+};
 use crate::id::Id;
-use crate::stream::MIN_BLOCK;
 use crate::util::{fmt_count, fmt_size};
 
 /// Unique handle for append-only write access to an index.

@@ -22,15 +22,12 @@ pub mod built {
 // Declare all modules used.
 mod backend;
 mod capture;
-mod compact_index;
-mod data_stream;
+mod database;
 mod decoder;
 mod id;
-mod index_stream;
 mod item;
 mod pcap;
 mod rcu;
-mod stream;
 mod test_cynthion;
 mod ui;
 mod usb;

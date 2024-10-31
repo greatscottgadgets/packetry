@@ -10,9 +10,15 @@ use std::sync::Arc;
 use std::mem::size_of;
 
 use crate::id::{Id, HasLength};
-use crate::data_stream::{
-    data_stream, data_stream_with_block_size, DataWriter, DataReader};
-use crate::compact_index::{compact_index, CompactWriter, CompactReader};
+use crate::database::{
+    CompactReader,
+    CompactWriter,
+    compact_index,
+    DataReader,
+    DataWriter,
+    data_stream,
+    data_stream_with_block_size,
+};
 use crate::rcu::SingleWriterRcu;
 use crate::vec_map::{Key, VecMap};
 use crate::usb::{self, prelude::*};

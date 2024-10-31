@@ -9,14 +9,11 @@ extern crate bitfield;
 use libfuzzer_sys::{arbitrary::{Arbitrary, Unstructured}, fuzz_target};
 
 mod capture;
-mod compact_index;
-mod data_stream;
+mod database;
 mod decoder;
 mod id;
-mod index_stream;
 mod pcap;
 mod rcu;
-mod stream;
 mod usb;
 mod util;
 mod vec_map;
