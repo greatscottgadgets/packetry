@@ -1,12 +1,18 @@
+//! USB 2.0 protocol decoder.
+//!
+//! Processes incoming packets and populates a capture database.
+
 use std::sync::atomic::Ordering::Release;
 use std::sync::Arc;
 
 use anyhow::{Context, Error, bail};
 
 use crate::capture::prelude::*;
-use crate::rcu::SingleWriterRcu;
 use crate::usb::{self, prelude::*, validate_packet};
-use crate::vec_map::VecMap;
+use crate::util::{
+    rcu::SingleWriterRcu,
+    vec_map::VecMap,
+};
 
 struct EndpointData {
     device_id: DeviceId,

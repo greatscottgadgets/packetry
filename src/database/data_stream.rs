@@ -1,3 +1,7 @@
+//! Typed data stream implementation.
+//!
+//! Stores streams of specific types, rather than raw bytes.
+
 use std::marker::PhantomData;
 use std::mem::size_of;
 use std::ops::{Deref, Range};
@@ -5,8 +9,14 @@ use std::ops::{Deref, Range};
 use anyhow::Error;
 use bytemuck::{bytes_of, cast_slice, from_bytes, Pod};
 
-use crate::id::Id;
-use crate::stream::{stream, StreamReader, StreamWriter, Data, MIN_BLOCK};
+use crate::util::id::Id;
+use crate::database::stream::{
+    stream,
+    StreamReader,
+    StreamWriter,
+    Data,
+    MIN_BLOCK
+};
 use crate::util::{fmt_count, fmt_size};
 
 /// Unique handle for append-only write access to a data stream.

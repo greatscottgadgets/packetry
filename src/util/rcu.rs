@@ -1,3 +1,5 @@
+//! Implementation of the read-copy-update (RCU) pattern.
+
 use std::sync::Arc;
 use arc_swap::ArcSwapAny;
 

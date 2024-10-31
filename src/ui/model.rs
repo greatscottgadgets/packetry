@@ -11,14 +11,9 @@ use gtk::{gio, glib};
 
 use anyhow::Error;
 
-use crate::capture::{
-    CaptureReader,
-    TrafficItem,
-    TrafficViewMode,
-    DeviceItem,
-    DeviceViewMode,
-};
-use crate::tree_list_model::{TreeListModel, ItemNodeRc};
+use crate::capture::CaptureReader;
+use crate::item::{TrafficItem, TrafficViewMode, DeviceItem, DeviceViewMode};
+use crate::ui::tree_list_model::{TreeListModel, ItemNodeRc};
 
 /// Trait implemented by each of our ListModel implementations.
 pub trait GenericModel<Item, ViewMode> where Self: Sized {
@@ -130,9 +125,9 @@ mod imp {
     use gtk::{gio, glib, prelude::*};
 
     use std::cell::RefCell;
-    use crate::capture::{TrafficItem, TrafficViewMode, DeviceItem, DeviceViewMode};
-    use crate::row_data::{TrafficRowData, DeviceRowData};
-    use crate::tree_list_model::TreeListModel;
+    use crate::item::{TrafficItem, TrafficViewMode, DeviceItem, DeviceViewMode};
+    use crate::ui::row_data::{TrafficRowData, DeviceRowData};
+    use crate::ui::tree_list_model::TreeListModel;
 
     /// Define the inner type to be used in the GObject type system.
     macro_rules! model {

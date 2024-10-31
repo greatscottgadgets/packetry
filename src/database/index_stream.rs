@@ -1,13 +1,23 @@
+//! Basic index stream implementation.
+//!
+//! Stores non-compressed indexes. Used in the compressed index implementation.
+
 use std::cmp::min;
 use std::marker::PhantomData;
 use std::ops::Range;
 
 use anyhow::Error;
 
-use crate::data_stream::{data_stream, DataReader, DataWriter, DataIterator};
-use crate::id::Id;
-use crate::stream::MIN_BLOCK;
-use crate::util::{fmt_count, fmt_size};
+use crate::database::{
+    stream::MIN_BLOCK,
+    data_stream::{
+        data_stream,
+        DataReader,
+        DataWriter,
+        DataIterator
+    },
+};
+use crate::util::{id::Id, fmt_count, fmt_size};
 
 /// Unique handle for append-only write access to an index.
 pub struct IndexWriter<Position, Value, const S: usize = MIN_BLOCK> {

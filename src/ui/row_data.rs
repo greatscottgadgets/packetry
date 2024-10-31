@@ -6,8 +6,8 @@ use gtk::subclass::prelude::*;
 #[cfg(any(test, feature="record-ui-test"))]
 use gtk::prelude::Cast;
 
-use crate::capture::{TrafficItem, DeviceItem};
-use crate::tree_list_model::ItemNodeRc;
+use crate::item::{TrafficItem, DeviceItem};
+use crate::ui::tree_list_model::ItemNodeRc;
 
 /// Trait implemented by each of our row data types.
 pub trait GenericRowData<Item> where Item: Clone {
@@ -61,8 +61,8 @@ mod imp {
     use gtk::glib::{self, subclass::prelude::*};
     use std::cell::RefCell;
 
-    use crate::capture::{TrafficItem, DeviceItem};
-    use crate::tree_list_model::ItemNodeRc;
+    use crate::item::{TrafficItem, DeviceItem};
+    use crate::ui::tree_list_model::ItemNodeRc;
 
     /// Define the inner type to be used in the GObject type system.
     macro_rules! row_data {

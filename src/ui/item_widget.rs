@@ -1,4 +1,6 @@
-//! GObject subclass for our custom widget.
+//! GObject subclass for the widget we use to display an item.
+//!
+//! Wraps a GTK box which contains further widgets.
 
 use std::cell::RefMut;
 use gtk::{

@@ -1,3 +1,5 @@
+//! USB capture backend for iCE40-usbtrace.
+
 use std::collections::VecDeque;
 use std::sync::mpsc;
 use std::time::Duration;

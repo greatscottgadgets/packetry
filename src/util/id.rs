@@ -1,3 +1,7 @@
+//! The Id type and its traits.
+//!
+//! Used to enforce type safety of indices used in the capture database.
+
 use std::fmt::{Debug, Display};
 use std::marker::PhantomData;
 use std::mem::size_of;
@@ -38,22 +42,6 @@ impl<T> Debug for Id<T> {
     {
         write!(f, "{}", self.value)
     }
-}
-
-pub trait HasLength {
-   fn len(&self) -> u64;
-}
-
-impl<T> HasLength for Range<Id<T>> {
-   fn len(&self) -> u64 {
-      self.end.value - self.start.value
-   }
-}
-
-impl HasLength for Range<u64> {
-   fn len(&self) -> u64 {
-      self.end - self.start
-   }
 }
 
 impl<T> PartialEq<Id<T>> for Id<T> {

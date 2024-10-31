@@ -1,3 +1,5 @@
+//! Helper type for managing a queue of USB bulk transfers.
+
 use std::sync::mpsc;
 
 use anyhow::{Context, Error};

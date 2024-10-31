@@ -1,3 +1,5 @@
+//! Version information.
+
 use std::fmt::Write;
 
 use crate::built::*;

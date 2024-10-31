@@ -1,3 +1,5 @@
+//! Code describing the USB standard and its data types.
+
 use std::collections::BTreeMap;
 use std::fmt::Formatter;
 use std::mem::size_of;
@@ -20,8 +22,10 @@ use num_enum::{IntoPrimitive, FromPrimitive};
 use derive_more::{From, Into, Display};
 use usb_ids::FromId;
 
-use crate::util::titlecase;
-use crate::vec_map::VecMap;
+use crate::util::{
+    vec_map::VecMap,
+    titlecase
+};
 
 fn crc16(bytes: &[u8]) -> u16 {
     const CRC16: Crc<u16> = Crc::<u16>::new(&CRC_16_USB);
@@ -152,6 +156,7 @@ byte_type!(ConfigField);
 byte_type!(InterfaceNum);
 byte_type!(InterfaceAlt);
 byte_type!(InterfaceField);
+byte_type!(InterfaceEpNum);
 byte_type!(EndpointNum);
 byte_type!(EndpointField);
 byte_type!(EndpointAddr);
@@ -1577,6 +1582,7 @@ pub mod prelude {
         InterfaceAlt,
         InterfaceKey,
         InterfaceField,
+        InterfaceEpNum,
         EndpointNum,
         EndpointField,
         HidField,

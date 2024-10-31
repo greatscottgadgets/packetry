@@ -1,3 +1,5 @@
+//! The main Packetry binary.
+
 // On Windows, produce a GUI app rather than a console one.
 #![windows_subsystem = "windows"]
 
@@ -20,35 +22,21 @@ pub mod built {
 // Declare all modules used.
 mod backend;
 mod capture;
-mod compact_index;
-mod data_stream;
+mod database;
 mod decoder;
-mod id;
-mod index_stream;
-mod item_widget;
-mod model;
+mod item;
 mod pcap;
-mod rcu;
-mod row_data;
-mod stream;
-mod test_cynthion;
-mod tree_list_model;
+mod testing;
 mod ui;
 mod usb;
 mod util;
-mod vec_map;
 mod version;
-
-// Declare optional modules.
-#[cfg(any(test, feature="record-ui-test"))]
-mod record_ui;
-#[cfg(test)]
-mod test_replay;
 
 use gtk::prelude::*;
 use gtk::gio::ApplicationFlags;
 use gtk::glib::{self, OptionArg, OptionFlags};
 
+use testing::test_cynthion;
 use ui::{
     activate,
     display_error,
@@ -75,7 +63,7 @@ fn main() {
                  version_info(have_argument("--dependencies")));
     } else if have_argument("--test-cynthion") {
         let save_captures = have_argument("--save-captures");
-        test_cynthion::run_test(save_captures);
+        test_cynthion(save_captures);
     } else {
         if gtk::init().is_err() {
             eprintln!("Failed to initialize GTK");

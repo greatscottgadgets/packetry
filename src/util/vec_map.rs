@@ -1,9 +1,11 @@
+//! A fast Vec-based map type, for use where keys are small bounded integers.
+
 use std::iter::FilterMap;
 use std::ops::{Index, IndexMut};
 use std::marker::PhantomData;
 use std::slice::Iter;
 
-use crate::id::Id;
+use crate::util::id::Id;
 
 pub trait Key {
     fn id(self) -> usize;

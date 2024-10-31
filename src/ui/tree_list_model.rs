@@ -1,3 +1,8 @@
+//! Our custom implementation of TreeListModel.
+//!
+//! The concept is similar to the GTK TreeListModel type, but the
+//! implementation is customised for Packetry's usage.
+
 use std::cell::RefCell;
 use std::cmp::min;
 use std::collections::{BTreeMap, HashSet};
@@ -15,10 +20,11 @@ use gtk::gio::prelude::ListModelExt;
 use derive_more::AddAssign;
 use itertools::Itertools;
 
-use crate::capture::{CaptureReader, ItemSource};
-use crate::model::GenericModel;
-use crate::row_data::GenericRowData;
-use crate::item_widget::ItemWidget;
+use crate::capture::CaptureReader;
+use crate::item::ItemSource;
+use super::model::GenericModel;
+use super::row_data::GenericRowData;
+use super::item_widget::ItemWidget;
 
 type RootNodeRc<Item> = Rc<RefCell<RootNode<Item>>>;
 pub type ItemNodeRc<Item> = Rc<RefCell<ItemNode<Item>>>;
