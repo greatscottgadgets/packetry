@@ -11,13 +11,8 @@ use gtk::{gio, glib};
 
 use anyhow::Error;
 
-use crate::capture::{
-    CaptureReader,
-    TrafficItem,
-    TrafficViewMode,
-    DeviceItem,
-    DeviceViewMode,
-};
+use crate::capture::CaptureReader;
+use crate::item::{TrafficItem, TrafficViewMode, DeviceItem, DeviceViewMode};
 use crate::tree_list_model::{TreeListModel, ItemNodeRc};
 
 /// Trait implemented by each of our ListModel implementations.
@@ -130,7 +125,7 @@ mod imp {
     use gtk::{gio, glib, prelude::*};
 
     use std::cell::RefCell;
-    use crate::capture::{TrafficItem, TrafficViewMode, DeviceItem, DeviceViewMode};
+    use crate::item::{TrafficItem, TrafficViewMode, DeviceItem, DeviceViewMode};
     use crate::row_data::{TrafficRowData, DeviceRowData};
     use crate::tree_list_model::TreeListModel;
 

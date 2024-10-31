@@ -152,6 +152,7 @@ byte_type!(ConfigField);
 byte_type!(InterfaceNum);
 byte_type!(InterfaceAlt);
 byte_type!(InterfaceField);
+byte_type!(InterfaceEpNum);
 byte_type!(EndpointNum);
 byte_type!(EndpointField);
 byte_type!(EndpointAddr);
@@ -1577,6 +1578,7 @@ pub mod prelude {
         InterfaceAlt,
         InterfaceKey,
         InterfaceField,
+        InterfaceEpNum,
         EndpointNum,
         EndpointField,
         HidField,

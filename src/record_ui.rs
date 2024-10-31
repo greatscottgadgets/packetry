@@ -8,7 +8,8 @@ use gtk::gio::prelude::ListModelExt;
 use itertools::Itertools;
 use serde::{Serialize, Deserialize};
 
-use crate::capture::{CaptureReader, ItemSource};
+use crate::capture::CaptureReader;
+use crate::item::ItemSource;
 use crate::model::GenericModel;
 use crate::row_data::ToGenericRowData;
 

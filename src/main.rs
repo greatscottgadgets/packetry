@@ -25,6 +25,7 @@ mod data_stream;
 mod decoder;
 mod id;
 mod index_stream;
+mod item;
 mod item_widget;
 mod model;
 mod pcap;

@@ -79,6 +79,8 @@ use crate::capture::{
     EndpointDataEvent,
     Group,
     GroupContent,
+};
+use crate::item::{
     ItemSource,
     TrafficItem,
     TrafficViewMode::{self,*},

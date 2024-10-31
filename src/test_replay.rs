@@ -7,8 +7,8 @@ use gtk::prelude::*;
 use itertools::assert_equal;
 use serde_json::Deserializer;
 
-use crate::capture::TrafficViewMode;
 use crate::decoder::Decoder;
+use crate::item::TrafficViewMode;
 use crate::pcap::Loader;
 use crate::model::GenericModel;
 use crate::row_data::{GenericRowData, TrafficRowData, DeviceRowData};

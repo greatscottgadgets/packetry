@@ -49,3 +49,65 @@ pub fn titlecase(text: &str) -> String {
             .collect::<String>()
     )
 }
+
+pub struct Bytes<'src> {
+    pub partial: bool,
+    pub bytes: &'src [u8],
+}
+
+impl<'src> Bytes<'src> {
+    pub fn first(max: usize, bytes: &'src [u8]) -> Self {
+        if bytes.len() > max {
+            Bytes {
+                partial: true,
+                bytes: &bytes[0..max],
+            }
+        } else {
+            Bytes {
+                partial: false,
+                bytes,
+            }
+        }
+    }
+
+    fn looks_like_ascii(&self) -> bool {
+        let mut num_printable = 0;
+        for &byte in self.bytes {
+            if byte == 0 || byte >= 0x80 {
+                // Outside ASCII range.
+                return false;
+            }
+            // Count printable and pseudo-printable characters.
+            let printable = match byte {
+                c if (0x20..0x7E).contains(&c) => true, // printable range
+                0x09                           => true, // tab
+                0x0A                           => true, // new line
+                0x0D                           => true, // carriage return
+                _ => false
+            };
+            if printable {
+                num_printable += 1;
+            }
+        }
+        // If the string is at least half printable, treat as ASCII.
+        num_printable > 0 && num_printable >= self.bytes.len() / 2
+    }
+}
+
+impl std::fmt::Display for Bytes<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if self.looks_like_ascii() {
+            write!(f, "'{}'", String::from_utf8(
+                self.bytes.iter()
+                          .flat_map(|c| {std::ascii::escape_default(*c)})
+                          .collect::<Vec<u8>>()).unwrap())?
+        } else {
+            write!(f, "{:02X?}", self.bytes)?
+        };
+        if self.partial {
+            write!(f, "...")
+        } else {
+            Ok(())
+        }
+    }
+}
