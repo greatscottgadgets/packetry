@@ -16,6 +16,7 @@ use std::net::TcpListener;
 use std::sync::Mutex;
 
 use anyhow::{Context as ErrorContext, Error, bail};
+use chrono::{DateTime, Local};
 use bytemuck::bytes_of;
 
 use gtk::gio::{
@@ -1594,7 +1595,8 @@ fn show_metadata() -> Result<(), Error> {
             ("End time", &meta.end_time),
         ] {
             let text = field
-                .map(|s| format!("{s:?}"))
+                .map(|s| format!("{}",
+                    DateTime::<Local>::from(s).format("%c")))
                 .unwrap_or(NONE.to_string());
             add_field(row, name, &text);
         }
