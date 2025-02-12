@@ -15,13 +15,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Get runner version
+        run: |
+          # There is currently no way to access the runner version nicely,
+          # so enjoy this lovely bodge.
+          # (from: https://github.com/actions/runner/discussions/2838)
+          tarball=$(ls /opt/runner-cache/)
+          if [[ $tarball =~ ([0-9]+\.[0-9]+\.[0-9]+) ]]; then
+            echo "RUNNER_VERSION=${BASH_REMATCH[1]}" >> "$GITHUB_ENV"
+          else
+            echo "RUNNER_VERSION=unknown" >> "$GITHUB_ENV"
+          fi
+        if: startsWith(matrix.os, 'ubuntu-')
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
           packages: libgtk-4-dev build-essential
-          version: 2
+          version: "${{ env.RUNNER_VERSION }}"
 
       - name: Install toolchain
         run: |
@@ -48,6 +61,16 @@ jobs:
       VCPKG_INSTALLED_DIR: ${{ github.workspace }}/vcpkg/installed
 
     steps:
+      - name: Get runner version
+        run: |
+          tarball=$(ls /opt/runner-cache/)
+          if [[ $tarball =~ ([0-9]+\.[0-9]+\.[0-9]+) ]]; then
+            echo "RUNNER_VERSION=${BASH_REMATCH[1]}" >> "$GITHUB_ENV"
+          else
+            echo "RUNNER_VERSION=unknown" >> "$GITHUB_ENV"
+          fi
+        if: startsWith(matrix.os, 'ubuntu-')
+
       - uses: actions/checkout@v4
 
       - name: Install toolchain
@@ -63,7 +86,7 @@ jobs:
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
           packages: libgtk-4-dev build-essential
-          version: 2
+          version: "${{ env.RUNNER_VERSION }}"
         if: startsWith(matrix.os, 'ubuntu-')
 
       - name: Install dependencies (macOS)
