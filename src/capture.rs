@@ -159,6 +159,7 @@ pub struct EndpointWriter {
     pub group_index: CompactWriter<EndpointGroupId, EndpointTransactionId>,
     pub data_transactions: CompactWriter<EndpointDataEvent, EndpointTransactionId>,
     pub data_byte_counts: CompactWriter<EndpointDataEvent, EndpointByteCount>,
+    pub progress_index: CompactWriter<TrafficItemIdOffset, EndpointTransactionId>,
     pub end_index: CompactWriter<EndpointGroupId, TrafficItemId>,
 }
 
@@ -170,6 +171,7 @@ pub struct EndpointReader {
     pub group_index: CompactReader<EndpointGroupId, EndpointTransactionId>,
     pub data_transactions: CompactReader<EndpointDataEvent, EndpointTransactionId>,
     pub data_byte_counts: CompactReader<EndpointDataEvent, EndpointByteCount>,
+    pub progress_index: CompactReader<TrafficItemIdOffset, EndpointTransactionId>,
     pub end_index: CompactReader<EndpointGroupId, TrafficItemId>,
 }
 
@@ -182,6 +184,7 @@ pub fn create_endpoint()
     let (groups_writer, groups_reader) = compact_index()?;
     let (data_transaction_writer, data_transaction_reader) = compact_index()?;
     let (data_byte_count_writer, data_byte_count_reader) = compact_index()?;
+    let (progress_writer, progress_reader) = compact_index()?;
     let (end_writer, end_reader) = compact_index()?;
 
     // Create the shared state.
@@ -197,6 +200,7 @@ pub fn create_endpoint()
         group_index: groups_writer,
         data_transactions: data_transaction_writer,
         data_byte_counts: data_byte_count_writer,
+        progress_index: progress_writer,
         end_index: end_writer,
     };
 
@@ -207,6 +211,7 @@ pub fn create_endpoint()
         group_index: groups_reader,
         data_transactions: data_transaction_reader,
         data_byte_counts: data_byte_count_reader,
+        progress_index: progress_reader,
         end_index: end_reader,
     };
 
@@ -227,6 +232,7 @@ pub type EndpointId = Id<Endpoint>;
 pub type EndpointDataEvent = u64;
 pub type EndpointByteCount = u64;
 pub type DeviceVersion = u32;
+pub type TrafficItemIdOffset = u64;
 
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
 #[repr(C)]
