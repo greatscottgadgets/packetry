@@ -487,12 +487,13 @@ pub struct TreeListModel<Item, Model, RowData, ViewMode> {
     /// So we maintain this published row count separately from our internal
     /// counts, and update it just before emitting an `items_changed` signal.
     published_row_count: Cell<u32>,
+    pub selected: Option<Item>,
     #[cfg(any(test, feature="record-ui-test"))]
     on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>,
 }
 
 impl<Item, Model, RowData, ViewMode> TreeListModel<Item, Model, RowData, ViewMode>
-where Item: 'static + Clone + Debug,
+where Item: 'static + Clone + Debug + PartialEq,
       ViewMode: Copy,
       Model: GenericModel<Item, ViewMode> + ListModelExt,
       RowData: GenericRowData<Item> + IsA<Object> + Cast,
@@ -523,6 +524,7 @@ where Item: 'static + Clone + Debug,
             })),
             regions: RefCell::new(BTreeMap::new()),
             published_row_count: Cell::new(0),
+            selected: None,
             #[cfg(any(test, feature="record-ui-test"))]
             on_item_update,
         })
@@ -2362,6 +2364,33 @@ where Item: 'static + Clone + Debug,
         };
         let row_data = RowData::new(node_or_err_msg);
         Some(row_data.upcast::<Object>())
+    }
+
+    // The following methods correspond to the SelectionModel interface, and can
+    // be called by a GObject wrapper class to implement that interface.
+
+    pub fn is_selected(&self, position: u32) -> bool {
+        match &self.selected {
+            None => false,
+            Some(selected_item) => match self.fetch(position as u64) {
+                Ok(node) => {
+                    let row_item = &node.borrow().item;
+                    row_item == selected_item
+                },
+                _ => false,
+            }
+        }
+    }
+
+    pub fn select_item(&mut self, position: u32, _unselect_rest: bool) -> bool {
+        match self.fetch(position as u64) {
+            Ok(node) => {
+                let item = &node.borrow().item;
+                self.selected.replace(item.clone());
+                true
+            },
+            _ => false
+        }
     }
 }
 

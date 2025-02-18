@@ -51,6 +51,9 @@ pub trait GenericModel<Item, ViewMode> where Self: Sized {
 
     /// Fetch the connecting lines for a given item.
     fn connectors(&self, item: &Item) -> String;
+
+    /// Fetch the currently selected item, if any.
+    fn selected_item(&self) -> Option<Item>;
 }
 
 /// Define the outer type exposed to our Rust code.
@@ -59,7 +62,7 @@ macro_rules! model {
 
         glib::wrapper! {
             pub struct $model(ObjectSubclass<imp::$model>)
-                @implements gio::ListModel;
+                @implements gio::ListModel, gtk::SelectionModel;
         }
 
         impl GenericModel<$item, $view_mode> for $model {
@@ -118,6 +121,12 @@ macro_rules! model {
                 let tree = tree_opt.as_ref().unwrap();
                 tree.connectors(item)
             }
+
+            fn selected_item(&self) -> Option<$item> {
+                let tree_opt = self.imp().tree.borrow();
+                let tree = tree_opt.as_ref().unwrap();
+                tree.selected.clone()
+            }
         }
     }
 }
@@ -128,8 +137,7 @@ model!(DeviceModel, DeviceItem, DeviceViewMode, false);
 
 /// The internal implementation module.
 mod imp {
-    use gio::subclass::prelude::*;
-    use gtk::{gio, glib, prelude::*};
+    use gtk::{gio, glib, prelude::*, subclass::prelude::*, Bitset};
 
     use std::cell::RefCell;
     use crate::item::{TrafficItem, TrafficViewMode, DeviceItem, DeviceViewMode};
@@ -149,7 +157,7 @@ mod imp {
             impl ObjectSubclass for $model {
                 const NAME: &'static str = stringify!($model);
                 type Type = super::$model;
-                type Interfaces = (gio::ListModel,);
+                type Interfaces = (gio::ListModel, gtk::SelectionModel);
             }
 
             impl ObjectImpl for $model {}
@@ -173,6 +181,65 @@ mod imp {
                         Some(tree) => tree.item(position),
                         None => None
                     }
+                }
+            }
+
+            impl SelectionModelImpl for $model {
+                fn selection_in_range(&self, _position: u32, _n_items: u32)
+                    -> Bitset
+                {
+                    unimplemented!()
+                }
+
+                fn is_selected(&self, position: u32) -> bool {
+                    match self.tree.borrow().as_ref() {
+                        Some(tree) => tree.is_selected(position),
+                        None => false,
+                    }
+                }
+
+                fn select_all(&self) -> bool {
+                    false
+                }
+
+                fn select_item(&self, position: u32, unselect_rest: bool)
+                    -> bool
+                {
+                    let result = match self.tree.borrow_mut().as_mut() {
+                        Some(tree) => tree.select_item(position, unselect_rest),
+                        None => false,
+                    };
+                    if result {
+                        self.obj().selection_changed(0, self.n_items());
+                    }
+                    result
+                }
+
+                fn select_range(&self,
+                                _position: u32,
+                                _n_items: u32,
+                                _unselect_rest: bool)
+                    -> bool
+                {
+                    false
+                }
+
+                fn set_selection(&self, _selected: &Bitset, _mask: &Bitset)
+                    -> bool
+                {
+                    unimplemented!()
+                }
+
+                fn unselect_all(&self) -> bool {
+                    unimplemented!()
+                }
+
+                fn unselect_item(&self, _position: u32) -> bool {
+                    unimplemented!()
+                }
+
+                fn unselect_range(&self, _position: u32, _n_items: u32) -> bool {
+                    unimplemented!()
                 }
             }
         }
