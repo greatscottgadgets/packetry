@@ -91,7 +91,7 @@ impl Recording {
             .expect("Failed to write to UI action log");
 
         if let UiAction::SetExpanded(ref name, position, _) = action {
-            let summary = self.summary(&name, position);
+            let summary = self.summary(name, position);
             self.log_output(format!("{}: {}\n", action, summary));
         } else {
             self.log_output(format!("{}\n", action));
@@ -179,7 +179,7 @@ impl Recording {
             .collect();
         let removed_items: Vec<String> = self.view_items
             .entry(name.to_string())
-            .or_insert_with(Vec::new)
+            .or_default()
             .splice(removed_range, added_items.clone())
             .collect();
         self.log_output(format!("At {} row {}:\n", name, position));
@@ -218,12 +218,12 @@ impl Recording {
             .expect("Failed to fetch item node from row data");
         let item = &node.borrow().item;
         self.capture
-            .description(&item, false)
+            .description(item, false)
             .expect("Failed to generate item summary")
     }
 
     fn summary(&self, name: &str, position: u32) -> &str {
-        &self.view_items
+        self.view_items
             .get(name)
             .expect("Recording has no items for model")
             .get(position as usize)

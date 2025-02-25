@@ -83,7 +83,7 @@ impl ItemWidget {
 
     /// Take the signal handler retained by this widget.
     pub fn take_handler(&self) -> Option<SignalHandlerId> {
-        self.imp().handler.take().take()
+        self.imp().handler.take()
     }
 
     /// Set the summary text on this widget.

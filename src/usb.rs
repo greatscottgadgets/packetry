@@ -183,7 +183,7 @@ impl EndpointAddr {
     }
 
     pub fn from_parts(number: EndpointNum, direction: Direction) -> Self {
-        EndpointAddr((direction as u8) << 7 | number.0 & 0x7F)
+        EndpointAddr(((direction as u8) << 7) | number.0 & 0x7F)
     }
 }
 
@@ -1498,8 +1498,8 @@ mod tests {
     #[test]
     fn test_parse_data() {
         let packet = &vec![0xc3, 0x40, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xaa, 0xd5];
-        assert_eq!(validate_packet(&packet), Ok(PID::DATA0));
-        let p = PacketFields::from_packet(&packet);
+        assert_eq!(validate_packet(packet), Ok(PID::DATA0));
+        let p = PacketFields::from_packet(packet);
         if let PacketFields::Data(data) = p {
             assert!(data.crc == 0xd5aa);
         } else {
