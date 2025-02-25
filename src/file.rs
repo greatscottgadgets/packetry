@@ -30,7 +30,6 @@ use pcap_file::{
     DataLink,
     TsResolution,
 };
-use once_cell::sync::Lazy;
 
 use crate::capture::CaptureMetadata;
 use crate::usb::Speed;
@@ -408,27 +407,28 @@ for PcapNgSaver<'_, Dest>
 where Self: Sized, Dest: Write
 {
     fn new(dest: Dest, meta: Arc<CaptureMetadata>) -> Result<Self, Error> {
-        static APPLICATION: Lazy<String> = Lazy::new(||
-            format!("Packetry {}", version())
-        );
-        static SECTION: Lazy<SectionHeaderBlock> = Lazy::new(||
-            SectionHeaderBlock {
-                options: vec![
-                    SectionHeaderOption::UserApplication(
-                        Cow::from(Lazy::force(&APPLICATION))
-                    ),
-                    SectionHeaderOption::OS(
-                        Cow::from(std::env::consts::OS)
-                    ),
-                    SectionHeaderOption::Hardware(
-                        Cow::from(std::env::consts::ARCH)
-                    ),
-                ],
-                .. Default::default()
-            }
-        );
         let writer = BufWriter::new(dest);
-        let section = Lazy::force(&SECTION).clone();
+        let mut section = SectionHeaderBlock {
+            options: vec![
+                SectionHeaderOption::UserApplication(
+                    Cow::from(format!("Packetry {}", version()))
+                ),
+                SectionHeaderOption::OS(
+                    Cow::from(std::env::consts::OS)
+                ),
+                SectionHeaderOption::Hardware(
+                    Cow::from(std::env::consts::ARCH)
+                ),
+            ],
+            .. Default::default()
+        };
+        if let Some(comment) = &meta.comment {
+            section.options.push(
+                SectionHeaderOption::Comment(
+                    Cow::from(comment.clone())
+                )
+            );
+        }
         let mut pcap = PcapNgWriter::with_section_header(writer, section)?;
         pcap.write_block(&Block::InterfaceDescription(
             InterfaceDescriptionBlock {
