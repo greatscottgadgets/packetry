@@ -1297,7 +1297,10 @@ pub fn start_capture() -> Result<(), Error> {
             os: Some(std::env::consts::OS.to_string()),
             hardware: Some(std::env::consts::ARCH.to_string()),
             iface_speed: Some(speed),
-            start_time: Some(SystemTime::now()),
+            start_time: Some(
+                SystemTime::now()
+                    .duration_since(SystemTime::UNIX_EPOCH)?
+            ),
             .. device.metadata().clone()
         };
         writer.shared.metadata.swap(Arc::new(meta));
@@ -1318,7 +1321,9 @@ pub fn start_capture() -> Result<(), Error> {
             }
             let writer = decoder.finish()?;
             writer.shared.metadata.update(|meta| {
-                meta.end_time = Some(SystemTime::now());
+                meta.end_time = SystemTime::now()
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .ok();
                 meta.dropped = Some(0);
             });
             Ok(())
@@ -1595,8 +1600,10 @@ fn show_metadata() -> Result<(), Error> {
             ("End time", &meta.end_time),
         ] {
             let text = field
-                .map(|s| format!("{}",
-                    DateTime::<Local>::from(s).format("%c")))
+                .map(|duration| {
+                    let time = SystemTime::UNIX_EPOCH + duration;
+                    format!("{}", DateTime::<Local>::from(time).format("%c"))
+                })
                 .unwrap_or(NONE.to_string());
             add_field(row, name, &text);
         }

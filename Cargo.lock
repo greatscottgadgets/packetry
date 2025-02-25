@@ -1662,7 +1662,7 @@ dependencies = [
  "nusb",
  "once_cell",
  "page_size",
- "pcap-file",
+ "pcap-file-gsg",
  "procspawn",
  "rand 0.8.5",
  "rand_xorshift",
@@ -1714,13 +1714,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bb813b8af86854136c6922af0598d719255ecb2179515e6e7730d468f05c9cae"
 
 [[package]]
-name = "pcap-file"
-version = "2.0.0"
+name = "pcap-file-gsg"
+version = "3.0.0-rc3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fc1f139757b058f9f37b76c48501799d12c9aa0aa4c0d4c980b062ee925d1b2"
+checksum = "56020217f7fff93f8f615c2c69b4dc2c27acfe7f984dfcdf2d518c5841880247"
 dependencies = [
  "byteorder_slice",
  "derive-into-owned",
+ "once_cell",
  "thiserror",
 ]
 

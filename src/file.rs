@@ -2,22 +2,16 @@ use std::borrow::Cow;
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::mem::size_of;
 use std::num::NonZeroU32;
-use std::ops::Deref;
 use std::sync::Arc;
-use std::time::{SystemTime, Duration};
+use std::time::Duration;
 
 use anyhow::{Context, Error, anyhow};
-use byteorder_slice::{
-    ByteOrder, BigEndian, LittleEndian,
-    result::ReadSlice
-};
 use pcap_file::{
     pcap::{PcapReader, PcapHeader, PcapWriter, RawPcapPacket},
     pcapng::{
-        PcapNgReader, PcapNgWriter, PcapNgBlock,
+        PcapNgReader, PcapNgWriter,
         blocks::{
-            Block, RawBlock,
-            ENHANCED_PACKET_BLOCK,
+            Block,
             section_header:: {
                 SectionHeaderBlock,
                 SectionHeaderOption,
@@ -34,7 +28,6 @@ use pcap_file::{
         },
     },
     DataLink,
-    Endianness,
     TsResolution,
 };
 use once_cell::sync::Lazy;
@@ -207,47 +200,26 @@ impl GenericPacket for PacketWrapper<RawPcapPacket<'_>> {
 pub struct PcapNgLoader<Source: Read> {
     pcap: PcapNgReader<BufReader<Source>>,
     initial_metadata: Option<CaptureMetadata>,
-    bytes_read: u64,
-    endianness: Endianness,
-    interface_ts_units: Vec<u64>,
-    ts_start: Option<u64>,
+    interface_seen: bool,
+    ts_start: Option<Duration>,
 }
 
 /// Saver for pcap-ng format.
-pub struct PcapNgSaver<Dest: Write> {
-    pcap: PcapNgWriter<BufWriter<Dest>>,
+pub struct PcapNgSaver<'s, Dest: Write> {
+    pcap: PcapNgWriter<'s, BufWriter<Dest>>,
     meta: Arc<CaptureMetadata>,
-}
-
-/// Helper for parsing Enhanced Packet Blocks.
-fn parse_epb<B: ByteOrder>(raw_block: &RawBlock<'_>)
-    -> Result<(usize, u64, usize), Error>
-{
-    let mut slice = raw_block.body.deref();
-    let interface_id = slice.read_u32::<B>()? as usize;
-    let timestamp_hi = slice.read_u32::<B>()? as u64;
-    let timestamp_lo = slice.read_u32::<B>()? as u64;
-    let length = slice.read_u32::<B>()? as usize;
-    let timestamp = (timestamp_hi << 32) + timestamp_lo;
-    Ok((interface_id, timestamp, length))
 }
 
 impl<Source> GenericLoader<Source>
 for PcapNgLoader<Source>
 where Source: Read
 {
-    type PacketData<'p> = PacketWrapper<(RawBlock<'p>, usize)>;
+    type PacketData<'p> = PacketWrapper<EnhancedPacketBlock<'p>>;
 
     fn new(source: Source) -> Result<Self, Error> {
         let reader = BufReader::new(source);
         let pcap = PcapNgReader::new(reader)?;
         let section_header = pcap.section();
-        let endianness = section_header.endianness;
-        let header_length = {
-            let mut tmp = Vec::<u8>::new();
-            section_header.write_to::<LittleEndian, Vec<u8>>(&mut tmp)?;
-            tmp.len()
-        };
         let initial_metadata = Some({
             let mut meta = CaptureMetadata::default();
             for option in &section_header.options {
@@ -273,70 +245,54 @@ where Source: Read
         Ok(PcapNgLoader{
             pcap,
             initial_metadata,
-            endianness,
-            interface_ts_units: vec![],
-            bytes_read: header_length as u64,
+            interface_seen: false,
             ts_start: None
         })
     }
 
     fn next(&mut self) -> LoaderItem<impl GenericPacket> {
-        use Endianness::*;
         use DataLink::*;
         use LoaderItem::*;
         if let Some(meta) = self.initial_metadata.take() {
             return Metadata(Box::new(meta))
         }
-        let raw_block = match self.pcap.next_raw_block() {
+        let total_bytes_read = self.pcap.bytes_parsed();
+        let block = match self.pcap.next_block() {
             None => return End,
             Some(Err(e)) => return LoadError(anyhow!(e)),
             Some(Ok(block)) => block
         };
-        self.bytes_read += raw_block.initial_len as u64;
-        if raw_block.type_ == ENHANCED_PACKET_BLOCK {
-            let parse_result = match self.endianness {
-                Big => parse_epb::<BigEndian>(&raw_block),
-                Little => parse_epb::<LittleEndian>(&raw_block),
-            };
-            let (interface_id, ts_value, length) = match parse_result {
-                Ok(values) => values,
-                Err(e) => return LoadError(anyhow!(e)),
-            };
-            let ts_unit = match self.interface_ts_units.get(interface_id) {
-                Some(unit) => unit,
-                None => return LoadError(anyhow!(
-                    "Missing block for interface {interface_id}"
-                ))
-            };
-            let timestamp_ns = if let Some(ts_start) = self.ts_start {
-                ts_unit * (ts_value - ts_start)
-            } else {
-                self.ts_start = Some(ts_value);
-                0
-            };
-            return Packet(
-                PacketWrapper {
-                    packet_data: (raw_block, length),
-                    timestamp_ns,
-                    total_bytes_read: self.bytes_read,
-                }
-            )
-        }
-        let parsed_block = match self.endianness {
-            Big => raw_block.try_into_block::<BigEndian>(),
-            Little => raw_block.try_into_block::<LittleEndian>(),
-        };
-        match parsed_block {
-            Err(e) => return LoadError(anyhow!(e)),
-            Ok(Block::SectionHeader(_)) =>
-                return LoadError(anyhow!(
+        match block {
+            Block::EnhancedPacket(epb) => {
+                let timestamp_ns: u128 = if let Some(ts_start) = self.ts_start {
+                    (epb.timestamp - ts_start).as_nanos()
+                } else {
+                    self.ts_start = Some(epb.timestamp);
+                    0
+                };
+                let timestamp_ns: u64 = match timestamp_ns.try_into() {
+                    Ok(ns) => ns,
+                    Err(e) => return LoadError(anyhow!(e))
+                };
+                Packet(
+                    PacketWrapper {
+                        packet_data: epb,
+                        timestamp_ns,
+                        total_bytes_read,
+                    }
+                )
+            },
+            Block::SectionHeader(_) =>
+                LoadError(anyhow!(
                     "Multiple sections are not supported.")),
-            Ok(Block::InterfaceDescription(interface)) => {
+            Block::InterfaceDescription(interface) => {
                 use InterfaceDescriptionOption::*;
                 use Speed::*;
-                if !self.interface_ts_units.is_empty() {
+                if self.interface_seen {
                     return LoadError(anyhow!(
                         "Multiple interfaces are not supported"))
+                } else {
+                    self.interface_seen = true;
                 }
                 let mut meta = CaptureMetadata::default();
                 match interface.linktype {
@@ -355,17 +311,8 @@ where Source: Read
                         interface.linktype)),
                 };
                 meta.iface_snaplen = NonZeroU32::new(interface.snaplen);
-                let mut ts_units_specified = false;
                 for option in interface.options {
                     match option {
-                        IfTsResol(res) => {
-                            let ts_unit = 1_000_000_000 / match res {
-                                0x00..=0x7f => 10u64.pow(res as u32),
-                                0x80..=0xff => 2u64.pow((res & 0x7f) as u32)
-                            };
-                            self.interface_ts_units.push(ts_unit);
-                            ts_units_specified = true;
-                        },
                         IfDescription(desc) => {
                             meta.iface_desc.replace(desc.to_string());
                         },
@@ -378,41 +325,23 @@ where Source: Read
                         _ => {}
                     };
                 }
-                if !ts_units_specified {
-                    self.interface_ts_units.push(1000);
-                }
-                return Metadata(Box::new(meta))
+                Metadata(Box::new(meta))
             },
-            Ok(Block::InterfaceStatistics(stats)) => {
+            Block::InterfaceStatistics(stats) => {
                 use InterfaceStatisticsOption::*;
                 let mut meta = CaptureMetadata::default();
                 for option in stats.options {
                     match option {
-                        IsbStartTime(time) => {
-                            meta.start_time.replace(
-                                SystemTime::UNIX_EPOCH + Duration::from_nanos(
-                                    time * self.interface_ts_units[0]
-                                )
-                            );
-                        },
-                        IsbEndTime(time) => {
-                            meta.end_time.replace(
-                                SystemTime::UNIX_EPOCH + Duration::from_nanos(
-                                    time * self.interface_ts_units[0]
-                                )
-                            );
-                        },
-                        IsbIfDrop(pkts) => {
-                            meta.dropped.replace(pkts);
-                        },
+                        IsbStartTime(time) => { meta.start_time.replace(time); },
+                        IsbEndTime(time) => { meta.end_time.replace(time); },
+                        IsbIfDrop(pkts) => { meta.dropped.replace(pkts); },
                         _ => {}
                     };
                 }
-                return Metadata(Box::new(meta))
+                Metadata(Box::new(meta))
             },
-            _ => {}
-        };
-        Ignore
+            _ => Ignore
+        }
     }
 }
 
@@ -430,10 +359,8 @@ fn speed_bps(speed: &Speed) -> Option<u64> {
     }
 }
 
-fn time_nanos(time: &SystemTime) -> Option<u64> {
-    time.duration_since(SystemTime::UNIX_EPOCH)
-        .ok()
-        .and_then(|duration| duration.as_nanos().try_into().ok())
+fn duration(duration: &Duration) -> Option<Duration> {
+    Some(*duration)
 }
 
 macro_rules! option {
@@ -468,8 +395,8 @@ fn stats_options(meta: &CaptureMetadata)
 {
     use InterfaceStatisticsOption::*;
     let mut opt = Vec::new();
-    option!(meta, opt, start_time, IsbStartTime, time_nanos);
-    option!(meta, opt, end_time, IsbEndTime, time_nanos);
+    option!(meta, opt, start_time, IsbStartTime, duration);
+    option!(meta, opt, end_time, IsbEndTime, duration);
     if let Some(pkts) = meta.dropped {
         opt.push(IsbIfDrop(pkts));
     }
@@ -477,7 +404,7 @@ fn stats_options(meta: &CaptureMetadata)
 }
 
 impl<Dest> GenericSaver<Dest>
-for PcapNgSaver<Dest>
+for PcapNgSaver<'_, Dest>
 where Self: Sized, Dest: Write
 {
     fn new(dest: Dest, meta: Arc<CaptureMetadata>) -> Result<Self, Error> {
@@ -538,12 +465,8 @@ where Self: Sized, Dest: Write
             InterfaceStatisticsBlock {
                 interface_id: 0,
                 timestamp: match self.meta.end_time {
-                    Some(end) => end
-                        .duration_since(SystemTime::UNIX_EPOCH)?
-                        .as_nanos()
-                        .try_into()
-                        .context("Timestamp overflow")?,
-                    None => 0
+                    Some(end) => end,
+                    None => Duration::from_nanos(0),
                 },
                 options: stats_options(&self.meta)
             }
@@ -553,11 +476,8 @@ where Self: Sized, Dest: Write
     }
 }
 
-impl GenericPacket for PacketWrapper<(RawBlock<'_>, usize)> {
-    fn bytes(&self) -> &[u8] {
-        let (raw_block, length) = &self.packet_data;
-        &raw_block.body[20..][..*length]
-    }
+impl GenericPacket for PacketWrapper<EnhancedPacketBlock<'_>> {
+    fn bytes(&self) -> &[u8] { &self.packet_data.data }
     fn timestamp_ns(&self) -> u64 { self.timestamp_ns }
     fn total_bytes_read(&self) -> u64 { self.total_bytes_read }
 }

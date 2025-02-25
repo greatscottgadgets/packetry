@@ -8,7 +8,7 @@ use std::ops::Range;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64};
 use std::sync::atomic::Ordering::{Acquire, Release};
 use std::sync::Arc;
-use std::time::SystemTime;
+use std::time::Duration;
 use std::mem::size_of;
 
 use crate::database::{
@@ -58,8 +58,8 @@ pub struct CaptureMetadata {
     pub iface_snaplen: Option<NonZeroU32>,
 
     // Fields corresponding to PcapNG interface statistics.
-    pub start_time: Option<SystemTime>,
-    pub end_time: Option<SystemTime>,
+    pub start_time: Option<Duration>,
+    pub end_time: Option<Duration>,
     pub dropped: Option<u64>,
 }
 
