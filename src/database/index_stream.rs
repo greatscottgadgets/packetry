@@ -319,9 +319,9 @@ mod tests {
             let xi = expected[i as usize];
             assert!(vi == xi);
         }
-        let end = Id::<Id<u8>>::from(n as u64);
+        let end = Id::<Id<u8>>::from(n);
         for i in 0..n {
-            let start = Id::<Id<u8>>::from(i as u64);
+            let start = Id::<Id<u8>>::from(i);
             let vrng = start .. end;
             let xrng = i as usize .. n as usize;
             let vr = reader.get_range(&vrng).unwrap();
@@ -333,11 +333,11 @@ mod tests {
                 .unwrap();
             assert!(ir == xr);
         }
-        let start = Id::<Id<u8>>::from(0 as u64);
+        let start = Id::<Id<u8>>::from(0_u64);
         for i in 0..n {
-            let end = Id::<Id<u8>>::from(i as u64);
+            let end = Id::<Id<u8>>::from(i);
             let vrng = start .. end;
-            let xrng = 0 as usize .. i as usize;
+            let xrng = 0_usize .. i as usize;
             let vr = reader.get_range(&vrng).unwrap();
             let xr = &expected[xrng];
             assert!(vr == xr);
@@ -348,8 +348,8 @@ mod tests {
             assert!(ir == xr);
         }
         for i in 0..(n - 10) {
-            let start = Id::<Id<u8>>::from(i as u64);
-            let end = Id::<Id<u8>>::from(i + 10 as u64);
+            let start = Id::<Id<u8>>::from(i);
+            let end = Id::<Id<u8>>::from(i + 10_u64);
             let vrng = start .. end;
             let xrng = i as usize .. (i + 10) as usize;
             let vr = reader.get_range(&vrng).unwrap();

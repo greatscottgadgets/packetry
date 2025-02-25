@@ -270,7 +270,7 @@ mod tests {
         }
 
         // append it to the stream
-        writer.append(&data.as_slice()).unwrap();
+        writer.append(data.as_slice()).unwrap();
 
         // and check
         let start = Id::<Foo>::from(0);
