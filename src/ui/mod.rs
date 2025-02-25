@@ -1038,12 +1038,17 @@ fn choose_file<F>(
             ),
         }
     });
+    let all = gtk::FileFilter::new();
     let pcap = gtk::FileFilter::new();
     let pcapng = gtk::FileFilter::new();
+    all.add_suffix("pcap");
+    all.add_suffix("pcapng");
     pcap.add_suffix("pcap");
     pcapng.add_suffix("pcapng");
+    all.set_name(Some("All captures (*.pcap, *.pcapng)"));
     pcap.set_name(Some("pcap (*.pcap)"));
     pcapng.set_name(Some("pcap-NG (*.pcapng)"));
+    chooser.add_filter(&all);
     chooser.add_filter(&pcap);
     chooser.add_filter(&pcapng);
     chooser.connect_response(move |dialog, response| {
