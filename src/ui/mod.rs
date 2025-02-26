@@ -952,15 +952,20 @@ pub fn update_view() -> Result<(), Error> {
         if let Some(action) = ui.show_progress {
             let total = TOTAL.load(Ordering::Relaxed);
             let current = CURRENT.load(Ordering::Relaxed);
-            let (fraction, text_count) = if total == 0 {
-                (None, fmt_size(current))
+            let fraction = if total == 0 {
+                None
             } else {
-                (Some((current as f64) / (total as f64)),
-                    format!("{} / {}", fmt_size(current), fmt_size(total)))
+                Some((current as f64) / (total as f64))
             };
-            let text = match action {
-                Load => format!("Loaded {text_count} bytes"),
-                Save => format!("Saved {text_count} packets"),
+            let text = match (action, total) {
+                (Load, 0) => format!("Loaded {} bytes",
+                    fmt_size(current)),
+                (Save, 0) => format!("Saved {} packets",
+                    fmt_count(current)),
+                (Load, total) => format!("Loaded {} / {}",
+                    fmt_size(current), fmt_size(total)),
+                (Save, total) => format!("Saved {} / {} packets",
+                    fmt_count(current), fmt_count(total)),
             };
             ui.progress_bar.set_text(Some(&text));
             match fraction {
