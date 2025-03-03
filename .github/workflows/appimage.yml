@@ -144,6 +144,9 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
+      - name: Clone redesign branch of nusb
+        run: git clone https://github.com/kevinmehall/nusb -b redesign
+
       - name: Build packetry binary
         run: |
           cargo build --release
