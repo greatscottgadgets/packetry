@@ -4,12 +4,19 @@ use std::collections::VecDeque;
 use std::sync::mpsc;
 use std::time::Duration;
 
-use anyhow::{Context, Error, anyhow};
+use anyhow::{Context, Error, anyhow, bail};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use nusb::{
     self,
-    transfer::{Control, ControlType, Recipient, TransferError},
-    DeviceInfo, Interface,
+    transfer::{
+        Bulk, In,
+        ControlOut,
+        ControlType,
+        Completion,
+        Recipient,
+        TransferError
+    },
+    DeviceInfo, Interface, MaybeFuture,
 };
 
 use crate::usb::crc5;
@@ -54,7 +61,7 @@ pub struct Ice40UsbtraceHandle {
 
 /// Converts from received data bytes to timestamped packets.
 pub struct Ice40UsbtraceStream {
-    receiver: mpsc::Receiver<Vec<u8>>,
+    receiver: mpsc::Receiver<Completion<Bulk, In>>,
     buffer: VecDeque<u8>,
     ts: u64,
 }
@@ -64,6 +71,7 @@ pub fn probe(device_info: DeviceInfo) -> Result<Box<dyn BackendDevice>, Error> {
     // Check we can open the device.
     let device = device_info
         .open()
+        .wait()
         .context("Failed to open device")?;
 
     // Read the active configuration.
@@ -74,6 +82,7 @@ pub fn probe(device_info: DeviceInfo) -> Result<Box<dyn BackendDevice>, Error> {
     // Try to claim the interface.
     let _interface = device
         .claim_interface(INTERFACE)
+        .wait()
         .context("Failed to claim interface")?;
 
     // Now we have a usable device.
@@ -82,8 +91,12 @@ pub fn probe(device_info: DeviceInfo) -> Result<Box<dyn BackendDevice>, Error> {
 
 impl BackendDevice for Ice40UsbtraceDevice {
     fn open_as_generic(&self) -> Result<Box<dyn BackendHandle>, Error> {
-        let device = self.device_info.open()?;
-        let interface = device.claim_interface(INTERFACE)?;
+        let device = self.device_info
+            .open()
+            .wait()?;
+        let interface = device
+            .claim_interface(INTERFACE)
+            .wait()?;
         Ok(Box::new(Ice40UsbtraceHandle { interface }))
     }
 
@@ -96,7 +109,7 @@ impl BackendHandle for Ice40UsbtraceHandle {
     fn begin_capture(
         &mut self,
         speed: Speed,
-        data_tx: mpsc::Sender<Vec<u8>>
+        data_tx: mpsc::Sender<Completion<Bulk, In>>,
     ) -> Result<TransferQueue, Error> {
         // iCE40-usbtrace only supports full-speed captures
         assert_eq!(speed, Speed::Full);
@@ -109,8 +122,11 @@ impl BackendHandle for Ice40UsbtraceHandle {
         self.write_request(Command::CaptureStart)?;
 
         // Set up transfer queue.
-        Ok(TransferQueue::new(&self.interface, data_tx,
-            ENDPOINT, NUM_TRANSFERS, READ_LEN))
+        let endpoint = match self.interface.endpoint::<Bulk, In>(ENDPOINT) {
+            Ok(endpoint) => endpoint,
+            Err(_) => bail!("Failed to claim endpoint {ENDPOINT}"),
+        };
+        Ok(TransferQueue::new(endpoint, data_tx, NUM_TRANSFERS, READ_LEN))
     }
 
     fn end_capture(&mut self) -> Result<(), Error> {
@@ -121,7 +137,7 @@ impl BackendHandle for Ice40UsbtraceHandle {
         self.write_request(Command::BufferFlush)
     }
 
-    fn timestamped_packets(&self, data_rx: mpsc::Receiver<Vec<u8>>)
+    fn timestamped_packets(&self, data_rx: mpsc::Receiver<Completion<Bulk, In>>)
         -> Box<dyn PacketIterator> {
         Box::new(
             Ice40UsbtraceStream {
@@ -140,16 +156,16 @@ impl BackendHandle for Ice40UsbtraceHandle {
 impl Ice40UsbtraceHandle {
     fn write_request(&mut self, request: Command) -> Result<(), Error> {
         use Command::*;
-        let control = Control {
+        let control = ControlOut {
             control_type: ControlType::Vendor,
             recipient: Recipient::Interface,
             request: request.into(),
             value: 0,
             index: 0,
+            data: &[],
         };
-        let data = &[];
         let timeout = Duration::from_secs(1);
-        match self.interface.control_out_blocking(control, data, timeout) {
+        match self.interface.control_out(control, timeout).wait() {
             Ok(_) => Ok(()),
             Err(err) => match (request, err) {
                 (CaptureStop | BufferFlush, TransferError::Stall) => {
