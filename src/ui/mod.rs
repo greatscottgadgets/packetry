@@ -80,16 +80,7 @@ use crate::backend::{
     scan
 };
 
-use crate::capture::{
-    create_capture,
-    CaptureReader,
-    CaptureWriter,
-    CaptureMetadata,
-    EndpointId,
-    EndpointDataEvent,
-    Group,
-    GroupContent,
-};
+use crate::capture::prelude::*;
 use crate::item::{
     ItemSource,
     TrafficItem,
@@ -949,8 +940,8 @@ pub fn update_view() -> Result<(), Error> {
         } else {
             let (devices, endpoints, transactions, packets) = {
                 let cap = &ui.capture;
-                let devices = cap.devices.len().saturating_sub(1);
-                let endpoints = cap.endpoints.len().saturating_sub(2);
+                let devices = cap.devices.len().saturating_sub(NUM_SPECIAL_DEVICES);
+                let endpoints = cap.endpoints.len().saturating_sub(NUM_SPECIAL_ENDPOINTS);
                 let transactions = cap.transaction_index.len();
                 let packets = cap.packet_index.len();
                 (devices, endpoints, transactions, packets)
