@@ -2,16 +2,7 @@
 
 use crate::backend::{BackendHandle, Speed};
 use crate::backend::cynthion::{CynthionDevice, CynthionHandle, VID_PID};
-use crate::capture::{
-    create_capture,
-    CaptureReader,
-    CaptureReaderOps,
-    DeviceId,
-    EndpointId,
-    EndpointGroupId,
-    EndpointReaderOps,
-    PacketId,
-};
+use crate::capture::prelude::*;
 use crate::decoder::Decoder;
 use crate::file::{GenericSaver, PcapSaver};
 
@@ -140,9 +131,9 @@ fn test(save_capture: bool,
     if let Some((min_interval, max_interval)) = sof {
         println!("Checking SOF timestamp intervals");
         // Check SOF timestamps have the expected spacing.
-        // SOF packets are assigned to endpoint ID 1.
+        // SOF packets are assigned to a special endpoint.
+        let endpoint_id = FRAMING_EP_ID;
         // We're looking for the first and only transfer on the endpoint.
-        let endpoint_id = EndpointId::from(1);
         let ep_group_id = EndpointGroupId::from(0);
         let ep_traf = reader.endpoint_traffic(endpoint_id)?;
         let ep_transaction_ids = ep_traf.group_range(ep_group_id)?;
@@ -242,12 +233,11 @@ fn read_test_device(
 }
 
 fn bytes_on_endpoint(reader: &mut CaptureReader) -> Result<Vec<u8>, Error> {
-    // Endpoint IDs 0 and 1 are special (used for invalid and framing packets).
-    // Endpoint 2 will be the control endpoint for device zero.
-    // Endpoint 3 wil be the control endpoint for the test device.
-    
-    // The first normal endpoint in the capture will have endpoint ID 4.
-    let endpoint_id = EndpointId::from(4);
+    // The endpoints in the capture, in order, should be:
+    // - The control endpoint for address zero
+    // - The control endpoint for the test device
+    // - The data endpoint for the test device: this is the one we want.
+    let endpoint_id = FIRST_EP_ID + 2;
     // We're looking for the first and only transfer on the endpoint.
     let ep_group_id = EndpointGroupId::from(0);
     let ep_traf = reader.endpoint_traffic(endpoint_id)?;

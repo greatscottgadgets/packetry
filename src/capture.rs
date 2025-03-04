@@ -335,6 +335,10 @@ pub const INVALID_EP_NUM: EndpointNum = EndpointNum(0x10);
 pub const FRAMING_EP_NUM: EndpointNum = EndpointNum(0x11);
 pub const INVALID_EP_ID: EndpointId = EndpointId::constant(0);
 pub const FRAMING_EP_ID: EndpointId = EndpointId::constant(1);
+pub const FIRST_EP_ID:   EndpointId = EndpointId::constant(2);
+
+pub const NUM_SPECIAL_DEVICES:   u64 = 1;
+pub const NUM_SPECIAL_ENDPOINTS: u64 = 2;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum EndpointType {
@@ -1993,18 +1997,22 @@ pub mod prelude {
         create_capture,
         create_endpoint,
         CaptureReader,
+        CaptureReaderOps,
+        CaptureSnapshot,
         CaptureWriter,
         CaptureMetadata,
         Device,
         DeviceId,
         DeviceData,
         Endpoint,
+        EndpointDataEvent,
         EndpointId,
         EndpointKey,
         EndpointLookup,
         EndpointType,
         EndpointState,
         EndpointReader,
+        EndpointReaderOps,
         EndpointWriter,
         EndpointTransactionId,
         EndpointGroupId,
@@ -2019,5 +2027,8 @@ pub mod prelude {
         FRAMING_EP_NUM,
         INVALID_EP_ID,
         FRAMING_EP_ID,
+        FIRST_EP_ID,
+        NUM_SPECIAL_DEVICES,
+        NUM_SPECIAL_ENDPOINTS,
     };
 }

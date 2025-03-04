@@ -67,19 +67,7 @@ use crate::backend::{
     BackendStop,
 };
 
-use crate::capture::{
-    create_capture,
-    CaptureReader,
-    CaptureReaderOps,
-    CaptureSnapshot,
-    CaptureWriter,
-    CaptureMetadata,
-    EndpointId,
-    EndpointDataEvent,
-    EndpointReaderOps,
-    Group,
-    GroupContent,
-};
+use crate::capture::prelude::*;
 use crate::item::{
     ItemSource,
     TrafficItem,
@@ -497,7 +485,7 @@ pub fn reset_capture() -> Result<CaptureWriter, Error> {
             );
         ui.capture = capture;
         ui.device_model = Some(device_model);
-        ui.endpoint_count = 2;
+        ui.endpoint_count = NUM_SPECIAL_ENDPOINTS;
         ui.device_window.set_child(Some(&device_view));
         ui.stop_button.set_sensitive(false);
         Ok(())
@@ -519,16 +507,24 @@ pub fn update_view() -> Result<(), Error> {
         {
             CaptureState::Ongoing(snapshot) => {
                 let cap = ui.capture.reader.at(snapshot);
-                let devices = cap.device_count().saturating_sub(1);
-                let endpoints = cap.endpoint_count().saturating_sub(2);
+                let devices = cap
+                    .device_count()
+                    .saturating_sub(NUM_SPECIAL_DEVICES);
+                let endpoints = cap
+                    .endpoint_count()
+                    .saturating_sub(NUM_SPECIAL_ENDPOINTS);
                 let transactions = cap.transaction_count();
                 let packets = cap.packet_count();
                 (devices, endpoints, transactions, packets)
             },
             CaptureState::Complete => {
                 let cap = &mut ui.capture.reader;
-                let devices = cap.device_count().saturating_sub(1);
-                let endpoints = cap.endpoint_count().saturating_sub(2);
+                let devices = cap
+                    .device_count()
+                    .saturating_sub(NUM_SPECIAL_DEVICES);
+                let endpoints = cap
+                    .endpoint_count()
+                    .saturating_sub(NUM_SPECIAL_ENDPOINTS);
                 let transactions = cap.transaction_count();
                 let packets = cap.packet_count();
                 (devices, endpoints, transactions, packets)
