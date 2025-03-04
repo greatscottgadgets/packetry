@@ -978,15 +978,15 @@ fn traffic_context_menu(
 ) -> Result<Option<PopoverMenu>, Error> {
     use TrafficItem::*;
     Ok(match item {
-        TransactionGroup(group_id) => {
-            let group = capture.group(*group_id)?;
+        TransactionGroup(_, endpoint_id, ep_group_id) |
+        TransactionGroupEnd(_, endpoint_id, ep_group_id) => {
+            let group = capture.group(*endpoint_id, *ep_group_id)?;
             match group {
                 Group {
                     endpoint_id,
                     content:
                         GroupContent::Data(data_range) |
                         GroupContent::Ambiguous(data_range, _),
-                    is_start: true,
                     ..
                 } => Some(
                     context_popover(
@@ -998,7 +998,6 @@ fn traffic_context_menu(
                 ),
                 Group {
                     content: GroupContent::Request(transfer),
-                    is_start: true,
                     ..
                 } => Some(
                     context_popover(
