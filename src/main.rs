@@ -24,6 +24,7 @@ mod backend;
 mod capture;
 mod database;
 mod decoder;
+mod event;
 mod file;
 mod item;
 mod testing;

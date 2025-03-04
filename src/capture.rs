@@ -28,6 +28,7 @@ use crate::database::{
     data_stream_with_block_size,
     Snapshot,
 };
+use crate::event::EventType;
 use crate::usb::{self, prelude::*};
 use crate::util::{
     dump::{Dump, restore},
@@ -89,6 +90,8 @@ pub struct CaptureWriter {
     pub packet_data: DataWriter<u8, PACKET_DATA_BLOCK_SIZE>,
     pub packet_index: CompactWriter<PacketId, PacketByteId, 2>,
     pub packet_times: CompactWriter<PacketId, Timestamp, 3>,
+    pub event_index: CompactWriter<EventId, PacketId>,
+    pub event_codes: DataWriter<u8>,
     pub transaction_index: CompactWriter<TransactionId, PacketId>,
     pub group_index: DataWriter<GroupIndexEntry>,
     pub item_index: CompactWriter<TrafficItemId, GroupId>,
@@ -108,6 +111,8 @@ pub struct CaptureReader {
     pub packet_data: DataReader<u8, PACKET_DATA_BLOCK_SIZE>,
     pub packet_index: CompactReader<PacketId, PacketByteId>,
     pub packet_times: CompactReader<PacketId, Timestamp>,
+    pub event_index: CompactReader<EventId, PacketId>,
+    pub event_codes: DataReader<u8>,
     pub transaction_index: CompactReader<TransactionId, PacketId>,
     pub group_index: DataReader<GroupIndexEntry>,
     pub item_index: CompactReader<TrafficItemId, GroupId>,
@@ -130,6 +135,8 @@ pub fn create_capture()
         data_stream_with_block_size::<_, PACKET_DATA_BLOCK_SIZE>(db)?;
     let (packets_writer, packets_reader) = compact_index(db)?;
     let (timestamp_writer, timestamp_reader) = compact_index(db)?;
+    let (event_index_writer, event_index_reader) = compact_index(db)?;
+    let (event_codes_writer, event_codes_reader) = data_stream(db)?;
     let (transactions_writer, transactions_reader) = compact_index(db)?;
     let (groups_writer, groups_reader) = data_stream(db)?;
     let (items_writer, items_reader) = compact_index(db)?;
@@ -156,6 +163,8 @@ pub fn create_capture()
         packet_data: data_writer,
         packet_index: packets_writer,
         packet_times: timestamp_writer,
+        event_index: event_index_writer,
+        event_codes: event_codes_writer,
         transaction_index: transactions_writer,
         group_index: groups_writer,
         item_index: items_writer,
@@ -173,6 +182,8 @@ pub fn create_capture()
         packet_data: data_reader,
         packet_index: packets_reader,
         packet_times: timestamp_reader,
+        event_index: event_index_reader,
+        event_codes: event_codes_reader,
         transaction_index: transactions_reader,
         group_index: groups_reader,
         item_index: items_reader,
@@ -258,6 +269,7 @@ pub fn create_endpoint(db: &mut CounterSet)
 
 pub type PacketByteId = Id<u8>;
 pub type PacketId = Id<PacketByteId>;
+pub type EventId = Id<u8>;
 pub type Timestamp = u64;
 pub type TransactionId = Id<PacketId>;
 pub type GroupId = Id<GroupIndexEntry>;
@@ -315,6 +327,7 @@ impl GroupIndexEntry {
     pub fn is_start(&self) -> bool {
         self._is_start() != 0
     }
+
     pub fn set_is_start(&mut self, value: bool) {
         self._set_is_start(value as u8)
     }
@@ -331,14 +344,17 @@ pub enum EndpointState {
 }
 
 pub const CONTROL_EP_NUM: EndpointNum = EndpointNum(0);
-pub const INVALID_EP_NUM: EndpointNum = EndpointNum(0x10);
-pub const FRAMING_EP_NUM: EndpointNum = EndpointNum(0x11);
-pub const INVALID_EP_ID: EndpointId = EndpointId::constant(0);
-pub const FRAMING_EP_ID: EndpointId = EndpointId::constant(1);
-pub const FIRST_EP_ID:   EndpointId = EndpointId::constant(2);
+pub const EVENT_EP_NUM:   EndpointNum = EndpointNum(0x10);
+pub const INVALID_EP_NUM: EndpointNum = EndpointNum(0x11);
+pub const FRAMING_EP_NUM: EndpointNum = EndpointNum(0x12);
+
+pub const EVENT_EP_ID:   EndpointId = EndpointId::constant(0);
+pub const INVALID_EP_ID: EndpointId = EndpointId::constant(1);
+pub const FRAMING_EP_ID: EndpointId = EndpointId::constant(2);
+pub const FIRST_EP_ID:   EndpointId = EndpointId::constant(3);
 
 pub const NUM_SPECIAL_DEVICES:   u64 = 1;
-pub const NUM_SPECIAL_ENDPOINTS: u64 = 2;
+pub const NUM_SPECIAL_ENDPOINTS: u64 = 3;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum EndpointType {
@@ -659,6 +675,7 @@ impl Interface {
 }
 
 pub struct Transaction {
+    id: TransactionId,
     start_pid: PID,
     end_pid: PID,
     split: Option<(SplitFields, PID)>,
@@ -758,6 +775,7 @@ impl Transaction {
     ) -> Result<String, Error> {
         use PID::*;
         use StartComplete::*;
+        use EventType::LsKeepalive;
         Ok(match (self.start_pid, &self.split) {
             (SOF, _) => format!(
                 "{} SOF packets", self.packet_count()),
@@ -769,6 +787,35 @@ impl Transaction {
                 },
                 self.inner_description(capture, endpoint, *token_pid, detail)?
             ),
+            (ACK | NAK | STALL | DATA0 | DATA1, _) => {
+                // We don't expect these packets to start a transaction. Maybe
+                // a previous transaction was interrupted by an LS keepalive.
+                if self.id.value >= 2 &&
+                    match capture.event(self.packet_id_range.start - 1)? {
+                        Some(event_id) =>
+                            capture.event_type(event_id)? == LsKeepalive,
+                        None => false,
+                    }
+                {
+                    let previous_transaction = capture.transaction(self.id - 2)?;
+                    if detail {
+                        format!(
+                            "Continuing {} transaction on device {}, endpoint {}, {} response",
+                            previous_transaction.start_pid,
+                            endpoint.device_address(),
+                            endpoint.number(),
+                            self.start_pid)
+                    } else {
+                        format!("Continuing {} transaction on {}.{}, {}",
+                            previous_transaction.start_pid,
+                            endpoint.device_address(),
+                            endpoint.number(),
+                            self.start_pid)
+                    }
+                } else {
+                    self.inner_description(capture, endpoint, self.start_pid, detail)?
+                }
+            },
             (pid, _) => self.inner_description(capture, endpoint, pid, detail)?
         })
     }
@@ -921,6 +968,8 @@ pub struct CaptureSnapshotReader<'r, 's> {
     packet_data: DataSnapshot<'r, 's, u8, PACKET_DATA_BLOCK_SIZE>,
     packet_index: CompactSnapshot<'r, 's, PacketId, PacketByteId>,
     packet_times: CompactSnapshot<'r, 's, PacketId, Timestamp>,
+    event_index: CompactSnapshot<'r, 's, EventId, PacketId>,
+    event_codes: DataSnapshot<'r, 's, u8>,
     transaction_index: CompactSnapshot<'r, 's, TransactionId, PacketId>,
     group_index: DataSnapshot<'r, 's, GroupIndexEntry>,
     item_index: CompactSnapshot<'r, 's, TrafficItemId, GroupId>,
@@ -976,6 +1025,8 @@ impl CaptureReader {
             packet_data: self.packet_data.at(&snapshot.db),
             packet_index: self.packet_index.at(&snapshot.db),
             packet_times: self.packet_times.at(&snapshot.db),
+            event_index: self.event_index.at(&snapshot.db),
+            event_codes: self.event_codes.at(&snapshot.db),
             transaction_index: self.transaction_index.at(&snapshot.db),
             group_index: self.group_index.at(&snapshot.db),
             item_index: self.item_index.at(&snapshot.db),
@@ -1041,6 +1092,15 @@ pub trait CaptureReaderOps {
 
     /// Get the timestamp of a packet.
     fn packet_time(&mut self, id: PacketId) -> Result<Timestamp, Error>;
+
+    /// Get the event ID associated with a packet ID, if there is one.
+    fn event(&mut self, id: PacketId) -> Result<Option<EventId>, Error>;
+
+    /// Get the event ID associated with a packet ID, unconditionally.
+    fn event_id(&mut self, packet_id: PacketId) -> Result<EventId, Error>;
+
+    /// Get the type of an event.
+    fn event_type(&mut self, event_id: EventId) -> Result<EventType, Error>;
 
     /// Get the number of transactions in the capture.
     fn transaction_count(&self) -> u64;
@@ -1219,6 +1279,7 @@ pub trait CaptureReaderOps {
             None
         };
         Ok(Transaction {
+            id,
             start_pid,
             end_pid,
             split,
@@ -1698,6 +1759,27 @@ impl CaptureReaderOps for CaptureReader {
         self.packet_times.get(id)
     }
 
+    fn event(&mut self, packet_id: PacketId) -> Result<Option<EventId>, Error> {
+        let event_id = self.event_id(packet_id)?;
+        if event_id.value >= self.event_index.len() {
+            Ok(None)
+        } else if self.event_index.get(event_id)? == packet_id {
+            Ok(Some(event_id))
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn event_id(&mut self, packet_id: PacketId) -> Result<EventId, Error> {
+        self.event_index.bisect_left(&packet_id)
+    }
+
+    fn event_type(&mut self, event_id: EventId) -> Result<EventType, Error> {
+        let event_code = self.event_codes.get(event_id)?;
+        EventType::from_code(event_code)
+            .context("Event has no type")
+    }
+
     fn transaction_count(&self) -> u64 {
         self.transaction_index.len()
     }
@@ -1804,6 +1886,27 @@ impl CaptureReaderOps for CaptureSnapshotReader<'_, '_> {
         self.packet_times.get(id)
     }
 
+    fn event(&mut self, packet_id: PacketId) -> Result<Option<EventId>, Error> {
+        let event_id = self.event_id(packet_id)?;
+        if event_id.value >= self.event_index.len() {
+            Ok(None)
+        } else if self.event_index.get(event_id)? == packet_id {
+            Ok(Some(event_id))
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn event_id(&mut self, packet_id: PacketId) -> Result<EventId, Error> {
+        self.event_index.bisect_left(&packet_id)
+    }
+
+    fn event_type(&mut self, event_id: EventId) -> Result<EventType, Error> {
+        let event_code = self.event_codes.get(event_id)?;
+        EventType::from_code(event_code)
+            .context("Event has no type")
+    }
+
     fn transaction_count(&self) -> u64 {
         self.transaction_index.len()
     }
@@ -1870,6 +1973,8 @@ impl Dump for CaptureReader {
         self.packet_data.dump(&dest.join("packet_data"))?;
         self.packet_index.dump(&dest.join("packet_index"))?;
         self.packet_times.dump(&dest.join("packet_times"))?;
+        self.event_index.dump(&dest.join("event_index"))?;
+        self.event_codes.dump(&dest.join("event_codes"))?;
         self.transaction_index.dump(&dest.join("transaction_index"))?;
         self.group_index.dump(&dest.join("group_index"))?;
         self.item_index.dump(&dest.join("item_index"))?;
@@ -1905,6 +2010,8 @@ impl Dump for CaptureReader {
             packet_data: restore(db, &src.join("packet_data"))?,
             packet_index: restore(db, &src.join("packet_index"))?,
             packet_times: restore(db, &src.join("packet_times"))?,
+            event_index: restore(db, &src.join("event_index"))?,
+            event_codes: restore(db, &src.join("event_codes"))?,
             transaction_index: restore(db, &src.join("transaction_index"))?,
             group_index: restore(db, &src.join("group_index"))?,
             item_index: restore(db, &src.join("item_index"))?,
@@ -2016,6 +2123,7 @@ pub mod prelude {
         EndpointWriter,
         EndpointTransactionId,
         EndpointGroupId,
+        EventId,
         PacketId,
         Timestamp,
         TrafficItemId,
@@ -2024,8 +2132,10 @@ pub mod prelude {
         Group,
         GroupContent,
         GroupIndexEntry,
+        EVENT_EP_NUM,
         INVALID_EP_NUM,
         FRAMING_EP_NUM,
+        EVENT_EP_ID,
         INVALID_EP_ID,
         FRAMING_EP_ID,
         FIRST_EP_ID,

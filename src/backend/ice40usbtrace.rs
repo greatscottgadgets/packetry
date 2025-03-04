@@ -25,11 +25,11 @@ use crate::usb::crc5;
 use super::{
     BackendDevice,
     BackendHandle,
-    PacketIterator,
-    PacketResult,
+    EventIterator,
+    EventResult,
     PowerConfig,
     Speed,
-    TimestampedPacket,
+    TimestampedEvent,
     TransferQueue,
 };
 
@@ -147,11 +147,11 @@ impl BackendHandle for Ice40UsbtraceHandle {
         self.write_request(Command::BufferFlush)
     }
 
-    fn timestamped_packets(
+    fn timestamped_events(
         &self,
         data_rx: mpsc::Receiver<Buffer>,
         reuse_tx: mpsc::Sender<Buffer>,
-    ) -> Box<dyn PacketIterator> {
+    ) -> Box<dyn EventIterator> {
         Box::new(
             Ice40UsbtraceStream {
                 data_rx,
@@ -198,12 +198,12 @@ impl Ice40UsbtraceHandle {
     }
 }
 
-impl PacketIterator for Ice40UsbtraceStream {}
+impl EventIterator for Ice40UsbtraceStream {}
 
 impl Iterator for Ice40UsbtraceStream {
-    type Item = PacketResult;
+    type Item = EventResult;
 
-    fn next(&mut self) -> Option<PacketResult> {
+    fn next(&mut self) -> Option<EventResult> {
         use ParseResult::*;
         loop {
             match self.parse_packet() {
@@ -296,6 +296,7 @@ impl Ice40UsbtraceStream {
     fn parse_packet(&mut self) -> ParseResult {
         use Pid::*;
         use ParseResult::*;
+        use TimestampedEvent::Packet;
 
         // Need enough bytes for the header.
         if self.buffer.len() < 4 {
@@ -313,9 +314,9 @@ impl Ice40UsbtraceStream {
             // zero byte, which is an invalid PID. This will serve to indicate
             // the presence of a packet without a valid PID.
             (Ok(TsOverflow), false) => Parsed(
-                TimestampedPacket {
+                Packet {
                     timestamp_ns: self.ns(),
-                    bytes: vec![0]
+                    bytes: vec![0],
                 }
             ),
 
@@ -340,7 +341,7 @@ impl Ice40UsbtraceStream {
                 let mut bytes = Vec::with_capacity(1 + data_len);
                 bytes.push(header.pid_byte());
                 bytes.extend(self.buffer.drain(0..data_len));
-                Parsed(TimestampedPacket {
+                Parsed(Packet {
                     timestamp_ns: self.ns(),
                     bytes,
                 })
@@ -362,7 +363,7 @@ impl Ice40UsbtraceStream {
                     data[1] |= (!crc) << 3;
                 }
                 bytes.extend(data);
-                Parsed(TimestampedPacket {
+                Parsed(Packet {
                     timestamp_ns: self.ns(),
                     bytes,
                 })
@@ -380,7 +381,7 @@ impl Ice40UsbtraceStream {
                 if !data_ok {
                     bytes.push(0);
                 }
-                Parsed(TimestampedPacket {
+                Parsed(Packet {
                     timestamp_ns: self.ns(),
                     bytes,
                 })
@@ -394,7 +395,7 @@ impl Ice40UsbtraceStream {
 }
 
 pub enum ParseResult {
-    Parsed(TimestampedPacket),
+    Parsed(TimestampedEvent),
     ParseError(Error),
     Ignored,
     NeedMoreData,

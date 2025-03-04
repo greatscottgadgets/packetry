@@ -1,10 +1,11 @@
 //! Hardware-in-the loop test using a Cynthion USB analyzer.
 
-use crate::backend::{BackendHandle, Speed};
+use crate::backend::{BackendHandle, TimestampedEvent, Speed};
 use crate::backend::cynthion::{CynthionDevice, CynthionHandle, VID_PID};
 use crate::capture::prelude::*;
 use crate::decoder::Decoder;
 use crate::file::{GenericSaver, PcapSaver};
+use crate::item::{ItemSource, TrafficViewMode};
 
 use anyhow::{Context, Error, bail, ensure};
 use futures_lite::future::block_on;
@@ -19,28 +20,43 @@ const US: Duration = Duration::from_micros(1);
 const MS: Duration = Duration::from_millis(1);
 
 pub fn test_cynthion(save_captures: bool) {
-    for (name, speed, ep_addr, length, sof) in [
-        ("HS", Speed::High, 0x81, 4096, Some((124*US,  126*US))),
-        ("FS", Speed::Full, 0x82,  512, Some((995*US, 1005*US))),
-        ("LS", Speed::Low,  0x83,   64, None)]
-    {
-        if let Err(e) = test(save_captures, name, speed, ep_addr, length, sof) {
-            eprintln!("\nTest failed: {e}");
-            std::process::exit(1);
+    use Speed::*;
+
+    let speeds = [
+        (High, 0x81, 4096, Some((124*US,  126*US))),
+        (Full, 0x82,  512, Some((995*US, 1005*US))),
+        (Low,  0x83,   64, None),
+    ];
+
+    for (bus_speed, ep_addr, length, sof) in speeds {
+        for speed_selection in [bus_speed, Auto] {
+            if let Err(e) = test(
+                save_captures,
+                bus_speed,
+                speed_selection,
+                ep_addr,
+                length,
+                sof
+            ) {
+                eprintln!("\nTest failed: {e}");
+                std::process::exit(1);
+            }
         }
     }
 }
 
 fn test(save_capture: bool,
-        name: &str,
-        speed: Speed,
+        bus_speed: Speed,
+        speed_selection: Speed,
         ep_addr: u8,
         length: usize,
         sof: Option<(Duration, Duration)>)
     -> Result<(), Error>
 {
-    let desc = speed.description();
-    println!("\nTesting at {desc}:\n");
+    use Speed::*;
+
+    println!("\nTesting capture at {} with {} speed selected:\n",
+             bus_speed.abbr(), speed_selection.abbr());
 
     // Create capture and decoder.
     let (writer, mut reader) = create_capture()
@@ -72,13 +88,13 @@ fn test(save_capture: bool,
     // Start capture.
     let analyzer_start_time = Instant::now();
     let (stream_handle, stop_handle) = analyzer
-        .start(speed, Box::new(|result|
+        .start(speed_selection, Box::new(|result|
             result.context("Failure in capture thread").unwrap()))
         .context("Failed to start analyzer")?;
 
     // Attempt to open and read data from the test device.
     let test_device_result = read_test_device(
-        &mut analyzer, speed, ep_addr, length);
+        &mut analyzer, bus_speed, ep_addr, length);
 
     // Stop analyzer.
     stop_handle.stop()
@@ -90,15 +106,23 @@ fn test(save_capture: bool,
 
     // Decode all packets that were received.
     for result in stream_handle {
-        let packet = result
+        let event = result
             .context("Error decoding raw capture data")?;
-        decoder.handle_raw_packet(&packet.bytes, packet.timestamp_ns)
-            .context("Error decoding packet")?;
+        use TimestampedEvent::*;
+        match event {
+            Packet { timestamp_ns, bytes } =>
+                decoder.handle_raw_packet(&bytes, timestamp_ns)
+                    .context("Error decoding packet")?,
+            Event { timestamp_ns, event_type } =>
+                decoder.handle_event(event_type, timestamp_ns)
+                    .context("Error handling event")?,
+        }
     }
 
     if save_capture {
         // Write the capture to a file.
-        let path = PathBuf::from(format!("./HITL-{name}.pcap"));
+        let path = PathBuf::from(format!("./HITL-{}-{}.pcap",
+            bus_speed.abbr(), speed_selection.abbr()));
         let file = File::create(path)?;
         let meta = reader.shared.metadata.load_full();
         let mut saver = PcapSaver::new(file, meta)?;
@@ -110,6 +134,56 @@ fn test(save_capture: bool,
         }
         saver.close()?;
     }
+
+    // Accepted event sequences for each test case.
+    let expected_descriptions = match (bus_speed, speed_selection) {
+        (High, High) => vec![
+            "Capture started at High Speed (480 Mbps)",
+        ],
+        (High, Auto) => vec![
+            "Capture started at Full Speed (12 Mbps)",
+            "Bus entered suspend",
+            "SE0 line state detected",
+            "Bus reset",
+            "High Speed negotiation",
+            "Speed changed to High Speed (480 Mbps)"
+        ],
+        (Full, _) => vec![
+            "Capture started at Full Speed (12 Mbps)",
+            "Bus entered suspend",
+            "SE0 line state detected",
+            "Bus reset",
+            "Full Speed idle state detected",
+        ],
+        (Low, Low) => vec![
+            "Capture started at Low Speed (1.5 Mbps)",
+            "Bus entered suspend",
+            "SE0 line state detected",
+            "Bus reset",
+            "Low Speed idle state detected",
+        ],
+        (Low, Auto) => vec![
+            "Capture started at Low Speed (1.5 Mbps)",
+            "Bus entered suspend",
+            "SE0 line state detected",
+            "Bus reset",
+            "Low Speed idle state detected",
+            "Device attached at Low Speed",
+        ],
+        _ => unreachable!(),
+    };
+
+    for (i, expected) in expected_descriptions.iter().enumerate() {
+        let item = reader.item(
+            None, TrafficViewMode::Hierarchical, i as u64)?;
+        let description = reader.description(&item, false)?;
+        if description == *expected {
+            println!("Found event: {expected}");
+        } else {
+            bail!("Event did not have expected description: \
+                   expected: '{expected}', found: '{description}')");
+        }
+    };
 
     // Look for the test device in the capture.
     let device_id = DeviceId::from(1);
@@ -133,10 +207,10 @@ fn test(save_capture: bool,
         // Check SOF timestamps have the expected spacing.
         // SOF packets are assigned to a special endpoint.
         let endpoint_id = FRAMING_EP_ID;
-        // We're looking for the first and only transfer on the endpoint.
-        let ep_group_id = EndpointGroupId::from(0);
         let ep_traf = reader.endpoint_traffic(endpoint_id)?;
-        let ep_transaction_ids = ep_traf.group_range(ep_group_id)?;
+        let count = ep_traf.transaction_count();
+        let ep_transaction_ids =
+            EndpointTransactionId::from(0)..EndpointTransactionId::from(count);
         let mut sof_count = 0;
         let mut last = None;
         let mut gaps = Vec::new();
@@ -186,6 +260,14 @@ fn test(save_capture: bool,
         ensure!(sof_count >= min_count, "Not enough SOF packets captured");
         ensure!(sof_count <= max_count, "Too many SOF packets captured");
     }
+
+    // Look for the stop event.
+    let item_count = reader.item_count();
+    let item = reader.item(
+        None, TrafficViewMode::Hierarchical, item_count - 1)?;
+    let description = reader.description(&item, false)?;
+    assert_eq!(description, "Capture stopped by request");
+    println!("Found stop event in capture");
 
     Ok(())
 }
@@ -249,4 +331,16 @@ fn bytes_on_endpoint(reader: &mut CaptureReader) -> Result<Vec<u8>, Error> {
         .unwrap();
     let data = reader.transfer_bytes(endpoint_id, &data_range, data_length)?;
     Ok(data)
+}
+
+impl Speed {
+    pub fn abbr(&self) -> &'static str {
+        use Speed::*;
+        match self {
+            Auto => "Auto",
+            High => "HS",
+            Full => "FS",
+            Low => "LS",
+        }
+    }
 }

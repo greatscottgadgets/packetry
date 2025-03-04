@@ -11,6 +11,7 @@ use libfuzzer_sys::{arbitrary::{Arbitrary, Unstructured}, fuzz_target};
 mod capture;
 mod database;
 mod decoder;
+mod event;
 mod usb;
 mod util;
 

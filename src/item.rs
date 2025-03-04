@@ -8,6 +8,7 @@ use std::fmt::Write;
 use anyhow::{Context, Error, bail};
 
 use crate::capture::prelude::*;
+use crate::event::EventType;
 use crate::usb::{self, prelude::*, validate_packet};
 use crate::util::{Bytes, RangeLength, fmt_count, fmt_size, titlecase};
 
@@ -70,6 +71,9 @@ impl CompletionStatus {
 
 #[derive(Clone, Debug)]
 pub enum TrafficItem {
+    EventGroup(GroupId, EndpointGroupId),
+    EventSubgroup(Option<GroupId>, TransactionId),
+    Event(Option<GroupId>, Option<TransactionId>, PacketId, EventId),
     TransactionGroup(GroupId, EndpointId, EndpointGroupId),
     TransactionGroupEnd(GroupId, EndpointId, EndpointGroupId),
     Transaction(Option<GroupId>, TransactionId),
@@ -168,16 +172,52 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                     let entry = self.group_entry(group_id)?;
                     let endpoint_id = entry.endpoint_id();
                     let ep_group_id = entry.group_id();
-                    if entry.is_start() {
-                        TransactionGroup(group_id, endpoint_id, ep_group_id)
-                    } else {
-                        TransactionGroupEnd(group_id, endpoint_id, ep_group_id)
+                    match (endpoint_id == EVENT_EP_ID, entry.is_start()) {
+                        (true, true) => EventGroup(group_id, ep_group_id),
+                        (true, false) => {
+                            let ep_traf = self.endpoint_traffic(endpoint_id)?;
+                            let ep_transaction_id =
+                                ep_traf.group_start(ep_group_id)?;
+                            let transaction_id =
+                                ep_traf.transaction_id(ep_transaction_id)?;
+                            let packet_id =
+                                self.transaction_start(transaction_id)?;
+                            let event_id = self.event_id(packet_id)?;
+                            Event(None, None, packet_id, event_id)
+                        },
+                        (false, true) => TransactionGroup(
+                            group_id, endpoint_id, ep_group_id),
+                        (false, false) => TransactionGroupEnd(
+                            group_id, endpoint_id, ep_group_id),
                     }
                 },
-                Transactions =>
-                    Transaction(None, TransactionId::from(index)),
-                Packets =>
-                    Packet(None, None, PacketId::from(index)),
+                Transactions => {
+                    let transaction_id = TransactionId::from(index);
+                    let packet_range =
+                        self.transaction_packet_range(transaction_id)?;
+                    let packet_id = packet_range.start;
+                    let data_range = self.packet_byte_range(packet_id)?;
+                    if data_range.is_empty() {
+                        if let Some(event_id) = self.event(packet_id)? {
+                            return Ok(if packet_range.len() > 1 {
+                                EventSubgroup(None, transaction_id)
+                            } else {
+                                Event(None, None, packet_id, event_id)
+                            })
+                        }
+                    }
+                    Transaction(None, transaction_id)
+                },
+                Packets => {
+                    let packet_id = PacketId::from(index);
+                    let data_range = self.packet_byte_range(packet_id)?;
+                    if data_range.is_empty() {
+                        if let Some(event_id) = self.event(packet_id)? {
+                            return Ok(Event(None, None, packet_id, event_id))
+                        }
+                    }
+                    Packet(None, None, packet_id)
+                }
             }),
             Some(item) => self.child_item(item, index)
         }
@@ -197,6 +237,17 @@ ItemSource<TrafficItem, TrafficViewMode> for T
     ) -> Result<TrafficItem, Error> {
         use TrafficItem::*;
         Ok(match parent {
+            EventGroup(group_id, ep_group_id) =>
+                EventSubgroup(Some(*group_id), {
+                    let ep_traf = self.endpoint_traffic(EVENT_EP_ID)?;
+                    let offset = ep_traf.group_start(*ep_group_id)?;
+                    ep_traf.transaction_id(offset + index)?
+                }),
+            EventSubgroup(group_id_opt, transaction_id) => {
+                let packet_id = self.transaction_start(*transaction_id)? + index;
+                let event_id = self.event_id(packet_id)?;
+                Event(*group_id_opt, Some(*transaction_id), packet_id, event_id)
+            },
             TransactionGroup(group_id, endpoint_id, ep_group_id) =>
                 Transaction(Some(*group_id), {
                     let ep_traf = self.endpoint_traffic(*endpoint_id)?;
@@ -232,7 +283,19 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                     Packets => self.packet_count(),
                 })
             },
-            Some(TransactionGroup(_group_id, endpoint_id, ep_group_id)) => {
+            Some(EventGroup(_, ep_group_id)) => {
+                let transaction_count = self
+                    .group_range(EVENT_EP_ID, *ep_group_id)?
+                    .len();
+                let ep_traf = self.endpoint_traffic(EVENT_EP_ID)?;
+                if ep_group_id.value >= ep_traf.end_count() {
+                    (Ongoing, transaction_count)
+                } else {
+                    (Complete, transaction_count)
+                }
+            },
+            Some(Event(..)) => (Complete, 0),
+            Some(TransactionGroup(_, endpoint_id, ep_group_id)) => {
                 let transaction_count = self
                     .group_range(*endpoint_id, *ep_group_id)?
                     .len();
@@ -244,7 +307,9 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                 }
             },
             Some(TransactionGroupEnd(..)) => (Complete, 0),
-            Some(Transaction(_, transaction_id)) => {
+            Some(Transaction(_, transaction_id) |
+                 EventSubgroup(_, transaction_id)) =>
+            {
                 let packet_count = self
                     .transaction_packet_range(*transaction_id)?
                     .len();
@@ -542,6 +607,41 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                 }?;
                 s
             },
+            EventGroup(_, ep_group_id) => {
+                let range = self.group_range(EVENT_EP_ID, *ep_group_id)?;
+                let ep_traf = self.endpoint_traffic(EVENT_EP_ID)?;
+                let transaction_id = ep_traf.transaction_id(range.start)?;
+                let packet_id = self.transaction_start(transaction_id)?;
+                let event_id = self.event_id(packet_id)?;
+                match self.event_type(event_id)? {
+                    EventType::LsKeepalive => {
+                        write!(s, "{} Low Speed keepalive groups", range.len())
+                    },
+                    _ => write!(s, "High Speed negotiation"),
+                }?;
+                s
+            },
+            EventSubgroup(_, transaction_id) => {
+                let packet_id = self.transaction_start(*transaction_id)?;
+                let event_id = self.event_id(packet_id)?;
+                match self.event_type(event_id)? {
+                    EventType::LsKeepalive => {
+                        let event_count = self
+                            .transaction_packet_range(*transaction_id)?
+                            .len();
+                        write!(s, "{event_count} Low Speed keepalives")
+                    },
+                    _ => match self.event_type(event_id - 1)? {
+                        EventType::BusReset => write!(s, "Device HS chirp"),
+                        _ => write!(s, "Host HS chirp")
+                    }
+                }?;
+                s
+            },
+            Event(.., event_id) => {
+                write!(s, "{}", self.event_type(*event_id)?)?;
+                s
+            },
         })
     }
 
@@ -557,16 +657,18 @@ ItemSource<TrafficItem, TrafficViewMode> for T
             return Ok(String::from(""));
         }
         let last_packet = match item {
-            Packet(_, Some(transaction_id), packet_id) => {
+            Packet(_, Some(transaction_id), packet_id) |
+            Event(_, Some(transaction_id), packet_id, _) => {
                 let range = self.transaction_packet_range(*transaction_id)?;
                 *packet_id == range.end - 1
             }, _ => false
         };
         if view_mode == Transactions {
             return Ok(String::from(match (item, last_packet) {
-                (Transaction(..), _)      => "○",
-                (Packet(..), false)       => "├──",
-                (Packet(..), true )       => "└──",
+                (Event(_, None, ..), _)                  => "○",
+                (Transaction(..) | EventSubgroup(..), _) => "○",
+                (Packet(..) | Event(..), false)          => "├──",
+                (Packet(..) | Event(..), true )          => "└──",
                 (..) => unreachable!(),
             }));
         }
@@ -577,7 +679,12 @@ ItemSource<TrafficItem, TrafficViewMode> for T
             TransactionGroup(i, ..) |
             TransactionGroupEnd(i, ..) |
             Transaction(Some(i), _) |
-            Packet(Some(i), ..) => *i,
+            Packet(Some(i), ..) |
+            EventGroup(i, ..) |
+            EventSubgroup(Some(i), ..) |
+            Event(Some(i), ..)
+                => *i,
+            Event(None, ..) => return Ok(String::from("○")),
             _ => unreachable!()
         };
         let entry = self.group_entry(group_id)?;
@@ -587,16 +694,28 @@ ItemSource<TrafficItem, TrafficViewMode> for T
         let ep_traf = self.endpoint_traffic(endpoint_id)?;
         let last_transaction = match item {
             Transaction(_, transaction_id) |
-            Packet(_, Some(transaction_id), _) => {
+            Packet(_, Some(transaction_id), _) |
+            EventSubgroup(_, transaction_id) |
+            Event(_, Some(transaction_id), ..) => {
                 let range = ep_traf.group_range(entry.group_id())?;
                 let last_transaction_id =
                     ep_traf.transaction_id(range.end - 1)?;
                 *transaction_id == last_transaction_id
             }, _ => false
         };
+        match (item, last_transaction, last_packet) {
+            (EventGroup(..),    _,     _    ) => return Ok(String::from("○")),
+            (EventSubgroup(..), false, _    ) => return Ok(String::from("├──")),
+            (Event(..),         false, false) => return Ok(String::from("│  ├──")),
+            (Event(..),         false, true ) => return Ok(String::from("│  └──")),
+            (EventSubgroup(..), true,  _    ) => return Ok(String::from("└──")),
+            (Event(..),         true,  false) => return Ok(String::from("   ├──")),
+            (Event(..),         true,  true ) => return Ok(String::from("   └──")),
+            _ => ()
+        };
         let last = last_transaction && !extended;
         let mut thru = false;
-        for (i, &state) in endpoint_state.iter().enumerate() {
+        for (i, &state) in endpoint_state.iter().enumerate().skip(1) {
             let state = EndpointState::from(state);
             let active = state != Idle;
             let on_endpoint = i == endpoint_id.value as usize;
@@ -635,6 +754,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                         (true,  _,     true ) => ' ',
                     }
                 }
+                _ => unreachable!()
             });
         };
         let state_length = endpoint_state.len();
@@ -644,6 +764,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                 TransactionGroupEnd(..) => '─',
                 Transaction(..)         => '─',
                 Packet(..)              => ' ',
+                _ => unreachable!()
             });
         }
         connectors.push_str(
@@ -653,6 +774,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                 (Transaction(..), _)         => "───",
                 (Packet(..), false)          => "    ├──",
                 (Packet(..), true)           => "    └──",
+                _ => unreachable!()
             }
         );
         Ok(connectors)
@@ -661,6 +783,15 @@ ItemSource<TrafficItem, TrafficViewMode> for T
     fn timestamp(&mut self, item: &TrafficItem) -> Result<Timestamp, Error> {
         use TrafficItem::*;
         let packet_id = match item {
+            EventGroup(_, ep_group_id) => {
+                let ep_traf = self.endpoint_traffic(EVENT_EP_ID)?;
+                let ep_transaction_id = ep_traf.group_start(*ep_group_id)?;
+                let transaction_id = ep_traf.transaction_id(ep_transaction_id)?;
+                self.transaction_start(transaction_id)?
+            },
+            EventSubgroup(.., transaction_id) =>
+                self.transaction_start(*transaction_id)?,
+            Event(.., packet_id, _) => *packet_id,
             TransactionGroup(_, endpoint_id, ep_group_id) |
             TransactionGroupEnd(_, endpoint_id, ep_group_id) => {
                 let ep_traf = self.endpoint_traffic(*endpoint_id)?;
