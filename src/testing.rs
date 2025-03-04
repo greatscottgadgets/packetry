@@ -1,6 +1,6 @@
 //! Hardware-in-the loop test using a Cynthion USB analyzer.
 
-use crate::backend::{BackendHandle, Speed};
+use crate::backend::{BackendHandle, TimestampedEvent, Speed};
 use crate::backend::cynthion::{CynthionDevice, CynthionHandle, VID_PID};
 use crate::capture::prelude::*;
 use crate::decoder::Decoder;
@@ -90,10 +90,12 @@ fn test(save_capture: bool,
 
     // Decode all packets that were received.
     for result in stream_handle {
-        let packet = result
+        let event = result
             .context("Error decoding raw capture data")?;
-        decoder.handle_raw_packet(&packet.bytes, packet.timestamp_ns)
-            .context("Error decoding packet")?;
+        if let TimestampedEvent::Packet { timestamp_ns, bytes } = event {
+            decoder.handle_raw_packet(&bytes, timestamp_ns)
+                .context("Error decoding packet")?;
+        }
     }
 
     if save_capture {
