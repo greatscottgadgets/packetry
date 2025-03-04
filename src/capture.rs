@@ -827,7 +827,6 @@ pub struct Group {
     pub range: Range<EndpointTransactionId>,
     pub count: u64,
     pub content: GroupContent,
-    pub is_start: bool,
 }
 
 pub enum GroupContent {
@@ -1230,15 +1229,17 @@ pub trait CaptureReaderOps {
     }
 
     /// Fetch information about a transaction group.
-    fn group(&mut self, group_id: GroupId) -> Result<Group, Error> {
-        let entry = self.group_entry(group_id)?;
-        let endpoint_id = entry.endpoint_id();
+    fn group(
+        &mut self,
+        endpoint_id: EndpointId,
+        ep_group_id: EndpointGroupId
+    ) -> Result<Group, Error> {
         let endpoint = self.endpoint(endpoint_id)?;
         let device_id = endpoint.device_id();
         let dev_data = self.device_data(device_id)?;
         let ep_addr = endpoint.address();
         let (endpoint_type, _) = dev_data.endpoint_details(ep_addr);
-        let range = self.group_range(entry.endpoint_id(), entry.group_id())?;
+        let range = self.group_range(endpoint_id, ep_group_id)?;
         let count = range.len();
         let content = match endpoint_type {
             EndpointType::Invalid => GroupContent::Invalid,
@@ -1253,7 +1254,6 @@ pub trait CaptureReaderOps {
                 }
             },
             _ => {
-                let ep_group_id = entry.group_id();
                 let ep_traf = self.endpoint_traffic(endpoint_id)?;
                 let range = ep_traf.group_range(ep_group_id)?;
                 let first_transaction_id =
@@ -1287,7 +1287,6 @@ pub trait CaptureReaderOps {
             range,
             count,
             content,
-            is_start: entry.is_start(),
         })
     }
 
@@ -2004,6 +2003,7 @@ pub mod prelude {
         Device,
         DeviceId,
         DeviceData,
+        DeviceVersion,
         Endpoint,
         EndpointDataEvent,
         EndpointId,
@@ -2017,6 +2017,7 @@ pub mod prelude {
         EndpointTransactionId,
         EndpointGroupId,
         PacketId,
+        Timestamp,
         TrafficItemId,
         TransactionId,
         GroupId,
