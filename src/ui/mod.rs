@@ -76,6 +76,7 @@ use gtk::{
 use crate::backend::{
     BackendHandle,
     BackendStop,
+    TimestampedEvent,
     ProbeResult,
     scan
 };
@@ -1316,9 +1317,11 @@ pub fn start_capture() -> Result<(), Error> {
         let read_packets = move || {
             let mut decoder = Decoder::new(writer)?;
             for result in stream_handle {
-                let packet = result
+                let event = result
                     .context("Error processing raw capture data")?;
-                decoder.handle_raw_packet(&packet.bytes, packet.timestamp_ns)?;
+                if let TimestampedEvent::Packet {timestamp_ns, bytes} = event {
+                    decoder.handle_raw_packet(&bytes, timestamp_ns)?;
+                }
             }
             let writer = decoder.finish()?;
             writer.shared.metadata.update(|meta| {
