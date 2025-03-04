@@ -721,7 +721,7 @@
    ├───── IN transaction on 27.0
    │      └── IN packet on 27.0, CRC 18
 ○──┼─── 1 invalid groups
-└──┼───── ACK transaction on 0.16, ACK
+└──┼───── ACK transaction
    │      └── ACK packet
    ○─── Incomplete control transfer on device 27
    └───── OUT transaction on 27.0 with no data, ACK
