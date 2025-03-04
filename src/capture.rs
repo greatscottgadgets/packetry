@@ -1084,11 +1084,11 @@ pub trait CaptureReaderOps {
     fn complete(&self) -> bool;
 
     /// Find the range of endpoint transaction IDs for a transaction group.
-    fn group_range(&mut self, entry: &GroupIndexEntry)
-        -> Result<Range<EndpointTransactionId>, Error>
-    {
-        let endpoint_id = entry.endpoint_id();
-        let ep_group_id = entry.group_id();
+    fn group_range(
+        &mut self,
+        endpoint_id: EndpointId,
+        ep_group_id: EndpointGroupId
+    ) -> Result<Range<EndpointTransactionId>, Error> {
         let ep_traf = self.endpoint_traffic(endpoint_id)?;
         ep_traf.group_range(ep_group_id)
     }
@@ -1238,7 +1238,7 @@ pub trait CaptureReaderOps {
         let dev_data = self.device_data(device_id)?;
         let ep_addr = endpoint.address();
         let (endpoint_type, _) = dev_data.endpoint_details(ep_addr);
-        let range = self.group_range(&entry)?;
+        let range = self.group_range(entry.endpoint_id(), entry.group_id())?;
         let count = range.len();
         let content = match endpoint_type {
             EndpointType::Invalid => GroupContent::Invalid,
