@@ -22,6 +22,7 @@ use super::{
     BackendDevice,
     BackendHandle,
     Speed,
+    EventType,
     EventIterator,
     EventResult,
     TimestampedEvent,
@@ -375,13 +376,20 @@ impl CynthionStream {
 
             if self.buffer[0] == 0xFF {
                 // This is an event.
-                let _event_code = self.buffer[1];
+                let event_code = self.buffer[1];
 
                 // Update our cycle count.
                 self.update_cycle_count();
 
                 // Remove event from buffer.
                 self.buffer.drain(0..4);
+
+                if let Some(event_type) = EventType::from_code(event_code) {
+                    return Some(Event {
+                        timestamp_ns: clk_to_ns(self.total_clk_cycles),
+                        event_type,
+                    })
+                }
             } else {
                 // This is a packet, handle it below.
                 break;
