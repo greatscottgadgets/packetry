@@ -65,6 +65,7 @@ use gtk::{
 
 use crate::backend::{
     BackendStop,
+    TimestampedEvent,
 };
 
 use crate::capture::prelude::*;
@@ -922,9 +923,17 @@ pub fn start_capture() -> Result<(), Error> {
         let read_packets = move || {
             let mut decoder = Decoder::new(writer)?;
             for result in stream_handle {
-                let packet = result
+                let event = result
                     .context("Error processing raw capture data")?;
-                decoder.handle_raw_packet(&packet.bytes, packet.timestamp_ns)?;
+                use TimestampedEvent::*;
+                match event {
+                    Packet { timestamp_ns, bytes } =>
+                        decoder.handle_raw_packet(&bytes, timestamp_ns)
+                            .context("Error decoding packet")?,
+                    Event { timestamp_ns, event_type } =>
+                        decoder.handle_event(event_type, timestamp_ns)
+                            .context("Error handling event")?,
+                }
                 if SNAPSHOT_REQ.swap(false, Ordering::AcqRel) {
                     snapshot_tx.send(decoder.capture.snapshot())?;
                 }
@@ -1050,6 +1059,7 @@ fn traffic_context_menu(
                 None
             }
         },
+        _ => None,
     })
 }
 
