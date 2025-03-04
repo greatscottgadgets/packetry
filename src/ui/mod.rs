@@ -1319,8 +1319,14 @@ pub fn start_capture() -> Result<(), Error> {
             for result in stream_handle {
                 let event = result
                     .context("Error processing raw capture data")?;
-                if let TimestampedEvent::Packet {timestamp_ns, bytes} = event {
-                    decoder.handle_raw_packet(&bytes, timestamp_ns)?;
+                use TimestampedEvent::*;
+                match event {
+                    Packet { timestamp_ns, bytes } =>
+                        decoder.handle_raw_packet(&bytes, timestamp_ns)
+                            .context("Error decoding packet")?,
+                    Event { timestamp_ns, event_type } =>
+                        decoder.handle_event(event_type, timestamp_ns)
+                            .context("Error handling event")?,
                 }
             }
             let writer = decoder.finish()?;
@@ -1371,6 +1377,7 @@ fn traffic_context_menu(
 ) -> Result<Option<PopoverMenu>, Error> {
     use TrafficItem::*;
     Ok(match item {
+        Event(..) => None,
         TransactionGroup(_, endpoint_id, ep_group_id) |
         TransactionGroupEnd(_, endpoint_id, ep_group_id) => {
             let group = capture.group(*endpoint_id, *ep_group_id)?;
