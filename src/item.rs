@@ -7,21 +7,8 @@ use std::fmt::Write;
 
 use anyhow::{Context, Error, bail};
 
-use crate::capture::{
-    CaptureReader,
-    DeviceId,
-    DeviceVersion,
-    EndpointId,
-    EndpointGroupId,
-    EndpointState,
-    GroupContent,
-    GroupId,
-    Timestamp,
-    TrafficItemId,
-    TransactionId,
-    PacketId,
-    INVALID_EP_ID,
-};
+use crate::capture::prelude::*;
+use crate::event::EventType;
 use crate::usb::{self, prelude::*, validate_packet};
 use crate::util::{Bytes, RangeLength, fmt_count, fmt_size, titlecase};
 
@@ -84,6 +71,7 @@ impl CompletionStatus {
 
 #[derive(Clone, Debug)]
 pub enum TrafficItem {
+    Event(GroupId, EventType, EventId),
     TransactionGroup(GroupId, EndpointId, EndpointGroupId),
     TransactionGroupEnd(GroupId, EndpointId, EndpointGroupId),
     Transaction(Option<GroupId>, TransactionId),
@@ -178,12 +166,20 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                     let item_id = TrafficItemId::from(index);
                     let group_id = self.item_index.get(item_id)?;
                     let entry = self.group_index.get(group_id)?;
-                    let endpoint_id = entry.endpoint_id();
-                    let ep_group_id = entry.group_id();
-                    if entry.is_start() {
-                        TransactionGroup(group_id, endpoint_id, ep_group_id)
+                    if entry.is_event() {
+                        let event_type = entry
+                            .event_type()
+                            .context("Invalid event type found in database")?;
+                        let event_id = entry.event_id();
+                        Event(group_id, event_type, event_id)
                     } else {
-                        TransactionGroupEnd(group_id, endpoint_id, ep_group_id)
+                        let endpoint_id = entry.endpoint_id();
+                        let ep_group_id = entry.group_id();
+                        if entry.is_start() {
+                            TransactionGroup(group_id, endpoint_id, ep_group_id)
+                        } else {
+                            TransactionGroupEnd(group_id, endpoint_id, ep_group_id)
+                        }
                     }
                 },
                 Transactions =>
@@ -243,6 +239,7 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                     Packets => self.packet_index.len(),
                 })
             },
+            Some(Event(..)) => (Complete, 0),
             Some(TransactionGroup(_, endpoint_id, ep_group_id)) => {
                 let transaction_count = self
                     .group_range(*endpoint_id, *ep_group_id)?
@@ -552,6 +549,10 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                 }?;
                 s
             },
+            Event(_, event_type, _) => {
+                write!(s, "{event_type:?}")?;
+                s
+            },
         })
     }
 
@@ -575,6 +576,7 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
         };
         if view_mode == Transactions {
             return Ok(String::from(match (item, last_packet) {
+                (Event(..), _)            => "○",
                 (Transaction(..), _)      => "○",
                 (Packet(..), false)       => "├──",
                 (Packet(..), true )       => "└──",
@@ -585,6 +587,7 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
         let max_string_length = endpoint_count + "    └──".len();
         let mut connectors = String::with_capacity(max_string_length);
         let group_id = match item {
+            Event(i, ..) |
             TransactionGroup(i, ..) |
             TransactionGroupEnd(i, ..) |
             Transaction(Some(i), _) |
@@ -592,7 +595,10 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
             _ => unreachable!()
         };
         let entry = self.group_index.get(group_id)?;
-        let endpoint_id = entry.endpoint_id();
+        let endpoint_id = match item {
+            Event(..) => EVENT_EP_ID,
+            _ => entry.endpoint_id(),
+        };
         let endpoint_state = self.endpoint_state(group_id)?;
         let extended = self.group_extended(endpoint_id, group_id)?;
         let ep_traf = self.endpoint_traffic(endpoint_id)?;
@@ -608,7 +614,7 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
         };
         let last = last_transaction && !extended;
         let mut thru = false;
-        for (i, &state) in endpoint_state.iter().enumerate() {
+        for (i, &state) in endpoint_state.iter().enumerate().skip(1) {
             let state = EndpointState::from(state);
             let active = state != Idle;
             let on_endpoint = i == endpoint_id.value as usize;
@@ -619,6 +625,7 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                 _ => false,
             };
             connectors.push(match item {
+                Event(..) => ' ',
                 TransactionGroup(..) | TransactionGroupEnd(..) => {
                     match (state, thru) {
                         (Idle,     false) => ' ',
@@ -652,6 +659,7 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
         let state_length = endpoint_state.len();
         for _ in state_length..endpoint_count {
             connectors.push(match item {
+                Event(..)               => ' ',
                 TransactionGroup(..)    => '─',
                 TransactionGroupEnd(..) => '─',
                 Transaction(..)         => '─',
@@ -660,6 +668,7 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
         }
         connectors.push_str(
             match (item, last_packet) {
+                (Event(..), _)               => "",
                 (TransactionGroup(..), _)    => "─",
                 (TransactionGroupEnd(..), _) => "──□ ",
                 (Transaction(..), _)         => "───",
@@ -673,6 +682,8 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
     fn timestamp(&mut self, item: &TrafficItem) -> Result<Timestamp, Error> {
         use TrafficItem::*;
         let packet_id = match item {
+            Event(.., event_id) =>
+                return self.event_times.get(*event_id),
             TransactionGroup(_, endpoint_id, ep_group_id) |
             TransactionGroupEnd(_, endpoint_id, ep_group_id) => {
                 let ep_traf = self.endpoint_traffic(*endpoint_id)?;

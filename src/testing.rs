@@ -92,9 +92,14 @@ fn test(save_capture: bool,
     for result in stream_handle {
         let event = result
             .context("Error decoding raw capture data")?;
-        if let TimestampedEvent::Packet { timestamp_ns, bytes } = event {
-            decoder.handle_raw_packet(&bytes, timestamp_ns)
-                .context("Error decoding packet")?;
+        use TimestampedEvent::*;
+        match event {
+            Packet { timestamp_ns, bytes } =>
+                decoder.handle_raw_packet(&bytes, timestamp_ns)
+                    .context("Error decoding packet")?,
+            Event { timestamp_ns, event_type } =>
+                decoder.handle_event(event_type, timestamp_ns)
+                    .context("Error handling event")?,
         }
     }
 
