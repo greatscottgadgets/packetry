@@ -933,11 +933,11 @@ impl CaptureReader {
         Ok(self.endpoint_readers.get_mut(endpoint_id).unwrap())
     }
 
-    pub fn group_range(&mut self, entry: &GroupIndexEntry)
-        -> Result<Range<EndpointTransactionId>, Error>
-    {
-        let endpoint_id = entry.endpoint_id();
-        let ep_group_id = entry.group_id();
+    pub fn group_range(
+        &mut self,
+        endpoint_id: EndpointId,
+        ep_group_id: EndpointGroupId
+    ) -> Result<Range<EndpointTransactionId>, Error> {
         let ep_traf = self.endpoint_traffic(endpoint_id)?;
         ep_traf.group_index.target_range(
             ep_group_id, ep_traf.transaction_ids.len())
@@ -1123,7 +1123,7 @@ impl CaptureReader {
         let dev_data = self.device_data(device_id)?;
         let ep_addr = endpoint.address();
         let (endpoint_type, _) = dev_data.endpoint_details(ep_addr);
-        let range = self.group_range(&entry)?;
+        let range = self.group_range(entry.endpoint_id(), entry.group_id())?;
         let count = range.len();
         let content = match endpoint_type {
             EndpointType::Invalid => GroupContent::Invalid,
