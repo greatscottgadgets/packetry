@@ -246,7 +246,9 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                 if !entry.is_start() {
                     return Ok((Complete, 0));
                 }
-                let transaction_count = self.group_range(&entry)?.len();
+                let transaction_count = self
+                    .group_range(entry.endpoint_id(), entry.group_id())?
+                    .len();
                 let ep_traf = self.endpoint_traffic(entry.endpoint_id())?;
                 if entry.group_id().value >= ep_traf.end_count() {
                     (Ongoing, transaction_count)
