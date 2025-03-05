@@ -3,7 +3,7 @@
 //! The concept is similar to the GTK TreeListModel type, but the
 //! implementation is customised for Packetry's usage.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::cmp::min;
 use std::collections::{BTreeMap, HashSet};
 use std::collections::btree_map::Entry;
@@ -358,6 +358,11 @@ pub struct TreeListModel<Item, Model, RowData, ViewMode> {
     view_mode: ViewMode,
     root: RootNodeRc<Item>,
     regions: RefCell<BTreeMap<u64, Region<Item>>>,
+    /// In the ListModel interface, we must always report a row count that is
+    /// consistent with the history of `items_changed` signals we have emitted.
+    /// So we maintain this published row count separately from our internal
+    /// counts, and update it just before emitting an `items_changed` signal.
+    published_row_count: Cell<u32>,
     #[cfg(any(test, feature="record-ui-test"))]
     on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>,
 }
@@ -386,6 +391,7 @@ where Item: 'static + Clone + Debug,
                 complete: completion.is_complete(),
             })),
             regions: RefCell::new(BTreeMap::new()),
+            published_row_count: Cell::new(0),
             #[cfg(any(test, feature="record-ui-test"))]
             on_item_update,
         })
@@ -988,6 +994,8 @@ where Item: 'static + Clone + Debug,
             let rows_added = clamp(
                 update.rows_added + update.rows_changed,
                 rows_addressable);
+            self.published_row_count.replace(
+                self.published_row_count.get() + rows_added - rows_removed);
             model.items_changed(position, rows_removed, rows_added);
         }
     }
@@ -996,7 +1004,7 @@ where Item: 'static + Clone + Debug,
     // called by a GObject wrapper class to implement that interface.
 
     pub fn n_items(&self) -> u32 {
-        clamp(self.row_count(), u32::MAX)
+        self.published_row_count.get()
     }
 
     pub fn item(&self, position: u32) -> Option<Object> {
