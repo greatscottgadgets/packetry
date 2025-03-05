@@ -8,7 +8,7 @@ use std::time::Duration;
 use anyhow::{Context, Error};
 use futures_channel::oneshot;
 use futures_lite::future::block_on;
-use nusb::{self, DeviceInfo};
+use nusb::{self, DeviceInfo, MaybeFuture, transfer::{Completion, Bulk, In}};
 use num_enum::{FromPrimitive, IntoPrimitive};
 use once_cell::sync::Lazy;
 
@@ -42,7 +42,8 @@ pub struct ProbeResult {
 
 /// Scan for supported devices.
 pub fn scan() -> Result<Vec<ProbeResult>, Error> {
-    Ok(nusb::list_devices()?
+    Ok(nusb::list_devices()
+        .wait()?
         .filter_map(|info|
             SUPPORTED_DEVICES
                 .get(&(info.vendor_id(), info.product_id()))
@@ -117,7 +118,7 @@ pub trait BackendHandle: Send + Sync {
     fn begin_capture(
         &mut self,
         speed: Speed,
-        data_tx: mpsc::Sender<Vec<u8>>)
+        data_tx: mpsc::Sender<Completion<Bulk, In>>)
     -> Result<TransferQueue, Error>;
 
     /// End capture.
@@ -140,7 +141,7 @@ pub trait BackendHandle: Send + Sync {
     /// packets. The iterator type must be `Send` so that it can be passed to
     /// a separate decoder thread.
     ///
-    fn timestamped_packets(&self, data_rx: mpsc::Receiver<Vec<u8>>)
+    fn timestamped_packets(&self, data_rx: mpsc::Receiver<Completion<Bulk, In>>)
         -> Box<dyn PacketIterator>;
 
     /// Duplicate this handle with Box::new(self.clone())
@@ -195,7 +196,7 @@ pub trait BackendHandle: Send + Sync {
     fn run_capture(
         &mut self,
         speed: Speed,
-        data_tx: mpsc::Sender<Vec<u8>>,
+        data_tx: mpsc::Sender<Completion<Bulk, In>>,
         stop_rx: oneshot::Receiver<()>,
     ) -> Result<(), Error> {
         // Set up a separate channel pair to stop queue processing.
