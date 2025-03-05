@@ -2,22 +2,26 @@
 
 use std::cell::RefCell;
 use std::collections::BTreeMap;
-use std::io::Write;
+use std::ffi::OsStr;
+use std::io::{Read, Write};
 use std::ops::Range;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::time::{Duration, Instant};
+use std::sync::Arc;
+use std::time::{Duration, Instant, SystemTime};
 
 #[cfg(feature="step-decoder")]
-use std::{io::Read, net::TcpListener};
+use std::net::TcpListener;
 
 #[cfg(feature="record-ui-test")]
 use std::sync::Mutex;
 
 use anyhow::{Context as ErrorContext, Error, bail};
+use chrono::{DateTime, Local};
 use bytemuck::bytes_of;
 
 use gtk::gio::{
     self,
+    Action,
     ActionEntry,
     Cancellable,
     FileCreateFlags,
@@ -35,11 +39,14 @@ use gtk::{
     Application,
     ApplicationWindow,
     Button,
+    Dialog,
+    DialogFlags,
     DropDown,
     InfoBar,
     Label,
     License,
     ListItem,
+    Grid,
     ColumnView,
     ColumnViewColumn,
     MenuButton,
@@ -55,6 +62,7 @@ use gtk::{
     StackSwitcher,
     StringList,
     TextBuffer,
+    TextView,
     Orientation,
     WrapMode,
 };
@@ -62,7 +70,6 @@ use gtk::{
 #[cfg(not(test))]
 use gtk::{
     MessageDialog,
-    DialogFlags,
     ButtonsType,
 };
 
@@ -70,13 +77,14 @@ use crate::backend::{
     BackendHandle,
     BackendStop,
     ProbeResult,
-    Speed,
     scan
 };
+
 use crate::capture::{
     create_capture,
     CaptureReader,
     CaptureWriter,
+    CaptureMetadata,
     EndpointId,
     EndpointDataEvent,
     Group,
@@ -91,9 +99,18 @@ use crate::item::{
     DeviceViewMode,
 };
 use crate::decoder::Decoder;
-use crate::pcap::{Loader, Writer};
-use crate::usb::{Descriptor, PacketFields, validate_packet};
-use crate::util::{fmt_count, fmt_size};
+use crate::file::{
+    GenericPacket,
+    GenericLoader,
+    GenericSaver,
+    LoaderItem,
+    PcapLoader,
+    PcapSaver,
+    PcapNgLoader,
+    PcapNgSaver,
+};
+use crate::usb::{Descriptor, PacketFields, Speed, validate_packet};
+use crate::util::{rcu::SingleWriterRcu, fmt_count, fmt_size};
 use crate::version::{version, version_info};
 
 pub mod item_widget;
@@ -144,9 +161,15 @@ enum FileAction {
     Save,
 }
 
+#[derive(Copy, Clone, PartialEq)]
+enum FileFormat {
+    Pcap,
+    PcapNg,
+}
+
 enum StopState {
     Disabled,
-    Pcap(Cancellable),
+    File(Cancellable),
     Backend(BackendStop),
 }
 
@@ -368,6 +391,7 @@ pub struct UserInterface {
     stop_button: Button,
     status_label: Label,
     warning: DeviceWarning,
+    metadata_action: Action,
     #[cfg(any(test, feature="record-ui-test"))]
     pub recording: Rc<RefCell<Recording>>,
 }
@@ -409,8 +433,8 @@ pub fn activate(application: &Application) -> Result<(), Error> {
         .build();
 
     window.add_action_entries([
-        button_action!("open", open_button, choose_pcap_file(Load)),
-        button_action!("save", save_button, choose_pcap_file(Save)),
+        button_action!("open", open_button, choose_capture_file(Load)),
+        button_action!("save", save_button, choose_capture_file(Save)),
         button_action!("scan", scan_button, detect_hardware()),
         button_action!("capture", capture_button, start_capture()),
         button_action!("stop", stop_button, stop_operation()),
@@ -470,17 +494,24 @@ pub fn activate(application: &Application) -> Result<(), Error> {
     capture_button.set_sensitive(selector.device_available());
 
     let menu = Menu::new();
+    let meta_item = MenuItem::new(Some("Metadata..."), Some("actions.metadata"));
     let about_item = MenuItem::new(Some("About..."), Some("actions.about"));
+    menu.append_item(&meta_item);
     menu.append_item(&about_item);
     let menu_button = MenuButton::builder()
         .menu_model(&menu)
         .build();
     let action_group = SimpleActionGroup::new();
+    let action_metadata = ActionEntry::builder("metadata")
+        .activate(|_, _, _| display_error(show_metadata()))
+        .build();
     let action_about = ActionEntry::builder("about")
         .activate(|_, _, _| display_error(show_about()))
         .build();
-    action_group.add_action_entries([action_about]);
+    action_group.add_action_entries([action_metadata, action_about]);
     window.insert_action_group("actions", Some(&action_group));
+    let metadata_action = action_group.lookup_action("metadata").unwrap();
+    metadata_action.set_property("enabled", false);
 
     action_bar.pack_start(&open_button);
     action_bar.pack_start(&save_button);
@@ -631,6 +662,7 @@ pub fn activate(application: &Application) -> Result<(), Error> {
                 stop_button,
                 status_label,
                 warning,
+                metadata_action,
             }
         )
     });
@@ -643,7 +675,7 @@ pub fn activate(application: &Application) -> Result<(), Error> {
 }
 
 pub fn open(file: &gio::File) -> Result<(), Error> {
-    start_pcap(FileAction::Load, file.clone())
+    start_file(FileAction::Load, file.clone())
 }
 
 type ContextFn<Item> =
@@ -1011,6 +1043,19 @@ fn choose_file<F>(
             ),
         }
     });
+    let all = gtk::FileFilter::new();
+    let pcap = gtk::FileFilter::new();
+    let pcapng = gtk::FileFilter::new();
+    all.add_suffix("pcap");
+    all.add_suffix("pcapng");
+    pcap.add_suffix("pcap");
+    pcapng.add_suffix("pcapng");
+    all.set_name(Some("All captures (*.pcap, *.pcapng)"));
+    pcap.set_name(Some("pcap (*.pcap)"));
+    pcapng.set_name(Some("pcap-NG (*.pcapng)"));
+    chooser.add_filter(&all);
+    chooser.add_filter(&pcap);
+    chooser.add_filter(&pcapng);
     chooser.connect_response(move |dialog, response| {
         if response == gtk::ResponseType::Accept {
             if let Some(file) = dialog.file() {
@@ -1023,12 +1068,23 @@ fn choose_file<F>(
     Ok(())
 }
 
-fn choose_pcap_file(action: FileAction) -> Result<(), Error> {
-    choose_file(action, "pcap file", move |file| start_pcap(action, file))
+fn choose_capture_file(action: FileAction) -> Result<(), Error> {
+    choose_file(action, "capture file", move |file| start_file(action, file))
 }
 
-fn start_pcap(action: FileAction, file: gio::File) -> Result<(), Error> {
+fn start_file(action: FileAction, file: gio::File) -> Result<(), Error> {
     use FileAction::*;
+    use FileFormat::*;
+    let basename = match file.basename() {
+        None => bail!("Could not determine format without file name"),
+        Some(name) => name,
+    };
+    let format = match basename.extension().and_then(OsStr::to_str) {
+        Some("pcap") => Pcap,
+        Some("pcapng") => PcapNg,
+        _ => bail!("Could not determine format from file name '{}'",
+                   basename.display())
+    };
     let writer = if action == Load {
         Some(reset_capture()?)
     } else {
@@ -1046,13 +1102,11 @@ fn start_pcap(action: FileAction, file: gio::File) -> Result<(), Error> {
         ui.selector.set_sensitive(false);
         ui.capture_button.set_sensitive(false);
         ui.stop_button.set_sensitive(true);
-        ui.stop_state = StopState::Pcap(cancel_handle.clone());
+        ui.stop_state = StopState::File(cancel_handle.clone());
         ui.vbox.insert_child_after(&ui.separator, Some(&ui.vertical_panes));
         ui.vbox.insert_child_after(&ui.progress_bar, Some(&ui.separator));
         ui.show_progress = Some(action);
-        ui.file_name = file
-            .basename()
-            .map(|path| path.to_string_lossy().to_string());
+        ui.file_name = Some(basename.to_string_lossy().to_string());
         let capture = ui.capture.clone();
         let packet_count = capture.packet_index.len();
         CURRENT.store(0, Ordering::Relaxed);
@@ -1063,8 +1117,8 @@ fn start_pcap(action: FileAction, file: gio::File) -> Result<(), Error> {
         std::thread::spawn(move || {
             let start_time = Instant::now();
             let result = match action {
-                Load => load_pcap(file, writer.unwrap(), cancel_handle),
-                Save => save_pcap(file, capture, cancel_handle),
+                Load => load_file(file, format, writer.unwrap(), cancel_handle),
+                Save => save_file(file, format, capture, cancel_handle),
             };
             let duration = Instant::now().duration_since(start_time);
             if result.is_ok() {
@@ -1086,36 +1140,40 @@ fn start_pcap(action: FileAction, file: gio::File) -> Result<(), Error> {
     })
 }
 
-fn load_pcap(file: gio::File,
-             writer: CaptureWriter,
-             cancel_handle: Cancellable)
-    -> Result<(), Error>
+fn load<Source, Loader>(
+    writer: CaptureWriter,
+    source: Source
+) -> Result<(), Error>
+where
+    Source: Read,
+    Loader: GenericLoader<Source> + 'static
 {
-    let info = file.query_info("standard::*",
-                               FileQueryInfoFlags::NONE,
-                               Some(&cancel_handle))?;
-    if info.has_attribute(gio::FILE_ATTRIBUTE_STANDARD_SIZE) {
-        let file_size = info.size() as u64;
-        TOTAL.store(file_size, Ordering::Relaxed);
-    }
-    let source = file.read(Some(&cancel_handle))?.into_read();
-    let mut loader = Loader::open(source)?;
-    let mut decoder = Decoder::new(writer)?;
     #[cfg(feature="step-decoder")]
     let (mut client, _addr) =
         TcpListener::bind("127.0.0.1:46563")?.accept()?;
-    while let Some(result) = loader.next() {
-        let (packet, timestamp_ns) = result?;
-        #[cfg(feature="step-decoder")] {
-            let mut buf = [0; 1];
-            client.read(&mut buf).unwrap();
-        };
-        #[cfg(feature="record-ui-test")]
-        let guard = UPDATE_LOCK.lock();
-        decoder.handle_raw_packet(&packet.data, timestamp_ns)?;
-        #[cfg(feature="record-ui-test")]
-        drop(guard);
-        CURRENT.store(loader.bytes_read, Ordering::Relaxed);
+    let mut decoder = Decoder::new(writer)?;
+    let mut loader = Loader::new(source)?;
+    loop {
+        use LoaderItem::*;
+        match loader.next() {
+            Packet(packet) => {
+                #[cfg(feature="step-decoder")] {
+                    let mut buf = [0; 1];
+                    client.read(&mut buf).unwrap();
+                };
+                #[cfg(feature="record-ui-test")]
+                let guard = UPDATE_LOCK.lock();
+                decoder.handle_raw_packet(
+                    packet.bytes(), packet.timestamp_ns())?;
+                #[cfg(feature="record-ui-test")]
+                drop(guard);
+                CURRENT.store(packet.total_bytes_read(), Ordering::Relaxed);
+            },
+            Metadata(meta) => decoder.handle_metadata(meta),
+            LoadError(e) => return Err(e),
+            Ignore => continue,
+            End => break,
+        }
         if STOP.load(Ordering::Relaxed) {
             break;
         }
@@ -1125,33 +1183,72 @@ fn load_pcap(file: gio::File,
     Ok(())
 }
 
-fn save_pcap(file: gio::File,
-             mut capture: CaptureReader,
+fn load_file(file: gio::File,
+             format: FileFormat,
+             writer: CaptureWriter,
              cancel_handle: Cancellable)
     -> Result<(), Error>
 {
+    use FileFormat::*;
+    let info = file.query_info("standard::*",
+                               FileQueryInfoFlags::NONE,
+                               Some(&cancel_handle))?;
+    if info.has_attribute(gio::FILE_ATTRIBUTE_STANDARD_SIZE) {
+        let file_size = info.size() as u64;
+        TOTAL.store(file_size, Ordering::Relaxed);
+    }
+    let source = file.read(Some(&cancel_handle))?.into_read();
+    match format {
+        Pcap => load::<_, PcapLoader<_>>(writer, source),
+        PcapNg => load::<_, PcapNgLoader<_>>(writer, source),
+    }
+}
+
+fn save<Dest, Saver>(
+    mut capture: CaptureReader,
+    dest: Dest)
+-> Result<(), Error>
+where
+    Saver: GenericSaver<Dest>,
+    Dest: Write
+{
     let packet_count = capture.packet_index.len();
+    let meta = capture.shared.metadata.load_full();
+    let mut saver = Saver::new(dest, meta)?;
+    if packet_count > 0 {
+        for (result, i) in capture.timestamped_packets()?.zip(0..packet_count) {
+            let (timestamp_ns, packet) = result?;
+            saver.add_packet(&packet, timestamp_ns)?;
+            CURRENT.store(i + 1, Ordering::Relaxed);
+            if STOP.load(Ordering::Relaxed) {
+                break;
+            }
+        }
+    }
+    saver.close()
+}
+
+fn save_file(file: gio::File,
+             format: FileFormat,
+             capture: CaptureReader,
+             cancel_handle: Cancellable)
+    -> Result<(), Error>
+{
+    use FileFormat::*;
     let dest = file
         .replace(None, false, FileCreateFlags::NONE, Some(&cancel_handle))?
         .into_write();
-    let mut writer = Writer::open(dest)?;
-    for (result, i) in capture.timestamped_packets()?.zip(0..packet_count) {
-        let (timestamp_ns, packet) = result?;
-        writer.add_packet(&packet, timestamp_ns)?;
-        CURRENT.store(i + 1, Ordering::Relaxed);
-        if STOP.load(Ordering::Relaxed) {
-            break;
-        }
+    match format {
+        Pcap => save::<_, PcapSaver<_>>(capture, dest),
+        PcapNg => save::<_, PcapNgSaver<_>>(capture, dest),
     }
-    writer.close()?;
-    Ok(())
 }
 
 pub fn stop_operation() -> Result<(), Error> {
     with_ui(|ui| {
         match std::mem::replace(&mut ui.stop_state, StopState::Disabled) {
             StopState::Disabled => {},
-            StopState::Pcap(cancel_handle) => {
+            StopState::File(cancel_handle) => {
                 STOP.store(true, Ordering::Relaxed);
                 cancel_handle.cancel();
             },
@@ -1177,6 +1274,7 @@ pub fn rearm() -> Result<(), Error> {
             ui.vbox.remove(&ui.separator);
             ui.vbox.remove(&ui.progress_bar);
         }
+        ui.metadata_action.set_property("enabled", true);
         Ok(())
     })
 }
@@ -1201,8 +1299,21 @@ fn device_selection_changed() -> Result<(), Error> {
 
 pub fn start_capture() -> Result<(), Error> {
     let writer = reset_capture()?;
+
     with_ui(|ui| {
         let (device, speed) = ui.selector.open()?;
+        let meta = CaptureMetadata {
+            application: Some(format!("Packetry {}", version())),
+            os: Some(std::env::consts::OS.to_string()),
+            hardware: Some(std::env::consts::ARCH.to_string()),
+            iface_speed: Some(speed),
+            start_time: Some(
+                SystemTime::now()
+                    .duration_since(SystemTime::UNIX_EPOCH)?
+            ),
+            .. device.metadata().clone()
+        };
+        writer.shared.metadata.swap(Arc::new(meta));
         let (stream_handle, stop_handle) =
             device.start(speed, Box::new(display_error))?;
         ui.open_button.set_sensitive(false);
@@ -1218,7 +1329,13 @@ pub fn start_capture() -> Result<(), Error> {
                     .context("Error processing raw capture data")?;
                 decoder.handle_raw_packet(&packet.bytes, packet.timestamp_ns)?;
             }
-            decoder.finish()?;
+            let writer = decoder.finish()?;
+            writer.shared.metadata.update(|meta| {
+                meta.end_time = SystemTime::now()
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .ok();
+                meta.dropped = Some(0);
+            });
             Ok(())
         };
         std::thread::spawn(move || {
@@ -1428,6 +1545,132 @@ fn save_data(
     Ok(())
 }
 
+fn show_metadata() -> Result<(), Error> {
+    let grid = Grid::new();
+    let comment_buffer = TextBuffer::new(None);
+    with_ui(|ui| {
+        let meta = ui.capture.shared.metadata.load();
+        const NONE: &str = "(not specified)";
+        let mut current_row = 0;
+        let row = &mut current_row;
+        let make_label = |text: &'_ str, vertical_margin| {
+            Label::builder()
+                .halign(Align::Start)
+                .margin_top(vertical_margin)
+                .margin_bottom(vertical_margin)
+                .margin_start(10)
+                .margin_end(10)
+                .use_markup(true)
+                .label(text)
+                .build()
+        };
+        let add_heading = |row: &mut i32, heading| {
+            let label = make_label(&format!("<b>{heading}</b>"), 5);
+            grid.attach(&label, 0, *row, 2, 1);
+            *row += 1;
+        };
+        let add_field = |row: &mut i32, name, text: &'_ str| {
+            grid.attach(&make_label(name, 0), 0, *row, 1, 1);
+            grid.attach(&make_label(text, 0), 1, *row, 1, 1);
+            *row += 1;
+        };
+        add_heading(row, "Writer:");
+        for (name, field) in [
+            ("Application:", &meta.application),
+            ("OS:", &meta.os),
+            ("Hardware:", &meta.hardware),
+        ] {
+            let text = field.as_deref().unwrap_or(NONE);
+            add_field(row, name, text);
+        }
+        add_heading(row, "Interface:");
+        for (name, field) in [
+            ("Description:", &meta.iface_desc),
+            ("Hardware:", &meta.iface_hardware),
+            ("OS:", &meta.iface_os),
+        ] {
+            let text = field.as_deref().unwrap_or(NONE);
+            add_field(row, name, text);
+        }
+        add_field(row, "Speed:",
+            meta.iface_speed
+                .as_ref()
+                .map(Speed::description)
+                .unwrap_or(NONE)
+        );
+        add_field(row, "Max packet size:",
+            &meta.iface_snaplen
+                .as_ref()
+                .map(|len| format!("{} bytes", len.get()))
+                .unwrap_or(NONE.to_string())
+        );
+        add_heading(row, "Capture:");
+        for (name, field) in [
+            ("Start time", &meta.start_time),
+            ("End time", &meta.end_time),
+        ] {
+            let text = field
+                .map(|duration| {
+                    let time = SystemTime::UNIX_EPOCH + duration;
+                    format!("{}", DateTime::<Local>::from(time).format("%c"))
+                })
+                .unwrap_or(NONE.to_string());
+            add_field(row, name, &text);
+        }
+        add_field(row, "Packets dropped:",
+            &meta.dropped
+                .as_ref()
+                .map(|p| format!("{p}"))
+                .unwrap_or(NONE.to_string())
+        );
+        add_heading(row, "Comment:");
+        if let Some(text) = &meta.comment {
+            comment_buffer.set_text(text);
+        }
+        let comment_view = TextView::builder()
+            .buffer(&comment_buffer)
+            .margin_start(10)
+            .margin_end(10)
+            .margin_bottom(5)
+            .build();
+        grid.attach(&comment_view, 0, current_row, 2, 1);
+        Ok(())
+    })?;
+    WINDOW.with(|win| {
+        let dialog = Dialog::with_buttons(
+            Some("Capture Metadata"),
+            win.borrow().as_ref(),
+            DialogFlags::DESTROY_WITH_PARENT,
+            &[
+                ("Close", ResponseType::Close),
+                ("Apply", ResponseType::Apply),
+            ]
+        );
+        dialog.content_area().append(&grid);
+        let buf = comment_buffer.clone();
+        dialog.connect_response(move |dialog, response| {
+            if response == ResponseType::Apply {
+                display_error(with_ui(|ui| {
+                    ui.capture.shared.metadata.update(|meta| {
+                        let start = buf.iter_at_offset(0);
+                        let end = buf.iter_at_offset(-1);
+                        let text = buf.text(&start, &end, false);
+                        meta.comment = if text.len() == 0 {
+                            None
+                        } else {
+                            Some(text.to_string())
+                        }
+                    });
+                    Ok(())
+                }));
+            }
+            dialog.destroy();
+        });
+        dialog.present();
+    });
+    Ok(())
+}
+
 fn show_about() -> Result<(), Error> {
     const LICENSE: &str = include_str!("../../LICENSE");
     let about = AboutDialog::builder()
@@ -1487,4 +1730,17 @@ pub fn display_error(result: Result<(), Error>) {
     }
     #[cfg(test)]
     result.unwrap();
+}
+
+impl Speed {
+    /// How this speed setting should be displayed in the UI.
+    pub fn description(&self) -> &'static str {
+        use Speed::*;
+        match self {
+            Auto => "Auto",
+            High => "High (480Mbps)",
+            Full => "Full (12Mbps)",
+            Low => "Low (1.5Mbps)",
+        }
+    }
 }

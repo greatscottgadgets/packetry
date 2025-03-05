@@ -12,6 +12,7 @@ use nusb::{
     DeviceInfo, Interface,
 };
 
+use crate::capture::CaptureMetadata;
 use crate::usb::crc5;
 
 use super::{
@@ -50,6 +51,7 @@ pub struct Ice40UsbtraceDevice {
 #[derive(Clone)]
 pub struct Ice40UsbtraceHandle {
     interface: Interface,
+    metadata: CaptureMetadata,
 }
 
 /// Converts from received data bytes to timestamped packets.
@@ -84,7 +86,11 @@ impl BackendDevice for Ice40UsbtraceDevice {
     fn open_as_generic(&self) -> Result<Box<dyn BackendHandle>, Error> {
         let device = self.device_info.open()?;
         let interface = device.claim_interface(INTERFACE)?;
-        Ok(Box::new(Ice40UsbtraceHandle { interface }))
+        let metadata = CaptureMetadata {
+            iface_desc: Some("iCE40-usbtrace".to_string()),
+            .. Default::default()
+        };
+        Ok(Box::new(Ice40UsbtraceHandle { interface, metadata }))
     }
 
     fn supported_speeds(&self) -> &[Speed] {
@@ -93,6 +99,10 @@ impl BackendDevice for Ice40UsbtraceDevice {
 }
 
 impl BackendHandle for Ice40UsbtraceHandle {
+    fn metadata(&self) -> &CaptureMetadata {
+        &self.metadata
+    }
+
     fn begin_capture(
         &mut self,
         speed: Speed,
