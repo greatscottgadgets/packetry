@@ -1,0 +1,13 @@
+diff --git a/subprojects/gi-docgen.wrap b/subprojects/gi-docgen.wrap
+index 85c85da..2d71071 100644
+--- a/subprojects/gi-docgen.wrap
++++ b/subprojects/gi-docgen.wrap
+@@ -2,7 +2,7 @@
+ directory = gi-docgen
+ url = https://gitlab.gnome.org/GNOME/gi-docgen.git
+ push-url = ssh://git@ssh.gitlab.gnome.org:GNOME/gi-docgen.git
+-revision = main
++revision = 2025.3
+ depth = 1
+ 
+ [provide]

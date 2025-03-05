@@ -27,6 +27,7 @@ RUN apt update && apt upgrade -y && apt install -y \
     cmake \
     curl \
     desktop-file-utils \
+    dos2unix \
     fdupes \
     flex \
     git \
@@ -126,6 +127,19 @@ RUN A=`echo $GTK_VERSION | cut -d. -f1,2` B=$GTK_VERSION && \
 
 # setup gtk-4 build
 WORKDIR $GTK_SOURCE
+
+# patch gtk-4 to use specific subproject releases rather than main
+ADD patches/gtk-4.14.4-pin-fribidi.patch .
+RUN patch -p1 < ./gtk-4.14.4-pin-fribidi.patch
+ADD patches/gtk-4.14.4-pin-gi-docgen.patch .
+RUN patch -p1 < ./gtk-4.14.4-pin-gi-docgen.patch
+ADD patches/gtk-4.14.4-pin-libsass.patch .
+RUN dos2unix ./subprojects/libsass.wrap # buster's patch does not support --ignore-white-space
+RUN patch -p1 < ./gtk-4.14.4-pin-libsass.patch
+ADD patches/gtk-4.14.4-pin-pango.patch .
+RUN patch -p1 < ./gtk-4.14.4-pin-pango.patch
+ADD patches/gtk-4.14.4-pin-sysprof.patch .
+RUN patch -p1 < ./gtk-4.14.4-pin-sysprof.patch
 
 RUN meson setup --prefix /opt/gtk-$GTK_VERSION builddir \
         -Dbuildtype=release \

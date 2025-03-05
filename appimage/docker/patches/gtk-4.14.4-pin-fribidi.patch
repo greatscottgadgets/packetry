@@ -1,0 +1,13 @@
+diff --git a/subprojects/fribidi.wrap b/subprojects/fribidi.wrap
+index 20ba8ed..7ea197e 100644
+--- a/subprojects/fribidi.wrap
++++ b/subprojects/fribidi.wrap
+@@ -2,7 +2,7 @@
+ directory = fribidi
+ url = https://github.com/fribidi/fribidi.git
+ push-url = git@github.com:fribidi/fribidi.git
+-revision = master
++revision = v1.0.16
+ depth = 1
+ 
+ [provide]

@@ -1,0 +1,15 @@
+diff --git a/subprojects/pango.wrap b/subprojects/pango.wrap
+index 7156644..fa6715b 100644
+--- a/subprojects/pango.wrap
++++ b/subprojects/pango.wrap
+@@ -2,8 +2,8 @@
+ directory = pango
+ url = https://gitlab.gnome.org/GNOME/pango.git
+ push-url = ssh://git@ssh.gitlab.gnome.org:GNOME/pango.git
+-# needs to be main, because we build the nightly docs from the subproject
+-revision = main
++# needs to be 1.54.0 because later versions require versions of glib and fontconfig that are not supplied by gtk-4.14.4
++revision = 1.54.0
+ depth = 1
+ 
+ [provide]
