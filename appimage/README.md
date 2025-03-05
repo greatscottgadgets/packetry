@@ -117,7 +117,14 @@ We use a minimal build configuration as many of the options are not available on
 
 The effect of these flags can vary wildly between gtk releases so this may require some fiddling if updating to a newer gtk version.
 
-For the 4.14.4 release a small [patch](docker/patches/) needs to be applied after configuration and is unlikely to have the required effect on other releases.
+For the 4.14.4 release a number of small [patches](docker/patches/) need to be applied after configuration which are unlikely to have the desired effect on other releases:
+
+   * `gtk-4.14.4-gcc-lt-9.patch`      - fixes build for gcc < 9.1
+   * `gtk-4.14.4-pin-fribidi.patch`   - pins fribidi to a specific release.
+   * `gtk-4.14.4-pin-gi-docgen.patch` - pins gi-docgen to a specific release.
+   * `gtk-4.14.4-pin-libsass.patch`   - pins libsass to a specific release.
+   * `gtk-4.14.4-pin-pango.patch`     - pins pango to a specific release.
+   * `gtk-4.14.4-pin-sysprof.patch`   - pins sysprof to a specific release.
 
 Finally, gtk4 is installed to the /opt/gtk-$GTK_VERSION directory. It's quite important that it _not_ be installed to `/usr` as gtk4 ships with newer versions of some system libraries which can horribly confuse both the Rust compiler and the AppImage tools.
 

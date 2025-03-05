@@ -1,0 +1,11 @@
+diff --git a/subprojects/libsass.wrap b/subprojects/libsass.wrap
+index 0e52fb4..3507404 100644
+--- a/subprojects/libsass.wrap
++++ b/subprojects/libsass.wrap
+@@ -1,5 +1,5 @@
+ [wrap-git]
+ directory=libsass
+ url=https://github.com/lazka/libsass.git
+-revision=meson
++revision=aac79dccd3c8f7e8f22125f87a119f3b1ee9d487
+ depth=1
