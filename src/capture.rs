@@ -734,6 +734,9 @@ impl Transaction {
                          detail: bool)
         -> Result<String, Error>
     {
+        if endpoint.number() == INVALID_EP_NUM {
+            return Ok(format!("{pid} transaction"));
+        }
         let mut s = String::new();
         if detail {
             write!(s, "{} transaction on device {}, endpoint {}",

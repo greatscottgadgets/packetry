@@ -1990,7 +1990,7 @@
 └┼──┼─── 1 malformed packet
  │  │    └── Malformed packet (possibly DATA0, but bad CRC) of 316 bytes: [C3, 00, 01, 02, 03, 04, 05, 06, 07, 08, 09, 0A, 0B, 0C, 0D, 0E, 3F, 88, 08, 89, 09, 8A, 0A, 8B, 0B, 8C, 0C, 8D, 0D, 8E, 0E, 8F, 0F, 90, 10, 91, 11, 92, 12, 93, 13, 94, 14, 95, 15, 96, 16, 97, 17, 98, 18, 99, 19, 9A, 1A, 9B, 1B, 9C, 1C, 9D, 1D, 9E, 1E, 9F, 9F, A0, 20, A1, 21, A2, 22, A3, 23, A4, 24, A5, 25, A6, 26, A7, 27, A8, 28, A9, 29, AA, 2A, AB, 2B, AC, 2C, AD, 2D, AE, 2E, AF, 2F, B0, 30, B1]...
 ○┼──┼─ 1 invalid groups
-└┼──┼─── ACK transaction on 0.16, ACK
+└┼──┼─── ACK transaction
  │  │    └── ACK packet
  │  ○─ Polling 1 times for interrupt transfer on endpoint 1.1 IN
  │  ├─── IN transaction on 1.1
@@ -1999,7 +1999,7 @@
 └┼──┼─── 1 malformed packet
  │  │    └── Malformed packet (possibly DATA1, but bad CRC) of 514 bytes: [4B, 00, 01, 02, 03, 04, 05, 06, 07, 08, 09, 0A, 0B, 0C, 0D, 0E, 3F, 88, 08, 89, 09, 8A, 0A, 8B, 0B, 8C, 0C, 8D, 0D, 8E, 0E, 8F, 0F, 90, 10, 91, 11, 92, 12, 93, 13, 94, 14, 95, 15, 96, 16, 97, 17, 98, 18, 99, 19, 9A, 1A, 9B, 1B, 9C, 1C, 9D, 1D, 9E, 1E, 9F, 9F, A0, 20, A1, 21, A2, 22, A3, 23, A4, 24, A5, 25, A6, E6, B7, 13, 54, 94, D4, 14, 55, 95, D5, 15, 56, 96, D6, 16, 57, 97, D7, 17, 58, 98, D8]...
 ○┼──┼─ 1 invalid groups
-└┼──┼─── ACK transaction on 0.16, ACK
+└┼──┼─── ACK transaction
  │  │    └── ACK packet
  │  ○─ Polling 1 times for interrupt transfer on endpoint 1.1 IN
  │  ├─── IN transaction on 1.1
@@ -2008,7 +2008,7 @@
 └┼──┼─── 1 malformed packet
  │  │    └── Malformed packet (possibly DATA0, but bad CRC) of 159 bytes: [C3, 00, 01, 02, 03, 04, 05, 06, 07, 08, 09, 0A, 0B, 0C, 0D, 0E, 3F, 88, 08, 89, 09, 8A, 0A, 8B, 0B, 8C, 0C, 8D, 0D, 8E, 0E, 8F, 0F, 90, 10, 91, 11, 92, 12, 93, 13, 94, 14, 95, 15, 96, 16, 97, 17, 98, 18, 99, 19, 9A, 1A, 9B, 1B, 9C, 1C, 9D, 1D, 9E, 1E, 9F, 9F, A0, 20, A1, 21, A2, 22, A3, 23, A4, 24, A5, 25, A6, 26, A7, 27, A8, 28, A9, 29, AA, 2A, AB, 2B, AC, 2C, AD, 2D, AE, 2E, AF, 1F, 58, 98, D8]...
 ○┼──┼─ 1 invalid groups
-└┼──┼─── ACK transaction on 0.16, ACK
+└┼──┼─── ACK transaction
  │  │    └── ACK packet
  │  ○─ Polling 1 times for interrupt transfer on endpoint 1.1 IN
  │  ├─── IN transaction on 1.1
@@ -2017,7 +2017,7 @@
 └┼──┼─── 1 malformed packet
  │  │    └── Malformed packet (possibly DATA1, but bad CRC) of 506 bytes: [4B, 00, 01, 02, 03, 04, 05, 06, 07, 08, 09, 0A, 0B, 0C, 0D, 0E, 3F, 88, 08, 89, 09, 8A, 0A, 8B, 0B, 8C, 0C, 8D, 0D, 8E, 0E, 8F, 0F, 90, 10, 91, 11, 92, 12, 93, 13, 94, 14, 95, 15, 96, 16, 97, 17, 98, 18, 99, 19, 9A, 1A, 9B, 1B, 9C, 1C, 9D, 1D, 9E, 1E, 9F, 9F, A0, 20, A1, 21, A2, 22, A3, 23, A4, 24, A5, 25, A6, 26, A7, 27, A8, 28, A9, 29, AA, 2A, AB, 2B, AC, 2C, AD, 2D, AE, 2E, AF, 2F, B0, 30, B1]...
 ○┼──┼─ 1 invalid groups
-└┼──┼─── ACK transaction on 0.16, ACK
+└┼──┼─── ACK transaction
  │  │    └── ACK packet
  │  ○─ Polling 1 times for interrupt transfer on endpoint 1.1 IN
  │  ├─── IN transaction on 1.1
@@ -2026,7 +2026,7 @@
 └┼──┼─── 1 malformed packet
  │  │    └── Malformed packet (possibly DATA0, but bad CRC) of 61 bytes: [C3, 00, 01, 02, 03, 04, 05, 06, 07, 08, 09, 0A, 0B, 0C, 0D, 0E, 3F, 88, 08, 89, 09, 8A, 0A, 8B, 0B, 8C, 0C, 8D, 0D, 8E, 0E, 8F, 0F, 90, 10, 91, 11, 92, 12, 93, 13, 94, 14, 95, 15, 96, 16, 97, 17, 98, 18, 99, 19, 9A, 1A, 9B, 1B, 9C, 1C, 9D, 1D]
 ○┼──┼─ 1 invalid groups
-└┼──┼─── ACK transaction on 0.16, ACK
+└┼──┼─── ACK transaction
  │  │    └── ACK packet
  │  ○─ Polling 1 times for interrupt transfer on endpoint 1.1 IN
  │  ├─── IN transaction on 1.1
@@ -2035,7 +2035,7 @@
 └┼──┼─── 1 malformed packet
  │  │    └── Malformed packet (possibly DATA1, but bad CRC) of 61 bytes: [4B, 00, 01, 02, 03, 04, 05, 06, 07, 08, 09, 0A, 0B, 0C, 0D, 0E, 3F, 88, 08, 89, 09, 8A, 0A, 8B, 0B, 8C, 0C, 8D, 0D, 8E, 0E, 8F, 0F, 90, 10, 91, 11, 92, 12, 93, 13, 94, 14, 95, 15, 96, 16, 97, 17, 98, 18, 99, 19, 9A, 1A, 9B, 1B, 9C, 1C, 9D, 1D]
 ○┼──┼─ 1 invalid groups
-└┼──┼─── ACK transaction on 0.16, ACK
+└┼──┼─── ACK transaction
  │  │    └── ACK packet
  │  ○─ Polling 1 times for interrupt transfer on endpoint 1.1 IN
  │  ├─── IN transaction on 1.1
@@ -2044,7 +2044,7 @@
 └┼──┼─── 1 malformed packet
  │  │    └── Malformed packet (possibly DATA0, but bad CRC) of 159 bytes: [C3, 00, 01, 02, 03, 04, 05, 06, 07, 08, 09, 0A, 0B, 0C, 0D, 0E, 3F, 88, 08, 89, 09, 8A, 0A, 8B, 0B, 8C, 0C, 8D, 0D, 8E, 0E, 8F, 0F, 90, 10, 91, 11, 92, 12, 93, 13, 94, 14, 95, 15, 96, 16, 97, 17, 98, 18, 99, 19, 9A, 1A, 9B, 1B, 9C, 1C, 9D, 1D, 9E, 1E, 9F, 9F, A0, 20, A1, 21, A2, 22, A3, 23, A4, 24, A5, 25, A6, 26, A7, 27, A8, 28, A9, 29, AA, 2A, AB, 2B, AC, 2C, AD, 2D, AE, 2E, AF, 1F, 58, 98, D8]...
 ○┼──┼─ 1 invalid groups
-└┼──┼─── ACK transaction on 0.16, ACK
+└┼──┼─── ACK transaction
  │  │    └── ACK packet
  │  ○─ Polling 1 times for interrupt transfer on endpoint 1.1 IN
  │  ├─── IN transaction on 1.1
@@ -2053,5 +2053,5 @@
 └┼──┼─── 1 malformed packet
  │  │    └── Malformed packet (possibly DATA1, but bad CRC) of 381 bytes: [4B, 00, 01, 02, 03, 04, 05, 06, 07, 08, 09, 0A, 0B, 0C, 0D, 0E, 3F, 88, 08, 89, 09, 8A, 0A, 8B, 0B, 8C, 0C, 8D, 0D, 8E, 0E, 8F, 0F, 90, 10, 91, 11, 92, 12, 93, 13, 94, 14, 95, 15, 96, 16, 97, 17, 98, 18, 99, 19, 9A, 1A, 9B, 1B, 9C, 1C, 9D, 1D, 9E, 1E, 9F, 9F, A0, 20, A1, 21, A2, 22, A3, 23, A4, 24, A5, 25, A6, 26, A7, 27, A8, 28, A9, 29, AA, 2A, AB, 2B, AC, 2C, AD, 2D, AE, 2E, AF, 2F, B0, 30, B1]...
 ○┼──┼─ 1 invalid groups
-└┼──┼─── ACK transaction on 0.16, ACK
+└┼──┼─── ACK transaction
  │  │    └── ACK packet

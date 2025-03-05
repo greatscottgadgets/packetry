@@ -9,7 +9,7 @@ At traffic-hierarchical row 0:
 + Polling 1 times for interrupt transfer on endpoint 14.1 IN
 At traffic-transactions row 0:
 - Starting low speed interrupt transaction on hub 12 port 2
-+ Starting IN transaction on 0.16
++ Starting IN transaction
 At traffic-packets row 1:
 + IN packet on 14.1, CRC 0A
 At devices row 0:
@@ -35,7 +35,7 @@ At traffic-hierarchical row 0:
 + Starting IN transaction on 14.1
 At traffic-transactions row 1:
 - Starting low speed interrupt transaction on hub 12 port 2
-+ Starting IN transaction on 0.16
++ Starting IN transaction
 At traffic-packets row 3:
 + IN packet on 14.2, CRC 19
 Expanding traffic-hierarchical view, row 2: Polling 1 times for interrupt transfer on endpoint 14.2 IN
@@ -49,7 +49,7 @@ At traffic-packets row 4:
 Updating after 6 packets decoded
 At traffic-transactions row 2:
 - Completing low speed interrupt transaction on hub 12 port 2
-+ Completing IN transaction on 0.16
++ Completing IN transaction
 At traffic-packets row 5:
 + IN packet on 14.1, CRC 0A
 Updating after 7 packets decoded
@@ -57,7 +57,7 @@ At traffic-hierarchical row 2:
 + Completing IN transaction on 14.1, NAK
 At traffic-transactions row 2:
 - Completing low speed interrupt transaction on hub 12 port 2
-+ Completing IN transaction on 0.16, NAK
++ Completing IN transaction
 At traffic-packets row 6:
 + NAK packet
 Updating after 8 packets decoded
@@ -68,7 +68,7 @@ At traffic-packets row 7:
 Updating after 9 packets decoded
 At traffic-transactions row 3:
 - Completing low speed interrupt transaction on hub 12 port 2
-+ Completing IN transaction on 0.16
++ Completing IN transaction
 At traffic-packets row 8:
 + IN packet on 14.2, CRC 19
 Updating after 10 packets decoded
@@ -76,7 +76,7 @@ At traffic-hierarchical row 5:
 + Completing IN transaction on 14.2, NAK
 At traffic-transactions row 3:
 - Completing low speed interrupt transaction on hub 12 port 2
-+ Completing IN transaction on 0.16, NAK
++ Completing IN transaction
 At traffic-packets row 9:
 + NAK packet
 Updating after 11 packets decoded
@@ -92,7 +92,7 @@ At traffic-hierarchical row 3:
 + Starting IN transaction on 14.1
 At traffic-transactions row 4:
 - Starting low speed interrupt transaction on hub 12 port 2
-+ Starting IN transaction on 0.16
++ Starting IN transaction
 At traffic-packets row 11:
 + IN packet on 14.1, CRC 0A
 Updating after 13 packets decoded
@@ -108,7 +108,7 @@ At traffic-hierarchical row 7:
 + Starting IN transaction on 14.2
 At traffic-transactions row 5:
 - Starting low speed interrupt transaction on hub 12 port 2
-+ Starting IN transaction on 0.16
++ Starting IN transaction
 At traffic-packets row 13:
 + IN packet on 14.2, CRC 19
 Updating after 15 packets decoded
@@ -119,7 +119,7 @@ At traffic-packets row 14:
 Updating after 16 packets decoded
 At traffic-transactions row 6:
 - Completing low speed interrupt transaction on hub 12 port 2
-+ Completing IN transaction on 0.16
++ Completing IN transaction
 At traffic-packets row 15:
 + IN packet on 14.1, CRC 0A
 Updating after 17 packets decoded
@@ -130,7 +130,7 @@ At traffic-hierarchical row 4:
 + Completing IN transaction on 14.1, NAK
 At traffic-transactions row 6:
 - Completing low speed interrupt transaction on hub 12 port 2
-+ Completing IN transaction on 0.16, NAK
++ Completing IN transaction
 At traffic-packets row 16:
 + NAK packet
 Updating after 18 packets decoded
@@ -141,7 +141,7 @@ At traffic-packets row 17:
 Updating after 19 packets decoded
 At traffic-transactions row 7:
 - Completing low speed interrupt transaction on hub 12 port 2
-+ Completing IN transaction on 0.16
++ Completing IN transaction
 At traffic-packets row 18:
 + IN packet on 14.2, CRC 19
 Updating after 20 packets decoded
@@ -152,7 +152,7 @@ At traffic-hierarchical row 9:
 + Completing IN transaction on 14.2, NAK
 At traffic-transactions row 7:
 - Completing low speed interrupt transaction on hub 12 port 2
-+ Completing IN transaction on 0.16, NAK
++ Completing IN transaction
 At traffic-packets row 19:
 + NAK packet
 Updating after 21 packets decoded
@@ -168,7 +168,7 @@ At traffic-hierarchical row 5:
 + Starting IN transaction on 14.1
 At traffic-transactions row 8:
 - Starting low speed interrupt transaction on hub 12 port 2
-+ Starting IN transaction on 0.16
++ Starting IN transaction
 At traffic-packets row 21:
 + IN packet on 14.1, CRC 0A
 Updating after 23 packets decoded
@@ -184,7 +184,7 @@ At traffic-hierarchical row 11:
 + Starting IN transaction on 14.2
 At traffic-transactions row 9:
 - Starting low speed interrupt transaction on hub 12 port 2
-+ Starting IN transaction on 0.16
++ Starting IN transaction
 At traffic-packets row 23:
 + IN packet on 14.2, CRC 19
 Updating after 25 packets decoded
@@ -195,7 +195,7 @@ At traffic-packets row 24:
 Updating after 26 packets decoded
 At traffic-transactions row 10:
 - Completing low speed interrupt transaction on hub 12 port 2
-+ Completing IN transaction on 0.16
++ Completing IN transaction
 At traffic-packets row 25:
 + IN packet on 14.1, CRC 0A
 Updating after 27 packets decoded
@@ -206,7 +206,7 @@ At traffic-hierarchical row 6:
 + Completing IN transaction on 14.1, NAK
 At traffic-transactions row 10:
 - Completing low speed interrupt transaction on hub 12 port 2
-+ Completing IN transaction on 0.16, NAK
++ Completing IN transaction
 At traffic-packets row 26:
 + NAK packet
 Updating after 28 packets decoded
@@ -217,7 +217,7 @@ At traffic-packets row 27:
 Updating after 29 packets decoded
 At traffic-transactions row 11:
 - Completing low speed interrupt transaction on hub 12 port 2
-+ Completing IN transaction on 0.16
++ Completing IN transaction
 At traffic-packets row 28:
 + IN packet on 14.2, CRC 19
 Updating after 30 packets decoded
@@ -228,7 +228,7 @@ At traffic-hierarchical row 13:
 + Completing IN transaction on 14.2, NAK
 At traffic-transactions row 11:
 - Completing low speed interrupt transaction on hub 12 port 2
-+ Completing IN transaction on 0.16, NAK
++ Completing IN transaction
 At traffic-packets row 29:
 + NAK packet
 Updating after 31 packets decoded
@@ -244,7 +244,7 @@ At traffic-hierarchical row 7:
 + Starting IN transaction on 14.1
 At traffic-transactions row 12:
 - Starting low speed interrupt transaction on hub 12 port 2
-+ Starting IN transaction on 0.16
++ Starting IN transaction
 At traffic-packets row 31:
 + IN packet on 14.1, CRC 0A
 Updating after 33 packets decoded
@@ -260,7 +260,7 @@ At traffic-hierarchical row 15:
 + Starting IN transaction on 14.2
 At traffic-transactions row 13:
 - Starting low speed interrupt transaction on hub 12 port 2
-+ Starting IN transaction on 0.16
++ Starting IN transaction
 At traffic-packets row 33:
 + IN packet on 14.2, CRC 19
 Updating after 35 packets decoded
@@ -271,7 +271,7 @@ At traffic-packets row 34:
 Updating after 36 packets decoded
 At traffic-transactions row 14:
 - Completing low speed interrupt transaction on hub 12 port 2
-+ Completing IN transaction on 0.16
++ Completing IN transaction
 At traffic-packets row 35:
 + IN packet on 14.1, CRC 0A
 Updating after 37 packets decoded
@@ -282,7 +282,7 @@ At traffic-hierarchical row 8:
 + Completing IN transaction on 14.1, NAK
 At traffic-transactions row 14:
 - Completing low speed interrupt transaction on hub 12 port 2
-+ Completing IN transaction on 0.16, NAK
++ Completing IN transaction
 At traffic-packets row 36:
 + NAK packet
 Updating after 38 packets decoded
@@ -293,7 +293,7 @@ At traffic-packets row 37:
 Updating after 39 packets decoded
 At traffic-transactions row 15:
 - Completing low speed interrupt transaction on hub 12 port 2
-+ Completing IN transaction on 0.16
++ Completing IN transaction
 At traffic-packets row 38:
 + IN packet on 14.2, CRC 19
 Updating after 40 packets decoded
@@ -304,7 +304,7 @@ At traffic-hierarchical row 17:
 + Completing IN transaction on 14.2, NAK
 At traffic-transactions row 15:
 - Completing low speed interrupt transaction on hub 12 port 2
-+ Completing IN transaction on 0.16, NAK
++ Completing IN transaction
 At traffic-packets row 39:
 + NAK packet
 Collapsing traffic-hierarchical view, row 0: Polling 1 times for interrupt transfer on endpoint 14.1 IN
