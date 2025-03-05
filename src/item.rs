@@ -550,7 +550,7 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                 s
             },
             Event(_, event_type, _) => {
-                write!(s, "{event_type:?}")?;
+                write!(s, "{event_type}")?;
                 s
             },
         })

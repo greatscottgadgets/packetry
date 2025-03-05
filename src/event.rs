@@ -35,6 +35,34 @@ pub enum StopReason {
     Error,
 }
 
+impl std::fmt::Display for EventType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        use EventType::*;
+        use StopReason::*;
+        use Speed::*;
+        f.write_str(match self {
+            CaptureStop(Requested) => "Capture stopped by request",
+            CaptureStop(BufferFull) => "Capture stopped due to full buffer",
+            CaptureStop(Error) => "Capture stopped due to an error",
+            CaptureStart(High) => "Capture started at High Speed (480 Mbps)",
+            CaptureStart(Full) => "Capture started at Full Speed (12 Mbps)",
+            CaptureStart(Low) => "Capture started at Low Speed (1.5 Mbps)",
+            CaptureStart(Auto) => "Capture started with automatic speed selection",
+            SpeedChange(High) => "Speed changed to High Speed (480 Mbps)",
+            SpeedChange(Full) => "Speed changed to Full Speed (12 Mbps)",
+            SpeedChange(Low) => "Speed changed to Low Speed (1.5 Mbps)",
+            SpeedChange(Auto) => "Speed changed to automatic selection",
+            VbusChange(false) => "VBUS voltage became invalid",
+            VbusChange(true) => "VBUS voltage became valid",
+            SuspendChange(false) => "USB suspend ended",
+            SuspendChange(true) => "USB suspend started",
+            BusReset => "Bus reset detected",
+            DeviceChirp => "Device HS chirp detected",
+            HostChirp => "Host HS chirp detected",
+        })
+    }
+}
+
 impl EventType {
     pub fn code(&self) -> u8 {
         use EventType::*;
