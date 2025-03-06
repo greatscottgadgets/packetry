@@ -6,8 +6,10 @@ use std::sync::atomic::Ordering::Release;
 use std::sync::Arc;
 
 use anyhow::{Context, Error, bail};
+use merge::Merge;
 
 use crate::capture::prelude::*;
+use crate::event::EventType;
 use crate::usb::{self, prelude::*, validate_packet};
 use crate::util::{
     rcu::SingleWriterRcu,
@@ -539,9 +541,9 @@ impl Decoder {
         device_data.set(default_id, Arc::new(DeviceData::default()));
         decoder.device_index.set(default_addr, default_id);
 
-        // Add the special endpoints for invalid and framing packets.
+        // Add the special endpoints.
         let mut endpoint_readers = VecMap::new();
-        for ep_number in [INVALID_EP_NUM, FRAMING_EP_NUM] {
+        for ep_number in [EVENT_EP_NUM, INVALID_EP_NUM, FRAMING_EP_NUM] {
             let (writer, reader) = create_endpoint()?;
             let mut endpoint = Endpoint::default();
             endpoint.set_device_id(default_id);
@@ -577,6 +579,19 @@ impl Decoder {
         self.capture.packet_times.push(timestamp_ns)?;
         self.transaction_update(packet_id, packet)?;
         Ok(())
+    }
+
+    pub fn handle_event(&mut self, event_type: EventType, timestamp_ns: u64)
+        -> Result<(), Error>
+    {
+        let event_id = self.capture.event_times.push(timestamp_ns)?;
+        let group_id = self.add_event_entry(event_type, event_id)?;
+        self.add_item(EVENT_EP_ID, group_id)?;
+        Ok(())
+    }
+
+    pub fn handle_metadata(&mut self, meta: Box<CaptureMetadata>) {
+        self.capture.shared.metadata.update(|old| old.merge(*meta))
     }
 
     pub fn finish(mut self) -> Result<CaptureWriter, Error> {
@@ -986,6 +1001,21 @@ impl Decoder {
         entry.set_endpoint_id(endpoint_id);
         entry.set_group_id(ep_group_id);
         entry.set_is_start(start);
+        entry.set_is_event(false);
+        let group_id = self.capture.group_index.push(&entry)?;
+        Ok(group_id)
+    }
+
+    fn add_event_entry(
+        &mut self,
+        event_type: EventType,
+        event_id: EventId
+    ) -> Result<GroupId, Error> {
+        self.add_endpoint_state(EVENT_EP_ID, false)?;
+        let mut entry = GroupIndexEntry::default();
+        entry.set_is_event(true);
+        entry.set_event_type(event_type);
+        entry.set_event_id(event_id);
         let group_id = self.capture.group_index.push(&entry)?;
         Ok(group_id)
     }

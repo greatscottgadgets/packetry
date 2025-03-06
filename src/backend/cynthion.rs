@@ -2,6 +2,7 @@
 
 use std::cmp::Ordering;
 use std::collections::VecDeque;
+use std::num::NonZeroU32;
 use std::time::Duration;
 use std::sync::mpsc;
 
@@ -21,11 +22,14 @@ use super::{
     BackendDevice,
     BackendHandle,
     Speed,
-    PacketIterator,
-    PacketResult,
-    TimestampedPacket,
+    EventType,
+    EventIterator,
+    EventResult,
+    TimestampedEvent,
     TransferQueue,
 };
+
+use crate::capture::CaptureMetadata;
 
 pub const VID_PID: (u16, u16) = (0x1d50, 0x615b);
 const CLASS: u8 = 0xff;
@@ -80,12 +84,14 @@ pub struct CynthionDevice {
     interface_number: u8,
     alt_setting_number: u8,
     speeds: Vec<Speed>,
+    metadata: CaptureMetadata,
 }
 
 /// A handle to an open Cynthion device.
 #[derive(Clone)]
 pub struct CynthionHandle {
     interface: Interface,
+    metadata: CaptureMetadata,
 }
 
 /// Converts from received data bytes to timestamped packets.
@@ -161,8 +167,22 @@ impl CynthionDevice {
                         .context("Failed to select alternate setting")?;
                 }
 
+                let metadata = CaptureMetadata {
+                    iface_desc: Some("Cynthion USB Analyzer".to_string()),
+                    iface_hardware: Some({
+                        let bcd = device_info.device_version();
+                        let major = bcd >> 8;
+                        let minor = bcd as u8;
+                        format!("Cynthion r{major}.{minor}")
+                    }),
+                    iface_os: Some(
+                        format!("USB Analyzer v{protocol}")),
+                    iface_snaplen: Some(NonZeroU32::new(0xFFFF).unwrap()),
+                    .. Default::default()
+                };
+
                 // Fetch the available speeds.
-                let handle = CynthionHandle { interface };
+                let handle = CynthionHandle { interface, metadata };
                 let speeds = handle
                     .speeds()
                     .context("Failed to fetch available speeds")?;
@@ -174,6 +194,7 @@ impl CynthionDevice {
                         interface_number,
                         alt_setting_number,
                         speeds,
+                        metadata: handle.metadata,
                     }
                 )
             }
@@ -189,7 +210,10 @@ impl CynthionDevice {
         if self.alt_setting_number != 0 {
             interface.set_alt_setting(self.alt_setting_number)?;
         }
-        Ok(CynthionHandle { interface })
+        Ok(CynthionHandle {
+            interface,
+            metadata: self.metadata.clone()
+        })
     }
 }
 
@@ -204,6 +228,10 @@ impl BackendDevice for CynthionDevice {
 }
 
 impl BackendHandle for CynthionHandle {
+    fn metadata(&self) -> &CaptureMetadata {
+        &self.metadata
+    }
+
     fn begin_capture(
         &mut self,
         speed: Speed,
@@ -224,8 +252,8 @@ impl BackendHandle for CynthionHandle {
         Ok(())
     }
 
-    fn timestamped_packets(&self, data_rx: mpsc::Receiver<Vec<u8>>)
-        -> Box<dyn PacketIterator>
+    fn timestamped_events(&self, data_rx: mpsc::Receiver<Vec<u8>>)
+        -> Box<dyn EventIterator>
     {
         Box::new(
             CynthionStream {
@@ -303,16 +331,16 @@ impl CynthionHandle {
     }
 }
 
-impl PacketIterator for CynthionStream {}
+impl EventIterator for CynthionStream {}
 
 impl Iterator for CynthionStream {
-    type Item = PacketResult;
-    fn next(&mut self) -> Option<PacketResult> {
+    type Item = EventResult;
+    fn next(&mut self) -> Option<EventResult> {
         loop {
-            // Do we have another packet already in the buffer?
-            match self.next_buffered_packet() {
-                // Yes; return the packet.
-                Some(packet) => return Some(Ok(packet)),
+            // Do we have another event already in the buffer?
+            match self.next_buffered_event() {
+                // Yes; return the event.
+                Some(event) => return Some(Ok(event)),
                 // No; wait for more data from the capture thread.
                 None => match self.receiver.recv().ok() {
                     // Received more data; add it to the buffer and retry.
@@ -326,7 +354,9 @@ impl Iterator for CynthionStream {
 }
 
 impl CynthionStream {
-    fn next_buffered_packet(&mut self) -> Option<TimestampedPacket> {
+    fn next_buffered_event(&mut self) -> Option<TimestampedEvent> {
+        use TimestampedEvent::*;
+
         // Are we waiting for a padding byte?
         if self.padding_due {
             if self.buffer.is_empty() {
@@ -346,13 +376,20 @@ impl CynthionStream {
 
             if self.buffer[0] == 0xFF {
                 // This is an event.
-                let _event_code = self.buffer[1];
+                let event_code = self.buffer[1];
 
                 // Update our cycle count.
                 self.update_cycle_count();
 
                 // Remove event from buffer.
                 self.buffer.drain(0..4);
+
+                if let Some(event_type) = EventType::from_code(event_code) {
+                    return Some(Event {
+                        timestamp_ns: clk_to_ns(self.total_clk_cycles),
+                        event_type,
+                    })
+                }
             } else {
                 // This is a packet, handle it below.
                 break;
@@ -378,9 +415,9 @@ impl CynthionStream {
         }
 
         // Remove the rest of the packet from the buffer and return it.
-        Some(TimestampedPacket {
+        Some(Packet {
             timestamp_ns: clk_to_ns(self.total_clk_cycles),
-            bytes: self.buffer.drain(0..packet_len).collect()
+            bytes: self.buffer.drain(0..packet_len).collect(),
         })
     }
 
