@@ -3,10 +3,12 @@
 use std::cmp::min;
 use std::fmt::{Debug, Write};
 use std::iter::once;
+use std::num::NonZeroU32;
 use std::ops::Range;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64};
 use std::sync::atomic::Ordering::{Acquire, Release};
 use std::sync::Arc;
+use std::time::Duration;
 use std::mem::size_of;
 
 use crate::database::{
@@ -18,6 +20,7 @@ use crate::database::{
     data_stream,
     data_stream_with_block_size,
 };
+use crate::event::EventType;
 use crate::usb::{self, prelude::*};
 use crate::util::{
     id::Id,
@@ -33,13 +36,37 @@ use anyhow::{Context, Error, bail};
 use arc_swap::{ArcSwap, ArcSwapOption};
 use bytemuck_derive::{Pod, Zeroable};
 use itertools::Itertools;
+use merge::Merge;
 use num_enum::{IntoPrimitive, FromPrimitive};
 
 // Use 2MB block size for packet data, which is a large page size on x86_64.
 const PACKET_DATA_BLOCK_SIZE: usize = 0x200000;
 
+/// Metadata about the capture.
+#[derive(Clone, Default, Merge)]
+pub struct CaptureMetadata {
+    // Fields corresponding to PCapNG section header.
+    pub application: Option<String>,
+    pub os: Option<String>,
+    pub hardware: Option<String>,
+    pub comment: Option<String>,
+
+    // Fields corresponding to PcapNG interface description.
+    pub iface_desc: Option<String>,
+    pub iface_hardware: Option<String>,
+    pub iface_os: Option<String>,
+    pub iface_speed: Option<Speed>,
+    pub iface_snaplen: Option<NonZeroU32>,
+
+    // Fields corresponding to PcapNG interface statistics.
+    pub start_time: Option<Duration>,
+    pub end_time: Option<Duration>,
+    pub dropped: Option<u64>,
+}
+
 /// Capture state shared between readers and writers.
 pub struct CaptureShared {
+    pub metadata: ArcSwap<CaptureMetadata>,
     pub device_data: ArcSwap<VecMap<DeviceId, Arc<DeviceData>>>,
     pub endpoint_index: ArcSwap<VecMap<EndpointKey, EndpointId>>,
     pub endpoint_readers: ArcSwap<VecMap<EndpointId, Arc<EndpointReader>>>,
@@ -52,6 +79,7 @@ pub struct CaptureWriter {
     pub packet_data: DataWriter<u8, PACKET_DATA_BLOCK_SIZE>,
     pub packet_index: CompactWriter<PacketId, PacketByteId, 2>,
     pub packet_times: CompactWriter<PacketId, Timestamp, 3>,
+    pub event_times: CompactWriter<EventId, Timestamp, 2>,
     pub transaction_index: CompactWriter<TransactionId, PacketId>,
     pub group_index: DataWriter<GroupIndexEntry>,
     pub item_index: CompactWriter<TrafficItemId, GroupId>,
@@ -71,6 +99,7 @@ pub struct CaptureReader {
     pub packet_data: DataReader<u8, PACKET_DATA_BLOCK_SIZE>,
     pub packet_index: CompactReader<PacketId, PacketByteId>,
     pub packet_times: CompactReader<PacketId, Timestamp>,
+    pub event_times: CompactReader<EventId, Timestamp>,
     pub transaction_index: CompactReader<TransactionId, PacketId>,
     pub group_index: DataReader<GroupIndexEntry>,
     pub item_index: CompactReader<TrafficItemId, GroupId>,
@@ -90,7 +119,8 @@ pub fn create_capture()
     let (data_writer, data_reader) =
         data_stream_with_block_size::<_, PACKET_DATA_BLOCK_SIZE>()?;
     let (packets_writer, packets_reader) = compact_index()?;
-    let (timestamp_writer, timestamp_reader) = compact_index()?;
+    let (packet_time_writer, packet_time_reader) = compact_index()?;
+    let (event_time_writer, event_time_reader) = compact_index()?;
     let (transactions_writer, transactions_reader) = compact_index()?;
     let (groups_writer, groups_reader) = data_stream()?;
     let (items_writer, items_reader) = compact_index()?;
@@ -102,6 +132,7 @@ pub fn create_capture()
 
     // Create the state shared by readers and writer.
     let shared = Arc::new(CaptureShared {
+        metadata: ArcSwap::new(Arc::new(CaptureMetadata::default())),
         device_data: ArcSwap::new(Arc::new(VecMap::new())),
         endpoint_index: ArcSwap::new(Arc::new(VecMap::new())),
         endpoint_readers: ArcSwap::new(Arc::new(VecMap::new())),
@@ -113,7 +144,8 @@ pub fn create_capture()
         shared: shared.clone(),
         packet_data: data_writer,
         packet_index: packets_writer,
-        packet_times: timestamp_writer,
+        packet_times: packet_time_writer,
+        event_times: event_time_writer,
         transaction_index: transactions_writer,
         group_index: groups_writer,
         item_index: items_writer,
@@ -130,7 +162,8 @@ pub fn create_capture()
         endpoint_readers: VecMap::new(),
         packet_data: data_reader,
         packet_index: packets_reader,
-        packet_times: timestamp_reader,
+        packet_times: packet_time_reader,
+        event_times: event_time_reader,
         transaction_index: transactions_reader,
         group_index: groups_reader,
         item_index: items_reader,
@@ -216,6 +249,7 @@ pub fn create_endpoint()
 
 pub type PacketByteId = Id<u8>;
 pub type PacketId = Id<PacketByteId>;
+pub type EventId = Id<u64>;
 pub type Timestamp = u64;
 pub type TransactionId = Id<PacketId>;
 pub type GroupId = Id<GroupIndexEntry>;
@@ -260,21 +294,74 @@ impl std::fmt::Display for Endpoint {
     }
 }
 
-bitfield! {
-    #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
-    #[repr(C)]
-    pub struct GroupIndexEntry(u64);
-    pub u64, from into EndpointGroupId, group_id, set_group_id: 51, 0;
-    pub u64, from into EndpointId, endpoint_id, set_endpoint_id: 62, 52;
-    pub u8, _is_start, _set_is_start: 63, 63;
-}
+
+#[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
+#[repr(C)]
+pub struct GroupIndexEntry(u64);
 
 impl GroupIndexEntry {
-    pub fn is_start(&self) -> bool {
-        self._is_start() != 0
+    // If the top bit is set, this is an event entry.
+    pub fn is_event(&self) -> bool {
+        (self.0 & (1 << 63)) != 0
     }
+
+    pub fn set_is_event(&mut self, value: bool) {
+        let value = value as u64;
+        self.0 = (self.0 & !(1 << 63)) | (value << 63);
+    }
+
+    // The next 8 bits store the event code.
+    pub fn event_type(&self) -> Option<EventType> {
+        let code = (self.0 & (0xFF << 55)) >> 55;
+        EventType::from_code(code as u8)
+    }
+
+    pub fn set_event_type(&mut self, event: EventType) {
+        let code: u8 = event.code();
+        let code: u64 = code.into();
+        self.0 = (self.0 & !(0xFF << 55)) | (code << 55);
+    }
+
+    // The remaining 55 bits store an event ID.
+    pub fn event_id(&self) -> EventId {
+        EventId::from(self.0 & (2u64.pow(55) - 1))
+    }
+
+    pub fn set_event_id(&mut self, event_id: EventId) {
+        self.0 = (self.0 & !(2u64.pow(55) - 1))
+            | (event_id.value & (2u64.pow(55) - 1));
+    }
+
+    // If the top bit is not set, this is a transfer entry.
+
+    // The next bit down indicates whether this is a start or end entry.
+    pub fn is_start(&self) -> bool {
+        (self.0 & (1 << 62)) != 0
+    }
+
     pub fn set_is_start(&mut self, value: bool) {
-        self._set_is_start(value as u8)
+        let value = value as u64;
+        self.0 = (self.0 & !(1 << 62)) | (value << 62);
+    }
+
+    // The following 11 bits hold the endpoint ID.
+    pub fn endpoint_id(&self) -> EndpointId {
+        EndpointId::from((self.0 & ((2u64.pow(11) - 1) << 51)) >> 51)
+    }
+
+    pub fn set_endpoint_id(&mut self, endpoint_id: EndpointId) {
+        self.0 = (self.0 & !((2u64.pow(11) - 1) << 51))
+            | ((endpoint_id.value & (2u64.pow(11) - 1)) << 51);
+    }
+
+    // The remaining 51 bits hold the group ID within that endpoint.
+    pub fn group_id(&self) -> EndpointGroupId {
+        EndpointGroupId::from(self.0 & (2u64.pow(51) - 1))
+    }
+
+    pub fn set_group_id(&mut self, transfer_id: EndpointGroupId) {
+        self.0 = (self.0 & !(2u64.pow(51) - 1))
+            | (transfer_id.value & (2u64.pow(51) - 1));
     }
 }
 
@@ -289,10 +376,17 @@ pub enum EndpointState {
 }
 
 pub const CONTROL_EP_NUM: EndpointNum = EndpointNum(0);
-pub const INVALID_EP_NUM: EndpointNum = EndpointNum(0x10);
-pub const FRAMING_EP_NUM: EndpointNum = EndpointNum(0x11);
-pub const INVALID_EP_ID: EndpointId = EndpointId::constant(0);
-pub const FRAMING_EP_ID: EndpointId = EndpointId::constant(1);
+pub const EVENT_EP_NUM:   EndpointNum = EndpointNum(0x10);
+pub const INVALID_EP_NUM: EndpointNum = EndpointNum(0x11);
+pub const FRAMING_EP_NUM: EndpointNum = EndpointNum(0x12);
+
+pub const EVENT_EP_ID:   EndpointId = EndpointId::constant(0);
+pub const INVALID_EP_ID: EndpointId = EndpointId::constant(1);
+pub const FRAMING_EP_ID: EndpointId = EndpointId::constant(2);
+pub const FIRST_EP_ID:   EndpointId = EndpointId::constant(3);
+
+pub const NUM_SPECIAL_DEVICES:   u64 = 1;
+pub const NUM_SPECIAL_ENDPOINTS: u64 = 3;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum EndpointType {
@@ -781,7 +875,6 @@ pub struct Group {
     pub range: Range<EndpointTransactionId>,
     pub count: u64,
     pub content: GroupContent,
-    pub is_start: bool,
 }
 
 pub enum GroupContent {
@@ -902,11 +995,11 @@ impl CaptureReader {
         Ok(self.endpoint_readers.get_mut(endpoint_id).unwrap())
     }
 
-    pub fn group_range(&mut self, entry: &GroupIndexEntry)
-        -> Result<Range<EndpointTransactionId>, Error>
-    {
-        let endpoint_id = entry.endpoint_id();
-        let ep_group_id = entry.group_id();
+    pub fn group_range(
+        &mut self,
+        endpoint_id: EndpointId,
+        ep_group_id: EndpointGroupId
+    ) -> Result<Range<EndpointTransactionId>, Error> {
         let ep_traf = self.endpoint_traffic(endpoint_id)?;
         ep_traf.group_index.target_range(
             ep_group_id, ep_traf.transaction_ids.len())
@@ -1084,15 +1177,17 @@ impl CaptureReader {
         })
     }
 
-    pub fn group(&mut self, group_id: GroupId) -> Result<Group, Error> {
-        let entry = self.group_index.get(group_id)?;
-        let endpoint_id = entry.endpoint_id();
+    pub fn group(
+        &mut self,
+        endpoint_id: EndpointId,
+        ep_group_id: EndpointGroupId,
+    ) -> Result<Group, Error> {
         let endpoint = self.endpoints.get(endpoint_id)?;
         let device_id = endpoint.device_id();
         let dev_data = self.device_data(device_id)?;
         let ep_addr = endpoint.address();
         let (endpoint_type, _) = dev_data.endpoint_details(ep_addr);
-        let range = self.group_range(&entry)?;
+        let range = self.group_range(endpoint_id, ep_group_id)?;
         let count = range.len();
         let content = match endpoint_type {
             EndpointType::Invalid => GroupContent::Invalid,
@@ -1107,7 +1202,6 @@ impl CaptureReader {
                 }
             },
             _ => {
-                let ep_group_id = entry.group_id();
                 let ep_traf = self.endpoint_traffic(endpoint_id)?;
                 let range = ep_traf.group_index.target_range(
                     ep_group_id, ep_traf.transaction_ids.len())?;
@@ -1142,7 +1236,6 @@ impl CaptureReader {
             range,
             count,
             content,
-            is_start: entry.is_start(),
         })
     }
 
@@ -1266,10 +1359,13 @@ pub mod prelude {
         create_endpoint,
         CaptureReader,
         CaptureWriter,
+        CaptureMetadata,
         Device,
         DeviceId,
         DeviceData,
+        DeviceVersion,
         Endpoint,
+        EndpointDataEvent,
         EndpointId,
         EndpointKey,
         EndpointType,
@@ -1278,16 +1374,23 @@ pub mod prelude {
         EndpointWriter,
         EndpointTransactionId,
         EndpointGroupId,
+        EventId,
         PacketId,
+        Timestamp,
         TrafficItemId,
         TransactionId,
         GroupId,
         Group,
         GroupContent,
         GroupIndexEntry,
+        EVENT_EP_NUM,
         INVALID_EP_NUM,
         FRAMING_EP_NUM,
+        EVENT_EP_ID,
         INVALID_EP_ID,
         FRAMING_EP_ID,
+        FIRST_EP_ID,
+        NUM_SPECIAL_DEVICES,
+        NUM_SPECIAL_ENDPOINTS,
     };
 }

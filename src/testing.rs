@@ -1,17 +1,11 @@
 //! Hardware-in-the loop test using a Cynthion USB analyzer.
 
-use crate::backend::{BackendHandle, Speed};
+use crate::backend::{BackendHandle, TimestampedEvent, Speed};
 use crate::backend::cynthion::{CynthionDevice, CynthionHandle, VID_PID};
-use crate::capture::{
-    create_capture,
-    CaptureReader,
-    DeviceId,
-    EndpointId,
-    EndpointGroupId,
-    PacketId,
-};
+use crate::capture::prelude::*;
 use crate::decoder::Decoder;
-use crate::pcap::Writer;
+use crate::event::{EventType, StopReason};
+use crate::file::{GenericSaver, PcapSaver};
 
 use anyhow::{Context, Error, bail, ensure};
 use futures_lite::future::block_on;
@@ -46,6 +40,9 @@ fn test(save_capture: bool,
         sof: Option<(Duration, Duration)>)
     -> Result<(), Error>
 {
+    use EventType::*;
+    use StopReason::*;
+
     let desc = speed.description();
     println!("\nTesting at {desc}:\n");
 
@@ -97,25 +94,45 @@ fn test(save_capture: bool,
 
     // Decode all packets that were received.
     for result in stream_handle {
-        let packet = result
+        let event = result
             .context("Error decoding raw capture data")?;
-        decoder.handle_raw_packet(&packet.bytes, packet.timestamp_ns)
-            .context("Error decoding packet")?;
+        use TimestampedEvent::*;
+        match event {
+            Packet { timestamp_ns, bytes } =>
+                decoder.handle_raw_packet(&bytes, timestamp_ns)
+                    .context("Error decoding packet")?,
+            Event { timestamp_ns, event_type } =>
+                decoder.handle_event(event_type, timestamp_ns)
+                    .context("Error handling event")?,
+        }
     }
 
     if save_capture {
         // Write the capture to a file.
         let path = PathBuf::from(format!("./HITL-{name}.pcap"));
         let file = File::create(path)?;
-        let mut writer = Writer::open(file)?;
+        let meta = reader.shared.metadata.load_full();
+        let mut saver = PcapSaver::new(file, meta)?;
         for i in 0..reader.packet_index.len() {
             let packet_id = PacketId::from(i);
             let packet = reader.packet(packet_id)?;
             let timestamp_ns = reader.packet_time(packet_id)?;
-            writer.add_packet(&packet, timestamp_ns)?;
+            saver.add_packet(&packet, timestamp_ns)?;
         }
-        writer.close()?;
+        saver.close()?;
     }
+
+    // Look for the start event.
+    let start_item_id = TrafficItemId::from(0);
+    let start_group_id = reader.item_index.get(start_item_id)?;
+    let start_entry = reader.group_index.get(start_group_id)?;
+    let event_id = EventId::from(0);
+    assert!(start_entry.is_event());
+    assert_eq!(start_entry.event_type(), Some(CaptureStart(speed)));
+    assert_eq!(start_entry.event_id(), event_id);
+    let start_time = reader.event_times.get(event_id)?;
+    assert_eq!(start_time, 0);
+    println!("Found start event in capture");
 
     // Look for the test device in the capture.
     let device_id = DeviceId::from(1);
@@ -137,9 +154,9 @@ fn test(save_capture: bool,
     if let Some((min_interval, max_interval)) = sof {
         println!("Checking SOF timestamp intervals");
         // Check SOF timestamps have the expected spacing.
-        // SOF packets are assigned to endpoint ID 1.
+        // SOF packets are assigned to a special endpoint.
+        let endpoint_id = FRAMING_EP_ID;
         // We're looking for the first and only transfer on the endpoint.
-        let endpoint_id = EndpointId::from(1);
         let ep_group_id = EndpointGroupId::from(0);
         let ep_traf = reader.endpoint_traffic(endpoint_id)?;
         let ep_transaction_ids = ep_traf
@@ -196,6 +213,15 @@ fn test(save_capture: bool,
         ensure!(sof_count <= max_count, "Too many SOF packets captured");
     }
 
+    // Look for the stop event.
+    let item_count = reader.item_index.len();
+    let stop_item_id = TrafficItemId::from(item_count - 1);
+    let stop_transfer_id = reader.item_index.get(stop_item_id)?;
+    let stop_entry = reader.group_index.get(stop_transfer_id)?;
+    assert!(stop_entry.is_event());
+    assert_eq!(stop_entry.event_type(), Some(CaptureStop(Requested)));
+    println!("Found stop event in capture");
+
     Ok(())
 }
 
@@ -234,12 +260,11 @@ fn read_test_device(
 }
 
 fn bytes_on_endpoint(reader: &mut CaptureReader) -> Result<Vec<u8>, Error> {
-    // Endpoint IDs 0 and 1 are special (used for invalid and framing packets).
-    // Endpoint 2 will be the control endpoint for device zero.
-    // Endpoint 3 wil be the control endpoint for the test device.
-    
-    // The first normal endpoint in the capture will have endpoint ID 4.
-    let endpoint_id = EndpointId::from(4);
+    // The endpoints in the capture, in order, should be:
+    // - The control endpoint for address zero
+    // - The control endpoint for the test device
+    // - The data endpoint for the test device: this is the one we want.
+    let endpoint_id = FIRST_EP_ID + 2;
     // We're looking for the first and only transfer on the endpoint.
     let ep_group_id = EndpointGroupId::from(0);
     let ep_traf = reader.endpoint_traffic(endpoint_id)?;
