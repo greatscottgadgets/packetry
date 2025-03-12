@@ -94,7 +94,8 @@ pub struct CynthionHandle {
 
 /// Converts from received data bytes to timestamped packets.
 pub struct CynthionStream {
-    receiver: mpsc::Receiver<Completion<Bulk, In>>,
+    data_rx: mpsc::Receiver<Completion<Bulk, In>>,
+    reuse_tx: mpsc::Sender<Completion<Bulk, In>>,
     buffer: VecDeque<u8>,
     padding_due: bool,
     total_clk_cycles: u64,
@@ -239,12 +240,15 @@ impl BackendHandle for CynthionHandle {
         Ok(())
     }
 
-    fn timestamped_packets(&self, data_rx: mpsc::Receiver<Completion<Bulk, In>>)
-        -> Box<dyn PacketIterator>
-    {
+    fn timestamped_packets(
+        &self,
+        data_rx: mpsc::Receiver<Completion<Bulk, In>>,
+        reuse_tx: mpsc::Sender<Completion<Bulk, In>>,
+    ) -> Box<dyn PacketIterator> {
         Box::new(
             CynthionStream {
-                receiver: data_rx,
+                data_rx,
+                reuse_tx,
                 buffer: VecDeque::new(),
                 padding_due: false,
                 total_clk_cycles: 0,
@@ -332,9 +336,13 @@ impl Iterator for CynthionStream {
                 // Yes; return the packet.
                 Some(packet) => return Some(Ok(packet)),
                 // No; wait for more data from the capture thread.
-                None => match self.receiver.recv().ok() {
+                None => match self.data_rx.recv().ok() {
                     // Received more data; add it to the buffer and retry.
-                    Some(bytes) => self.buffer.extend(bytes.iter()),
+                    Some(completion) => {
+                        self.buffer.extend(completion.iter());
+                        // Transfer can now be reused.
+                        let _ = self.reuse_tx.send(completion);
+                    },
                     // Capture has ended, there are no more packets.
                     None => return None
                 }

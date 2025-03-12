@@ -61,7 +61,8 @@ pub struct Ice40UsbtraceHandle {
 
 /// Converts from received data bytes to timestamped packets.
 pub struct Ice40UsbtraceStream {
-    receiver: mpsc::Receiver<Completion<Bulk, In>>,
+    data_rx: mpsc::Receiver<Completion<Bulk, In>>,
+    reuse_tx: mpsc::Sender<Completion<Bulk, In>>,
     buffer: VecDeque<u8>,
     ts: u64,
 }
@@ -137,11 +138,15 @@ impl BackendHandle for Ice40UsbtraceHandle {
         self.write_request(Command::BufferFlush)
     }
 
-    fn timestamped_packets(&self, data_rx: mpsc::Receiver<Completion<Bulk, In>>)
-        -> Box<dyn PacketIterator> {
+    fn timestamped_packets(
+        &self,
+        data_rx: mpsc::Receiver<Completion<Bulk, In>>,
+        reuse_tx: mpsc::Sender<Completion<Bulk, In>>,
+    ) -> Box<dyn PacketIterator> {
         Box::new(
             Ice40UsbtraceStream {
-                receiver: data_rx,
+                data_rx,
+                reuse_tx,
                 buffer: VecDeque::new(),
                 ts: 0,
             }
@@ -198,9 +203,13 @@ impl Iterator for Ice40UsbtraceStream {
                 // Parsed something we ignored, try again.
                 Ignored => continue,
                 // Need more data; block until we get it.
-                NeedMoreData => match self.receiver.recv().ok() {
+                NeedMoreData => match self.data_rx.recv().ok() {
                     // Received more data; add it to the buffer and retry.
-                    Some(bytes) => self.buffer.extend(bytes.iter()),
+                    Some(completion) => {
+                        self.buffer.extend(completion.iter());
+                        // Transfer can now be reused.
+                        let _ = self.reuse_tx.send(completion);
+                    },
                     // Capture has ended, there are no more packets.
                     None => return None,
                 },

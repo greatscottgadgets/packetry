@@ -136,13 +136,20 @@ pub trait BackendHandle: Send + Sync {
 
     /// Construct an iterator that produces timestamped packets from raw data.
     ///
-    /// This method must construct a suitable iterator type around `data_rx`,
-    /// which will parse the raw data from the device to produce timestamped
-    /// packets. The iterator type must be `Send` so that it can be passed to
-    /// a separate decoder thread.
+    /// This method must construct a suitable iterator type around `data_rx`
+    /// and `reuse_tx`, which will parse the raw data in USB buffers from
+    /// the device to produce timestamped packets.
     ///
-    fn timestamped_packets(&self, data_rx: mpsc::Receiver<Completion<Bulk, In>>)
-        -> Box<dyn PacketIterator>;
+    /// Used buffers should be sent to `reuse_tx` for reuse.
+    ///
+    /// The iterator type must be `Send` so that it can be passed to a
+    /// separate decoder thread.
+    ///
+    fn timestamped_packets(
+        &self,
+        data_rx: mpsc::Receiver<Completion<Bulk, In>>,
+        reuse_tx: mpsc::Sender<Completion<Bulk, In>>,
+    ) -> Box<dyn PacketIterator>;
 
     /// Duplicate this handle with Box::new(self.clone())
     ///
@@ -172,6 +179,9 @@ pub trait BackendHandle: Send + Sync {
         // Channel to pass captured data to the decoder thread.
         let (data_tx, data_rx) = mpsc::channel();
 
+        // Channel to return buffers for reuse.
+        let (reuse_tx, reuse_rx) = mpsc::channel();
+
         // Channel to stop the capture thread on request.
         let (stop_tx, stop_rx) = oneshot::channel();
 
@@ -180,11 +190,11 @@ pub trait BackendHandle: Send + Sync {
 
         // Start worker thread to run the capture.
         let worker = spawn(move || result_handler(
-            handle.run_capture(speed, data_tx, stop_rx)
+            handle.run_capture(speed, data_tx, reuse_rx, stop_rx)
         ));
 
         // Iterator over timestamped packets.
-        let packets = self.timestamped_packets(data_rx);
+        let packets = self.timestamped_packets(data_rx, reuse_tx);
 
         // Handle to stop the worker thread.
         let stop_handle = BackendStop { worker, stop_tx };
@@ -197,6 +207,7 @@ pub trait BackendHandle: Send + Sync {
         &mut self,
         speed: Speed,
         data_tx: mpsc::Sender<Completion<Bulk, In>>,
+        reuse_rx: mpsc::Receiver<Completion<Bulk, In>>,
         stop_rx: oneshot::Receiver<()>,
     ) -> Result<(), Error> {
         // Set up a separate channel pair to stop queue processing.
@@ -208,7 +219,7 @@ pub trait BackendHandle: Send + Sync {
 
         // Spawn a worker thread to process the transfer queue until stopped.
         let queue_worker = spawn(move ||
-            block_on(transfer_queue.process(queue_stop_rx))
+            block_on(transfer_queue.process(reuse_rx, queue_stop_rx))
         );
 
         // Wait until this thread is signalled to stop, or the stop request

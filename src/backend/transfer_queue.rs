@@ -30,9 +30,11 @@ impl TransferQueue {
     }
 
     /// Process the queue, sending data to the channel until stopped.
-    pub async fn process(&mut self, mut stop_rx: oneshot::Receiver<()>)
-        -> Result<(), Error>
-    {
+    pub async fn process(
+        &mut self,
+        reuse_rx: mpsc::Receiver<Completion<Bulk, In>>,
+        mut stop_rx: oneshot::Receiver<()>,
+    ) -> Result<(), Error> {
         use nusb::transfer::TransferError::Cancelled;
 
         loop {
@@ -50,9 +52,13 @@ impl TransferQueue {
                                 .context(
                                     "Failed sending capture data to channel")?;
                             if !stop_rx.is_terminated() {
+                                // See if we have a transfer ready for reuse.
+                                let request = match reuse_rx.try_recv().ok() {
+                                    Some(completion) => completion.reuse(),
+                                    _ => self.endpoint.allocate(
+                                            self.transfer_length)
+                                };
                                 // Submit next transfer.
-                                let request = self.endpoint
-                                    .allocate(self.transfer_length);
                                 self.endpoint.submit(request);
                             }
                         },
