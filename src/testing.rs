@@ -137,34 +137,72 @@ fn test(save_capture: bool,
         saver.close()?;
     }
 
-    // Look for the start event.
-    let start_item_id = TrafficItemId::from(0);
-    let start_group_id = reader.item_index.get(start_item_id)?;
-    let start_entry = reader.group_index.get(start_group_id)?;
-    let event_id = EventId::from(0);
-    let start_speed = match (speed_selection, bus_speed) {
-        (Auto, High | Full) => Full,
-        (Auto, Low) => Auto,
-        _ => bus_speed,
+    // Accepted event sequences for each test case.
+    let expected_events = match (bus_speed, speed_selection) {
+        (High, High) => vec![
+            vec![
+                CaptureStart(High),
+                BusReset,
+                DeviceChirp,
+                HostChirp,
+            ],
+        ],
+        (High, Auto) => vec![
+            vec![
+                CaptureStart(Full),
+                BusReset,
+                DeviceChirp,
+                HostChirp,
+                SpeedChange(High),
+            ]
+        ],
+        (Full, _) => vec![
+            vec![
+                CaptureStart(Full),
+                BusReset,
+            ],
+        ],
+        (Low, Low) => vec![
+            vec![
+                CaptureStart(Low),
+                BusReset,
+            ],
+        ],
+        (Low, Auto) => vec![
+            vec![
+                CaptureStart(Auto),
+                BusReset,
+                SpeedChange(Low)
+            ],
+            vec![
+                CaptureStart(Low),
+            ],
+        ],
+        _ => unreachable!(),
     };
-    assert!(start_entry.is_event());
-    assert_eq!(start_entry.event_type(), Some(CaptureStart(start_speed)));
-    assert_eq!(start_entry.event_id(), event_id);
-    let start_time = reader.event_times.get(event_id)?;
-    assert_eq!(start_time, 0);
-    println!("Found start event in capture");
 
-    if speed_selection == Auto && bus_speed != start_speed {
-        // Look for a speed change event.
-        let next_item_id = TrafficItemId::from(1);
-        let next_group_id = reader.item_index.get(next_item_id)?;
-        let next_entry = reader.group_index.get(next_group_id)?;
-        let event_id = EventId::from(1);
-        assert!(next_entry.is_event());
-        assert_eq!(next_entry.event_type(), Some(SpeedChange(bus_speed)));
-        assert_eq!(next_entry.event_id(), event_id);
-        println!("Found speed change event in capture");
-    }
+    'sequence: for expected_sequence in expected_events.iter() {
+        for (i, expected_event) in expected_sequence.iter().enumerate() {
+            let item_id = TrafficItemId::from(i as u64);
+            let group_id = reader.item_index.get(item_id)?;
+            let entry = reader.group_index.get(group_id)?;
+            let event_id = EventId::from(i as u64);
+            assert!(entry.is_event());
+            assert_eq!(entry.event_id(), event_id);
+            let expected = Some(expected_event).cloned();
+            if i == 0 {
+                let start_time = reader.event_times.get(event_id)?;
+                assert_eq!(start_time, 0);
+                if entry.event_type() != expected {
+                    // Try the next possible sequence instead.
+                    continue 'sequence;
+                }
+            } else {
+                assert_eq!(entry.event_type(), expected);
+            }
+            println!("Found event: {expected_event}");
+        }
+    };
 
     // Look for the test device in the capture.
     let device_id = DeviceId::from(1);
