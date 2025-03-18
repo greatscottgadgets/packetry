@@ -20,21 +20,34 @@ const US: Duration = Duration::from_micros(1);
 const MS: Duration = Duration::from_millis(1);
 
 pub fn test_cynthion(save_captures: bool) {
-    for (name, speed, ep_addr, length, sof) in [
-        ("HS", Speed::High, 0x81, 4096, Some((124*US,  126*US))),
-        ("FS", Speed::Full, 0x82,  512, Some((995*US, 1005*US))),
-        ("LS", Speed::Low,  0x83,   64, None)]
-    {
-        if let Err(e) = test(save_captures, name, speed, ep_addr, length, sof) {
-            eprintln!("\nTest failed: {e}");
-            std::process::exit(1);
+    use Speed::*;
+
+    let speeds = [
+        (High, 0x81, 4096, Some((124*US,  126*US))),
+        (Full, 0x82,  512, Some((995*US, 1005*US))),
+        (Low,  0x83,   64, None),
+    ];
+
+    for (bus_speed, ep_addr, length, sof) in speeds {
+        for speed_selection in [bus_speed, Auto] {
+            if let Err(e) = test(
+                save_captures,
+                bus_speed,
+                speed_selection,
+                ep_addr,
+                length,
+                sof
+            ) {
+                eprintln!("\nTest failed: {e}");
+                std::process::exit(1);
+            }
         }
     }
 }
 
 fn test(save_capture: bool,
-        name: &str,
-        speed: Speed,
+        bus_speed: Speed,
+        speed_selection: Speed,
         ep_addr: u8,
         length: usize,
         sof: Option<(Duration, Duration)>)
@@ -42,9 +55,10 @@ fn test(save_capture: bool,
 {
     use EventType::*;
     use StopReason::*;
+    use Speed::*;
 
-    let desc = speed.description();
-    println!("\nTesting at {desc}:\n");
+    println!("\nTesting capture at {} with {} speed selected:\n",
+             bus_speed.abbr(), speed_selection.abbr());
 
     // Create capture and decoder.
     let (writer, mut reader) = create_capture()
@@ -76,13 +90,13 @@ fn test(save_capture: bool,
     // Start capture.
     let analyzer_start_time = Instant::now();
     let (stream_handle, stop_handle) = analyzer
-        .start(speed, Box::new(|result|
+        .start(speed_selection, Box::new(|result|
             result.context("Failure in capture thread").unwrap()))
         .context("Failed to start analyzer")?;
 
     // Attempt to open and read data from the test device.
     let test_device_result = read_test_device(
-        &mut analyzer, speed, ep_addr, length);
+        &mut analyzer, bus_speed, ep_addr, length);
 
     // Stop analyzer.
     stop_handle.stop()
@@ -109,7 +123,8 @@ fn test(save_capture: bool,
 
     if save_capture {
         // Write the capture to a file.
-        let path = PathBuf::from(format!("./HITL-{name}.pcap"));
+        let path = PathBuf::from(format!("./HITL-{}-{}.pcap",
+            bus_speed.abbr(), speed_selection.abbr()));
         let file = File::create(path)?;
         let meta = reader.shared.metadata.load_full();
         let mut saver = PcapSaver::new(file, meta)?;
@@ -127,12 +142,29 @@ fn test(save_capture: bool,
     let start_group_id = reader.item_index.get(start_item_id)?;
     let start_entry = reader.group_index.get(start_group_id)?;
     let event_id = EventId::from(0);
+    let start_speed = match (speed_selection, bus_speed) {
+        (Auto, High | Full) => Full,
+        (Auto, Low) => Auto,
+        _ => bus_speed,
+    };
     assert!(start_entry.is_event());
-    assert_eq!(start_entry.event_type(), Some(CaptureStart(speed)));
+    assert_eq!(start_entry.event_type(), Some(CaptureStart(start_speed)));
     assert_eq!(start_entry.event_id(), event_id);
     let start_time = reader.event_times.get(event_id)?;
     assert_eq!(start_time, 0);
     println!("Found start event in capture");
+
+    if speed_selection == Auto && bus_speed != start_speed {
+        // Look for a speed change event.
+        let next_item_id = TrafficItemId::from(1);
+        let next_group_id = reader.item_index.get(next_item_id)?;
+        let next_entry = reader.group_index.get(next_group_id)?;
+        let event_id = EventId::from(1);
+        assert!(next_entry.is_event());
+        assert_eq!(next_entry.event_type(), Some(SpeedChange(bus_speed)));
+        assert_eq!(next_entry.event_id(), event_id);
+        println!("Found speed change event in capture");
+    }
 
     // Look for the test device in the capture.
     let device_id = DeviceId::from(1);
@@ -278,4 +310,16 @@ fn bytes_on_endpoint(reader: &mut CaptureReader) -> Result<Vec<u8>, Error> {
         .unwrap();
     let data = reader.transfer_bytes(endpoint_id, &data_range, data_length)?;
     Ok(data)
+}
+
+impl Speed {
+    pub fn abbr(&self) -> &'static str {
+        use Speed::*;
+        match self {
+            Auto => "Auto",
+            High => "HS",
+            Full => "FS",
+            Low => "LS",
+        }
+    }
 }
