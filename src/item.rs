@@ -7,19 +7,8 @@ use std::fmt::Write;
 
 use anyhow::{Context, Error, bail};
 
-use crate::capture::{
-    CaptureReader,
-    DeviceId,
-    DeviceVersion,
-    EndpointState,
-    GroupContent,
-    GroupId,
-    Timestamp,
-    TrafficItemId,
-    TransactionId,
-    PacketId,
-    INVALID_EP_ID,
-};
+use crate::capture::prelude::*;
+use crate::event::EventType;
 use crate::usb::{self, prelude::*, validate_packet};
 use crate::util::{Bytes, RangeLength, fmt_count, fmt_size, titlecase};
 
@@ -82,7 +71,9 @@ impl CompletionStatus {
 
 #[derive(Clone, Debug)]
 pub enum TrafficItem {
-    TransactionGroup(GroupId),
+    Event(GroupId, EventType, EventId),
+    TransactionGroup(GroupId, EndpointId, EndpointGroupId),
+    TransactionGroupEnd(GroupId, EndpointId, EndpointGroupId),
     Transaction(Option<GroupId>, TransactionId),
     Packet(Option<GroupId>, Option<TransactionId>, PacketId),
 }
@@ -174,7 +165,22 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                 Hierarchical => {
                     let item_id = TrafficItemId::from(index);
                     let group_id = self.item_index.get(item_id)?;
-                    TransactionGroup(group_id)
+                    let entry = self.group_index.get(group_id)?;
+                    if entry.is_event() {
+                        let event_type = entry
+                            .event_type()
+                            .context("Invalid event type found in database")?;
+                        let event_id = entry.event_id();
+                        Event(group_id, event_type, event_id)
+                    } else {
+                        let endpoint_id = entry.endpoint_id();
+                        let ep_group_id = entry.group_id();
+                        if entry.is_start() {
+                            TransactionGroup(group_id, endpoint_id, ep_group_id)
+                        } else {
+                            TransactionGroupEnd(group_id, endpoint_id, ep_group_id)
+                        }
+                    }
                 },
                 Transactions =>
                     Transaction(None, TransactionId::from(index)),
@@ -199,19 +205,16 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
     ) -> Result<TrafficItem, Error> {
         use TrafficItem::*;
         Ok(match parent {
-            TransactionGroup(group_id) =>
+            TransactionGroup(group_id, endpoint_id, ep_group_id) =>
                 Transaction(Some(*group_id), {
-                    let entry = self.group_index.get(*group_id)?;
-                    let endpoint_id = entry.endpoint_id();
-                    let ep_group_id = entry.group_id();
-                    let ep_traf = self.endpoint_traffic(endpoint_id)?;
-                    let offset = ep_traf.group_index.get(ep_group_id)?;
+                    let ep_traf = self.endpoint_traffic(*endpoint_id)?;
+                    let offset = ep_traf.group_index.get(*ep_group_id)?;
                     ep_traf.transaction_ids.get(offset + index)?
                 }),
             Transaction(group_id_opt, transaction_id) =>
                 Packet(*group_id_opt, Some(*transaction_id), {
                     self.transaction_index.get(*transaction_id)? + index}),
-            Packet(..) => bail!("Packets have no child items")
+            _=> bail!("Item {parent:?} has no children")
         })
     }
 
@@ -236,19 +239,19 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                     Packets => self.packet_index.len(),
                 })
             },
-            Some(TransactionGroup(group_id)) => {
-                let entry = self.group_index.get(*group_id)?;
-                if !entry.is_start() {
-                    return Ok((Complete, 0));
-                }
-                let transaction_count = self.group_range(&entry)?.len();
-                let ep_traf = self.endpoint_traffic(entry.endpoint_id())?;
-                if entry.group_id().value >= ep_traf.end_index.len() {
+            Some(Event(..)) => (Complete, 0),
+            Some(TransactionGroup(_, endpoint_id, ep_group_id)) => {
+                let transaction_count = self
+                    .group_range(*endpoint_id, *ep_group_id)?
+                    .len();
+                let ep_traf = self.endpoint_traffic(*endpoint_id)?;
+                if ep_group_id.value >= ep_traf.end_index.len() {
                     (Ongoing, transaction_count)
                 } else {
                     (Complete, transaction_count)
                 }
             },
+            Some(TransactionGroupEnd(..)) => (Complete, 0),
             Some(Transaction(_, transaction_id)) => {
                 let packet_count = self.transaction_index.target_range(
                     *transaction_id, self.packet_index.len())?.len();
@@ -450,12 +453,11 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                 }
                 s
             },
-            TransactionGroup(group_id) => {
+            TransactionGroup(_, endpoint_id, ep_group_id) => {
                 use GroupContent::*;
-                let group = self.group(*group_id)?;
-                if detail && group.is_start {
-                    let ep_traf =
-                        self.endpoint_traffic(group.endpoint_id)?;
+                let group = self.group(*endpoint_id, *ep_group_id)?;
+                if detail {
+                    let ep_traf = self.endpoint_traffic(*endpoint_id)?;
                     let start_ep_transaction_id = group.range.start;
                     let start_transaction_id =
                         ep_traf.transaction_ids.get(start_ep_transaction_id)?;
@@ -477,25 +479,19 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                 let endpoint_type = group.endpoint_type;
                 let addr = group.endpoint.device_address();
                 let count = group.count;
-                match (group.content, group.is_start) {
-                    (Invalid, true) => write!(s,
+                match group.content {
+                    Invalid => write!(s,
                         "{count} invalid groups"),
-                    (Invalid, false) => write!(s,
-                        "End of invalid groups"),
-                    (Framing, true) => write!(s,
+                    Framing => write!(s,
                         "{count} SOF groups"),
-                    (Framing, false) => write!(s,
-                        "End of SOF groups"),
-                    (Request(transfer), true) if detail => write!(s,
+                    Request(transfer) if detail => write!(s,
                         "Control transfer on device {addr}\n{}",
                         transfer.summary(true)),
-                    (Request(transfer), true) => write!(s,
+                    Request(transfer) => write!(s,
                         "{}", transfer.summary(false)),
-                    (IncompleteRequest, true) => write!(s,
+                    IncompleteRequest => write!(s,
                         "Incomplete control transfer on device {addr}"),
-                    (Request(_) | IncompleteRequest, false) => write!(s,
-                        "End of control transfer on device {addr}"),
-                    (Data(data_range), true) => {
+                    Data(data_range) => {
                         let ep_traf =
                             self.endpoint_traffic(group.endpoint_id)?;
                         let length =
@@ -520,13 +516,9 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                             write!(s, ": {display_bytes}")
                         }
                     },
-                    (Data(_), false) => write!(s,
-                        "End of {endpoint_type} transfer on endpoint {endpoint}"),
-                    (Polling(count), true) => write!(s,
+                    Polling(count) => write!(s,
                         "Polling {count} times for {endpoint_type} transfer on endpoint {endpoint}"),
-                    (Polling(_count), false) => write!(s,
-                        "End polling for {endpoint_type} transfer on endpoint {endpoint}"),
-                    (Ambiguous(_data_range, count), true) => {
+                    Ambiguous(_data_range, count) => {
                         write!(s, "{count} ambiguous transactions on endpoint {endpoint}")?;
                         if detail {
                             write!(s, "\nThe result of these transactions is ambiguous because the endpoint type is not known.")?;
@@ -534,11 +526,33 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                         }
                         Ok(())
                     },
-                    (Ambiguous(..), false) => write!(s,
+                }?;
+                s
+            },
+            TransactionGroupEnd(_, endpoint_id, ep_group_id) => {
+                use GroupContent::*;
+                let group = self.group(*endpoint_id, *ep_group_id)?;
+                let endpoint = &group.endpoint;
+                let endpoint_type = group.endpoint_type;
+                let addr = group.endpoint.device_address();
+                match group.content {
+                    Invalid => write!(s, "End of invalid groups"),
+                    Framing => write!(s, "End of SOF groups"),
+                    Data(..) => write!(s,
+                        "End of {endpoint_type} transfer on endpoint {endpoint}"),
+                    Request(_) | IncompleteRequest => write!(s,
+                        "End of control transfer on device {addr}"),
+                    Polling(_) => write!(s,
+                        "End polling for {endpoint_type} transfer on endpoint {endpoint}"),
+                    Ambiguous(..) => write!(s,
                         "End of ambiguous transactions."),
                 }?;
                 s
-            }
+            },
+            Event(_, event_type, _) => {
+                write!(s, "{event_type}")?;
+                s
+            },
         })
     }
 
@@ -562,23 +576,29 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
         };
         if view_mode == Transactions {
             return Ok(String::from(match (item, last_packet) {
-                (TransactionGroup(_), _) => unreachable!(),
-                (Transaction(..), _)     => "○",
-                (Packet(..), false)      => "├──",
-                (Packet(..), true )      => "└──",
+                (Event(..), _)            => "○",
+                (Transaction(..), _)      => "○",
+                (Packet(..), false)       => "├──",
+                (Packet(..), true )       => "└──",
+                (..) => unreachable!(),
             }));
         }
         let endpoint_count = self.endpoints.len() as usize;
         let max_string_length = endpoint_count + "    └──".len();
         let mut connectors = String::with_capacity(max_string_length);
         let group_id = match item {
-            TransactionGroup(i) |
+            Event(i, ..) |
+            TransactionGroup(i, ..) |
+            TransactionGroupEnd(i, ..) |
             Transaction(Some(i), _) |
             Packet(Some(i), ..) => *i,
             _ => unreachable!()
         };
         let entry = self.group_index.get(group_id)?;
-        let endpoint_id = entry.endpoint_id();
+        let endpoint_id = match item {
+            Event(..) => EVENT_EP_ID,
+            _ => entry.endpoint_id(),
+        };
         let endpoint_state = self.endpoint_state(group_id)?;
         let extended = self.group_extended(endpoint_id, group_id)?;
         let ep_traf = self.endpoint_traffic(endpoint_id)?;
@@ -594,17 +614,19 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
         };
         let last = last_transaction && !extended;
         let mut thru = false;
-        for (i, &state) in endpoint_state.iter().enumerate() {
+        for (i, &state) in endpoint_state.iter().enumerate().skip(1) {
             let state = EndpointState::from(state);
             let active = state != Idle;
             let on_endpoint = i == endpoint_id.value as usize;
             thru |= match (item, state, on_endpoint) {
-                (TransactionGroup(..), Starting | Ending, _) => true,
+                (TransactionGroup(..),    Starting | Ending, _) => true,
+                (TransactionGroupEnd(..), Starting | Ending, _) => true,
                 (Transaction(..) | Packet(..), _, true) => on_endpoint,
                 _ => false,
             };
             connectors.push(match item {
-                TransactionGroup(..) => {
+                Event(..) => ' ',
+                TransactionGroup(..) | TransactionGroupEnd(..) => {
                     match (state, thru) {
                         (Idle,     false) => ' ',
                         (Idle,     true ) => '─',
@@ -637,18 +659,21 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
         let state_length = endpoint_state.len();
         for _ in state_length..endpoint_count {
             connectors.push(match item {
+                Event(..)               => ' ',
                 TransactionGroup(..)    => '─',
+                TransactionGroupEnd(..) => '─',
                 Transaction(..)         => '─',
                 Packet(..)              => ' ',
             });
         }
         connectors.push_str(
             match (item, last_packet) {
-                (TransactionGroup(_), _) if entry.is_start() => "─",
-                (TransactionGroup(_), _)                     => "──□ ",
-                (Transaction(..), _)                         => "───",
-                (Packet(..), false)                          => "    ├──",
-                (Packet(..), true)                           => "    └──",
+                (Event(..), _)               => "",
+                (TransactionGroup(..), _)    => "─",
+                (TransactionGroupEnd(..), _) => "──□ ",
+                (Transaction(..), _)         => "───",
+                (Packet(..), false)          => "    ├──",
+                (Packet(..), true)           => "    └──",
             }
         );
         Ok(connectors)
@@ -657,11 +682,13 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
     fn timestamp(&mut self, item: &TrafficItem) -> Result<Timestamp, Error> {
         use TrafficItem::*;
         let packet_id = match item {
-            TransactionGroup(group_id) => {
-                let entry = self.group_index.get(*group_id)?;
-                let ep_traf = self.endpoint_traffic(entry.endpoint_id())?;
+            Event(.., event_id) =>
+                return self.event_times.get(*event_id),
+            TransactionGroup(_, endpoint_id, ep_group_id) |
+            TransactionGroupEnd(_, endpoint_id, ep_group_id) => {
+                let ep_traf = self.endpoint_traffic(*endpoint_id)?;
                 let ep_transaction_id =
-                    ep_traf.group_index.get(entry.group_id())?;
+                    ep_traf.group_index.get(*ep_group_id)?;
                 let transaction_id =
                     ep_traf.transaction_ids.get(ep_transaction_id)?;
                 self.transaction_index.get(transaction_id)?
