@@ -29,10 +29,10 @@ built = { version = "0.7.4", features = ["cargo-lock", "git2"] }
 [dependencies]
 bytemuck = "1.14.1"
 bytemuck_derive = "1.5.0"
-gtk = { version = "0.8.0", package = "gtk4" }
+gtk = { version = "0.8.0", package = "gtk4", features = ["v4_4"] }
 num_enum = "0.7.2"
 once_cell = "1.19.0"
-pcap-file = "2.0.0"
+pcap-file-gsg = "3.0.0-rc3"
 tempfile = "3.9.0"
 bitfield = "0.14.0"
 num-format = "0.4.4"
@@ -55,6 +55,9 @@ usb-ids = "1.2024.4"
 dark-light = "1.1.1"
 hidreport = "0.4.1"
 hut = "0.2.1"
+byteorder_slice = "3.0.0"
+merge = "0.1.0"
+chrono = { version = "0.4.38", default-features = false, features = ["clock"] }
 
 [dev-dependencies]
 serde = { version = "1.0.196", features = ["derive"] }

@@ -2,6 +2,7 @@
 
 use std::cmp::Ordering;
 use std::collections::VecDeque;
+use std::num::NonZeroU32;
 use std::time::Duration;
 use std::sync::mpsc;
 
@@ -26,6 +27,8 @@ use super::{
     TimestampedPacket,
     TransferQueue,
 };
+
+use crate::capture::CaptureMetadata;
 
 pub const VID_PID: (u16, u16) = (0x1d50, 0x615b);
 const CLASS: u8 = 0xff;
@@ -80,12 +83,14 @@ pub struct CynthionDevice {
     interface_number: u8,
     alt_setting_number: u8,
     speeds: Vec<Speed>,
+    metadata: CaptureMetadata,
 }
 
 /// A handle to an open Cynthion device.
 #[derive(Clone)]
 pub struct CynthionHandle {
     interface: Interface,
+    metadata: CaptureMetadata,
 }
 
 /// Converts from received data bytes to timestamped packets.
@@ -161,8 +166,22 @@ impl CynthionDevice {
                         .context("Failed to select alternate setting")?;
                 }
 
+                let metadata = CaptureMetadata {
+                    iface_desc: Some("Cynthion USB Analyzer".to_string()),
+                    iface_hardware: Some({
+                        let bcd = device_info.device_version();
+                        let major = bcd >> 8;
+                        let minor = bcd as u8;
+                        format!("Cynthion r{major}.{minor}")
+                    }),
+                    iface_os: Some(
+                        format!("USB Analyzer v{protocol}")),
+                    iface_snaplen: Some(NonZeroU32::new(0xFFFF).unwrap()),
+                    .. Default::default()
+                };
+
                 // Fetch the available speeds.
-                let handle = CynthionHandle { interface };
+                let handle = CynthionHandle { interface, metadata };
                 let speeds = handle
                     .speeds()
                     .context("Failed to fetch available speeds")?;
@@ -174,6 +193,7 @@ impl CynthionDevice {
                         interface_number,
                         alt_setting_number,
                         speeds,
+                        metadata: handle.metadata,
                     }
                 )
             }
@@ -189,7 +209,10 @@ impl CynthionDevice {
         if self.alt_setting_number != 0 {
             interface.set_alt_setting(self.alt_setting_number)?;
         }
-        Ok(CynthionHandle { interface })
+        Ok(CynthionHandle {
+            interface,
+            metadata: self.metadata.clone()
+        })
     }
 }
 
@@ -204,6 +227,10 @@ impl BackendDevice for CynthionDevice {
 }
 
 impl BackendHandle for CynthionHandle {
+    fn metadata(&self) -> &CaptureMetadata {
+        &self.metadata
+    }
+
     fn begin_capture(
         &mut self,
         speed: Speed,

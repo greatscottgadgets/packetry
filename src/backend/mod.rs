@@ -9,10 +9,11 @@ use anyhow::{Context, Error};
 use futures_channel::oneshot;
 use futures_lite::future::block_on;
 use nusb::{self, DeviceInfo};
-use num_enum::{FromPrimitive, IntoPrimitive};
 use once_cell::sync::Lazy;
 
+use crate::capture::CaptureMetadata;
 use crate::util::handle_thread_panic;
+pub use crate::usb::Speed;
 
 pub mod cynthion;
 pub mod ice40usbtrace;
@@ -67,30 +68,6 @@ pub trait BackendDevice {
     fn supported_speeds(&self) -> &[Speed];
 }
 
-/// Possible capture speed settings.
-#[derive(Debug, Copy, Clone, PartialEq, FromPrimitive, IntoPrimitive)]
-#[repr(u8)]
-pub enum Speed {
-    #[default]
-    High = 0,
-    Full = 1,
-    Low  = 2,
-    Auto = 3,
-}
-
-impl Speed {
-    /// How this speed setting should be displayed in the UI.
-    pub fn description(&self) -> &'static str {
-        use Speed::*;
-        match self {
-            Auto => "Auto",
-            High => "High (480Mbps)",
-            Full => "Full (12Mbps)",
-            Low => "Low (1.5Mbps)",
-        }
-    }
-}
-
 /// A timestamped packet.
 pub struct TimestampedPacket {
     pub timestamp_ns: u64,
@@ -108,6 +85,9 @@ pub trait PacketIterator: Iterator<Item=PacketResult> + Send {}
 
 /// A handle to an open capture device.
 pub trait BackendHandle: Send + Sync {
+
+    /// Get metadata about the capture device.
+    fn metadata(&self) -> &CaptureMetadata;
 
     /// Begin capture.
     ///
