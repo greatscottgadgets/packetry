@@ -1096,18 +1096,12 @@ mod tests {
         let list_file = File::open(list_path).unwrap();
         let mode = TrafficViewMode::Hierarchical;
         for test_name in BufReader::new(list_file).lines() {
-            let mut test_path = test_dir.clone();
-            test_path.push(test_name.unwrap());
-            let mut cap_path = test_path.clone();
-            let mut traf_ref_path = test_path.clone();
-            let mut traf_out_path = test_path.clone();
-            let mut dev_ref_path = test_path.clone();
-            let mut dev_out_path = test_path.clone();
-            cap_path.push("capture.pcap");
-            traf_ref_path.push("reference.txt");
-            traf_out_path.push("output.txt");
-            dev_ref_path.push("devices-reference.txt");
-            dev_out_path.push("devices-output.txt");
+            let test_path = test_dir.join(test_name.unwrap());
+            let cap_path = test_path.join("capture.pcap");
+            let traf_ref_path = test_path.join("reference.txt");
+            let traf_out_path = test_path.join("output.txt");
+            let dev_ref_path = test_path.join("devices-reference.txt");
+            let dev_out_path = test_path.join("devices-output.txt");
             {
                 let file = File::open(cap_path).unwrap();
                 let mut loader = PcapLoader::new(file).unwrap();
