@@ -1041,6 +1041,7 @@ mod tests {
     use crate::capture::create_capture;
     use crate::decoder::Decoder;
     use crate::file::{GenericLoader, GenericPacket, LoaderItem, PcapLoader};
+    use crate::util::dump::Dump;
 
     fn summarize_item<Item, ViewMode>(
         cap: &mut CaptureReader,
@@ -1102,6 +1103,7 @@ mod tests {
             let traf_out_path = test_path.join("output.txt");
             let dev_ref_path = test_path.join("devices-reference.txt");
             let dev_out_path = test_path.join("devices-output.txt");
+            let dump_path = test_path.join("dump");
             {
                 let file = File::open(cap_path).unwrap();
                 let mut loader = PcapLoader::new(file).unwrap();
@@ -1121,6 +1123,8 @@ mod tests {
                     }
                 }
                 decoder.finish().unwrap();
+                reader.dump(&dump_path).unwrap();
+                reader = CaptureReader::restore(&dump_path).unwrap();
                 let traf_out_file = File::create(traf_out_path.clone()).unwrap();
                 let mut traf_out_writer = BufWriter::new(traf_out_file);
                 let num_items = reader.item_index.len();

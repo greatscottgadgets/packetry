@@ -1,5 +1,6 @@
 /docs/build/
 /target
+/tests/*/dump
 /tests/*/output.txt
 /tests/*/devices-output.txt
 /tests/ui/*/output.txt
