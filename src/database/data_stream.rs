@@ -10,14 +10,16 @@ use anyhow::Error;
 use bytemuck::{bytes_of, cast_slice, from_bytes, Pod};
 
 use crate::util::id::Id;
-use crate::database::stream::{
-    stream,
-    StreamReader,
-    StreamWriter,
-    Data,
-    MIN_BLOCK
+use crate::database::{
+    stream::{
+        stream,
+        StreamReader,
+        StreamWriter,
+        Data,
+        MIN_BLOCK,
+    },
 };
-use crate::util::{fmt_count, fmt_size};
+use crate::util::{dump::{Dump, restore}, fmt_count, fmt_size};
 
 /// Unique handle for append-only write access to a data stream.
 pub struct DataWriter<Value, const S: usize = MIN_BLOCK> {
@@ -233,6 +235,19 @@ where Value: Pod
         self.range.start += 1;
         // Return the value found.
         Some(Ok(value))
+    }
+}
+
+impl<V, const S: usize> Dump for DataReader<V, S> {
+    fn dump(&self, dest: &std::path::Path) -> Result<(), Error> {
+        self.stream_reader.dump(dest)
+    }
+
+    fn restore(src: &std::path::Path) -> Result<Self, anyhow::Error> {
+        Ok(DataReader {
+            marker: PhantomData,
+            stream_reader: restore(src)?,
+        })
     }
 }
 
