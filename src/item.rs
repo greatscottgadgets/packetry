@@ -71,7 +71,7 @@ impl CompletionStatus {
 
 #[derive(Clone, Debug)]
 pub enum TrafficItem {
-    Event(GroupId, EventType, EventId),
+    Event(Option<GroupId>, EventType, EventId),
     TransactionGroup(GroupId, EndpointId, EndpointGroupId),
     TransactionGroupEnd(GroupId, EndpointId, EndpointGroupId),
     Transaction(Option<GroupId>, TransactionId),
@@ -166,26 +166,51 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                     let item_id = TrafficItemId::from(index);
                     let group_id = self.item_index.get(item_id)?;
                     let entry = self.group_index.get(group_id)?;
-                    if entry.is_event() {
-                        let event_type = entry
-                            .event_type()
-                            .context("Invalid event type found in database")?;
-                        let event_id = entry.event_id();
-                        Event(group_id, event_type, event_id)
+                    let endpoint_id = entry.endpoint_id();
+                    let ep_group_id = entry.group_id();
+                    if endpoint_id == EVENT_EP_ID {
+                        let event_id = EventId::from(ep_group_id.value);
+                        let event_code = self.event_codes.get(event_id)?;
+                        let event_type = EventType::from_code(event_code)
+                            .context("Event has no type")?;
+                        Event(Some(group_id), event_type, event_id)
+                    } else if entry.is_start() {
+                        TransactionGroup(group_id, endpoint_id, ep_group_id)
                     } else {
-                        let endpoint_id = entry.endpoint_id();
-                        let ep_group_id = entry.group_id();
-                        if entry.is_start() {
-                            TransactionGroup(group_id, endpoint_id, ep_group_id)
-                        } else {
-                            TransactionGroupEnd(group_id, endpoint_id, ep_group_id)
-                        }
+                        TransactionGroupEnd(group_id, endpoint_id, ep_group_id)
                     }
                 },
-                Transactions =>
-                    Transaction(None, TransactionId::from(index)),
-                Packets =>
-                    Packet(None, None, PacketId::from(index)),
+                Transactions => {
+                    let transaction_id = TransactionId::from(index);
+                    let packet_id = self.transaction_index.get(transaction_id)?;
+                    let data_range = self.packet_index.target_range(
+                        packet_id, self.packet_data.len())?;
+                    if data_range.is_empty() {
+                        let event_id = self.event_index.bisect_left(&packet_id)?;
+                        if self.event_index.get(event_id)? == packet_id {
+                            let event_code = self.event_codes.get(event_id)?;
+                            let event_type = EventType::from_code(event_code)
+                                .context("Event has no type")?;
+                            return Ok(Event(None, event_type, event_id))
+                        }
+                    }
+                    Transaction(None, transaction_id)
+                },
+                Packets => {
+                    let packet_id = PacketId::from(index);
+                    let data_range = self.packet_index.target_range(
+                        packet_id, self.packet_data.len())?;
+                    if data_range.is_empty() {
+                        let event_id = self.event_index.bisect_left(&packet_id)?;
+                        if self.event_index.get(event_id)? == packet_id {
+                            let event_code = self.event_codes.get(event_id)?;
+                            let event_type = EventType::from_code(event_code)
+                                .context("Event has no type")?;
+                            return Ok(Event(None, event_type, event_id))
+                        }
+                    }
+                    Packet(None, None, packet_id)
+                }
             }),
             Some(item) => self.child_item(item, index)
         }
@@ -587,7 +612,7 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
         let max_string_length = endpoint_count + "    └──".len();
         let mut connectors = String::with_capacity(max_string_length);
         let group_id = match item {
-            Event(i, ..) |
+            Event(Some(i), ..) |
             TransactionGroup(i, ..) |
             TransactionGroupEnd(i, ..) |
             Transaction(Some(i), _) |
@@ -683,7 +708,7 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
         use TrafficItem::*;
         let packet_id = match item {
             Event(.., event_id) =>
-                return self.event_times.get(*event_id),
+                self.event_index.get(*event_id)?,
             TransactionGroup(_, endpoint_id, ep_group_id) |
             TransactionGroupEnd(_, endpoint_id, ep_group_id) => {
                 let ep_traf = self.endpoint_traffic(*endpoint_id)?;

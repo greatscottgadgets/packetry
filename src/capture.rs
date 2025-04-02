@@ -20,7 +20,6 @@ use crate::database::{
     data_stream,
     data_stream_with_block_size,
 };
-use crate::event::EventType;
 use crate::usb::{self, prelude::*};
 use crate::util::{
     id::Id,
@@ -79,7 +78,8 @@ pub struct CaptureWriter {
     pub packet_data: DataWriter<u8, PACKET_DATA_BLOCK_SIZE>,
     pub packet_index: CompactWriter<PacketId, PacketByteId, 2>,
     pub packet_times: CompactWriter<PacketId, Timestamp, 3>,
-    pub event_times: CompactWriter<EventId, Timestamp, 2>,
+    pub event_index: CompactWriter<EventId, PacketId>,
+    pub event_codes: DataWriter<u8>,
     pub transaction_index: CompactWriter<TransactionId, PacketId>,
     pub group_index: DataWriter<GroupIndexEntry>,
     pub item_index: CompactWriter<TrafficItemId, GroupId>,
@@ -99,7 +99,8 @@ pub struct CaptureReader {
     pub packet_data: DataReader<u8, PACKET_DATA_BLOCK_SIZE>,
     pub packet_index: CompactReader<PacketId, PacketByteId>,
     pub packet_times: CompactReader<PacketId, Timestamp>,
-    pub event_times: CompactReader<EventId, Timestamp>,
+    pub event_index: CompactReader<EventId, PacketId>,
+    pub event_codes: DataReader<u8>,
     pub transaction_index: CompactReader<TransactionId, PacketId>,
     pub group_index: DataReader<GroupIndexEntry>,
     pub item_index: CompactReader<TrafficItemId, GroupId>,
@@ -119,8 +120,9 @@ pub fn create_capture()
     let (data_writer, data_reader) =
         data_stream_with_block_size::<_, PACKET_DATA_BLOCK_SIZE>()?;
     let (packets_writer, packets_reader) = compact_index()?;
-    let (packet_time_writer, packet_time_reader) = compact_index()?;
-    let (event_time_writer, event_time_reader) = compact_index()?;
+    let (timestamp_writer, timestamp_reader) = compact_index()?;
+    let (event_index_writer, event_index_reader) = compact_index()?;
+    let (event_codes_writer, event_codes_reader) = data_stream()?;
     let (transactions_writer, transactions_reader) = compact_index()?;
     let (groups_writer, groups_reader) = data_stream()?;
     let (items_writer, items_reader) = compact_index()?;
@@ -144,8 +146,9 @@ pub fn create_capture()
         shared: shared.clone(),
         packet_data: data_writer,
         packet_index: packets_writer,
-        packet_times: packet_time_writer,
-        event_times: event_time_writer,
+        packet_times: timestamp_writer,
+        event_index: event_index_writer,
+        event_codes: event_codes_writer,
         transaction_index: transactions_writer,
         group_index: groups_writer,
         item_index: items_writer,
@@ -162,8 +165,9 @@ pub fn create_capture()
         endpoint_readers: VecMap::new(),
         packet_data: data_reader,
         packet_index: packets_reader,
-        packet_times: packet_time_reader,
-        event_times: event_time_reader,
+        packet_times: timestamp_reader,
+        event_index: event_index_reader,
+        event_codes: event_codes_reader,
         transaction_index: transactions_reader,
         group_index: groups_reader,
         item_index: items_reader,
@@ -249,7 +253,7 @@ pub fn create_endpoint()
 
 pub type PacketByteId = Id<u8>;
 pub type PacketId = Id<PacketByteId>;
-pub type EventId = Id<u64>;
+pub type EventId = Id<u8>;
 pub type Timestamp = u64;
 pub type TransactionId = Id<PacketId>;
 pub type GroupId = Id<GroupIndexEntry>;
@@ -294,74 +298,22 @@ impl std::fmt::Display for Endpoint {
     }
 }
 
-
-#[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
-#[repr(C)]
-pub struct GroupIndexEntry(u64);
+bitfield! {
+    #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
+    #[repr(C)]
+    pub struct GroupIndexEntry(u64);
+    pub u64, from into EndpointGroupId, group_id, set_group_id: 51, 0;
+    pub u64, from into EndpointId, endpoint_id, set_endpoint_id: 62, 52;
+    pub u8, _is_start, _set_is_start: 63, 63;
+}
 
 impl GroupIndexEntry {
-    // If the top bit is set, this is an event entry.
-    pub fn is_event(&self) -> bool {
-        (self.0 & (1 << 63)) != 0
-    }
-
-    pub fn set_is_event(&mut self, value: bool) {
-        let value = value as u64;
-        self.0 = (self.0 & !(1 << 63)) | (value << 63);
-    }
-
-    // The next 8 bits store the event code.
-    pub fn event_type(&self) -> Option<EventType> {
-        let code = (self.0 & (0xFF << 55)) >> 55;
-        EventType::from_code(code as u8)
-    }
-
-    pub fn set_event_type(&mut self, event: EventType) {
-        let code: u8 = event.code();
-        let code: u64 = code.into();
-        self.0 = (self.0 & !(0xFF << 55)) | (code << 55);
-    }
-
-    // The remaining 55 bits store an event ID.
-    pub fn event_id(&self) -> EventId {
-        EventId::from(self.0 & (2u64.pow(55) - 1))
-    }
-
-    pub fn set_event_id(&mut self, event_id: EventId) {
-        self.0 = (self.0 & !(2u64.pow(55) - 1))
-            | (event_id.value & (2u64.pow(55) - 1));
-    }
-
-    // If the top bit is not set, this is a transfer entry.
-
-    // The next bit down indicates whether this is a start or end entry.
     pub fn is_start(&self) -> bool {
-        (self.0 & (1 << 62)) != 0
+        self._is_start() != 0
     }
 
     pub fn set_is_start(&mut self, value: bool) {
-        let value = value as u64;
-        self.0 = (self.0 & !(1 << 62)) | (value << 62);
-    }
-
-    // The following 11 bits hold the endpoint ID.
-    pub fn endpoint_id(&self) -> EndpointId {
-        EndpointId::from((self.0 & ((2u64.pow(11) - 1) << 51)) >> 51)
-    }
-
-    pub fn set_endpoint_id(&mut self, endpoint_id: EndpointId) {
-        self.0 = (self.0 & !((2u64.pow(11) - 1) << 51))
-            | ((endpoint_id.value & (2u64.pow(11) - 1)) << 51);
-    }
-
-    // The remaining 51 bits hold the group ID within that endpoint.
-    pub fn group_id(&self) -> EndpointGroupId {
-        EndpointGroupId::from(self.0 & (2u64.pow(51) - 1))
-    }
-
-    pub fn set_group_id(&mut self, transfer_id: EndpointGroupId) {
-        self.0 = (self.0 & !(2u64.pow(51) - 1))
-            | (transfer_id.value & (2u64.pow(51) - 1));
+        self._set_is_start(value as u8)
     }
 }
 

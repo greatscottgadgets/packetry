@@ -584,9 +584,21 @@ impl Decoder {
     pub fn handle_event(&mut self, event_type: EventType, timestamp_ns: u64)
         -> Result<(), Error>
     {
-        let event_id = self.capture.event_times.push(timestamp_ns)?;
-        let group_id = self.add_event_entry(event_type, event_id)?;
-        self.add_item(EVENT_EP_ID, group_id)?;
+        let packet_data_end = self.capture.packet_data.len().into();
+        let packet_id = self.capture.packet_index.push(packet_data_end)?;
+        self.capture.packet_times.push(timestamp_ns)?;
+        self.capture.event_index.push(packet_id)?;
+        self.capture.event_codes.push(&event_type.code())?;
+        self.transaction_end(false, false)?;
+        let transaction_id = self.capture.transaction_index.push(packet_id)?;
+        let ep_data = &mut self.endpoint_data[EVENT_EP_ID];
+        let ep_transaction_id =
+            ep_data.writer.transaction_ids.push(transaction_id)?;
+        let ep_group_id =
+            ep_data.writer.group_index.push(ep_transaction_id)?;
+        let group_start_id =
+            self.add_group_entry(EVENT_EP_ID, ep_group_id, true)?;
+        self.add_item(EVENT_EP_ID, group_start_id)?;
         Ok(())
     }
 
@@ -1001,21 +1013,6 @@ impl Decoder {
         entry.set_endpoint_id(endpoint_id);
         entry.set_group_id(ep_group_id);
         entry.set_is_start(start);
-        entry.set_is_event(false);
-        let group_id = self.capture.group_index.push(&entry)?;
-        Ok(group_id)
-    }
-
-    fn add_event_entry(
-        &mut self,
-        event_type: EventType,
-        event_id: EventId
-    ) -> Result<GroupId, Error> {
-        self.add_endpoint_state(EVENT_EP_ID, false)?;
-        let mut entry = GroupIndexEntry::default();
-        entry.set_is_event(true);
-        entry.set_event_type(event_type);
-        entry.set_event_id(event_id);
         let group_id = self.capture.group_index.push(&entry)?;
         Ok(group_id)
     }
