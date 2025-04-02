@@ -187,18 +187,21 @@ fn test(save_capture: bool,
             let group_id = reader.item_index.get(item_id)?;
             let entry = reader.group_index.get(group_id)?;
             let event_id = EventId::from(i as u64);
-            assert!(entry.is_event());
-            assert_eq!(entry.event_id(), event_id);
+            let event_code = reader.event_codes.get(event_id)?;
+            let event_type = EventType::from_code(event_code);
+            assert!(entry.endpoint_id() == EVENT_EP_ID);
+            assert_eq!(entry.group_id().value, event_id.value);
             let expected = Some(expected_event).cloned();
             if i == 0 {
-                let start_time = reader.event_times.get(event_id)?;
+                let packet_id = reader.event_index.get(event_id)?;
+                let start_time = reader.packet_times.get(packet_id)?;
                 assert_eq!(start_time, 0);
-                if entry.event_type() != expected {
+                if event_type != expected {
                     // Try the next possible sequence instead.
                     continue 'sequence;
                 }
             } else {
-                assert_eq!(entry.event_type(), expected);
+                assert_eq!(event_type, expected);
             }
             println!("Found event: {expected_event}");
         }
@@ -288,8 +291,10 @@ fn test(save_capture: bool,
     let stop_item_id = TrafficItemId::from(item_count - 1);
     let stop_transfer_id = reader.item_index.get(stop_item_id)?;
     let stop_entry = reader.group_index.get(stop_transfer_id)?;
-    assert!(stop_entry.is_event());
-    assert_eq!(stop_entry.event_type(), Some(CaptureStop(Requested)));
+    assert!(stop_entry.endpoint_id() == EVENT_EP_ID);
+    let event_id = EventId::from(stop_entry.group_id().value);
+    let event_type = EventType::from_code(reader.event_codes.get(event_id)?);
+    assert_eq!(event_type, Some(CaptureStop(Requested)));
     println!("Found stop event in capture");
 
     Ok(())
