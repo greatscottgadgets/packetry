@@ -1084,8 +1084,8 @@ mod tests {
               ViewMode: Copy
     {
         let summary = summarize_item(cap, item, mode);
-        writer.write(summary.as_bytes()).unwrap();
-        writer.write(b"\n").unwrap();
+        writer.write_all(summary.as_bytes()).unwrap();
+        writer.write_all(b"\n").unwrap();
     }
 
     #[test]

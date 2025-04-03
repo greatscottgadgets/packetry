@@ -1655,7 +1655,7 @@ fn show_metadata() -> Result<(), Error> {
                         let start = buf.iter_at_offset(0);
                         let end = buf.iter_at_offset(-1);
                         let text = buf.text(&start, &end, false);
-                        meta.comment = if text.len() == 0 {
+                        meta.comment = if text.is_empty() {
                             None
                         } else {
                             Some(text.to_string())

@@ -1143,7 +1143,7 @@ impl CaptureReader {
                 let first_transaction =
                     self.transaction(first_transaction_id)?;
                 let count = if first_transaction.split.is_some() {
-                    (count + 1) / 2
+                    count.div_ceil(2)
                 } else {
                     count
                 };
