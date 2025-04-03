@@ -57,7 +57,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     env:
-      VCPKG_COMMIT: 01f602195983451bc83e72f4214af2cbc495aa94 # 2024.05.24 release
+      VCPKG_COMMIT: a1aebfa9d5eae7cf493e0a706b43915d687bb860 # CMake 4.0.0 fix
       VCPKG_INSTALLED_DIR: ${{ github.workspace }}/vcpkg/installed
 
     steps:
