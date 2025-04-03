@@ -1464,7 +1464,7 @@ mod tests {
 
     #[test]
     fn test_parse_sof() {
-        let packet = vec![0xa5, 0xde, 0x1e];
+        let packet = [0xa5, 0xde, 0x1e];
         let p = PacketFields::from_packet(&packet);
         if let PacketFields::SOF(sof) = p {
             assert!(sof.frame_number() == 1758);
@@ -1477,7 +1477,7 @@ mod tests {
 
     #[test]
     fn test_parse_setup() {
-        let packet = vec![0x2d, 0x02, 0xa8];
+        let packet = [0x2d, 0x02, 0xa8];
         assert_eq!(validate_packet(&packet), Ok(PID::SETUP));
         let p = PacketFields::from_packet(&packet);
         if let PacketFields::Token(tok) = p {
@@ -1492,7 +1492,7 @@ mod tests {
 
     #[test]
     fn test_parse_in() {
-        let packet = vec![0x69, 0x82, 0x18];
+        let packet = [0x69, 0x82, 0x18];
         assert_eq!(validate_packet(&packet), Ok(PID::IN));
         let p = PacketFields::from_packet(&packet);
         if let PacketFields::Token(tok) = p {
@@ -1507,9 +1507,9 @@ mod tests {
 
     #[test]
     fn test_parse_data() {
-        let packet = &vec![0xc3, 0x40, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xaa, 0xd5];
-        assert_eq!(validate_packet(packet), Ok(PID::DATA0));
-        let p = PacketFields::from_packet(packet);
+        let packet = [0xc3, 0x40, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xaa, 0xd5];
+        assert_eq!(validate_packet(&packet), Ok(PID::DATA0));
+        let p = PacketFields::from_packet(&packet);
         if let PacketFields::Data(data) = p {
             assert!(data.crc == 0xd5aa);
         } else {

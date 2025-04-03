@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use gtk::glib::Object;
 use gtk::gio::prelude::ListModelExt;
@@ -112,10 +112,10 @@ impl Recording {
     }
 
     pub fn log_open_file(&mut self,
-                         path: &PathBuf, 
+                         path: &Path,
                          capture: &CaptureReader)
     {
-        self.log_action(UiAction::Open(path.clone()));
+        self.log_action(UiAction::Open(path.to_path_buf()));
         self.capture = capture.clone();
         self.packet_count = 0;
         self.view_items.clear()
