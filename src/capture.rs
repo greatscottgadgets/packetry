@@ -78,6 +78,8 @@ pub struct CaptureWriter {
     pub packet_data: DataWriter<u8, PACKET_DATA_BLOCK_SIZE>,
     pub packet_index: CompactWriter<PacketId, PacketByteId, 2>,
     pub packet_times: CompactWriter<PacketId, Timestamp, 3>,
+    pub event_index: CompactWriter<EventId, PacketId>,
+    pub event_codes: DataWriter<u8>,
     pub transaction_index: CompactWriter<TransactionId, PacketId>,
     pub group_index: DataWriter<GroupIndexEntry>,
     pub item_index: CompactWriter<TrafficItemId, GroupId>,
@@ -97,6 +99,8 @@ pub struct CaptureReader {
     pub packet_data: DataReader<u8, PACKET_DATA_BLOCK_SIZE>,
     pub packet_index: CompactReader<PacketId, PacketByteId>,
     pub packet_times: CompactReader<PacketId, Timestamp>,
+    pub event_index: CompactReader<EventId, PacketId>,
+    pub event_codes: DataReader<u8>,
     pub transaction_index: CompactReader<TransactionId, PacketId>,
     pub group_index: DataReader<GroupIndexEntry>,
     pub item_index: CompactReader<TrafficItemId, GroupId>,
@@ -117,6 +121,8 @@ pub fn create_capture()
         data_stream_with_block_size::<_, PACKET_DATA_BLOCK_SIZE>()?;
     let (packets_writer, packets_reader) = compact_index()?;
     let (timestamp_writer, timestamp_reader) = compact_index()?;
+    let (event_index_writer, event_index_reader) = compact_index()?;
+    let (event_codes_writer, event_codes_reader) = data_stream()?;
     let (transactions_writer, transactions_reader) = compact_index()?;
     let (groups_writer, groups_reader) = data_stream()?;
     let (items_writer, items_reader) = compact_index()?;
@@ -141,6 +147,8 @@ pub fn create_capture()
         packet_data: data_writer,
         packet_index: packets_writer,
         packet_times: timestamp_writer,
+        event_index: event_index_writer,
+        event_codes: event_codes_writer,
         transaction_index: transactions_writer,
         group_index: groups_writer,
         item_index: items_writer,
@@ -158,6 +166,8 @@ pub fn create_capture()
         packet_data: data_reader,
         packet_index: packets_reader,
         packet_times: timestamp_reader,
+        event_index: event_index_reader,
+        event_codes: event_codes_reader,
         transaction_index: transactions_reader,
         group_index: groups_reader,
         item_index: items_reader,
@@ -243,6 +253,7 @@ pub fn create_endpoint()
 
 pub type PacketByteId = Id<u8>;
 pub type PacketId = Id<PacketByteId>;
+pub type EventId = Id<u8>;
 pub type Timestamp = u64;
 pub type TransactionId = Id<PacketId>;
 pub type GroupId = Id<GroupIndexEntry>;
@@ -300,6 +311,7 @@ impl GroupIndexEntry {
     pub fn is_start(&self) -> bool {
         self._is_start() != 0
     }
+
     pub fn set_is_start(&mut self, value: bool) {
         self._set_is_start(value as u8)
     }
@@ -316,10 +328,17 @@ pub enum EndpointState {
 }
 
 pub const CONTROL_EP_NUM: EndpointNum = EndpointNum(0);
-pub const INVALID_EP_NUM: EndpointNum = EndpointNum(0x10);
-pub const FRAMING_EP_NUM: EndpointNum = EndpointNum(0x11);
-pub const INVALID_EP_ID: EndpointId = EndpointId::constant(0);
-pub const FRAMING_EP_ID: EndpointId = EndpointId::constant(1);
+pub const EVENT_EP_NUM:   EndpointNum = EndpointNum(0x10);
+pub const INVALID_EP_NUM: EndpointNum = EndpointNum(0x11);
+pub const FRAMING_EP_NUM: EndpointNum = EndpointNum(0x12);
+
+pub const EVENT_EP_ID:   EndpointId = EndpointId::constant(0);
+pub const INVALID_EP_ID: EndpointId = EndpointId::constant(1);
+pub const FRAMING_EP_ID: EndpointId = EndpointId::constant(2);
+pub const FIRST_EP_ID:   EndpointId = EndpointId::constant(3);
+
+pub const NUM_SPECIAL_DEVICES:   u64 = 1;
+pub const NUM_SPECIAL_ENDPOINTS: u64 = 3;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum EndpointType {
@@ -808,7 +827,6 @@ pub struct Group {
     pub range: Range<EndpointTransactionId>,
     pub count: u64,
     pub content: GroupContent,
-    pub is_start: bool,
 }
 
 pub enum GroupContent {
@@ -929,11 +947,11 @@ impl CaptureReader {
         Ok(self.endpoint_readers.get_mut(endpoint_id).unwrap())
     }
 
-    pub fn group_range(&mut self, entry: &GroupIndexEntry)
-        -> Result<Range<EndpointTransactionId>, Error>
-    {
-        let endpoint_id = entry.endpoint_id();
-        let ep_group_id = entry.group_id();
+    pub fn group_range(
+        &mut self,
+        endpoint_id: EndpointId,
+        ep_group_id: EndpointGroupId
+    ) -> Result<Range<EndpointTransactionId>, Error> {
         let ep_traf = self.endpoint_traffic(endpoint_id)?;
         ep_traf.group_index.target_range(
             ep_group_id, ep_traf.transaction_ids.len())
@@ -1111,15 +1129,17 @@ impl CaptureReader {
         })
     }
 
-    pub fn group(&mut self, group_id: GroupId) -> Result<Group, Error> {
-        let entry = self.group_index.get(group_id)?;
-        let endpoint_id = entry.endpoint_id();
+    pub fn group(
+        &mut self,
+        endpoint_id: EndpointId,
+        ep_group_id: EndpointGroupId,
+    ) -> Result<Group, Error> {
         let endpoint = self.endpoints.get(endpoint_id)?;
         let device_id = endpoint.device_id();
         let dev_data = self.device_data(device_id)?;
         let ep_addr = endpoint.address();
         let (endpoint_type, _) = dev_data.endpoint_details(ep_addr);
-        let range = self.group_range(&entry)?;
+        let range = self.group_range(endpoint_id, ep_group_id)?;
         let count = range.len();
         let content = match endpoint_type {
             EndpointType::Invalid => GroupContent::Invalid,
@@ -1134,7 +1154,6 @@ impl CaptureReader {
                 }
             },
             _ => {
-                let ep_group_id = entry.group_id();
                 let ep_traf = self.endpoint_traffic(endpoint_id)?;
                 let range = ep_traf.group_index.target_range(
                     ep_group_id, ep_traf.transaction_ids.len())?;
@@ -1169,7 +1188,6 @@ impl CaptureReader {
             range,
             count,
             content,
-            is_start: entry.is_start(),
         })
     }
 
@@ -1297,7 +1315,9 @@ pub mod prelude {
         Device,
         DeviceId,
         DeviceData,
+        DeviceVersion,
         Endpoint,
+        EndpointDataEvent,
         EndpointId,
         EndpointKey,
         EndpointType,
@@ -1306,16 +1326,23 @@ pub mod prelude {
         EndpointWriter,
         EndpointTransactionId,
         EndpointGroupId,
+        EventId,
         PacketId,
+        Timestamp,
         TrafficItemId,
         TransactionId,
         GroupId,
         Group,
         GroupContent,
         GroupIndexEntry,
+        EVENT_EP_NUM,
         INVALID_EP_NUM,
         FRAMING_EP_NUM,
+        EVENT_EP_ID,
         INVALID_EP_ID,
         FRAMING_EP_ID,
+        FIRST_EP_ID,
+        NUM_SPECIAL_DEVICES,
+        NUM_SPECIAL_ENDPOINTS,
     };
 }

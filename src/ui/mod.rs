@@ -76,20 +76,12 @@ use gtk::{
 use crate::backend::{
     BackendHandle,
     BackendStop,
+    TimestampedEvent,
     ProbeResult,
     scan
 };
 
-use crate::capture::{
-    create_capture,
-    CaptureReader,
-    CaptureWriter,
-    CaptureMetadata,
-    EndpointId,
-    EndpointDataEvent,
-    Group,
-    GroupContent,
-};
+use crate::capture::prelude::*;
 use crate::item::{
     ItemSource,
     TrafficItem,
@@ -949,8 +941,8 @@ pub fn update_view() -> Result<(), Error> {
         } else {
             let (devices, endpoints, transactions, packets) = {
                 let cap = &ui.capture;
-                let devices = cap.devices.len().saturating_sub(1);
-                let endpoints = cap.endpoints.len().saturating_sub(2);
+                let devices = cap.devices.len().saturating_sub(NUM_SPECIAL_DEVICES);
+                let endpoints = cap.endpoints.len().saturating_sub(NUM_SPECIAL_ENDPOINTS);
                 let transactions = cap.transaction_index.len();
                 let packets = cap.packet_index.len();
                 (devices, endpoints, transactions, packets)
@@ -1325,9 +1317,17 @@ pub fn start_capture() -> Result<(), Error> {
         let read_packets = move || {
             let mut decoder = Decoder::new(writer)?;
             for result in stream_handle {
-                let packet = result
+                let event = result
                     .context("Error processing raw capture data")?;
-                decoder.handle_raw_packet(&packet.bytes, packet.timestamp_ns)?;
+                use TimestampedEvent::*;
+                match event {
+                    Packet { timestamp_ns, bytes } =>
+                        decoder.handle_raw_packet(&bytes, timestamp_ns)
+                            .context("Error decoding packet")?,
+                    Event { timestamp_ns, event_type } =>
+                        decoder.handle_event(event_type, timestamp_ns)
+                            .context("Error handling event")?,
+                }
             }
             let writer = decoder.finish()?;
             writer.shared.metadata.update(|meta| {
@@ -1377,15 +1377,16 @@ fn traffic_context_menu(
 ) -> Result<Option<PopoverMenu>, Error> {
     use TrafficItem::*;
     Ok(match item {
-        TransactionGroup(group_id) => {
-            let group = capture.group(*group_id)?;
+        Event(..) => None,
+        TransactionGroup(_, endpoint_id, ep_group_id) |
+        TransactionGroupEnd(_, endpoint_id, ep_group_id) => {
+            let group = capture.group(*endpoint_id, *ep_group_id)?;
             match group {
                 Group {
                     endpoint_id,
                     content:
                         GroupContent::Data(data_range) |
                         GroupContent::Ambiguous(data_range, _),
-                    is_start: true,
                     ..
                 } => Some(
                     context_popover(
@@ -1397,7 +1398,6 @@ fn traffic_context_menu(
                 ),
                 Group {
                     content: GroupContent::Request(transfer),
-                    is_start: true,
                     ..
                 } => Some(
                     context_popover(

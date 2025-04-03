@@ -9,6 +9,7 @@ use anyhow::{Context, Error, bail};
 use merge::Merge;
 
 use crate::capture::prelude::*;
+use crate::event::EventType;
 use crate::usb::{self, prelude::*, validate_packet};
 use crate::util::{
     rcu::SingleWriterRcu,
@@ -540,9 +541,9 @@ impl Decoder {
         device_data.set(default_id, Arc::new(DeviceData::default()));
         decoder.device_index.set(default_addr, default_id);
 
-        // Add the special endpoints for invalid and framing packets.
+        // Add the special endpoints.
         let mut endpoint_readers = VecMap::new();
-        for ep_number in [INVALID_EP_NUM, FRAMING_EP_NUM] {
+        for ep_number in [EVENT_EP_NUM, INVALID_EP_NUM, FRAMING_EP_NUM] {
             let (writer, reader) = create_endpoint()?;
             let mut endpoint = Endpoint::default();
             endpoint.set_device_id(default_id);
@@ -576,7 +577,32 @@ impl Decoder {
         let data_range = self.capture.packet_data.append(packet)?;
         let packet_id = self.capture.packet_index.push(data_range.start)?;
         self.capture.packet_times.push(timestamp_ns)?;
+        if packet.is_empty() {
+            self.capture.event_index.push(packet_id)?;
+            self.capture.event_codes.push(&0)?;
+        }
         self.transaction_update(packet_id, packet)?;
+        Ok(())
+    }
+
+    pub fn handle_event(&mut self, event_type: EventType, timestamp_ns: u64)
+        -> Result<(), Error>
+    {
+        let packet_data_end = self.capture.packet_data.len().into();
+        let packet_id = self.capture.packet_index.push(packet_data_end)?;
+        self.capture.packet_times.push(timestamp_ns)?;
+        self.capture.event_index.push(packet_id)?;
+        self.capture.event_codes.push(&event_type.code())?;
+        self.transaction_end(false, false)?;
+        let transaction_id = self.capture.transaction_index.push(packet_id)?;
+        let ep_data = &mut self.endpoint_data[EVENT_EP_ID];
+        let ep_transaction_id =
+            ep_data.writer.transaction_ids.push(transaction_id)?;
+        let ep_group_id =
+            ep_data.writer.group_index.push(ep_transaction_id)?;
+        let group_start_id =
+            self.add_group_entry(EVENT_EP_ID, ep_group_id, true)?;
+        self.add_item(EVENT_EP_ID, group_start_id)?;
         Ok(())
     }
 

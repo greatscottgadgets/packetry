@@ -1,16 +1,10 @@
 //! Hardware-in-the loop test using a Cynthion USB analyzer.
 
-use crate::backend::{BackendHandle, Speed};
+use crate::backend::{BackendHandle, TimestampedEvent, Speed};
 use crate::backend::cynthion::{CynthionDevice, CynthionHandle, VID_PID};
-use crate::capture::{
-    create_capture,
-    CaptureReader,
-    DeviceId,
-    EndpointId,
-    EndpointGroupId,
-    PacketId,
-};
+use crate::capture::prelude::*;
 use crate::decoder::Decoder;
+use crate::event::{EventType, StopReason};
 use crate::file::{GenericSaver, PcapSaver};
 
 use anyhow::{Context, Error, bail, ensure};
@@ -26,28 +20,45 @@ const US: Duration = Duration::from_micros(1);
 const MS: Duration = Duration::from_millis(1);
 
 pub fn test_cynthion(save_captures: bool) {
-    for (name, speed, ep_addr, length, sof) in [
-        ("HS", Speed::High, 0x81, 4096, Some((124*US,  126*US))),
-        ("FS", Speed::Full, 0x82,  512, Some((995*US, 1005*US))),
-        ("LS", Speed::Low,  0x83,   64, None)]
-    {
-        if let Err(e) = test(save_captures, name, speed, ep_addr, length, sof) {
-            eprintln!("\nTest failed: {e}");
-            std::process::exit(1);
+    use Speed::*;
+
+    let speeds = [
+        (High, 0x81, 4096, Some((124*US,  126*US))),
+        (Full, 0x82,  512, Some((995*US, 1005*US))),
+        (Low,  0x83,   64, None),
+    ];
+
+    for (bus_speed, ep_addr, length, sof) in speeds {
+        for speed_selection in [bus_speed, Auto] {
+            if let Err(e) = test(
+                save_captures,
+                bus_speed,
+                speed_selection,
+                ep_addr,
+                length,
+                sof
+            ) {
+                eprintln!("\nTest failed: {e}");
+                std::process::exit(1);
+            }
         }
     }
 }
 
 fn test(save_capture: bool,
-        name: &str,
-        speed: Speed,
+        bus_speed: Speed,
+        speed_selection: Speed,
         ep_addr: u8,
         length: usize,
         sof: Option<(Duration, Duration)>)
     -> Result<(), Error>
 {
-    let desc = speed.description();
-    println!("\nTesting at {desc}:\n");
+    use EventType::*;
+    use StopReason::*;
+    use Speed::*;
+
+    println!("\nTesting capture at {} with {} speed selected:\n",
+             bus_speed.abbr(), speed_selection.abbr());
 
     // Create capture and decoder.
     let (writer, mut reader) = create_capture()
@@ -79,13 +90,13 @@ fn test(save_capture: bool,
     // Start capture.
     let analyzer_start_time = Instant::now();
     let (stream_handle, stop_handle) = analyzer
-        .start(speed, Box::new(|result|
+        .start(speed_selection, Box::new(|result|
             result.context("Failure in capture thread").unwrap()))
         .context("Failed to start analyzer")?;
 
     // Attempt to open and read data from the test device.
     let test_device_result = read_test_device(
-        &mut analyzer, speed, ep_addr, length);
+        &mut analyzer, bus_speed, ep_addr, length);
 
     // Stop analyzer.
     stop_handle.stop()
@@ -97,15 +108,23 @@ fn test(save_capture: bool,
 
     // Decode all packets that were received.
     for result in stream_handle {
-        let packet = result
+        let event = result
             .context("Error decoding raw capture data")?;
-        decoder.handle_raw_packet(&packet.bytes, packet.timestamp_ns)
-            .context("Error decoding packet")?;
+        use TimestampedEvent::*;
+        match event {
+            Packet { timestamp_ns, bytes } =>
+                decoder.handle_raw_packet(&bytes, timestamp_ns)
+                    .context("Error decoding packet")?,
+            Event { timestamp_ns, event_type } =>
+                decoder.handle_event(event_type, timestamp_ns)
+                    .context("Error handling event")?,
+        }
     }
 
     if save_capture {
         // Write the capture to a file.
-        let path = PathBuf::from(format!("./HITL-{name}.pcap"));
+        let path = PathBuf::from(format!("./HITL-{}-{}.pcap",
+            bus_speed.abbr(), speed_selection.abbr()));
         let file = File::create(path)?;
         let meta = reader.shared.metadata.load_full();
         let mut saver = PcapSaver::new(file, meta)?;
@@ -117,6 +136,76 @@ fn test(save_capture: bool,
         }
         saver.close()?;
     }
+
+    // Accepted event sequences for each test case.
+    let expected_events = match (bus_speed, speed_selection) {
+        (High, High) => vec![
+            vec![
+                CaptureStart(High),
+                BusReset,
+                DeviceChirp,
+                HostChirp,
+            ],
+        ],
+        (High, Auto) => vec![
+            vec![
+                CaptureStart(Full),
+                BusReset,
+                DeviceChirp,
+                HostChirp,
+                SpeedChange(High),
+            ]
+        ],
+        (Full, _) => vec![
+            vec![
+                CaptureStart(Full),
+                BusReset,
+            ],
+        ],
+        (Low, Low) => vec![
+            vec![
+                CaptureStart(Low),
+                BusReset,
+            ],
+        ],
+        (Low, Auto) => vec![
+            vec![
+                CaptureStart(Auto),
+                BusReset,
+                SpeedChange(Low)
+            ],
+            vec![
+                CaptureStart(Low),
+            ],
+        ],
+        _ => unreachable!(),
+    };
+
+    'sequence: for expected_sequence in expected_events.iter() {
+        for (i, expected_event) in expected_sequence.iter().enumerate() {
+            let item_id = TrafficItemId::from(i as u64);
+            let group_id = reader.item_index.get(item_id)?;
+            let entry = reader.group_index.get(group_id)?;
+            let event_id = EventId::from(i as u64);
+            let event_code = reader.event_codes.get(event_id)?;
+            let event_type = EventType::from_code(event_code);
+            assert!(entry.endpoint_id() == EVENT_EP_ID);
+            assert_eq!(entry.group_id().value, event_id.value);
+            let expected = Some(expected_event).cloned();
+            if i == 0 {
+                let packet_id = reader.event_index.get(event_id)?;
+                let start_time = reader.packet_times.get(packet_id)?;
+                assert_eq!(start_time, 0);
+                if event_type != expected {
+                    // Try the next possible sequence instead.
+                    continue 'sequence;
+                }
+            } else {
+                assert_eq!(event_type, expected);
+            }
+            println!("Found event: {expected_event}");
+        }
+    };
 
     // Look for the test device in the capture.
     let device_id = DeviceId::from(1);
@@ -138,9 +227,9 @@ fn test(save_capture: bool,
     if let Some((min_interval, max_interval)) = sof {
         println!("Checking SOF timestamp intervals");
         // Check SOF timestamps have the expected spacing.
-        // SOF packets are assigned to endpoint ID 1.
+        // SOF packets are assigned to a special endpoint.
+        let endpoint_id = FRAMING_EP_ID;
         // We're looking for the first and only transfer on the endpoint.
-        let endpoint_id = EndpointId::from(1);
         let ep_group_id = EndpointGroupId::from(0);
         let ep_traf = reader.endpoint_traffic(endpoint_id)?;
         let ep_transaction_ids = ep_traf
@@ -197,6 +286,17 @@ fn test(save_capture: bool,
         ensure!(sof_count <= max_count, "Too many SOF packets captured");
     }
 
+    // Look for the stop event.
+    let item_count = reader.item_index.len();
+    let stop_item_id = TrafficItemId::from(item_count - 1);
+    let stop_transfer_id = reader.item_index.get(stop_item_id)?;
+    let stop_entry = reader.group_index.get(stop_transfer_id)?;
+    assert!(stop_entry.endpoint_id() == EVENT_EP_ID);
+    let event_id = EventId::from(stop_entry.group_id().value);
+    let event_type = EventType::from_code(reader.event_codes.get(event_id)?);
+    assert_eq!(event_type, Some(CaptureStop(Requested)));
+    println!("Found stop event in capture");
+
     Ok(())
 }
 
@@ -235,12 +335,11 @@ fn read_test_device(
 }
 
 fn bytes_on_endpoint(reader: &mut CaptureReader) -> Result<Vec<u8>, Error> {
-    // Endpoint IDs 0 and 1 are special (used for invalid and framing packets).
-    // Endpoint 2 will be the control endpoint for device zero.
-    // Endpoint 3 wil be the control endpoint for the test device.
-    
-    // The first normal endpoint in the capture will have endpoint ID 4.
-    let endpoint_id = EndpointId::from(4);
+    // The endpoints in the capture, in order, should be:
+    // - The control endpoint for address zero
+    // - The control endpoint for the test device
+    // - The data endpoint for the test device: this is the one we want.
+    let endpoint_id = FIRST_EP_ID + 2;
     // We're looking for the first and only transfer on the endpoint.
     let ep_group_id = EndpointGroupId::from(0);
     let ep_traf = reader.endpoint_traffic(endpoint_id)?;
@@ -254,4 +353,16 @@ fn bytes_on_endpoint(reader: &mut CaptureReader) -> Result<Vec<u8>, Error> {
         .unwrap();
     let data = reader.transfer_bytes(endpoint_id, &data_range, data_length)?;
     Ok(data)
+}
+
+impl Speed {
+    pub fn abbr(&self) -> &'static str {
+        use Speed::*;
+        match self {
+            Auto => "Auto",
+            High => "HS",
+            Full => "FS",
+            Low => "LS",
+        }
+    }
 }
