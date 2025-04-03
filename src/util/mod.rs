@@ -8,6 +8,7 @@ use humansize::{SizeFormatter, BINARY};
 use itertools::Itertools;
 
 pub mod id;
+pub mod dump;
 pub mod vec_map;
 pub mod rcu;
 

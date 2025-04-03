@@ -10,7 +10,7 @@
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::cmp::min;
 use std::fs::File;
-use std::io::Write;
+use std::io::{Read, Write, Seek, SeekFrom};
 use std::ops::{Deref, Range};
 use std::ptr::copy_nonoverlapping;
 use std::slice;
@@ -22,6 +22,8 @@ use arc_swap::{ArcSwap, ArcSwapOption};
 use lrumap::{LruMap, LruBTreeMap};
 use memmap2::{Mmap, MmapOptions};
 use tempfile::tempfile;
+
+use crate::util::dump::Dump;
 
 /// Minimum block size, defined by largest minimum page size on target systems.
 pub const MIN_BLOCK: usize = 0x4000; // 16KB (Apple M1/M2)
@@ -422,6 +424,94 @@ impl<const S: usize> Clone for StreamReader<S> {
                 new_mappings
             }
         }
+    }
+}
+
+impl<const BLOCK_SIZE: usize> Dump for StreamReader<BLOCK_SIZE> {
+    fn dump(&self, dest: &std::path::Path) -> Result<(), Error> {
+
+        // Get the length of the stream at this moment.
+        let total_length = self.len();
+
+        // Take our own reference to the current write buffer.
+        let buffer = self.shared.current_buffer.load_full();
+
+        // Work out the number of bytes that may still be in the buffer.
+        let buffered_length = (total_length - buffer.block_base) as usize;
+
+        // Create the output file.
+        let mut dest_file = File::create(dest)?;
+
+        // Work out how much to copy from the file, and how much from the buffer.
+        let (from_file, from_buffer) = match self.shared.file.load().clone() {
+            None => {
+                // A backing file was not created yet. Just copy from the buffer.
+                (None, Some(buffered_length))
+            },
+            Some(src_file) if total_length < buffer.block_base => {
+                // The buffer was swapped between us checking the length and
+                // taking a reference to the buffer. The buffer we have is
+                // irrelevant to the length we sampled. All data up to that
+                // length is already in the backing file.
+                (Some((src_file, total_length)), None)
+            },
+            Some(src_file) => {
+                // Everything before this buffer is in the backing file.
+                // The rest of the data is in the buffer.
+                (Some((src_file, buffer.block_base)), Some(buffered_length))
+            }
+        };
+
+        if let Some((src_file, length)) = from_file {
+            // Write data to output from the file.
+            let file = src_file.deref();
+            let mmap = unsafe {
+                MmapOptions::new()
+                    .offset(0)
+                    .len(length.try_into()?)
+                    .map(file)
+            }.context("Failed mapping stream file")?;
+            dest_file.write_all(&mmap)?;
+        }
+
+        if let Some(length) = from_buffer {
+            // Write data to output from the buffer.
+            let buffered_data = Data::Buffered(buffer, 0..length);
+            dest_file.write_all(&buffered_data)?;
+        }
+
+        Ok(())
+    }
+
+    fn restore(src: &std::path::Path) -> Result<Self, Error> {
+        // Open the file and get total stream length from its length.
+        let mut file = File::open(src)?;
+        let total_length = src.metadata()?.len();
+
+        // Data in an incomplete block should be restored into a buffer.
+        let mask = Self::block_mask() as u64;
+        let buffered_length = total_length & mask;
+        let block_base = total_length & !mask;
+        let buffer = Buffer::new(block_base)?;
+
+        // Read data from the incomplete block into the buffer.
+        let inner_buffer: &mut [u8] = unsafe {
+            // Safety: Buffer::new allocates the buffer with this size.
+            slice::from_raw_parts_mut(buffer.ptr, Self::block_size())
+        };
+        file.seek(SeekFrom::Start(block_base))?;
+        file.read_exact(&mut inner_buffer[0..buffered_length as usize])?;
+
+        // Reconstruct the stream.
+        let shared = Arc::new(Shared {
+            length: AtomicU64::from(total_length),
+            file: ArcSwapOption::new(Some(Arc::new(file))),
+            current_buffer: ArcSwap::new(Arc::new(buffer)),
+        });
+        Ok(StreamReader {
+            shared,
+            mappings: LruBTreeMap::new(MAP_CACHE_PER_READER),
+        })
     }
 }
 
