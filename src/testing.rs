@@ -4,7 +4,7 @@ use crate::backend::{BackendHandle, TimestampedEvent, Speed};
 use crate::backend::cynthion::{CynthionDevice, CynthionHandle, VID_PID};
 use crate::capture::prelude::*;
 use crate::decoder::Decoder;
-use crate::event::{EventType, StopReason};
+use crate::event::{EventType, StopReason, LineState};
 use crate::file::{GenericSaver, PcapSaver};
 
 use anyhow::{Context, Error, bail, ensure};
@@ -56,6 +56,7 @@ fn test(save_capture: bool,
     use EventType::*;
     use StopReason::*;
     use Speed::*;
+    use LineState::*;
 
     println!("\nTesting capture at {} with {} speed selected:\n",
              bus_speed.abbr(), speed_selection.abbr());
@@ -143,16 +144,41 @@ fn test(save_capture: bool,
             vec![
                 CaptureStart(High),
                 BusReset,
-                DeviceChirp,
-                HostChirp,
+                LineStateChange(ChirpK),
+                DeviceChirpValid,
+                LineStateChange(SE0),
+                LineStateChange(ChirpK),
+                LineStateChange(SE0),
+                LineStateChange(ChirpJ),
+                LineStateChange(SE0),
+                LineStateChange(ChirpK),
+                LineStateChange(SE0),
+                LineStateChange(ChirpJ),
+                LineStateChange(SE0),
+                LineStateChange(ChirpK),
+                LineStateChange(SE0),
+                LineStateChange(ChirpJ),
+                HostChirpValid,
             ],
         ],
         (High, Auto) => vec![
             vec![
                 CaptureStart(Full),
                 BusReset,
-                DeviceChirp,
-                HostChirp,
+                LineStateChange(ChirpK),
+                LineStateChange(SE0),
+                LineStateChange(ChirpK),
+                LineStateChange(SE0),
+                LineStateChange(ChirpJ),
+                LineStateChange(SE0),
+                LineStateChange(ChirpK),
+                LineStateChange(SE0),
+                LineStateChange(ChirpJ),
+                LineStateChange(SE0),
+                LineStateChange(ChirpK),
+                LineStateChange(SE0),
+                LineStateChange(ChirpJ),
+                HostChirpValid,
                 SpeedChange(High),
             ]
         ],

@@ -12,16 +12,37 @@ pub enum EventType {
     SpeedChange(Speed),
     /// VBUS presence changed.
     VbusChange(bool),
-    /// Bus reset was detected.
-    BusReset,
-    /// Device HS chirp was detected.
-    DeviceChirp,
-    /// Host HS chirp was detected.
-    HostChirp,
     /// Suspend state changed.
     SuspendChange(bool),
     /// Capture stopped for the specified reason.
     CaptureStop(StopReason),
+    /// Bus reset was detected.
+    BusReset,
+    /// Device HS chirp was validated.
+    DeviceChirpValid,
+    /// Host HS chirp was validated.
+    HostChirpValid,
+    /// Line state change.
+    LineStateChange(LineState),
+}
+
+/// USB line states
+#[derive(Clone, Debug, PartialEq)]
+pub enum LineState {
+    /// Single-ended 0: both D+ and D- at 0V.
+    SE0,
+    /// Chirp differential 1, i.e. J-state at ~0.6-0.8V.
+    ChirpJ,
+    /// Chirp differential 0, i.e. K-state at ~0.6-0.8V.
+    ChirpK,
+    /// Chirp single-ended 1, i.e. both D+ and D- at ~0.6-0.8V.
+    ChirpSE1,
+    /// Differential 1 at 3.3V, i.e. FS J or LS K state.
+    DR1,
+    /// Differential 0 at 3.3V, i.e. FS K or LS J state.
+    DR0,
+    /// Single-ended 1 at 3.3V.
+    SE1,
 }
 
 /// A reason for stopping the capture.
@@ -35,11 +56,13 @@ pub enum StopReason {
     Error,
 }
 
+use EventType::*;
+use StopReason::*;
+use Speed::*;
+use LineState::*;
+
 impl std::fmt::Display for EventType {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        use EventType::*;
-        use StopReason::*;
-        use Speed::*;
         f.write_str(match self {
             CaptureStop(Requested) => "Capture stopped by request",
             CaptureStop(BufferFull) => "Capture stopped due to full buffer",
@@ -57,43 +80,51 @@ impl std::fmt::Display for EventType {
             SuspendChange(false) => "USB suspend ended",
             SuspendChange(true) => "USB suspend started",
             BusReset => "Bus reset detected",
-            DeviceChirp => "Device HS chirp detected",
-            HostChirp => "Host HS chirp detected",
+            DeviceChirpValid => "Device HS chirp validated",
+            HostChirpValid => "Host HS chirp validated",
+            LineStateChange(SE0)  => "SE0 line state detected",
+            LineStateChange(ChirpJ) => "Chirp J state detected",
+            LineStateChange(ChirpK) => "Chirp K state detected",
+            LineStateChange(ChirpSE1) => "Chirp SE1 state detected",
+            LineStateChange(DR1) => "FS J or LS K state detected",
+            LineStateChange(DR0) => "FS K or LS J state detected",
+            LineStateChange(SE1) => "SE1 line state detected",
         })
     }
 }
 
 impl EventType {
     pub fn code(&self) -> u8 {
-        use EventType::*;
-        use StopReason::*;
-        use Speed::*;
         match self {
-            CaptureStop(Requested)  => 1,
-            CaptureStop(BufferFull) => 2,
-            CaptureStop(Error)      => 3,
-            CaptureStart(High)      => 4,
-            CaptureStart(Full)      => 5,
-            CaptureStart(Low)       => 6,
-            CaptureStart(Auto)      => 7,
-            SpeedChange(High)       => 8,
-            SpeedChange(Full)       => 9,
-            SpeedChange(Low)        => 10,
-            SpeedChange(Auto)       => 11,
-            VbusChange(false)       => 12,
-            VbusChange(true)        => 13,
-            SuspendChange(false)    => 14,
-            SuspendChange(true)     => 15,
-            BusReset                => 16,
-            DeviceChirp             => 17,
-            HostChirp               => 18,
+            CaptureStop(Requested)    => 1,
+            CaptureStop(BufferFull)   => 2,
+            CaptureStop(Error)        => 3,
+            CaptureStart(High)        => 4,
+            CaptureStart(Full)        => 5,
+            CaptureStart(Low)         => 6,
+            CaptureStart(Auto)        => 7,
+            SpeedChange(High)         => 8,
+            SpeedChange(Full)         => 9,
+            SpeedChange(Low)          => 10,
+            SpeedChange(Auto)         => 11,
+            VbusChange(false)         => 12,
+            VbusChange(true)          => 13,
+            SuspendChange(false)      => 14,
+            SuspendChange(true)       => 15,
+            BusReset                  => 16,
+            DeviceChirpValid          => 17,
+            HostChirpValid            => 18,
+            LineStateChange(SE0)      => 19,
+            LineStateChange(ChirpJ)   => 20,
+            LineStateChange(ChirpK)   => 21,
+            LineStateChange(ChirpSE1) => 22,
+            LineStateChange(DR1)      => 23,
+            LineStateChange(DR0)      => 24,
+            LineStateChange(SE1)      => 25,
         }
     }
 
     pub fn from_code(code: u8) -> Option<Self> {
-        use EventType::*;
-        use StopReason::*;
-        use Speed::*;
         Some(match code {
             1  => CaptureStop(Requested),
             2  => CaptureStop(BufferFull),
@@ -111,8 +142,15 @@ impl EventType {
             14 => SuspendChange(false),
             15 => SuspendChange(true),
             16 => BusReset,
-            17 => DeviceChirp,
-            18 => HostChirp,
+            17 => DeviceChirpValid,
+            18 => HostChirpValid,
+            19 => LineStateChange(SE0),
+            20 => LineStateChange(ChirpJ),
+            21 => LineStateChange(ChirpK),
+            22 => LineStateChange(ChirpSE1),
+            23 => LineStateChange(DR1),
+            24 => LineStateChange(DR0),
+            25 => LineStateChange(SE1),
             _ => return None
         })
     }
