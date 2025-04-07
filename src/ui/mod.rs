@@ -39,6 +39,7 @@ use gtk::{
     Application,
     ApplicationWindow,
     Button,
+    Builder,
     Dialog,
     DialogFlags,
     DropDown,
@@ -51,6 +52,7 @@ use gtk::{
     ColumnViewColumn,
     MenuButton,
     MessageType,
+    Paned,
     PopoverMenu,
     ProgressBar,
     ResponseType,
@@ -58,13 +60,10 @@ use gtk::{
     Separator,
     SignalListItemFactory,
     SingleSelection,
-    Stack,
-    StackSwitcher,
     StringList,
     TextBuffer,
     TextView,
     Orientation,
-    WrapMode,
 };
 
 #[cfg(not(test))]
@@ -180,37 +179,18 @@ struct DeviceSelector {
     dev_dropdown: DropDown,
     speed_dropdown: DropDown,
     change_handler: Option<SignalHandlerId>,
-    container: gtk::Box,
 }
 
 impl DeviceSelector {
-    fn new() -> Result<Self, Error> {
-        let selector = DeviceSelector {
+    fn new(builder: &Builder) -> Result<Self, Error> {
+        Ok(DeviceSelector {
             devices: vec![],
             dev_strings: vec![],
             dev_speeds: vec![],
-            dev_dropdown: DropDown::from_strings(&[]),
-            speed_dropdown: DropDown::from_strings(&[]),
+            dev_dropdown: builder.object::<DropDown>("dev_dropdown").unwrap(),
+            speed_dropdown: builder.object::<DropDown>("speed_dropdown").unwrap(),
             change_handler: None,
-            container: gtk::Box::builder()
-                .orientation(Orientation::Horizontal)
-                .build()
-        };
-        let device_label = Label::builder()
-            .label("Device: ")
-            .margin_start(2)
-            .margin_end(2)
-            .build();
-        let speed_label = Label::builder()
-            .label(" Speed: ")
-            .margin_start(2)
-            .margin_end(2)
-            .build();
-        selector.container.append(&device_label);
-        selector.container.append(&selector.dev_dropdown);
-        selector.container.append(&speed_label);
-        selector.container.append(&selector.speed_dropdown);
-        Ok(selector)
+        })
     }
 
     fn current_device(&self) -> Option<&ProbeResult> {
@@ -425,12 +405,11 @@ macro_rules! button_action {
 pub fn activate(application: &Application) -> Result<(), Error> {
     use FileAction::*;
 
-    let window = gtk::ApplicationWindow::builder()
-        .default_width(320)
-        .default_height(480)
-        .application(application)
-        .title("Packetry")
-        .build();
+    let ui_src = include_str!("packetry.ui");
+    let builder = gtk::Builder::from_string(ui_src);
+
+    let window = builder.object::<ApplicationWindow>("window").unwrap();
+    window.set_application(Some(application));
 
     window.add_action_entries([
         button_action!("open", open_button, choose_capture_file(Load)),
@@ -458,39 +437,17 @@ pub fn activate(application: &Application) -> Result<(), Error> {
         application.set_accels_for_action("win.stop", &["<Meta>e"]);
     }
 
-    let action_bar = gtk::ActionBar::new();
-
-    let open_button = gtk::Button::builder()
-        .icon_name("document-open")
-        .tooltip_text("Open")
-        .action_name("win.open")
-        .build();
-    let save_button = gtk::Button::builder()
-        .icon_name("document-save")
-        .tooltip_text("Save")
-        .action_name("win.save")
-        .build();
-    let scan_button = gtk::Button::builder()
-        .icon_name("view-refresh")
-        .tooltip_text("Scan for devices")
-        .action_name("win.scan")
-        .build();
-    let capture_button = gtk::Button::builder()
-        .icon_name("media-record")
-        .tooltip_text("Capture")
-        .action_name("win.capture")
-        .build();
-    let stop_button = gtk::Button::builder()
-        .icon_name("media-playback-stop")
-        .tooltip_text("Stop")
-        .action_name("win.stop")
-        .build();
+    let open_button = builder.object::<Button>("open_button").unwrap();
+    let save_button = builder.object::<Button>("save_button").unwrap();
+    let scan_button = builder.object::<Button>("scan_button").unwrap();
+    let capture_button = builder.object::<Button>("capture_button").unwrap();
+    let stop_button = builder.object::<Button>("stop_button").unwrap();
 
     open_button.set_sensitive(true);
     save_button.set_sensitive(false);
     scan_button.set_sensitive(true);
 
-    let selector = DeviceSelector::new()?;
+    let selector = DeviceSelector::new(&builder)?;
     capture_button.set_sensitive(selector.device_available());
 
     let menu = Menu::new();
@@ -498,9 +455,8 @@ pub fn activate(application: &Application) -> Result<(), Error> {
     let about_item = MenuItem::new(Some("About..."), Some("actions.about"));
     menu.append_item(&meta_item);
     menu.append_item(&about_item);
-    let menu_button = MenuButton::builder()
-        .menu_model(&menu)
-        .build();
+    let menu_button = builder.object::<MenuButton>("menu_button").unwrap();
+    menu_button.set_menu_model(Some(&menu));
     let action_group = SimpleActionGroup::new();
     let action_metadata = ActionEntry::builder("metadata")
         .activate(|_, _, _| display_error(show_metadata()))
@@ -513,15 +469,6 @@ pub fn activate(application: &Application) -> Result<(), Error> {
     let metadata_action = action_group.lookup_action("metadata").unwrap();
     metadata_action.set_property("enabled", false);
 
-    action_bar.pack_start(&open_button);
-    action_bar.pack_start(&save_button);
-    action_bar.pack_start(&gtk::Separator::new(Orientation::Vertical));
-    action_bar.pack_start(&scan_button);
-    action_bar.pack_start(&capture_button);
-    action_bar.pack_start(&stop_button);
-    action_bar.pack_start(&selector.container);
-    action_bar.pack_end(&menu_button);
-
     let warning = DeviceWarning::new();
     warning.update(selector.device_unusable());
 
@@ -532,73 +479,14 @@ pub fn activate(application: &Application) -> Result<(), Error> {
     let (_, capture) = create_capture()?;
 
     let mut traffic_windows = BTreeMap::new();
-
-    let traffic_stack = Stack::builder()
-        .vexpand(true)
-        .build();
-
     for mode in TRAFFIC_MODES {
-        let window = gtk::ScrolledWindow::builder()
-            .hscrollbar_policy(gtk::PolicyType::Automatic)
-            .min_content_height(480)
-            .min_content_width(640)
-            .build();
-        traffic_windows
-            .insert(mode, window.clone());
-        traffic_stack
-            .add_child(&window)
-            .set_title(mode.display_name());
+        let window = builder.object::<ScrolledWindow>(mode.id()).unwrap();
+        traffic_windows.insert(mode, window.clone());
     }
 
-    let traffic_stack_switcher = StackSwitcher::builder()
-        .stack(&traffic_stack)
-        .build();
-
-    let traffic_box = gtk::Box::builder()
-        .orientation(Orientation::Vertical)
-        .vexpand(true)
-        .build();
-
-    traffic_box.append(&traffic_stack_switcher);
-    traffic_box.append(&traffic_stack);
-
-    let device_window = gtk::ScrolledWindow::builder()
-        .hscrollbar_policy(gtk::PolicyType::Automatic)
-        .min_content_height(480)
-        .min_content_width(240)
-        .build();
-
-    let detail_text = gtk::TextBuffer::new(None);
-    let detail_view = gtk::TextView::builder()
-        .buffer(&detail_text)
-        .editable(false)
-        .wrap_mode(WrapMode::Word)
-        .vexpand(true)
-        .left_margin(5)
-        .build();
-
-    let detail_window = gtk::ScrolledWindow::builder()
-        .hscrollbar_policy(gtk::PolicyType::Automatic)
-        .min_content_width(640)
-        .min_content_height(120)
-        .child(&detail_view)
-        .build();
-
-    let horizontal_panes = gtk::Paned::builder()
-        .orientation(Orientation::Horizontal)
-        .wide_handle(true)
-        .start_child(&traffic_box)
-        .end_child(&device_window)
-        .vexpand(true)
-        .build();
-
-    let vertical_panes = gtk::Paned::builder()
-        .orientation(Orientation::Vertical)
-        .wide_handle(true)
-        .start_child(&horizontal_panes)
-        .end_child(&detail_window)
-        .hexpand(true)
-        .build();
+    let device_window = builder.object::<ScrolledWindow>("device_window").unwrap();
+    let detail_text = builder.object::<TextBuffer>("detail_text").unwrap();
+    let vertical_panes = builder.object::<Paned>("vertical_panes").unwrap();
 
     let separator = gtk::Separator::new(Orientation::Horizontal);
 
@@ -608,31 +496,8 @@ pub fn activate(application: &Application) -> Result<(), Error> {
         .hexpand(true)
         .build();
 
-    let status_label = gtk::Label::builder()
-        .label("Ready")
-        .single_line_mode(true)
-        .halign(Align::Start)
-        .hexpand(true)
-        .margin_top(2)
-        .margin_bottom(2)
-        .margin_start(3)
-        .margin_end(3)
-        .build();
-
-    let vbox = gtk::Box::builder()
-        .orientation(Orientation::Vertical)
-        .build();
-
-    vbox.append(&action_bar);
-    vbox.append(&gtk::Separator::new(Orientation::Horizontal));
-    vbox.append(&warning.info_bar);
-    vbox.append(&gtk::Separator::new(Orientation::Horizontal));
-    vbox.append(&vertical_panes);
-    vbox.append(&gtk::Separator::new(Orientation::Horizontal));
-    vbox.append(&status_label);
-    vbox.append(&gtk::Separator::new(Orientation::Horizontal));
-
-    window.set_child(Some(&vbox));
+    let status_label = builder.object::<Label>("status_label").unwrap();
+    let vbox = builder.object::<gtk::Box>("vbox").unwrap();
 
     UI.with(|cell| {
         cell.borrow_mut().replace(
@@ -878,7 +743,7 @@ pub fn reset_capture() -> Result<CaptureWriter, Error> {
                     mode,
                     traffic_context_menu,
                     #[cfg(any(test, feature="record-ui-test"))]
-                    (&ui.recording, mode.log_name())
+                    (&ui.recording, mode.id())
                 );
             ui.traffic_windows[&mode].set_child(Some(&traffic_view));
             ui.traffic_models.insert(mode, traffic_model.clone());

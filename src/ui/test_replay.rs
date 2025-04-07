@@ -200,8 +200,8 @@ fn set_expanded(ui: &mut UserInterface,
             model.set_expanded(&node, position, expanded)
                 .expect("Failed to expand/collapse item");
         },
-        log_name => {
-            let mode = TrafficViewMode::from_log_name(log_name);
+        id => {
+            let mode = TrafficViewMode::from_id(id);
             let model = ui.traffic_models
                 .get(&mode)
                 .expect("UI has no traffic model");

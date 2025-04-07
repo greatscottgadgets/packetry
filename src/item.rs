@@ -127,17 +127,7 @@ pub enum TrafficViewMode {
 }
 
 impl TrafficViewMode {
-    pub const fn display_name(&self) -> &'static str {
-        use TrafficViewMode::*;
-        match self {
-            Hierarchical => "Hierarchical",
-            Transactions => "Transactions",
-            Packets      => "Packets",
-        }
-    }
-
-    #[cfg(any(test, feature="record-ui-test"))]
-    pub const fn log_name(&self) -> &'static str {
+    pub const fn id(&self) -> &'static str {
         use TrafficViewMode::*;
         match self {
             Hierarchical => "traffic-hierarchical",
@@ -147,13 +137,13 @@ impl TrafficViewMode {
     }
 
     #[cfg(test)]
-    pub fn from_log_name(log_name: &str) -> TrafficViewMode {
+    pub fn from_id(id: &str) -> TrafficViewMode {
         use TrafficViewMode::*;
-        match log_name {
+        match id {
             "traffic-hierarchical" => Hierarchical,
             "traffic-transactions" => Transactions,
             "traffic-packets"      => Packets,
-            _ => panic!("Unrecognised log name '{log_name}'")
+            _ => panic!("Unrecognised id '{id}'")
         }
     }
 }
