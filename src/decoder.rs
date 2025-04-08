@@ -597,6 +597,17 @@ impl Decoder {
     pub fn handle_event(&mut self, event_type: EventType, timestamp_ns: u64)
         -> Result<(), Error>
     {
+        // Any bus event causes all existing transaction groups to end.
+        let endpoint_count = self.capture.endpoints.len();
+        for i in 0..endpoint_count {
+            let endpoint_id = EndpointId::from(i);
+            let ep_data = &mut self.endpoint_data[endpoint_id];
+            if let Some(group) = ep_data.active.take() {
+                let ep_group_id = group.id;
+                ep_data.ended = Some(ep_group_id);
+            }
+        }
+
         let packet_data_end = self.capture.packet_data.len().into();
         let packet_id = self.capture.packet_index.push(packet_data_end)?;
         self.capture.packet_times.push(timestamp_ns)?;
@@ -1111,13 +1122,15 @@ impl Decoder {
         for i in 0..endpoint_count {
             use EndpointState::*;
             self.last_endpoint_state[i] = {
+                let event = endpoint_id == EVENT_EP_ID;
                 let same = i == endpoint_id.value as usize;
                 let last = EndpointState::from(self.last_endpoint_state[i]);
-                match (same, start, last) {
-                    (true, true,  _)               => Starting,
-                    (true, false, _)               => Ending,
-                    (false, _, Starting | Ongoing) => Ongoing,
-                    (false, _, Ending | Idle)      => Idle,
+                match (same, event, start, last) {
+                    (true,  _,     true,  _                 ) => Starting,
+                    (true,  _,     false, _                 ) => Ending,
+                    (false, true,  _,     Starting | Ongoing) => Ending,
+                    (false, false, _,     Starting | Ongoing) => Ongoing,
+                    (false, _,     _,     Ending | Idle     ) => Idle,
                 }
             } as u8;
         }
