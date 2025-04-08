@@ -9,7 +9,7 @@ use anyhow::{Context, Error, bail};
 use merge::Merge;
 
 use crate::capture::prelude::*;
-use crate::event::EventType;
+use crate::event::{EventType, LineState};
 use crate::usb::{self, prelude::*, validate_packet};
 use crate::util::{
     rcu::SingleWriterRcu,
@@ -512,6 +512,17 @@ impl EndpointData {
     }
 }
 
+#[derive(Copy, Clone)]
+enum EventState {
+    Idle,
+    AwaitDeviceChirp,
+    PartialDeviceChirp,
+    ValidDeviceChirp,
+    AwaitHostChirp,
+    PartialHostChirp,
+    ValidHostChirp,
+}
+
 pub struct Decoder {
     capture: CaptureWriter,
     device_index: VecMap<DeviceAddr, DeviceId>,
@@ -519,6 +530,7 @@ pub struct Decoder {
     last_endpoint_state: Vec<u8>,
     last_item_endpoint: Option<EndpointId>,
     transaction_state: Option<TransactionState>,
+    event_state: EventState,
 }
 
 impl Decoder {
@@ -531,6 +543,7 @@ impl Decoder {
             last_endpoint_state: Vec::new(),
             last_item_endpoint: None,
             transaction_state: None,
+            event_state: EventState::Idle,
         };
 
         // Add the default device.
@@ -589,16 +602,7 @@ impl Decoder {
         self.capture.packet_times.push(timestamp_ns)?;
         self.capture.event_index.push(packet_id)?;
         self.capture.event_codes.push(&event_type.code())?;
-        self.transaction_end(false, false)?;
-        let transaction_id = self.capture.transaction_index.push(packet_id)?;
-        let ep_data = &mut self.endpoint_data[EVENT_EP_ID];
-        let ep_transaction_id =
-            ep_data.writer.transaction_ids.push(transaction_id)?;
-        let ep_group_id =
-            ep_data.writer.group_index.push(ep_transaction_id)?;
-        let group_start_id =
-            self.add_group_entry(EVENT_EP_ID, ep_group_id, true)?;
-        self.add_item(EVENT_EP_ID, group_start_id)?;
+        self.event_update(packet_id, event_type)?;
         Ok(())
     }
 
@@ -610,6 +614,87 @@ impl Decoder {
         self.transaction_end(false, false)?;
         self.capture.shared.complete.store(true, Release);
         Ok(self.capture)
+    }
+
+    fn event_update(&mut self, packet_id: PacketId, event_type: EventType)
+        -> Result<(), Error>
+    {
+        use EventState::*;
+        use EventType::*;
+        use LineState::*;
+        self.event_state = match (self.event_state, event_type) {
+            // If we see a bus reset, treat it as a single event and await a device chirp.
+            (_, BusReset) => {
+                self.event_single(packet_id)?;
+                AwaitDeviceChirp
+            },
+            // A Chirp K starts the device chirp when we're waiting for it.
+            (AwaitDeviceChirp, LineStateChange(ChirpK)) => {
+                // This starts a new top-level group for HS negotiation.
+                self.event_group_start(packet_id)?;
+                PartialDeviceChirp
+            },
+            // SE0 before the device chirp is valid returns us to awaiting one.
+            (PartialDeviceChirp, LineStateChange(SE0)) => AwaitDeviceChirp,
+            // Update state when the device chirp is validated.
+            (PartialDeviceChirp, DeviceChirpValid) => ValidDeviceChirp,
+            // SE0 ends a complete device chirp and we await the host chirp.
+            (ValidDeviceChirp, LineStateChange(SE0)) => AwaitHostChirp,
+            // A Chirp K starts the host chirp when we're waiting for it.
+            (AwaitHostChirp, LineStateChange(ChirpK)) => {
+                // This starts a new subgroup for the host chirp.
+                self.event_subgroup_start(packet_id)?;
+                PartialHostChirp
+            },
+            // Update state when the host chirp is validated.
+            (PartialHostChirp, HostChirpValid) => ValidHostChirp,
+            // Maintain host chirp states during Chirp J/K/SE0 transitions.
+            (PartialHostChirp, LineStateChange(SE0|ChirpJ|ChirpK)) => PartialHostChirp,
+            (ValidHostChirp,   LineStateChange(SE0|ChirpJ|ChirpK)) => ValidHostChirp,
+            // Any other event is , and returns us to the idle state.
+            _ => {
+                self.event_single(packet_id)?;
+                Idle
+            }
+        };
+        Ok(())
+    }
+
+    fn event_single(&mut self, packet_id: PacketId) -> Result<(), Error> {
+        self.event_add_group(packet_id, false)
+    }
+
+    fn event_group_start(&mut self, packet_id: PacketId) -> Result<(), Error> {
+        self.event_add_group(packet_id, true)
+    }
+
+    fn event_subgroup_start(&mut self, packet_id: PacketId) -> Result<(), Error> {
+        let transaction_id = self.event_add_subgroup(packet_id)?;
+        let ep_data = &mut self.endpoint_data[EVENT_EP_ID];
+        ep_data.writer.transaction_ids.push(transaction_id)?;
+        Ok(())
+    }
+
+    fn event_add_group(&mut self, packet_id: PacketId, start: bool)
+        -> Result<(), Error>
+    {
+        let transaction_id = self.event_add_subgroup(packet_id)?;
+        let ep_data = &mut self.endpoint_data[EVENT_EP_ID];
+        let ep_transaction_id =
+            ep_data.writer.transaction_ids.push(transaction_id)?;
+        let ep_group_id =
+            ep_data.writer.group_index.push(ep_transaction_id)?;
+        let group_start_id =
+            self.add_group_entry(EVENT_EP_ID, ep_group_id, start)?;
+        self.add_item(EVENT_EP_ID, group_start_id)?;
+        Ok(())
+    }
+
+    fn event_add_subgroup(&mut self, packet_id: PacketId)
+        -> Result<TransactionId, Error>
+    {
+        self.transaction_end(false, false)?;
+        self.capture.transaction_index.push(packet_id)
     }
 
     fn packet_endpoint(&mut self, pid: PID, packet: &[u8])

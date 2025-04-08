@@ -1377,7 +1377,6 @@ fn traffic_context_menu(
 ) -> Result<Option<PopoverMenu>, Error> {
     use TrafficItem::*;
     Ok(match item {
-        Event(..) => None,
         TransactionGroup(_, endpoint_id, ep_group_id) |
         TransactionGroupEnd(_, endpoint_id, ep_group_id) => {
             let group = capture.group(*endpoint_id, *ep_group_id)?;
@@ -1450,6 +1449,7 @@ fn traffic_context_menu(
                 None
             }
         },
+        _ => None,
     })
 }
 
