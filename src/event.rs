@@ -24,6 +24,10 @@ pub enum EventType {
     HostChirpValid,
     /// Line state change.
     LineStateChange(LineState),
+    /// Device attached at Full Speed.
+    FsAttach,
+    /// Device attached at Low Speed.
+    LsAttach,
 }
 
 /// USB line states
@@ -89,6 +93,8 @@ impl std::fmt::Display for EventType {
             LineStateChange(DR1) => "FS J or LS K state detected",
             LineStateChange(DR0) => "FS K or LS J state detected",
             LineStateChange(SE1) => "SE1 line state detected",
+            FsAttach => "Device attached at Full Speed",
+            LsAttach => "Device attached at Low Speed",
         })
     }
 }
@@ -121,6 +127,8 @@ impl EventType {
             LineStateChange(DR1)      => 23,
             LineStateChange(DR0)      => 24,
             LineStateChange(SE1)      => 25,
+            FsAttach                  => 26,
+            LsAttach                  => 27,
         }
     }
 
@@ -151,6 +159,8 @@ impl EventType {
             23 => LineStateChange(DR1),
             24 => LineStateChange(DR0),
             25 => LineStateChange(SE1),
+            26 => FsAttach,
+            27 => LsAttach,
             _ => return None
         })
     }
