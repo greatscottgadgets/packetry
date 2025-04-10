@@ -10,24 +10,30 @@ pub enum EventType {
     CaptureStart(Speed),
     /// Capture speed was changed.
     SpeedChange(Speed),
-    /// VBUS presence changed.
-    VbusChange(bool),
-    /// Suspend state changed.
-    SuspendChange(bool),
     /// Capture stopped for the specified reason.
     CaptureStop(StopReason),
+    /// Line state change.
+    LineStateChange(LineState),
+    /// VBUS became invalid.
+    VbusInvalid,
+    /// VBUS became valid.
+    VbusValid,
+    /// Device attached at Low Speed.
+    LsAttach,
+    /// Device attached at Full Speed.
+    FsAttach,
     /// Bus reset was detected.
     BusReset,
     /// Device HS chirp was validated.
     DeviceChirpValid,
     /// Host HS chirp was validated.
     HostChirpValid,
-    /// Line state change.
-    LineStateChange(LineState),
-    /// Device attached at Full Speed.
-    FsAttach,
-    /// Device attached at Low Speed.
-    LsAttach,
+    /// Bus entered suspend.
+    Suspend,
+    /// Resume signal detected.
+    Resume,
+    /// Low Speed keepalive detected.
+    LsKeepalive,
 }
 
 /// USB line states
@@ -41,10 +47,14 @@ pub enum LineState {
     ChirpK,
     /// Chirp single-ended 1, i.e. both D+ and D- at ~0.6-0.8V.
     ChirpSE1,
-    /// Differential 1 at 3.3V, i.e. FS J or LS K state.
-    DR1,
-    /// Differential 0 at 3.3V, i.e. FS K or LS J state.
-    DR0,
+    /// LS J state, i.e. differential 0 at 3.3V while in LS mode.
+    LsJ,
+    /// LS K state, i.e. differential 1 at 3.3V while in LS mode.
+    LsK,
+    /// FS J state, i.e. differential 1 at 3.3V while in FS mode.
+    FsJ,
+    /// FS K state, i.e. differential 0 at 3.3V while in FS mode.
+    FsK,
     /// Single-ended 1 at 3.3V.
     SE1,
 }
@@ -79,22 +89,25 @@ impl std::fmt::Display for EventType {
             SpeedChange(Full) => "Speed changed to Full Speed (12 Mbps)",
             SpeedChange(Low) => "Speed changed to Low Speed (1.5 Mbps)",
             SpeedChange(Auto) => "Speed changed to automatic selection",
-            VbusChange(false) => "VBUS voltage became invalid",
-            VbusChange(true) => "VBUS voltage became valid",
-            SuspendChange(false) => "USB suspend ended",
-            SuspendChange(true) => "USB suspend started",
-            BusReset => "Bus reset detected",
-            DeviceChirpValid => "Device HS chirp validated",
-            HostChirpValid => "Host HS chirp validated",
             LineStateChange(SE0)  => "SE0 line state detected",
             LineStateChange(ChirpJ) => "Chirp J state detected",
             LineStateChange(ChirpK) => "Chirp K state detected",
             LineStateChange(ChirpSE1) => "Chirp SE1 state detected",
-            LineStateChange(DR1) => "FS J or LS K state detected",
-            LineStateChange(DR0) => "FS K or LS J state detected",
-            LineStateChange(SE1) => "SE1 line state detected",
-            FsAttach => "Device attached at Full Speed",
+            LineStateChange(LsJ) => "Low Speed idle state detected",
+            LineStateChange(LsK) => "Low Speed resume state detected",
+            LineStateChange(FsJ) => "Full Speed idle state detected",
+            LineStateChange(FsK) => "Full Speed resume state detected",
+            LineStateChange(SE1) => "Invalid SE1 line state detected",
+            VbusInvalid => "VBUS voltage became invalid",
+            VbusValid   => "VBUS voltage became valid",
             LsAttach => "Device attached at Low Speed",
+            FsAttach => "Device attached at Full Speed",
+            BusReset => "Bus reset",
+            DeviceChirpValid => "Device HS chirp validated",
+            HostChirpValid => "Host HS chirp validated",
+            Suspend  => "Bus entered suspend",
+            Resume   => "Resume signal detected",
+            LsKeepalive => "Low Speed keepalive detected",
         })
     }
 }
@@ -113,22 +126,25 @@ impl EventType {
             SpeedChange(Full)         => 9,
             SpeedChange(Low)          => 10,
             SpeedChange(Auto)         => 11,
-            VbusChange(false)         => 12,
-            VbusChange(true)          => 13,
-            SuspendChange(false)      => 14,
-            SuspendChange(true)       => 15,
-            BusReset                  => 16,
-            DeviceChirpValid          => 17,
-            HostChirpValid            => 18,
-            LineStateChange(SE0)      => 19,
-            LineStateChange(ChirpJ)   => 20,
-            LineStateChange(ChirpK)   => 21,
-            LineStateChange(ChirpSE1) => 22,
-            LineStateChange(DR1)      => 23,
-            LineStateChange(DR0)      => 24,
-            LineStateChange(SE1)      => 25,
-            FsAttach                  => 26,
-            LsAttach                  => 27,
+            LineStateChange(SE0)      => 12,
+            LineStateChange(ChirpJ)   => 13,
+            LineStateChange(ChirpK)   => 14,
+            LineStateChange(ChirpSE1) => 15,
+            LineStateChange(LsJ)      => 16,
+            LineStateChange(LsK)      => 17,
+            LineStateChange(FsJ)      => 18,
+            LineStateChange(FsK)      => 19,
+            LineStateChange(SE1)      => 20,
+            VbusInvalid               => 21,
+            VbusValid                 => 22,
+            LsAttach                  => 23,
+            FsAttach                  => 24,
+            BusReset                  => 25,
+            DeviceChirpValid          => 26,
+            HostChirpValid            => 27,
+            Suspend                   => 28,
+            Resume                    => 29,
+            LsKeepalive               => 30,
         }
     }
 
@@ -145,23 +161,26 @@ impl EventType {
             9  => SpeedChange(Full),
             10 => SpeedChange(Low),
             11 => SpeedChange(Auto),
-            12 => VbusChange(false),
-            13 => VbusChange(true),
-            14 => SuspendChange(false),
-            15 => SuspendChange(true),
-            16 => BusReset,
-            17 => DeviceChirpValid,
-            18 => HostChirpValid,
-            19 => LineStateChange(SE0),
-            20 => LineStateChange(ChirpJ),
-            21 => LineStateChange(ChirpK),
-            22 => LineStateChange(ChirpSE1),
-            23 => LineStateChange(DR1),
-            24 => LineStateChange(DR0),
-            25 => LineStateChange(SE1),
-            26 => FsAttach,
-            27 => LsAttach,
-            _ => return None
+            12 => LineStateChange(SE0),
+            13 => LineStateChange(ChirpJ),
+            14 => LineStateChange(ChirpK),
+            15 => LineStateChange(ChirpSE1),
+            16 => LineStateChange(LsJ),
+            17 => LineStateChange(LsK),
+            18 => LineStateChange(FsJ),
+            19 => LineStateChange(FsK),
+            20 => LineStateChange(SE1),
+            21 => VbusInvalid,
+            22 => VbusValid,
+            23 => LsAttach,
+            24 => FsAttach,
+            25 => BusReset,
+            26 => DeviceChirpValid,
+            27 => HostChirpValid,
+            28 => Suspend,
+            29 => Resume,
+            30 => LsKeepalive,
+            _  => return None
         })
     }
 }
