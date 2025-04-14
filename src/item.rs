@@ -177,7 +177,7 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                             let ep_transaction_id = ep_traf.group_index.get(ep_group_id)?;
                             let transaction_id = ep_traf.transaction_ids.get(ep_transaction_id)?;
                             let packet_id = self.transaction_index.get(transaction_id)?;
-                            let event_id = self.event_index.bisect_left(&packet_id)?;
+                            let event_id = self.event_id(packet_id)?;
                             Event(None, None, packet_id, event_id)
                         },
                         (false, true) => TransactionGroup(group_id, endpoint_id, ep_group_id),
@@ -192,7 +192,7 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                     let data_range = self.packet_index.target_range(
                         packet_id, self.packet_data.len())?;
                     if data_range.is_empty() {
-                        let event_id = self.event_index.bisect_left(&packet_id)?;
+                        let event_id = self.event_id(packet_id)?;
                         if self.event_index.get(event_id)? == packet_id {
                             return Ok(if packet_range.len() > 1 {
                                 EventSubgroup(None, transaction_id)
@@ -208,7 +208,7 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                     let data_range = self.packet_index.target_range(
                         packet_id, self.packet_data.len())?;
                     if data_range.is_empty() {
-                        let event_id = self.event_index.bisect_left(&packet_id)?;
+                        let event_id = self.event_id(packet_id)?;
                         if self.event_index.get(event_id)? == packet_id {
                             return Ok(Event(None, None, packet_id, event_id))
                         }
@@ -242,7 +242,7 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                 }),
             EventSubgroup(group_id_opt, transaction_id) => {
                 let packet_id = self.transaction_index.get(*transaction_id)? + index;
-                let event_id = self.event_index.bisect_left(&packet_id)?;
+                let event_id = self.event_id(packet_id)?;
                 Event(*group_id_opt, Some(*transaction_id), packet_id, event_id)
             },
             TransactionGroup(group_id, endpoint_id, ep_group_id) =>
@@ -602,28 +602,38 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                 }?;
                 s
             },
-            EventGroup(..) => {
-                write!(s, "High Speed negotiation")?;
+            EventGroup(_, ep_group_id) => {
+                let range = self.group_range(EVENT_EP_ID, *ep_group_id)?;
+                let ep_traf = self.endpoint_traffic(EVENT_EP_ID)?;
+                let transaction_id = ep_traf.transaction_ids.get(range.start)?;
+                let packet_id = self.transaction_index.get(transaction_id)?;
+                let event_id = self.event_id(packet_id)?;
+                match self.event_type(event_id)? {
+                    EventType::LsKeepalive => {
+                        write!(s, "{} Low Speed keepalive groups", range.len())
+                    },
+                    _ => write!(s, "High Speed negotiation"),
+                }?;
                 s
             },
             EventSubgroup(_, transaction_id) => {
                 let packet_id = self.transaction_index.get(*transaction_id)?;
-                let event_id = self.event_index.bisect_left(&packet_id)?;
-                let previous_event_id = event_id - 1;
-                let previous_event_code = self.event_codes.get(previous_event_id)?;
-                let previous_event_type = EventType::from_code(previous_event_code)
-                    .context("Event has no type")?;
-                match previous_event_type {
-                    EventType::BusReset => write!(s, "Device HS chirp"),
-                    _ => write!(s, "Host HS chirp")
+                let event_id = self.event_id(packet_id)?;
+                match self.event_type(event_id)? {
+                    EventType::LsKeepalive => {
+                        let event_count = self.transaction_index.target_range(
+                            *transaction_id, self.packet_index.len())?.len();
+                        write!(s, "{event_count} Low Speed keepalives")
+                    },
+                    _ => match self.event_type(event_id - 1)? {
+                        EventType::BusReset => write!(s, "Device HS chirp"),
+                        _ => write!(s, "Host HS chirp")
+                    }
                 }?;
                 s
             },
             Event(.., event_id) => {
-                let event_code = self.event_codes.get(*event_id)?;
-                let event_type = EventType::from_code(event_code)
-                    .context("Event has no type")?;
-                write!(s, "{event_type}")?;
+                write!(s, "{}", self.event_type(*event_id)?)?;
                 s
             },
         })

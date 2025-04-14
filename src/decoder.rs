@@ -512,9 +512,10 @@ impl EndpointData {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 enum EventState {
     Idle,
+    LsKeepaliveGroup,
     AwaitDeviceChirp,
     PartialDeviceChirp,
     ValidDeviceChirp,
@@ -531,6 +532,7 @@ pub struct Decoder {
     last_item_endpoint: Option<EndpointId>,
     transaction_state: Option<TransactionState>,
     event_state: EventState,
+    ls_keepalive_item: Option<TrafficItemId>,
 }
 
 impl Decoder {
@@ -544,6 +546,7 @@ impl Decoder {
             last_item_endpoint: None,
             transaction_state: None,
             event_state: EventState::Idle,
+            ls_keepalive_item: None,
         };
 
         // Add the default device.
@@ -587,6 +590,8 @@ impl Decoder {
     pub fn handle_raw_packet(&mut self, packet: &[u8], timestamp_ns: u64)
         -> Result<(), Error>
     {
+        // Any packet resets our event state.
+        self.event_state = EventState::Idle;
         let data_range = self.capture.packet_data.append(packet)?;
         let packet_id = self.capture.packet_index.push(data_range.start)?;
         self.capture.packet_times.push(timestamp_ns)?;
@@ -597,15 +602,18 @@ impl Decoder {
     pub fn handle_event(&mut self, event_type: EventType, timestamp_ns: u64)
         -> Result<(), Error>
     {
-        // Any bus event causes all existing transaction groups to end.
-        let endpoint_count = self.capture.endpoints.len();
-        for i in 0..endpoint_count {
-            let endpoint_id = EndpointId::from(i);
-            let ep_data = &mut self.endpoint_data[endpoint_id];
-            if let Some(group) = ep_data.active.take() {
-                let ep_group_id = group.id;
-                ep_data.ended = Some(ep_group_id);
+        if event_type != EventType::LsKeepalive {
+            // Any bus event causes all existing transaction groups to end.
+            let endpoint_count = self.capture.endpoints.len();
+            for i in 0..endpoint_count {
+                let endpoint_id = EndpointId::from(i);
+                let ep_data = &mut self.endpoint_data[endpoint_id];
+                if let Some(group) = ep_data.active.take() {
+                    let ep_group_id = group.id;
+                    ep_data.ended = Some(ep_group_id);
+                }
             }
+            self.ls_keepalive_item = None;
         }
 
         let packet_data_end = self.capture.packet_data.len().into();
@@ -634,6 +642,17 @@ impl Decoder {
         use EventType::*;
         use LineState::*;
         self.event_state = match (self.event_state, event_type) {
+            // If we saw an LS keepalive previously, append it to the existing subgroup.
+            (LsKeepaliveGroup, LsKeepalive) => LsKeepaliveGroup,
+            // Otherwise if we see a first LS keepalive, start a new group or subgroup.
+            (_, LsKeepalive) => {
+                if self.ls_keepalive_item.is_some() {
+                    self.event_subgroup_start(packet_id)?;
+                } else {
+                    self.ls_keepalive_item = Some(self.event_group_start(packet_id)?);
+                }
+                LsKeepaliveGroup
+            }
             // If we see a bus reset, treat it as a single event and await a device chirp.
             (_, BusReset) => {
                 self.event_single(packet_id)?;
@@ -671,11 +690,11 @@ impl Decoder {
         Ok(())
     }
 
-    fn event_single(&mut self, packet_id: PacketId) -> Result<(), Error> {
+    fn event_single(&mut self, packet_id: PacketId) -> Result<TrafficItemId, Error> {
         self.event_add_group(packet_id, false)
     }
 
-    fn event_group_start(&mut self, packet_id: PacketId) -> Result<(), Error> {
+    fn event_group_start(&mut self, packet_id: PacketId) -> Result<TrafficItemId, Error> {
         self.event_add_group(packet_id, true)
     }
 
@@ -687,7 +706,7 @@ impl Decoder {
     }
 
     fn event_add_group(&mut self, packet_id: PacketId, start: bool)
-        -> Result<(), Error>
+        -> Result<TrafficItemId, Error>
     {
         let transaction_id = self.event_add_subgroup(packet_id)?;
         let ep_data = &mut self.endpoint_data[EVENT_EP_ID];
@@ -697,8 +716,7 @@ impl Decoder {
             ep_data.writer.group_index.push(ep_transaction_id)?;
         let group_start_id =
             self.add_group_entry(EVENT_EP_ID, ep_group_id, start)?;
-        self.add_item(EVENT_EP_ID, group_start_id)?;
-        Ok(())
+        self.add_item(EVENT_EP_ID, group_start_id)
     }
 
     fn event_add_subgroup(&mut self, packet_id: PacketId)

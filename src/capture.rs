@@ -20,6 +20,7 @@ use crate::database::{
     data_stream,
     data_stream_with_block_size,
 };
+use crate::event::EventType;
 use crate::usb::{self, prelude::*};
 use crate::util::{
     id::Id,
@@ -1026,6 +1027,16 @@ impl CaptureReader {
         let range = self.endpoint_state_index.target_range(
             group_id, self.endpoint_states.len())?;
         self.endpoint_states.get_range(&range)
+    }
+
+    pub fn event_id(&mut self, packet_id: PacketId) -> Result<EventId, Error> {
+        self.event_index.bisect_left(&packet_id)
+    }
+
+    pub fn event_type(&mut self, event_id: EventId) -> Result<EventType, Error> {
+        let event_code = self.event_codes.get(event_id)?;
+        EventType::from_code(event_code)
+            .context("Event has no type")
     }
 
     pub fn packet(&mut self, id: PacketId)
