@@ -982,6 +982,11 @@ pub struct CaptureSnapshotReader<'r, 's> {
     complete: bool,
 }
 
+pub enum PacketOrEvent {
+    Packet(Vec<u8>),
+    Event(EventType),
+}
+
 impl CaptureReader {
     /// Create a handle to access this capture at a snapshot.
     pub fn at<'r, 's>(&'r mut self, snapshot: &'s CaptureSnapshot)
@@ -1039,9 +1044,15 @@ impl CaptureReader {
         }
     }
 
-    pub fn timestamped_packets(&mut self)
-        -> Result<impl Iterator<Item=Result<(Timestamp, Vec<u8>), Error>> + use<'_>, Error>
+    pub fn timestamped_packets_and_events(&mut self) ->
+        Result <
+            impl Iterator <
+                Item=Result<(u64, PacketOrEvent), Error>
+            > + use<'_>,
+            Error
+        >
     {
+        use PacketOrEvent::*;
         let packet_count = self.packet_index.len();
         let packet_ids = PacketId::from(0)..PacketId::from(packet_count);
         let timestamps = self.packet_times.iter(&packet_ids)?;
@@ -1051,14 +1062,22 @@ impl CaptureReader {
             .skip(1)
             .chain(once(Ok(PacketByteId::from(self.packet_data.len()))));
         let data_ranges = packet_starts.zip(packet_ends);
-        let packet_data = &mut self.packet_data;
+        let mut packet_data = self.packet_data.clone();
         Ok(timestamps
+            .zip(0..packet_count)
             .zip(data_ranges)
-            .map(move |(ts, (start, end))| -> Result<(u64, Vec<u8>), Error> {
+            .map(move |((ts, id), (start, end))| {
+                let packet_id = PacketId::from(id);
                 let timestamp = ts?;
                 let data_range = start?..end?;
+                if data_range.is_empty() {
+                    if let Some(event_id) = self.event(packet_id)? {
+                        let event_type = self.event_type(event_id)?;
+                        return Ok((timestamp, Event(event_type)))
+                    }
+                }
                 let packet = packet_data.get_range(&data_range)?;
-                Ok((timestamp, packet))
+                Ok((timestamp, Packet(packet)))
             })
         )
     }
@@ -2125,6 +2144,7 @@ pub mod prelude {
         EndpointGroupId,
         EventId,
         PacketId,
+        PacketOrEvent,
         Timestamp,
         TrafficItemId,
         TransactionId,
