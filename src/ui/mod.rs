@@ -1161,6 +1161,10 @@ where
                 drop(guard);
                 CURRENT.store(packet.total_bytes_read(), Ordering::Relaxed);
             },
+            Event(event) => {
+                decoder.handle_event(event.event_type, event.timestamp_ns)?;
+                CURRENT.store(event.total_bytes_read, Ordering::Relaxed);
+            },
             Metadata(meta) => decoder.handle_metadata(meta),
             LoadError(e) => return Err(e),
             Ignore => continue,
@@ -1208,9 +1212,17 @@ where
     let meta = capture.shared.metadata.load_full();
     let mut saver = Saver::new(dest, meta)?;
     if packet_count > 0 {
-        for (result, i) in capture.timestamped_packets()?.zip(0..packet_count) {
-            let (timestamp_ns, packet) = result?;
-            saver.add_packet(&packet, timestamp_ns)?;
+        for (result, i) in capture
+            .timestamped_packets_and_events()?
+            .zip(0..packet_count)
+        {
+            use PacketOrEvent::*;
+            match result? {
+                (timestamp, Packet(packet)) =>
+                    saver.add_packet(&packet, timestamp)?,
+                (timestamp, Event(event_type)) =>
+                    saver.add_event(event_type, timestamp)?,
+            };
             CURRENT.store(i + 1, Ordering::Relaxed);
             if STOP.load(Ordering::Relaxed) {
                 break;

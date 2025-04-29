@@ -927,6 +927,11 @@ impl CaptureWriter {
     }
 }
 
+pub enum PacketOrEvent {
+    Packet(Vec<u8>),
+    Event(EventType),
+}
+
 impl CaptureReader {
     pub fn endpoint_traffic(&mut self, endpoint_id: EndpointId)
         -> Result<&mut EndpointReader, Error>
@@ -1053,9 +1058,15 @@ impl CaptureReader {
         self.packet_times.get(id)
     }
 
-    pub fn timestamped_packets(&mut self)
-        -> Result<impl Iterator<Item=Result<(u64, Vec<u8>), Error>>, Error>
+    pub fn timestamped_packets_and_events(&mut self) ->
+        Result <
+            impl Iterator <
+                Item=Result<(u64, PacketOrEvent), Error>
+            > + use<'_>,
+            Error
+        >
     {
+        use PacketOrEvent::*;
         let packet_count = self.packet_index.len();
         let packet_ids = PacketId::from(0)..PacketId::from(packet_count);
         let timestamps = self.packet_times.iter(&packet_ids)?;
@@ -1067,12 +1078,21 @@ impl CaptureReader {
         let data_ranges = packet_starts.zip(packet_ends);
         let mut packet_data = self.packet_data.clone();
         Ok(timestamps
+            .zip(0..packet_count)
             .zip(data_ranges)
-            .map(move |(ts, (start, end))| -> Result<(u64, Vec<u8>), Error> {
+            .map(move |((ts, id), (start, end))| {
+                let packet_id = PacketId::from(id);
                 let timestamp = ts?;
                 let data_range = start?..end?;
+                if data_range.is_empty() {
+                    let event_id = self.event_id(packet_id)?;
+                    if self.event_index.get(event_id)? == packet_id {
+                        let event_type = self.event_type(event_id)?;
+                        return Ok((timestamp, Event(event_type)))
+                    }
+                }
                 let packet = packet_data.get_range(&data_range)?;
-                Ok((timestamp, packet))
+                Ok((timestamp, Packet(packet)))
             })
         )
     }
@@ -1339,6 +1359,7 @@ pub mod prelude {
         EndpointGroupId,
         EventId,
         PacketId,
+        PacketOrEvent,
         Timestamp,
         TrafficItemId,
         TransactionId,
