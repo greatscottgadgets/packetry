@@ -4,8 +4,9 @@ use crate::backend::{BackendHandle, TimestampedEvent, Speed};
 use crate::backend::cynthion::{CynthionDevice, CynthionHandle, VID_PID};
 use crate::capture::prelude::*;
 use crate::decoder::Decoder;
-use crate::event::{EventType, StopReason, LineState};
+use crate::event::{EventType, StopReason};
 use crate::file::{GenericSaver, PcapNgSaver};
+use crate::item::{ItemSource, TrafficViewMode};
 
 use anyhow::{Context, Error, bail, ensure};
 use futures_lite::future::block_on;
@@ -56,7 +57,6 @@ fn test(save_capture: bool,
     use EventType::*;
     use StopReason::*;
     use Speed::*;
-    use LineState::*;
 
     println!("\nTesting capture at {} with {} speed selected:\n",
              bus_speed.abbr(), speed_selection.abbr());
@@ -142,97 +142,56 @@ fn test(save_capture: bool,
     }
 
     // Accepted event sequences for each test case.
-    let expected_events = match (bus_speed, speed_selection) {
+    let expected_descriptions = match (bus_speed, speed_selection) {
         (High, High) => vec![
-            vec![
-                CaptureStart(High),
-                BusReset,
-                LineStateChange(ChirpK),
-                DeviceChirpValid,
-                LineStateChange(SE0),
-                LineStateChange(ChirpK),
-                LineStateChange(SE0),
-                LineStateChange(ChirpJ),
-                LineStateChange(SE0),
-                LineStateChange(ChirpK),
-                LineStateChange(SE0),
-                LineStateChange(ChirpJ),
-                LineStateChange(SE0),
-                LineStateChange(ChirpK),
-                LineStateChange(SE0),
-                LineStateChange(ChirpJ),
-                HostChirpValid,
-            ],
+            "Capture started at High Speed (480 Mbps)",
+            "Bus entered suspend",
+            "SE0 line state detected",
+            "Bus reset",
+            "High Speed negotiation",
         ],
         (High, Auto) => vec![
-            vec![
-                CaptureStart(Full),
-                BusReset,
-                LineStateChange(ChirpK),
-                LineStateChange(SE0),
-                LineStateChange(ChirpK),
-                LineStateChange(SE0),
-                LineStateChange(ChirpJ),
-                LineStateChange(SE0),
-                LineStateChange(ChirpK),
-                LineStateChange(SE0),
-                LineStateChange(ChirpJ),
-                LineStateChange(SE0),
-                LineStateChange(ChirpK),
-                LineStateChange(SE0),
-                LineStateChange(ChirpJ),
-                HostChirpValid,
-                SpeedChange(High),
-            ]
+            "Capture started at Full Speed (12 Mbps)",
+            "Bus entered suspend",
+            "SE0 line state detected",
+            "Bus reset",
+            "High Speed negotiation",
+            "Speed changed to High Speed (480 Mbps)"
         ],
         (Full, _) => vec![
-            vec![
-                CaptureStart(Full),
-                BusReset,
-            ],
+            "Capture started at Full Speed (12 Mbps)",
+            "Bus entered suspend",
+            "SE0 line state detected",
+            "Bus reset",
+            "Full Speed idle state detected",
         ],
         (Low, Low) => vec![
-            vec![
-                CaptureStart(Low),
-                BusReset,
-            ],
+            "Capture started at Low Speed (1.5 Mbps)",
+            "SE0 line state detected",
+            "Bus reset",
+            "Low Speed idle state detected",
+            "Device attached at Low Speed",
         ],
         (Low, Auto) => vec![
-            vec![
-                CaptureStart(Auto),
-                BusReset,
-                SpeedChange(Low)
-            ],
-            vec![
-                CaptureStart(Low),
-            ],
+            "Capture started at Full Speed (12 Mbps)",
+            "SE0 line state detected",
+            "Bus reset",
+            "Low Speed idle state detected",
+            "Device attached at Low Speed",
+            "Speed changed to Low Speed (1.5 Mbps)",
         ],
         _ => unreachable!(),
     };
 
-    'sequence: for expected_sequence in expected_events.iter() {
-        for (i, expected_event) in expected_sequence.iter().enumerate() {
-            let item_id = TrafficItemId::from(i as u64);
-            let group_id = reader.item_index.get(item_id)?;
-            let entry = reader.group_index.get(group_id)?;
-            let event_id = EventId::from(i as u64);
-            let event_code = reader.event_codes.get(event_id)?;
-            let event_type = EventType::from_code(event_code);
-            assert!(entry.endpoint_id() == EVENT_EP_ID);
-            assert_eq!(entry.group_id().value, event_id.value);
-            let expected = Some(expected_event).cloned();
-            if i == 0 {
-                let packet_id = reader.event_index.get(event_id)?;
-                let start_time = reader.packet_times.get(packet_id)?;
-                assert_eq!(start_time, 0);
-                if event_type != expected {
-                    // Try the next possible sequence instead.
-                    continue 'sequence;
-                }
-            } else {
-                assert_eq!(event_type, expected);
-            }
-            println!("Found event: {expected_event}");
+    for (i, expected) in expected_descriptions.iter().enumerate() {
+        let item = reader.item(
+            None, TrafficViewMode::Hierarchical, i as u64)?;
+        let description = reader.description(&item, false)?;
+        if description == *expected {
+            println!("Found event: {expected}");
+        } else {
+            bail!("Event did not have expected description: \
+                   expected: '{expected}', found: '{description}')");
         }
     };
 
