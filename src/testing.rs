@@ -4,7 +4,7 @@ use crate::backend::{BackendHandle, TimestampedEvent, Speed};
 use crate::backend::cynthion::{CynthionDevice, CynthionHandle, VID_PID};
 use crate::capture::prelude::*;
 use crate::decoder::Decoder;
-use crate::file::{GenericSaver, PcapSaver};
+use crate::file::{GenericSaver, PcapNgSaver};
 use crate::item::{ItemSource, TrafficViewMode};
 
 use anyhow::{Context, Error, bail, ensure};
@@ -121,16 +121,19 @@ fn test(save_capture: bool,
 
     if save_capture {
         // Write the capture to a file.
-        let path = PathBuf::from(format!("./HITL-{}-{}.pcap",
+        let path = PathBuf::from(format!("./HITL-{}-{}.pcapng",
             bus_speed.abbr(), speed_selection.abbr()));
         let file = File::create(path)?;
         let meta = reader.shared.metadata.load_full();
-        let mut saver = PcapSaver::new(file, meta)?;
-        for i in 0..reader.packet_count() {
-            let packet_id = PacketId::from(i);
-            let packet = reader.packet(packet_id)?;
-            let timestamp_ns = reader.packet_time(packet_id)?;
-            saver.add_packet(&packet, timestamp_ns)?;
+        let mut saver = PcapNgSaver::new(file, meta)?;
+        for result in reader.timestamped_packets_and_events()? {
+            use PacketOrEvent::*;
+            match result? {
+                (timestamp, Packet(packet)) =>
+                    saver.add_packet(&packet, timestamp)?,
+                (timestamp, Event(event_type)) =>
+                    saver.add_event(event_type, timestamp)?,
+            };
         }
         saver.close()?;
     }
