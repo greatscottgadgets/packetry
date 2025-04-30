@@ -4,7 +4,6 @@ use crate::backend::{BackendHandle, TimestampedEvent, Speed};
 use crate::backend::cynthion::{CynthionDevice, CynthionHandle, VID_PID};
 use crate::capture::prelude::*;
 use crate::decoder::Decoder;
-use crate::event::{EventType, StopReason};
 use crate::file::{GenericSaver, PcapNgSaver};
 use crate::item::{ItemSource, TrafficViewMode};
 
@@ -54,8 +53,6 @@ fn test(save_capture: bool,
         sof: Option<(Duration, Duration)>)
     -> Result<(), Error>
 {
-    use EventType::*;
-    use StopReason::*;
     use Speed::*;
 
     println!("\nTesting capture at {} with {} speed selected:\n",
@@ -274,13 +271,10 @@ fn test(save_capture: bool,
 
     // Look for the stop event.
     let item_count = reader.item_index.len();
-    let stop_item_id = TrafficItemId::from(item_count - 1);
-    let stop_transfer_id = reader.item_index.get(stop_item_id)?;
-    let stop_entry = reader.group_index.get(stop_transfer_id)?;
-    assert!(stop_entry.endpoint_id() == EVENT_EP_ID);
-    let event_id = EventId::from(stop_entry.group_id().value);
-    let event_type = EventType::from_code(reader.event_codes.get(event_id)?);
-    assert_eq!(event_type, Some(CaptureStop(Requested)));
+    let item = reader.item(
+        None, TrafficViewMode::Hierarchical, item_count - 1)?;
+    let description = reader.description(&item, false)?;
+    assert_eq!(description, "Capture stopped by request");
     println!("Found stop event in capture");
 
     Ok(())
