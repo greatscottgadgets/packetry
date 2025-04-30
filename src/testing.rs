@@ -217,12 +217,10 @@ fn test(save_capture: bool,
         // Check SOF timestamps have the expected spacing.
         // SOF packets are assigned to a special endpoint.
         let endpoint_id = FRAMING_EP_ID;
-        // We're looking for the first and only transfer on the endpoint.
-        let ep_group_id = EndpointGroupId::from(0);
         let ep_traf = reader.endpoint_traffic(endpoint_id)?;
-        let ep_transaction_ids = ep_traf
-            .group_index
-            .target_range(ep_group_id, ep_traf.transaction_ids.len())?;
+        let count = ep_traf.transaction_ids.len();
+        let ep_transaction_ids =
+            EndpointTransactionId::from(0)..EndpointTransactionId::from(count);
         let mut sof_count = 0;
         let mut last = None;
         let mut gaps = Vec::new();
