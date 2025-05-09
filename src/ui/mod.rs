@@ -76,20 +76,12 @@ use gtk::{
 use crate::backend::{
     BackendHandle,
     BackendStop,
+    TimestampedEvent,
     ProbeResult,
     scan
 };
 
-use crate::capture::{
-    create_capture,
-    CaptureReader,
-    CaptureWriter,
-    CaptureMetadata,
-    EndpointId,
-    EndpointDataEvent,
-    Group,
-    GroupContent,
-};
+use crate::capture::prelude::*;
 use crate::item::{
     ItemSource,
     TrafficItem,
@@ -949,8 +941,8 @@ pub fn update_view() -> Result<(), Error> {
         } else {
             let (devices, endpoints, transactions, packets) = {
                 let cap = &ui.capture;
-                let devices = cap.devices.len().saturating_sub(1);
-                let endpoints = cap.endpoints.len().saturating_sub(2);
+                let devices = cap.devices.len().saturating_sub(NUM_SPECIAL_DEVICES);
+                let endpoints = cap.endpoints.len().saturating_sub(NUM_SPECIAL_ENDPOINTS);
                 let transactions = cap.transaction_index.len();
                 let packets = cap.packet_index.len();
                 (devices, endpoints, transactions, packets)
@@ -1169,6 +1161,10 @@ where
                 drop(guard);
                 CURRENT.store(packet.total_bytes_read(), Ordering::Relaxed);
             },
+            Event(event) => {
+                decoder.handle_event(event.event_type, event.timestamp_ns)?;
+                CURRENT.store(event.total_bytes_read, Ordering::Relaxed);
+            },
             Metadata(meta) => decoder.handle_metadata(meta),
             LoadError(e) => return Err(e),
             Ignore => continue,
@@ -1216,9 +1212,17 @@ where
     let meta = capture.shared.metadata.load_full();
     let mut saver = Saver::new(dest, meta)?;
     if packet_count > 0 {
-        for (result, i) in capture.timestamped_packets()?.zip(0..packet_count) {
-            let (timestamp_ns, packet) = result?;
-            saver.add_packet(&packet, timestamp_ns)?;
+        for (result, i) in capture
+            .timestamped_packets_and_events()?
+            .zip(0..packet_count)
+        {
+            use PacketOrEvent::*;
+            match result? {
+                (timestamp, Packet(packet)) =>
+                    saver.add_packet(&packet, timestamp)?,
+                (timestamp, Event(event_type)) =>
+                    saver.add_event(event_type, timestamp)?,
+            };
             CURRENT.store(i + 1, Ordering::Relaxed);
             if STOP.load(Ordering::Relaxed) {
                 break;
@@ -1325,9 +1329,17 @@ pub fn start_capture() -> Result<(), Error> {
         let read_packets = move || {
             let mut decoder = Decoder::new(writer)?;
             for result in stream_handle {
-                let packet = result
+                let event = result
                     .context("Error processing raw capture data")?;
-                decoder.handle_raw_packet(&packet.bytes, packet.timestamp_ns)?;
+                use TimestampedEvent::*;
+                match event {
+                    Packet { timestamp_ns, bytes } =>
+                        decoder.handle_raw_packet(&bytes, timestamp_ns)
+                            .context("Error decoding packet")?,
+                    Event { timestamp_ns, event_type } =>
+                        decoder.handle_event(event_type, timestamp_ns)
+                            .context("Error handling event")?,
+                }
             }
             let writer = decoder.finish()?;
             writer.shared.metadata.update(|meta| {
@@ -1377,15 +1389,15 @@ fn traffic_context_menu(
 ) -> Result<Option<PopoverMenu>, Error> {
     use TrafficItem::*;
     Ok(match item {
-        TransactionGroup(group_id) => {
-            let group = capture.group(*group_id)?;
+        TransactionGroup(_, endpoint_id, ep_group_id) |
+        TransactionGroupEnd(_, endpoint_id, ep_group_id) => {
+            let group = capture.group(*endpoint_id, *ep_group_id)?;
             match group {
                 Group {
                     endpoint_id,
                     content:
                         GroupContent::Data(data_range) |
                         GroupContent::Ambiguous(data_range, _),
-                    is_start: true,
                     ..
                 } => Some(
                     context_popover(
@@ -1397,7 +1409,6 @@ fn traffic_context_menu(
                 ),
                 Group {
                     content: GroupContent::Request(transfer),
-                    is_start: true,
                     ..
                 } => Some(
                     context_popover(
@@ -1450,6 +1461,7 @@ fn traffic_context_menu(
                 None
             }
         },
+        _ => None,
     })
 }
 
