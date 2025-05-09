@@ -71,6 +71,11 @@ impl<K, V> VecMap<K, V> where K: Key {
         }
         self.vec[id] = Some(value);
     }
+
+    pub fn iter_pairs(&self) -> impl Iterator<Item=(K, &V)> {
+        let range = 0..self.vec.len();
+        range.filter_map(|i| self.vec[i].as_ref().map(|j| (K::key(i), j)))
+    }
 }
 
 impl<K, V> Default for VecMap<K, V> where K: Key {

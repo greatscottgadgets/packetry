@@ -1041,6 +1041,7 @@ mod tests {
     use crate::capture::create_capture;
     use crate::decoder::Decoder;
     use crate::file::{GenericLoader, GenericPacket, LoaderItem, PcapLoader};
+    use crate::util::dump::Dump;
 
     fn summarize_item<Item, ViewMode>(
         cap: &mut CaptureReader,
@@ -1096,18 +1097,13 @@ mod tests {
         let list_file = File::open(list_path).unwrap();
         let mode = TrafficViewMode::Hierarchical;
         for test_name in BufReader::new(list_file).lines() {
-            let mut test_path = test_dir.clone();
-            test_path.push(test_name.unwrap());
-            let mut cap_path = test_path.clone();
-            let mut traf_ref_path = test_path.clone();
-            let mut traf_out_path = test_path.clone();
-            let mut dev_ref_path = test_path.clone();
-            let mut dev_out_path = test_path.clone();
-            cap_path.push("capture.pcap");
-            traf_ref_path.push("reference.txt");
-            traf_out_path.push("output.txt");
-            dev_ref_path.push("devices-reference.txt");
-            dev_out_path.push("devices-output.txt");
+            let test_path = test_dir.join(test_name.unwrap());
+            let cap_path = test_path.join("capture.pcap");
+            let traf_ref_path = test_path.join("reference.txt");
+            let traf_out_path = test_path.join("output.txt");
+            let dev_ref_path = test_path.join("devices-reference.txt");
+            let dev_out_path = test_path.join("devices-output.txt");
+            let dump_path = test_path.join("dump");
             {
                 let file = File::open(cap_path).unwrap();
                 let mut loader = PcapLoader::new(file).unwrap();
@@ -1127,6 +1123,8 @@ mod tests {
                     }
                 }
                 decoder.finish().unwrap();
+                reader.dump(&dump_path).unwrap();
+                reader = CaptureReader::restore(&dump_path).unwrap();
                 let traf_out_file = File::create(traf_out_path.clone()).unwrap();
                 let mut traf_out_writer = BufWriter::new(traf_out_file);
                 let num_items = reader.item_index.len();

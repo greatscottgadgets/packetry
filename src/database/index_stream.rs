@@ -17,7 +17,7 @@ use crate::database::{
         DataIterator
     },
 };
-use crate::util::{id::Id, fmt_count, fmt_size};
+use crate::util::{dump::{Dump, restore}, id::Id, fmt_count, fmt_size};
 
 /// Unique handle for append-only write access to an index.
 pub struct IndexWriter<Position, Value, const S: usize = MIN_BLOCK> {
@@ -296,6 +296,18 @@ where Position: From<u64>, Value: From<u64>
     }
 }
 
+impl<P, V, const S: usize> Dump for IndexReader<P, V, S> {
+    fn dump(&self, dest: &std::path::Path) -> Result<(), Error> {
+        self.data_reader.dump(dest)
+    }
+
+    fn restore(src: &std::path::Path) -> Result<Self, anyhow::Error> {
+        Ok(IndexReader {
+            marker: PhantomData,
+            data_reader: restore(src)?
+        })
+    }
+}
 
 #[cfg(test)]
 mod tests {
