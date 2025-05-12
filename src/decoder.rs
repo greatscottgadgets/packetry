@@ -531,6 +531,7 @@ pub struct Decoder {
     last_endpoint_state: Vec<u8>,
     last_item_endpoint: Option<EndpointId>,
     transaction_state: Option<TransactionState>,
+    suspended_transaction: Option<TransactionState>,
     event_state: EventState,
     ls_keepalive_item: Option<TrafficItemId>,
 }
@@ -545,6 +546,7 @@ impl Decoder {
             last_endpoint_state: Vec::new(),
             last_item_endpoint: None,
             transaction_state: None,
+            suspended_transaction: None,
             event_state: EventState::Idle,
             ls_keepalive_item: None,
         };
@@ -602,8 +604,11 @@ impl Decoder {
     pub fn handle_event(&mut self, event_type: EventType, timestamp_ns: u64)
         -> Result<(), Error>
     {
-        if event_type != EventType::LsKeepalive {
-            // Any bus event causes all existing transaction groups to end.
+        if event_type == EventType::LsKeepalive {
+            // An LS keepalive suspends the current transaction, if any.
+            self.suspended_transaction = self.transaction_state.take();
+        } else {
+            // Any other event causes all existing transaction groups to end.
             let endpoint_count = self.capture.endpoints.len();
             for i in 0..endpoint_count {
                 let endpoint_id = EndpointId::from(i);
@@ -747,6 +752,14 @@ impl Decoder {
         use TransactionStatus::*;
         use TransactionStyle::*;
         use StartComplete::*;
+        // If a transaction was suspended, resume it now.
+        if let Some(transaction) = self.suspended_transaction.take() {
+            let endpoint_id = transaction.endpoint_id()?;
+            let ep_data = &mut self.endpoint_data[endpoint_id];
+            let transaction_id = self.capture.transaction_index.push(packet_id)?;
+            ep_data.writer.transaction_ids.push(transaction_id)?;
+            self.transaction_state = Some(transaction);
+        };
         let (pid, status) = transaction_status(&self.transaction_state, packet)?;
         let success = status != Fail;
         let complete = match &self.transaction_state {
