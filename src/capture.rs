@@ -660,6 +660,7 @@ impl Interface {
 }
 
 pub struct Transaction {
+    id: TransactionId,
     start_pid: PID,
     end_pid: PID,
     split: Option<(SplitFields, PID)>,
@@ -759,6 +760,7 @@ impl Transaction {
     ) -> Result<String, Error> {
         use PID::*;
         use StartComplete::*;
+        use EventType::LsKeepalive;
         Ok(match (self.start_pid, &self.split) {
             (SOF, _) => format!(
                 "{} SOF packets", self.packet_count()),
@@ -770,6 +772,31 @@ impl Transaction {
                 },
                 self.inner_description(capture, endpoint, *token_pid, detail)?
             ),
+            (ACK | NAK | STALL | DATA0 | DATA1, _) => {
+                // We don't expect these packets to start a transaction. Maybe
+                // a previous transaction was interrupted by an LS keepalive.
+                if self.id.value >= 2 &&
+                    capture.event(self.packet_id_range.start - 1)? == Some(LsKeepalive)
+                {
+                    let previous_transaction = capture.transaction(self.id - 2)?;
+                    if detail {
+                        format!(
+                            "Continuing {} transaction on device {}, endpoint {}, {} response",
+                            previous_transaction.start_pid,
+                            endpoint.device_address(),
+                            endpoint.number(),
+                            self.start_pid)
+                    } else {
+                        format!("Continuing {} transaction on {}.{}, {}",
+                            previous_transaction.start_pid,
+                            endpoint.device_address(),
+                            endpoint.number(),
+                            self.start_pid)
+                    }
+                } else {
+                    self.inner_description(capture, endpoint, self.start_pid, detail)?
+                }
+            },
             (pid, _) => self.inner_description(capture, endpoint, pid, detail)?
         })
     }
@@ -1160,6 +1187,7 @@ impl CaptureReader {
             None
         };
         Ok(Transaction {
+            id,
             start_pid,
             end_pid,
             split,
