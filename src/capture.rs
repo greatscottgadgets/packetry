@@ -1044,6 +1044,17 @@ impl CaptureReader {
             .context("Event has no type")
     }
 
+    pub fn event(&mut self, packet_id: PacketId) -> Result<Option<EventType>, Error> {
+        let event_id = self.event_id(packet_id)?;
+        if event_id.value >= self.event_index.len() {
+            Ok(None)
+        } else if self.event_index.get(event_id)? == packet_id {
+            Ok(Some(self.event_type(event_id)?))
+        } else {
+            Ok(None)
+        }
+    }
+
     pub fn packet(&mut self, id: PacketId)
         -> Result<Vec<u8>, Error>
     {
@@ -1085,9 +1096,7 @@ impl CaptureReader {
                 let timestamp = ts?;
                 let data_range = start?..end?;
                 if data_range.is_empty() {
-                    let event_id = self.event_id(packet_id)?;
-                    if self.event_index.get(event_id)? == packet_id {
-                        let event_type = self.event_type(event_id)?;
+                    if let Some(event_type) = self.event(packet_id)? {
                         return Ok((timestamp, Event(event_type)))
                     }
                 }
