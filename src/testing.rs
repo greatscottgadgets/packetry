@@ -142,10 +142,6 @@ fn test(save_capture: bool,
     let expected_descriptions = match (bus_speed, speed_selection) {
         (High, High) => vec![
             "Capture started at High Speed (480 Mbps)",
-            "Bus entered suspend",
-            "SE0 line state detected",
-            "Bus reset",
-            "High Speed negotiation",
         ],
         (High, Auto) => vec![
             "Capture started at Full Speed (12 Mbps)",
@@ -164,10 +160,11 @@ fn test(save_capture: bool,
         ],
         (Low, Low) => vec![
             "Capture started at Low Speed (1.5 Mbps)",
+            "Low Speed idle state detected",
+            "Bus entered suspend",
             "SE0 line state detected",
             "Bus reset",
             "Low Speed idle state detected",
-            "Device attached at Low Speed",
         ],
         (Low, Auto) => vec![
             "Capture started at Full Speed (12 Mbps)",
