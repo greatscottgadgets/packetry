@@ -1180,6 +1180,7 @@ mod tests {
         PcapLoader,
         PcapNgLoader,
     };
+    use crate::util::dump::Dump;
 
     fn summarize_item<Item, ViewMode>(
         cap: &mut CaptureReader,
@@ -1266,12 +1267,15 @@ mod tests {
             let dev_out_path = test_path.join("devices-output.txt");
             let pcap_path = test_path.join("capture.pcap");
             let pcapng_path = test_path.join("capture.pcapng");
+            let dump_path = test_path.join("dump");
             {
                 let mut reader = if pcapng_path.exists() {
                     load::<PcapNgLoader<File>>(&pcapng_path)
                 } else {
                     load::<PcapLoader<File>>(&pcap_path)
                 };
+                reader.dump(&dump_path).unwrap();
+                reader = CaptureReader::restore(&dump_path).unwrap();
                 let traf_out_file = File::create(traf_out_path.clone()).unwrap();
                 let mut traf_out_writer = BufWriter::new(traf_out_file);
                 let num_items = reader.item_index.len();

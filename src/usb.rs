@@ -2,11 +2,16 @@
 
 use std::collections::BTreeMap;
 use std::fmt::Formatter;
+use std::fs::File;
+use std::io::{Read, Write};
 use std::mem::size_of;
 use std::ops::Range;
+use std::path::Path;
+use std::str::FromStr;
 
+use anyhow::{Context, Error, bail};
 use bytemuck_derive::{Pod, Zeroable};
-use bytemuck::pod_read_unaligned;
+use bytemuck::{bytes_of, pod_read_unaligned};
 use crc::{Crc, CRC_16_USB};
 use hidreport::{
     Field,
@@ -23,6 +28,7 @@ use derive_more::{From, Into, Display};
 use usb_ids::FromId;
 
 use crate::util::{
+    dump::Dump,
     vec_map::VecMap,
     titlecase
 };
@@ -155,6 +161,16 @@ macro_rules! byte_type {
                  Pod, Zeroable, From, Into, Display)]
         #[repr(transparent)]
         pub struct $name(pub u8);
+
+        impl Dump for $name {
+            fn dump(&self, dest: &Path) -> Result<(), Error> {
+                self.0.to_string().dump(dest)
+            }
+
+            fn restore(src: &Path) -> Result<Self, Error> {
+                Ok(Self(u8::from_str(&String::restore(src)?)?))
+            }
+        }
     }
 }
 
@@ -255,6 +271,29 @@ impl std::fmt::Display for EndpointType {
             Self::Bulk => write!(f, "bulk"),
             Self::Interrupt => write!(f, "interrupt"),
         }
+    }
+}
+
+impl std::str::FromStr for EndpointType {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Error> {
+        Ok(match s {
+            "control" => Self::Control,
+            "isochronous" => Self::Isochronous,
+            "bulk" => Self::Bulk,
+            "interrupt" => Self::Interrupt,
+            _ => bail!("Unrecognised endpoint type '{s}'")
+        })
+    }
+}
+
+impl Dump for EndpointType {
+    fn dump(&self, dest: &Path) -> Result<(), Error> {
+        self.to_string().dump(dest)
+    }
+
+    fn restore(src: &Path) -> Result<Self, Error> {
+        Self::from_str(&String::restore(src)?)
     }
 }
 
@@ -718,6 +757,21 @@ impl DeviceDescriptor {
     pub const NUM_FIELDS: usize = 13;
 }
 
+impl Dump for DeviceDescriptor {
+    fn dump(&self, dest: &Path) -> Result<(), Error> {
+        let mut file = File::create(dest)?;
+        file.write_all(bytes_of(self))?;
+        Ok(())
+    }
+
+    fn restore(src: &Path) -> Result<Self, Error> {
+        let mut buf = vec![0; std::mem::size_of::<DeviceDescriptor>()];
+        let mut file = File::open(src)?;
+        file.read_exact(&mut buf)?;
+        Ok(pod_read_unaligned(&buf))
+    }
+}
+
 #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
 #[repr(C, packed)]
 pub struct ConfigDescriptor {
@@ -1087,6 +1141,7 @@ pub struct Interface {
 }
 
 pub struct Configuration {
+    pub bytes: Vec<u8>,
     pub descriptor: ConfigDescriptor,
     pub functions: BTreeMap<u8, Function>,
     pub interfaces: BTreeMap<InterfaceKey, Interface>,
@@ -1102,6 +1157,7 @@ impl Configuration {
             match descriptor {
                 Descriptor::Configuration(config_desc) => {
                     result = Some(Configuration {
+                        bytes: bytes.to_vec(),
                         descriptor: config_desc,
                         functions: BTreeMap::new(),
                         interfaces: BTreeMap::new(),
@@ -1166,6 +1222,22 @@ impl Configuration {
             };
         }
         result
+    }
+}
+
+impl Dump for Configuration {
+    fn dump(&self, dest: &Path) -> Result<(), Error> {
+        let mut file = File::create(dest)?;
+        file.write_all(&self.bytes)?;
+        Ok(())
+    }
+
+    fn restore(src: &Path) -> Result<Self, Error> {
+        let mut bytes = Vec::new();
+        let mut file = File::open(src)?;
+        file.read_to_end(&mut bytes)?;
+        Configuration::from_bytes(&bytes)
+            .context("Failed to parse configuration")
     }
 }
 
@@ -1306,6 +1378,21 @@ pub struct UTF16ByteVec(pub Vec<u8>);
 impl UTF16ByteVec {
     pub fn chars(&self) -> Vec<u16> {
         UTF16Bytes(self.0.as_slice()).chars()
+    }
+}
+
+impl Dump for UTF16ByteVec {
+    fn dump(&self, dest: &Path) -> Result<(), Error> {
+        let mut file = File::create(dest)?;
+        file.write_all(&self.0)?;
+        Ok(())
+    }
+
+    fn restore(src: &Path) -> Result<Self, Error> {
+        let mut vec = Vec::new();
+        let mut file = File::open(src)?;
+        file.read_to_end(&mut vec)?;
+        Ok(UTF16ByteVec(vec))
     }
 }
 

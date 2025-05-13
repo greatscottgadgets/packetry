@@ -17,7 +17,7 @@ use crate::database::{
     data_stream::{data_stream, DataReader, DataWriter, DataIterator},
     index_stream::{index_stream, IndexReader, IndexWriter, IndexIterator},
 };
-use crate::util::{id::Id, fmt_count, fmt_size};
+use crate::util::{dump::{Dump, restore}, id::Id, fmt_count, fmt_size};
 
 type Offset = Id<u8>;
 type SegmentId = Id<u8>;
@@ -596,6 +596,40 @@ where
         } else {
             Some(self.fetch_next())
         }
+    }
+}
+
+impl<Position, Value> Dump for CompactReader<Position, Value>
+where
+    Position: Copy + From<u64> + Into<u64> + Ord
+        + Add<u64, Output=Position> + AddAssign<u64>
+        + Sub<u64, Output=Position> + SubAssign<u64> + Sub<Output=u64>
+        + Debug,
+    Value: Copy + From<u64> + Into<u64> + Ord
+        + Add<u64, Output=Value>
+        + Sub<Output=u64>
+{
+    fn dump(&self, dest: &std::path::Path) -> Result<(), Error> {
+        std::fs::create_dir_all(dest)?;
+        self.len().dump(&dest.join("length"))?;
+        self.segment_start_reader.dump(&dest.join("segment_starts"))?;
+        self.segment_base_reader.dump(&dest.join("segment_bases"))?;
+        self.segment_offset_reader.dump(&dest.join("segment_offsets"))?;
+        self.segment_width_reader.dump(&dest.join("segment_widths"))?;
+        self.data_reader.dump(&dest.join("deltas"))?;
+        Ok(())
+    }
+
+    fn restore(src: &std::path::Path) -> Result<Self, anyhow::Error> {
+        Ok(CompactReader {
+            _marker: PhantomData,
+            shared_length: restore(&src.join("length"))?,
+            segment_start_reader: restore(&src.join("segment_starts"))?,
+            segment_base_reader: restore(&src.join("segment_bases"))?,
+            segment_offset_reader: restore(&src.join("segment_offsets"))?,
+            segment_width_reader: restore(&src.join("segment_widths"))?,
+            data_reader: restore(&src.join("deltas"))?,
+        })
     }
 }
 
