@@ -504,7 +504,7 @@ impl EndpointData {
                 self.writer.data_transactions.push(ep_transaction_id)?;
                 self.writer.data_byte_counts.push(self.total_data)?;
                 self.total_data += length as u64;
-                self.writer.shared.total_data.store(self.total_data, Release);
+                self.writer.shared.total_data.store(self.total_data);
             }
         };
         Ok(())
