@@ -6,13 +6,14 @@ use std::iter::once;
 use std::num::NonZeroU32;
 use std::ops::Range;
 use std::path::Path;
-use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64};
+use std::sync::atomic::{AtomicBool, AtomicU32};
 use std::sync::atomic::Ordering::{Acquire, Release};
 use std::sync::Arc;
 use std::time::Duration;
 use std::mem::size_of;
 
 use crate::database::{
+    Counter,
     CompactReader,
     CompactWriter,
     compact_index,
@@ -176,7 +177,7 @@ pub fn create_capture()
 
 /// Per-endpoint state shared between readers and writers.
 pub struct EndpointShared {
-    pub total_data: AtomicU64,
+    pub total_data: Counter,
     #[allow(dead_code)]
     pub first_item_id: ArcSwapOption<TrafficItemId>,
 }
@@ -215,7 +216,7 @@ pub fn create_endpoint()
 
     // Create the shared state.
     let shared = Arc::new(EndpointShared {
-        total_data: AtomicU64::from(0),
+        total_data: Counter::new(),
         first_item_id: ArcSwapOption::const_empty(),
     });
 
@@ -1280,7 +1281,7 @@ impl EndpointReader {
         let num_data_events = self.data_byte_counts.len();
         let first_byte_count = self.data_byte_counts.get(range.start)?;
         let last_byte_count = if range.end >= num_data_events {
-            self.shared.as_ref().total_data.load(Acquire)
+            self.shared.as_ref().total_data.load()
         } else {
             self.data_byte_counts.get(range.end)?
         };
