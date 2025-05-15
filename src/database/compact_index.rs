@@ -7,13 +7,13 @@ use std::fmt::Debug;
 use std::iter::{Peekable, once};
 use std::marker::PhantomData;
 use std::ops::{Add, AddAssign, Range, Sub, SubAssign};
-use std::sync::atomic::{AtomicU64, Ordering::{Acquire, Release}};
 use std::sync::Arc;
 
 use anyhow::{Context, Error, anyhow, bail};
 use itertools::{structs::Zip, multizip};
 
 use crate::database::{
+    counter::Counter,
     data_stream::{data_stream, DataReader, DataWriter, DataIterator},
     index_stream::{index_stream, IndexReader, IndexWriter, IndexIterator},
 };
@@ -25,7 +25,7 @@ type SegmentId = Id<u8>;
 /// Unique handle for append-only write access to a compact index stream.
 pub struct CompactWriter<Position, Value, const MIN_WIDTH: usize = 1> {
     /// Committed length of this index available to readers.
-    shared_length: Arc<AtomicU64>,
+    shared_length: Arc<Counter>,
     /// Index of starting positions of each segment.
     segment_start_writer: IndexWriter<SegmentId, Position>,
     /// Index of base values of each segment.
@@ -51,7 +51,7 @@ pub struct CompactWriter<Position, Value, const MIN_WIDTH: usize = 1> {
 pub struct CompactReader<Position, Value> {
     _marker: PhantomData<Value>,
     /// Committed length of this index available to readers.
-    shared_length: Arc<AtomicU64>,
+    shared_length: Arc<Counter>,
     /// Index of starting positions of each segment.
     segment_start_reader: IndexReader<SegmentId, Position>,
     /// Index of base values of each segment.
@@ -112,7 +112,7 @@ pub fn compact_index<P, V, const W: usize>()
     let (segment_offset_writer, segment_offset_reader) = index_stream()?;
     let (segment_width_writer, segment_width_reader) = data_stream()?;
     let (data_writer, data_reader) = data_stream()?;
-    let shared_length = Arc::new(AtomicU64::from(0));
+    let shared_length = Arc::new(Counter::new());
     let writer = CompactWriter {
         shared_length: shared_length.clone(),
         segment_start_writer,
@@ -186,7 +186,7 @@ where Position: Copy + From<u64> + Into<u64>,
         }
         let position = Position::from(self.length);
         self.length += 1;
-        self.shared_length.store(self.length, Release);
+        self.shared_length.store(self.length);
         Ok(position)
     }
 
@@ -213,7 +213,7 @@ where
 {
     /// Number of entries in the index.
     pub fn len(&self) -> u64 {
-        self.shared_length.load(Acquire)
+        self.shared_length.load()
     }
 
     /// Size of the index in bytes.

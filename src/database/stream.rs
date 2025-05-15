@@ -15,7 +15,6 @@ use std::ops::{Deref, Range};
 use std::ptr::copy_nonoverlapping;
 use std::slice;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering::{Acquire, Release}};
 
 use anyhow::{Context, Error, bail};
 use arc_swap::{ArcSwap, ArcSwapOption};
@@ -23,13 +22,15 @@ use lrumap::{LruMap, LruBTreeMap};
 use memmap2::{Mmap, MmapOptions};
 use tempfile::tempfile;
 
+use crate::database::counter::Counter;
+
 /// Minimum block size, defined by largest minimum page size on target systems.
 pub const MIN_BLOCK: usize = 0x4000; // 16KB (Apple M1/M2)
 
 /// Private data shared by the writer and multiple readers.
 struct Shared<const S: usize> {
     /// Available length of the stream, including data in both file and buffer.
-    length: AtomicU64,
+    length: Counter,
     /// File handle used by readers to create mappings.
     file: ArcSwapOption<File>,
     /// Buffer currently in use for newly appended data.
@@ -95,7 +96,7 @@ pub fn stream<const BLOCK_SIZE: usize>()
     }
     let buffer = Arc::new(Buffer::new(0)?);
     let shared = Arc::new(Shared {
-        length: AtomicU64::from(0),
+        length: Counter::new(),
         file: ArcSwapOption::empty(),
         current_buffer: ArcSwap::new(buffer.clone()),
     });
@@ -159,7 +160,7 @@ impl<const BLOCK_SIZE: usize> StreamWriter<BLOCK_SIZE> {
             }
         }
         // Update shared length value, and return new length.
-        self.shared.length.store(self.length, Release);
+        self.shared.length.store(self.length);
         Ok(self.length)
     }
 
@@ -255,7 +256,7 @@ impl<const BLOCK_SIZE: usize> StreamWriter<BLOCK_SIZE> {
 impl<const BLOCK_SIZE: usize> StreamReader<BLOCK_SIZE> {
     /// Get the current length of the stream, in bytes.
     pub fn len(&self) -> u64 {
-        self.shared.length.load(Acquire)
+        self.shared.length.load()
     }
 
     /// Access data in the stream.
@@ -269,7 +270,7 @@ impl<const BLOCK_SIZE: usize> StreamReader<BLOCK_SIZE> {
         use Data::*;
 
         // First guarantee that the requested data exists, somewhere.
-        let available_length = self.shared.length.load(Acquire);
+        let available_length = self.shared.length.load();
         if range.end > available_length {
             bail!("Requested read of range {range:?}, \
                    but stream length is {available_length}")
