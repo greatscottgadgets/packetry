@@ -10,6 +10,7 @@ use anyhow::Error;
 use bytemuck::{bytes_of, cast_slice, from_bytes, Pod};
 
 use crate::util::id::Id;
+use crate::database::counter::CounterSet;
 use crate::database::stream::{
     stream,
     StreamReader,
@@ -49,20 +50,20 @@ struct Values<Data, Value> where Data: Deref<Target=[u8]> {
 ///
 /// Returns a unique writer and a cloneable reader.
 ///
-pub fn data_stream<Value>()
+pub fn data_stream<Value>(db: &mut CounterSet)
     -> Result<(DataWriter<Value>, DataReader<Value>), Error>
 {
-    data_stream_with_block_size::<Value, MIN_BLOCK>()
+    data_stream_with_block_size::<Value, MIN_BLOCK>(db)
 }
 
 /// Construct a new data stream with a specific block size.
 ///
 /// Returns a unique writer and a cloneable reader.
 ///
-pub fn data_stream_with_block_size<Value, const S: usize>()
+pub fn data_stream_with_block_size<Value, const S: usize>(db: &mut CounterSet)
     -> Result<(DataWriter<Value, S>, DataReader<Value, S>), Error>
 {
-    let (stream_writer, stream_reader) = stream()?;
+    let (stream_writer, stream_reader) = stream(db)?;
     let data_writer = DataWriter {
         marker: PhantomData,
         stream_writer,
@@ -248,9 +249,15 @@ mod tests {
         baz: u32,
     }
 
+    fn setup<T>() -> (DataWriter::<T>, DataReader::<T>) {
+        // Create a counter set.
+        let mut db = CounterSet::default();
+        data_stream(&mut db).unwrap()
+    }
+
     #[test]
     fn test_data_stream_push() {
-        let (mut writer, mut reader) = data_stream().unwrap();
+        let (mut writer, mut reader) = setup();
         for i in 0..100 {
             let x = Foo { bar: i, baz: i };
             writer.push(&x).unwrap();
@@ -260,7 +267,7 @@ mod tests {
 
     #[test]
     fn test_data_stream_append() {
-        let (mut writer, mut reader) = data_stream().unwrap();
+        let (mut writer, mut reader) = setup();
 
         // Build a Vec of data
         let mut data = Vec::new();
@@ -282,7 +289,7 @@ mod tests {
 
     #[test]
     fn test_data_stream_iter() {
-        let (mut writer, mut reader) = data_stream().unwrap();
+        let (mut writer, mut reader) = setup();
         for i in 0..100 {
             let x = Foo { bar: i, baz: i };
             writer.push(&x).unwrap();

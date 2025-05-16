@@ -22,7 +22,7 @@ use lrumap::{LruMap, LruBTreeMap};
 use memmap2::{Mmap, MmapOptions};
 use tempfile::tempfile;
 
-use crate::database::counter::Counter;
+use crate::database::counter::{Counter, CounterSet};
 
 /// Minimum block size, defined by largest minimum page size on target systems.
 pub const MIN_BLOCK: usize = 0x4000; // 16KB (Apple M1/M2)
@@ -86,7 +86,7 @@ type StreamPair<const S: usize> = (StreamWriter<S>, StreamReader<S>);
 ///
 /// Returns a unique writer and a cloneable reader.
 ///
-pub fn stream<const BLOCK_SIZE: usize>()
+pub fn stream<const BLOCK_SIZE: usize>(db: &mut CounterSet)
     -> Result<StreamPair<BLOCK_SIZE>, Error>
 {
     let page_size = page_size::get();
@@ -96,7 +96,7 @@ pub fn stream<const BLOCK_SIZE: usize>()
     }
     let buffer = Arc::new(Buffer::new(0)?);
     let shared = Arc::new(Shared {
-        length: Counter::new(),
+        length: db.new_counter(),
         file: ArcSwapOption::empty(),
         current_buffer: ArcSwap::new(buffer.clone()),
     });
@@ -440,7 +440,8 @@ mod tests {
         const BLOCK_SIZE: usize = 0x4000;
 
         // Create a reader-writer pair.
-        let (mut writer, reader) = stream::<BLOCK_SIZE>().unwrap();
+        let mut db = CounterSet::default();
+        let (mut writer, reader) = stream::<BLOCK_SIZE>(&mut db).unwrap();
 
         // Build a reference array with ~8MB of random data.
         let mut prng = XorShiftRng::seed_from_u64(42);

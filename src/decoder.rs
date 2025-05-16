@@ -543,7 +543,8 @@ impl Decoder {
         // Add the special endpoints for invalid and framing packets.
         let mut endpoint_readers = VecMap::new();
         for ep_number in [INVALID_EP_NUM, FRAMING_EP_NUM] {
-            let (writer, reader) = create_endpoint()?;
+            let (writer, reader) =
+                create_endpoint(&mut decoder.capture.counters)?;
             let mut endpoint = Endpoint::default();
             endpoint.set_device_id(default_id);
             endpoint.set_device_address(default_addr);
@@ -755,7 +756,7 @@ impl Decoder {
             Some(id) => *id,
             None => self.add_device(dev_addr)?
         };
-        let (writer, reader) = create_endpoint()?;
+        let (writer, reader) = create_endpoint(&mut self.capture.counters)?;
         let mut endpoint = Endpoint::default();
         endpoint.set_device_id(device_id);
         endpoint.set_device_address(dev_addr);

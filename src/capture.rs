@@ -13,6 +13,7 @@ use std::mem::size_of;
 
 use crate::database::{
     Counter,
+    CounterSet,
     CompactReader,
     CompactWriter,
     compact_index,
@@ -75,6 +76,7 @@ pub struct CaptureShared {
 
 /// Unique handle for write access to a capture.
 pub struct CaptureWriter {
+    pub counters: CounterSet,
     pub shared: Arc<CaptureShared>,
     pub packet_data: DataWriter<u8, PACKET_DATA_BLOCK_SIZE>,
     pub packet_index: CompactWriter<PacketId, PacketByteId, 2>,
@@ -113,19 +115,21 @@ pub struct CaptureReader {
 pub fn create_capture()
     -> Result<(CaptureWriter, CaptureReader), Error>
 {
+    let mut counters = CounterSet::default();
+    let db = &mut counters;
     // Create all the required streams.
     let (data_writer, data_reader) =
-        data_stream_with_block_size::<_, PACKET_DATA_BLOCK_SIZE>()?;
-    let (packets_writer, packets_reader) = compact_index()?;
-    let (timestamp_writer, timestamp_reader) = compact_index()?;
-    let (transactions_writer, transactions_reader) = compact_index()?;
-    let (groups_writer, groups_reader) = data_stream()?;
-    let (items_writer, items_reader) = compact_index()?;
-    let (devices_writer, devices_reader) = data_stream()?;
-    let (endpoints_writer, endpoints_reader) = data_stream()?;
-    let (endpoint_state_writer, endpoint_state_reader) = data_stream()?;
-    let (state_index_writer, state_index_reader) = compact_index()?;
-    let (end_writer, end_reader) = compact_index()?;
+        data_stream_with_block_size::<_, PACKET_DATA_BLOCK_SIZE>(db)?;
+    let (packets_writer, packets_reader) = compact_index(db)?;
+    let (timestamp_writer, timestamp_reader) = compact_index(db)?;
+    let (transactions_writer, transactions_reader) = compact_index(db)?;
+    let (groups_writer, groups_reader) = data_stream(db)?;
+    let (items_writer, items_reader) = compact_index(db)?;
+    let (devices_writer, devices_reader) = data_stream(db)?;
+    let (endpoints_writer, endpoints_reader) = data_stream(db)?;
+    let (endpoint_state_writer, endpoint_state_reader) = data_stream(db)?;
+    let (state_index_writer, state_index_reader) = compact_index(db)?;
+    let (end_writer, end_reader) = compact_index(db)?;
 
     // Create the state shared by readers and writer.
     let shared = Arc::new(CaptureShared {
@@ -138,6 +142,7 @@ pub fn create_capture()
 
     // Create the write handle.
     let writer = CaptureWriter {
+        counters,
         shared: shared.clone(),
         packet_data: data_writer,
         packet_index: packets_writer,
@@ -202,19 +207,19 @@ pub struct EndpointReader {
 }
 
 /// Create a per-endpoint reader-writer pair.
-pub fn create_endpoint()
+pub fn create_endpoint(db: &mut CounterSet)
     -> Result<(EndpointWriter, EndpointReader), Error>
 {
     // Create all the required streams.
-    let (transactions_writer, transactions_reader) = compact_index()?;
-    let (groups_writer, groups_reader) = compact_index()?;
-    let (data_transaction_writer, data_transaction_reader) = compact_index()?;
-    let (data_byte_count_writer, data_byte_count_reader) = compact_index()?;
-    let (end_writer, end_reader) = compact_index()?;
+    let (transactions_writer, transactions_reader) = compact_index(db)?;
+    let (groups_writer, groups_reader) = compact_index(db)?;
+    let (data_transaction_writer, data_transaction_reader) = compact_index(db)?;
+    let (data_byte_count_writer, data_byte_count_reader) = compact_index(db)?;
+    let (end_writer, end_reader) = compact_index(db)?;
 
     // Create the shared state.
     let shared = Arc::new(EndpointShared {
-        total_data: Counter::new(),
+        total_data: db.new_counter(),
         first_item_id: ArcSwapOption::const_empty(),
     });
 
