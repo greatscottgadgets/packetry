@@ -145,6 +145,10 @@ fn check_replays() {
                             End => panic!("No next loader item"),
                         };
                     }
+                    with_ui(|ui| {
+                        ui.capture = decoder.capture.snapshot();
+                        Ok(())
+                    }).unwrap();
                     update_view()
                         .expect("Failed to update view");
                 },
