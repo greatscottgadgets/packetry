@@ -17,8 +17,8 @@ use crate::util::{
 
 struct EndpointData {
     device_id: DeviceId,
+    endpoint_id: EndpointId,
     address: EndpointAddr,
-    writer: EndpointWriter,
     early_start: Option<EndpointGroupId>,
     active: Option<GroupState>,
     ended: Option<EndpointGroupId>,
@@ -58,14 +58,14 @@ enum TransactionStatus {
 
 impl EndpointData {
     fn new(device_id: DeviceId,
-           address: EndpointAddr,
-           writer: EndpointWriter)
+           endpoint_id: EndpointId,
+           address: EndpointAddr)
         -> EndpointData
     {
         EndpointData {
-            address,
             device_id,
-            writer,
+            endpoint_id,
+            address,
             early_start: None,
             active: None,
             ended: None,
@@ -483,32 +483,6 @@ impl EndpointData {
         };
         Ok((status, effect))
     }
-
-    fn apply_effect(&mut self,
-                    transaction: &TransactionState,
-                    effect: TransactionSideEffect)
-        -> Result<(), Error>
-    {
-        use TransactionSideEffect::*;
-        match effect {
-            NoEffect => {},
-            PendingData(data) => {
-                let ep_transaction_id = transaction.ep_transaction_id
-                    .context("Pending data but no endpoint transaction ID set")?;
-                self.pending_payload = Some((data, ep_transaction_id));
-            },
-            IndexData(length, ep_transaction_id) => {
-                let ep_transaction_id = ep_transaction_id
-                    .or(transaction.ep_transaction_id)
-                    .context("Data to index but no endpoint transaction ID set")?;
-                self.writer.data_transactions.push(ep_transaction_id)?;
-                self.writer.data_byte_counts.push(self.total_data)?;
-                self.total_data += length as u64;
-                self.writer.shared.total_data.store(self.total_data);
-            }
-        };
-        Ok(())
-    }
 }
 
 pub struct Decoder {
@@ -551,11 +525,12 @@ impl Decoder {
             endpoint.set_number(ep_number);
             endpoint.set_direction(Direction::Out);
             let endpoint_id = decoder.capture.endpoints.push(&endpoint)?;
+            decoder.capture.endpoint_writers.set(endpoint_id, writer);
             let endpoint_addr =
                 EndpointAddr::from_parts(ep_number, Direction::Out);
             decoder.endpoint_data.set(
                 endpoint_id,
-                EndpointData::new(default_id, endpoint_addr, writer)
+                EndpointData::new(default_id, endpoint_id, endpoint_addr)
             );
             let ep_state = EndpointState::Idle as u8;
             decoder.last_endpoint_state.push(ep_state);
@@ -764,10 +739,12 @@ impl Decoder {
         endpoint.set_direction(direction);
         let endpoint_id = self.capture.endpoints.push(&endpoint)?;
         let endpoint_addr = EndpointAddr::from_parts(number, direction);
-        let endpoint_data = EndpointData::new(device_id, endpoint_addr, writer);
+        let endpoint_data =
+            EndpointData::new(device_id, endpoint_id, endpoint_addr);
         let endpoint_state = EndpointState::Idle as u8;
         self.last_endpoint_state.push(endpoint_state);
         self.endpoint_data.set(endpoint_id, endpoint_data);
+        self.capture.endpoint_writers.set(endpoint_id, writer);
         self.capture.shared.endpoint_readers.update(|endpoint_readers| {
             endpoint_readers.set(endpoint_id, Arc::new(reader));
         });
@@ -839,9 +816,9 @@ impl Decoder {
         if let (Some(state), Some((endpoint_id, transaction_id))) =
             (&mut self.transaction_state, to_index)
         {
-            let ep_data = &mut self.endpoint_data[endpoint_id];
+            let writer = &mut self.capture.endpoint_writers[endpoint_id];
             let ep_transaction_id =
-                ep_data.writer.transaction_ids.push(transaction_id)?;
+                writer.transaction_ids.push(transaction_id)?;
             state.ep_transaction_id = Some(ep_transaction_id);
         };
         Ok(())
@@ -854,6 +831,7 @@ impl Decoder {
         complete: bool
     ) -> Result<(), Error> {
         use GroupStatus::*;
+        use TransactionSideEffect::*;
         let endpoint_id = transaction.endpoint_id()?;
         let ep_data = &mut self.endpoint_data[endpoint_id];
         let dev_data = self.capture.device_data(ep_data.device_id)?;
@@ -882,7 +860,26 @@ impl Decoder {
                 self.group_end(transaction)?;
             }
         }
-        self.endpoint_data[endpoint_id].apply_effect(transaction, effect)?;
+        let ep_data = &mut self.endpoint_data[endpoint_id];
+        match effect {
+            NoEffect => {},
+            PendingData(data) => {
+                let ep_transaction_id = transaction.ep_transaction_id
+                    .context("Pending data but no endpoint transaction ID set")?;
+                ep_data.pending_payload = Some((data, ep_transaction_id));
+            },
+            IndexData(length, ep_transaction_id) => {
+                let ep_transaction_id = ep_transaction_id
+                    .or(transaction.ep_transaction_id)
+                    .context("Data to index but no endpoint transaction ID set")?;
+                let writer =
+                    &mut self.capture.endpoint_writers[ep_data.endpoint_id];
+                writer.data_transactions.push(ep_transaction_id)?;
+                writer.data_byte_counts.push(ep_data.total_data)?;
+                ep_data.total_data += length as u64;
+                writer.shared.total_data.store(ep_data.total_data);
+            }
+        };
         Ok(())
     }
 
@@ -921,8 +918,9 @@ impl Decoder {
         let ep_data = &mut self.endpoint_data[endpoint_id];
         if let Some(group) = &mut ep_data.active {
             if transaction.ep_transaction_id.is_none() {
+                let writer = &mut self.capture.endpoint_writers[endpoint_id];
                 let ep_transaction_id =
-                    ep_data.writer.transaction_ids.push(transaction.id)?;
+                    writer.transaction_ids.push(transaction.id)?;
                 transaction.ep_transaction_id = Some(ep_transaction_id);
             }
             if done {
@@ -966,15 +964,15 @@ impl Decoder {
             if let Some(ep_transaction_id) = transaction.ep_transaction_id {
                 ep_transaction_id
             } else {
-                let ep_data = &mut self.endpoint_data[endpoint_id];
+                let writer = &mut self.capture.endpoint_writers[endpoint_id];
                 let ep_transaction_id =
-                    ep_data.writer.transaction_ids.push(transaction.id)?;
+                    writer.transaction_ids.push(transaction.id)?;
                 transaction.ep_transaction_id = Some(ep_transaction_id);
                 ep_transaction_id
             };
-        let ep_data = &mut self.endpoint_data[endpoint_id];
+        let writer = &mut self.capture.endpoint_writers[endpoint_id];
         let ep_group_id =
-            ep_data.writer.group_index.push(ep_transaction_id)?;
+            writer.group_index.push(ep_transaction_id)?;
         let group_start_id =
             self.add_group_entry(endpoint_id, ep_group_id, true)?;
         self.add_item(endpoint_id, group_start_id)?;
@@ -1036,7 +1034,8 @@ impl Decoder {
             let ep_data = &mut self.endpoint_data[endpoint_id];
             if let Some(ep_group_id) = ep_data.ended.take() {
                 // This group has ended and is not yet linked to an item.
-                let end_id = ep_data.writer.end_index.push(item_id)?;
+                let writer = &mut self.capture.endpoint_writers[endpoint_id];
+                let end_id = writer.end_index.push(item_id)?;
                 assert!(end_id == ep_group_id);
             }
         }
