@@ -13,7 +13,7 @@ use anyhow::{Context, Error, anyhow, bail};
 use itertools::{structs::Zip, multizip};
 
 use crate::database::{
-    counter::{Counter, CounterSet},
+    Counter, CounterSet, Snapshot,
     data_stream::{data_stream, DataReader, DataWriter, DataIterator},
     index_stream::{index_stream, IndexReader, IndexWriter, IndexIterator},
 };
@@ -595,6 +595,27 @@ where
             None
         } else {
             Some(self.fetch_next())
+        }
+    }
+}
+
+impl<P, V, const W: usize> Snapshot<CompactReader<P, V>> for CompactWriter<P, V, W>
+{
+    fn snapshot(&self, db: &CounterSet) -> CompactReader<P, V> {
+        CompactReader {
+            _marker: PhantomData,
+            shared_length: Arc::new(
+                self.shared_length.snapshot(db)),
+            segment_start_reader:
+                self.segment_start_writer.snapshot(db),
+            segment_base_reader:
+                self.segment_base_writer.snapshot(db),
+            segment_offset_reader:
+                self.segment_offset_writer.snapshot(db),
+            segment_width_reader:
+                self.segment_width_writer.snapshot(db),
+            data_reader:
+                self.data_writer.snapshot(db),
         }
     }
 }

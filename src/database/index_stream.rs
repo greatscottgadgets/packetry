@@ -9,7 +9,7 @@ use std::ops::Range;
 use anyhow::Error;
 
 use crate::database::{
-    counter::CounterSet,
+    CounterSet, Snapshot,
     stream::MIN_BLOCK,
     data_stream::{
         data_stream,
@@ -299,6 +299,15 @@ where Position: From<u64>, Value: From<u64>
     }
 }
 
+impl<P, V, const S: usize> Snapshot<IndexReader<P, V, S>> for IndexWriter<P, V, S>
+{
+    fn snapshot(&self, db: &CounterSet) -> IndexReader<P, V, S> {
+        IndexReader {
+            marker: PhantomData,
+            data_reader: self.data_writer.snapshot(db),
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {

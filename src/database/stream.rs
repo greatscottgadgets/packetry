@@ -22,7 +22,7 @@ use lrumap::{LruMap, LruBTreeMap};
 use memmap2::{Mmap, MmapOptions};
 use tempfile::tempfile;
 
-use crate::database::counter::{Counter, CounterSet};
+use crate::database::{Counter, CounterSet, Snapshot};
 
 /// Minimum block size, defined by largest minimum page size on target systems.
 pub const MIN_BLOCK: usize = 0x4000; // 16KB (Apple M1/M2)
@@ -422,6 +422,23 @@ impl<const S: usize> Clone for StreamReader<S> {
                 }
                 new_mappings
             }
+        }
+    }
+}
+
+impl<const S: usize> Snapshot<StreamReader<S>> for StreamWriter<S> {
+    fn snapshot(&self, db: &CounterSet) -> StreamReader<S> {
+        StreamReader {
+            shared: Arc::new(Shared {
+                length: self.shared.length.snapshot(db),
+                file: ArcSwapOption::new(
+                    self.shared.file.load().clone()
+                ),
+                current_buffer: ArcSwap::new(
+                    self.shared.current_buffer.load().clone()
+                ),
+            }),
+            mappings: LruBTreeMap::new(MAP_CACHE_PER_READER),
         }
     }
 }

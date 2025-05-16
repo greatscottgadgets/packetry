@@ -10,7 +10,7 @@ use anyhow::Error;
 use bytemuck::{bytes_of, cast_slice, from_bytes, Pod};
 
 use crate::util::id::Id;
-use crate::database::counter::CounterSet;
+use crate::database::{CounterSet, Snapshot};
 use crate::database::stream::{
     stream,
     StreamReader,
@@ -234,6 +234,15 @@ where Value: Pod
         self.range.start += 1;
         // Return the value found.
         Some(Ok(value))
+    }
+}
+
+impl<T, const S: usize> Snapshot<DataReader<T, S>> for DataWriter<T, S> {
+    fn snapshot(&self, db: &CounterSet) -> DataReader<T, S> {
+        DataReader {
+            marker: PhantomData,
+            stream_reader: self.stream_writer.snapshot(db),
+        }
     }
 }
 

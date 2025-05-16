@@ -10,6 +10,8 @@ use std::sync::atomic::{
 
 use arc_swap::ArcSwap;
 
+use crate::database::Snapshot;
+
 struct CounterInner {
     buffer: ArcSwap<AtomicPtr<AtomicU64>>,
     index: usize
@@ -116,5 +118,14 @@ impl Clone for CounterSet {
             buffer: Arc::new(self.reallocate(self.capacity).into()),
             refs: Vec::new()
         }
+    }
+}
+
+impl Snapshot<Counter> for Counter {
+    fn snapshot(&self, db: &CounterSet) -> Counter {
+        Counter(Arc::new(CounterInner {
+            buffer: ArcSwap::new(db.buffer.clone()),
+            index: self.0.index
+        }))
     }
 }

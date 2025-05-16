@@ -20,3 +20,7 @@ pub use compact_index::{
     CompactWriter,
     compact_index,
 };
+
+pub trait Snapshot<T> {
+    fn snapshot(&self, db: &CounterSet) -> T;
+}

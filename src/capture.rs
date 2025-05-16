@@ -21,6 +21,7 @@ use crate::database::{
     DataWriter,
     data_stream,
     data_stream_with_block_size,
+    Snapshot,
 };
 use crate::usb::{self, prelude::*};
 use crate::util::{
@@ -914,6 +915,46 @@ impl CaptureWriter {
             percentage, fmt_size(overhead),
         )
     }
+
+    pub fn snapshot(&mut self) -> CaptureReader {
+        let db = &self.counters.clone();
+        let mut endpoint_readers = VecMap::<EndpointId, _>::new();
+        for writer in self.endpoint_writers.into_iter() {
+            endpoint_readers.push(writer.snapshot(db));
+        }
+        CaptureReader {
+            shared: Arc::new(CaptureShared {
+                metadata: ArcSwap::new(
+                    self.shared.metadata.load().clone()),
+                device_data: ArcSwap::new(
+                    self.shared.device_data.load().clone()),
+                endpoint_index: ArcSwap::new(
+                    self.shared.endpoint_index.load().clone()),
+                complete: AtomicBool::new(
+                    self.shared.complete.load(Acquire)),
+                endpoint_readers: ArcSwap::new(Arc::new({
+                    let mut readers = VecMap::new();
+                    for writer in self.endpoint_writers.into_iter() {
+                        readers.push(Arc::new(writer.snapshot(db)));
+                    }
+                    readers
+                })),
+            }),
+            endpoint_readers: VecMap::new(),
+            packet_data: self.packet_data.snapshot(db),
+            packet_index: self.packet_index.snapshot(db),
+            packet_times: self.packet_times.snapshot(db),
+            transaction_index: self.transaction_index.snapshot(db),
+            group_index: self.group_index.snapshot(db),
+            item_index: self.item_index.snapshot(db),
+            devices: self.devices.snapshot(db),
+            endpoints: self.endpoints.snapshot(db),
+            endpoint_states: self.endpoint_states.snapshot(db),
+            endpoint_state_index:
+                self.endpoint_state_index.snapshot(db),
+            end_index: self.end_index.snapshot(db),
+        }
+    }
 }
 
 impl CaptureReader {
@@ -1291,6 +1332,24 @@ impl EndpointReader {
             self.data_byte_counts.get(range.end)?
         };
         Ok(last_byte_count - first_byte_count)
+    }
+}
+
+impl Snapshot<EndpointReader> for EndpointWriter {
+    fn snapshot(&self, db: &CounterSet) -> EndpointReader {
+        EndpointReader {
+            shared: Arc::new(EndpointShared {
+                total_data:
+                    self.shared.total_data.snapshot(db),
+                first_item_id: ArcSwapOption::new(
+                    self.shared.first_item_id.load_full()),
+            }),
+            transaction_ids: self.transaction_ids.snapshot(db),
+            group_index: self.group_index.snapshot(db),
+            data_transactions: self.data_transactions.snapshot(db),
+            data_byte_counts: self.data_byte_counts.snapshot(db),
+            end_index: self.end_index.snapshot(db),
+        }
     }
 }
 
