@@ -13,7 +13,7 @@ use anyhow::{Context, Error, anyhow, bail};
 use itertools::{structs::Zip, multizip};
 
 use crate::database::{
-    counter::Counter,
+    counter::{Counter, CounterSet},
     data_stream::{data_stream, DataReader, DataWriter, DataIterator},
     index_stream::{index_stream, IndexReader, IndexWriter, IndexIterator},
 };
@@ -104,15 +104,15 @@ type CompactPair<P, V, const W: usize> =
 ///
 /// Returns a unique writer and a cloneable reader.
 ///
-pub fn compact_index<P, V, const W: usize>()
+pub fn compact_index<P, V, const W: usize>(db: &mut CounterSet)
     -> Result<CompactPair<P, V, W>, Error>
 {
-    let (segment_start_writer, segment_start_reader) = index_stream()?;
-    let (segment_base_writer, segment_base_reader) = index_stream()?;
-    let (segment_offset_writer, segment_offset_reader) = index_stream()?;
-    let (segment_width_writer, segment_width_reader) = data_stream()?;
-    let (data_writer, data_reader) = data_stream()?;
-    let shared_length = Arc::new(Counter::new());
+    let (segment_start_writer, segment_start_reader) = index_stream(db)?;
+    let (segment_base_writer, segment_base_reader) = index_stream(db)?;
+    let (segment_offset_writer, segment_offset_reader) = index_stream(db)?;
+    let (segment_width_writer, segment_width_reader) = data_stream(db)?;
+    let (data_writer, data_reader) = data_stream(db)?;
+    let shared_length = Arc::new(db.new_counter());
     let writer = CompactWriter {
         shared_length: shared_length.clone(),
         segment_start_writer,
@@ -620,15 +620,17 @@ where
         Ok(())
     }
 
-    fn restore(src: &std::path::Path) -> Result<Self, anyhow::Error> {
+    fn restore(db: &mut CounterSet, src: &std::path::Path)
+        -> Result<Self, anyhow::Error>
+    {
         Ok(CompactReader {
             _marker: PhantomData,
-            shared_length: restore(&src.join("length"))?,
-            segment_start_reader: restore(&src.join("segment_starts"))?,
-            segment_base_reader: restore(&src.join("segment_bases"))?,
-            segment_offset_reader: restore(&src.join("segment_offsets"))?,
-            segment_width_reader: restore(&src.join("segment_widths"))?,
-            data_reader: restore(&src.join("deltas"))?,
+            shared_length: restore(db, &src.join("length"))?,
+            segment_start_reader: restore(db, &src.join("segment_starts"))?,
+            segment_base_reader: restore(db, &src.join("segment_bases"))?,
+            segment_offset_reader: restore(db, &src.join("segment_offsets"))?,
+            segment_width_reader: restore(db, &src.join("segment_widths"))?,
+            data_reader: restore(db, &src.join("deltas"))?,
         })
     }
 }
@@ -652,7 +654,9 @@ mod tests {
 
     #[test]
     fn test_compact_index() {
-        let (mut writer, mut reader) = compact_index::<_, _, 1>().unwrap();
+        let mut db = CounterSet::new();
+        let (mut writer, mut reader) =
+            compact_index::<_, _, 1>(&mut db).unwrap();
         let mut expected = Vec::<Id<u8>>::new();
         let mut x = 10;
         let n = 4321;

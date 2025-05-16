@@ -14,6 +14,7 @@ use std::mem::size_of;
 
 use crate::database::{
     Counter,
+    CounterSet,
     CompactReader,
     CompactWriter,
     compact_index,
@@ -77,6 +78,7 @@ pub struct CaptureShared {
 
 /// Unique handle for write access to a capture.
 pub struct CaptureWriter {
+    pub counters: CounterSet,
     pub shared: Arc<CaptureShared>,
     pub packet_data: DataWriter<u8, PACKET_DATA_BLOCK_SIZE>,
     pub packet_index: CompactWriter<PacketId, PacketByteId, 2>,
@@ -115,19 +117,21 @@ pub struct CaptureReader {
 pub fn create_capture()
     -> Result<(CaptureWriter, CaptureReader), Error>
 {
+    let mut counters = CounterSet::new();
+    let db = &mut counters;
     // Create all the required streams.
     let (data_writer, data_reader) =
-        data_stream_with_block_size::<_, PACKET_DATA_BLOCK_SIZE>()?;
-    let (packets_writer, packets_reader) = compact_index()?;
-    let (timestamp_writer, timestamp_reader) = compact_index()?;
-    let (transactions_writer, transactions_reader) = compact_index()?;
-    let (groups_writer, groups_reader) = data_stream()?;
-    let (items_writer, items_reader) = compact_index()?;
-    let (devices_writer, devices_reader) = data_stream()?;
-    let (endpoints_writer, endpoints_reader) = data_stream()?;
-    let (endpoint_state_writer, endpoint_state_reader) = data_stream()?;
-    let (state_index_writer, state_index_reader) = compact_index()?;
-    let (end_writer, end_reader) = compact_index()?;
+        data_stream_with_block_size::<_, PACKET_DATA_BLOCK_SIZE>(db)?;
+    let (packets_writer, packets_reader) = compact_index(db)?;
+    let (timestamp_writer, timestamp_reader) = compact_index(db)?;
+    let (transactions_writer, transactions_reader) = compact_index(db)?;
+    let (groups_writer, groups_reader) = data_stream(db)?;
+    let (items_writer, items_reader) = compact_index(db)?;
+    let (devices_writer, devices_reader) = data_stream(db)?;
+    let (endpoints_writer, endpoints_reader) = data_stream(db)?;
+    let (endpoint_state_writer, endpoint_state_reader) = data_stream(db)?;
+    let (state_index_writer, state_index_reader) = compact_index(db)?;
+    let (end_writer, end_reader) = compact_index(db)?;
 
     // Create the state shared by readers and writer.
     let shared = Arc::new(CaptureShared {
@@ -140,6 +144,7 @@ pub fn create_capture()
 
     // Create the write handle.
     let writer = CaptureWriter {
+        counters,
         shared: shared.clone(),
         packet_data: data_writer,
         packet_index: packets_writer,
@@ -204,19 +209,19 @@ pub struct EndpointReader {
 }
 
 /// Create a per-endpoint reader-writer pair.
-pub fn create_endpoint()
+pub fn create_endpoint(db: &mut CounterSet)
     -> Result<(EndpointWriter, EndpointReader), Error>
 {
     // Create all the required streams.
-    let (transactions_writer, transactions_reader) = compact_index()?;
-    let (groups_writer, groups_reader) = compact_index()?;
-    let (data_transaction_writer, data_transaction_reader) = compact_index()?;
-    let (data_byte_count_writer, data_byte_count_reader) = compact_index()?;
-    let (end_writer, end_reader) = compact_index()?;
+    let (transactions_writer, transactions_reader) = compact_index(db)?;
+    let (groups_writer, groups_reader) = compact_index(db)?;
+    let (data_transaction_writer, data_transaction_reader) = compact_index(db)?;
+    let (data_byte_count_writer, data_byte_count_reader) = compact_index(db)?;
+    let (end_writer, end_reader) = compact_index(db)?;
 
     // Create the shared state.
     let shared = Arc::new(EndpointShared {
-        total_data: Counter::new(),
+        total_data: db.new_counter(),
         first_item_id: ArcSwapOption::const_empty(),
     });
 
@@ -1309,14 +1314,14 @@ impl Dump for CaptureReader {
         Ok(())
     }
 
-    fn restore(src: &Path) -> Result<Self, Error> {
+    fn restore(db: &mut CounterSet, src: &Path) -> Result<Self, Error> {
         let endpoint_readers =
             VecMap::<EndpointId, EndpointReader>::restore(
-                &src.join("endpoint_readers"))?;
+                db, &src.join("endpoint_readers"))?;
         Ok(CaptureReader {
             shared: Arc::new(CaptureShared {
                 metadata: ArcSwap::new(Arc::new(CaptureMetadata::default())),
-                device_data: restore(&src.join("device_data"))?,
+                device_data: restore(db, &src.join("device_data"))?,
                 endpoint_index: ArcSwap::new(Arc::new(VecMap::new())),
                 endpoint_readers: ArcSwap::new(Arc::new({
                     let mut map = VecMap::new();
@@ -1328,17 +1333,17 @@ impl Dump for CaptureReader {
                 complete: AtomicBool::from(false),
             }),
             endpoint_readers,
-            packet_data: restore(&src.join("packet_data"))?,
-            packet_index: restore(&src.join("packet_index"))?,
-            packet_times: restore(&src.join("packet_times"))?,
-            transaction_index: restore(&src.join("transaction_index"))?,
-            group_index: restore(&src.join("group_index"))?,
-            item_index: restore(&src.join("item_index"))?,
-            devices: restore(&src.join("devices"))?,
-            endpoints: restore(&src.join("endpoints"))?,
-            endpoint_states: restore(&src.join("endpoint_states"))?,
-            endpoint_state_index: restore(&src.join("endpoint_state_index"))?,
-            end_index: restore(&src.join("end_index"))?,
+            packet_data: restore(db, &src.join("packet_data"))?,
+            packet_index: restore(db, &src.join("packet_index"))?,
+            packet_times: restore(db, &src.join("packet_times"))?,
+            transaction_index: restore(db, &src.join("transaction_index"))?,
+            group_index: restore(db, &src.join("group_index"))?,
+            item_index: restore(db, &src.join("item_index"))?,
+            devices: restore(db, &src.join("devices"))?,
+            endpoints: restore(db, &src.join("endpoints"))?,
+            endpoint_states: restore(db, &src.join("endpoint_states"))?,
+            endpoint_state_index: restore(db, &src.join("endpoint_state_index"))?,
+            end_index: restore(db, &src.join("end_index"))?,
         })
     }
 }
@@ -1356,19 +1361,19 @@ impl Dump for EndpointReader {
         Ok(())
     }
 
-    fn restore(src: &Path) -> Result<Self, Error> {
+    fn restore(db: &mut CounterSet, src: &Path) -> Result<Self, Error> {
         Ok(EndpointReader {
             shared: Arc::new(
                 EndpointShared {
-                    total_data: restore(&src.join("total_data"))?,
-                    first_item_id: restore(&src.join("first_item_id"))?,
+                    total_data: restore(db, &src.join("total_data"))?,
+                    first_item_id: restore(db, &src.join("first_item_id"))?,
                 }
             ),
-            transaction_ids: restore(&src.join("transaction_ids"))?,
-            group_index: restore(&src.join("group_index"))?,
-            data_transactions: restore(&src.join("data_transactions"))?,
-            data_byte_counts: restore(&src.join("data_byte_counts"))?,
-            end_index: restore(&src.join("end_index"))?,
+            transaction_ids: restore(db, &src.join("transaction_ids"))?,
+            group_index: restore(db, &src.join("group_index"))?,
+            data_transactions: restore(db, &src.join("data_transactions"))?,
+            data_byte_counts: restore(db, &src.join("data_byte_counts"))?,
+            end_index: restore(db, &src.join("end_index"))?,
         })
     }
 }
@@ -1386,15 +1391,15 @@ impl Dump for DeviceData {
         Ok(())
     }
 
-    fn restore(src: &Path) -> Result<Self, Error> {
+    fn restore(db: &mut CounterSet, src: &Path) -> Result<Self, Error> {
         Ok(DeviceData {
-            device_descriptor: restore(&src.join("device_descriptor"))?,
-            configurations: restore(&src.join("configurations"))?,
-            config_number: restore(&src.join("config_number"))?,
-            interface_settings: restore(&src.join("interface_settings"))?,
-            endpoint_details: restore(&src.join("endpoint_details"))?,
-            strings: restore(&src.join("strings"))?,
-            version: restore(&src.join("version"))?,
+            device_descriptor: restore(db, &src.join("device_descriptor"))?,
+            configurations: restore(db, &src.join("configurations"))?,
+            config_number: restore(db, &src.join("config_number"))?,
+            interface_settings: restore(db, &src.join("interface_settings"))?,
+            endpoint_details: restore(db, &src.join("endpoint_details"))?,
+            strings: restore(db, &src.join("strings"))?,
+            version: restore(db, &src.join("version"))?,
         })
     }
 }
@@ -1408,10 +1413,10 @@ impl Dump for EndpointDetails {
         Ok(())
     }
 
-    fn restore(src: &Path) -> Result<Self, Error> {
+    fn restore(db: &mut CounterSet, src: &Path) -> Result<Self, Error> {
         Ok((
-           restore(&src.join("endpoint_type"))?,
-           restore(&src.join("max_packet_size"))?,
+           restore(db, &src.join("endpoint_type"))?,
+           restore(db, &src.join("max_packet_size"))?,
         ))
     }
 }
