@@ -80,6 +80,7 @@ pub struct CaptureShared {
 pub struct CaptureWriter {
     pub counters: CounterSet,
     pub shared: Arc<CaptureShared>,
+    pub endpoint_writers: VecMap<EndpointId, EndpointWriter>,
     pub packet_data: DataWriter<u8, PACKET_DATA_BLOCK_SIZE>,
     pub packet_index: CompactWriter<PacketId, PacketByteId, 2>,
     pub packet_times: CompactWriter<PacketId, Timestamp, 3>,
@@ -146,6 +147,7 @@ pub fn create_capture()
     let writer = CaptureWriter {
         counters,
         shared: shared.clone(),
+        endpoint_writers: VecMap::new(),
         packet_data: data_writer,
         packet_index: packets_writer,
         packet_times: timestamp_writer,
