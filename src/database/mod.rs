@@ -6,7 +6,7 @@ mod data_stream;
 mod index_stream;
 mod compact_index;
 
-pub use counter::Counter;
+pub use counter::{Counter, CounterSet};
 
 pub use data_stream::{
     DataReader,

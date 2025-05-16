@@ -1038,7 +1038,8 @@ mod tests {
     use std::io::{BufReader, BufWriter, BufRead, Write};
     use std::path::PathBuf;
     use itertools::Itertools;
-    use crate::capture::create_capture;
+    use crate::capture::{CaptureReader, create_capture};
+    use crate::database::CounterSet;
     use crate::decoder::Decoder;
     use crate::file::{GenericLoader, GenericPacket, LoaderItem, PcapLoader};
     use crate::util::dump::Dump;
@@ -1124,7 +1125,8 @@ mod tests {
                 }
                 decoder.finish().unwrap();
                 reader.dump(&dump_path).unwrap();
-                reader = CaptureReader::restore(&dump_path).unwrap();
+                let mut db = CounterSet::new();
+                reader = CaptureReader::restore(&mut db, &dump_path).unwrap();
                 let traf_out_file = File::create(traf_out_path.clone()).unwrap();
                 let mut traf_out_writer = BufWriter::new(traf_out_file);
                 let num_items = reader.item_index.len();
