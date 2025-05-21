@@ -6,14 +6,12 @@ use std::ffi::OsStr;
 use std::io::{Read, Write};
 use std::ops::Range;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::mpsc::{Sender, Receiver, channel};
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 
 #[cfg(feature="step-decoder")]
 use std::net::TcpListener;
-
-#[cfg(feature="record-ui-test")]
-use std::sync::Mutex;
 
 use anyhow::{Context as ErrorContext, Error, bail};
 use chrono::{DateTime, Local};
@@ -144,9 +142,7 @@ static TOTAL: AtomicU64 = AtomicU64::new(0);
 static CURRENT: AtomicU64 = AtomicU64::new(0);
 static STOP: AtomicBool = AtomicBool::new(false);
 static UPDATE_INTERVAL: Duration = Duration::from_millis(10);
-
-#[cfg(feature="record-ui-test")]
-static UPDATE_LOCK: Mutex<()> = Mutex::new(());
+static SNAPSHOT_REQ: AtomicBool = AtomicBool::new(false);
 
 thread_local!(
     static WINDOW: RefCell<Option<ApplicationWindow>> =
@@ -369,6 +365,7 @@ impl DeviceWarning {
 }
 
 pub struct UserInterface {
+    snapshot_rx: Receiver<CaptureReader>,
     pub capture: CaptureReader,
     selector: DeviceSelector,
     file_name: Option<String>,
@@ -635,11 +632,13 @@ pub fn activate(application: &Application) -> Result<(), Error> {
     window.set_child(Some(&vbox));
 
     UI.with(|cell| {
+        let (_snapshot_tx, snapshot_rx) = channel();
         cell.borrow_mut().replace(
             UserInterface {
                 #[cfg(any(test, feature="record-ui-test"))]
                 recording: Rc::new(RefCell::new(
                     Recording::new(capture.clone()))),
+                snapshot_rx,
                 capture,
                 selector,
                 file_name: None,
@@ -933,16 +932,15 @@ pub fn reset_capture() -> Result<CaptureWriter, Error> {
 
 pub fn update_view() -> Result<(), Error> {
     with_ui(|ui| {
+        SNAPSHOT_REQ.store(true, Ordering::Relaxed);
+        if let Ok(snapshot) = ui.snapshot_rx.recv() {
+            ui.capture = snapshot;
+        };
         use FileAction::*;
         #[cfg(feature="record-ui-test")]
-        let guard = {
-            let guard = UPDATE_LOCK.lock();
-            let packet_count = ui.capture.packet_index.len();
-            ui.recording
-                .borrow_mut()
-                .log_update(packet_count);
-            guard
-        };
+        ui.recording
+            .borrow_mut()
+            .log_update(ui.capture.packet_index.len());
         let mut more_updates = false;
         if ui.show_progress == Some(Save) {
             more_updates = true;
@@ -1011,8 +1009,6 @@ pub fn update_view() -> Result<(), Error> {
                 || display_error(update_view())
             );
         }
-        #[cfg(feature="record-ui-test")]
-        drop(guard);
         Ok(())
     })
 }
@@ -1092,6 +1088,7 @@ fn start_file(action: FileAction, file: gio::File) -> Result<(), Error> {
     };
     with_ui(|ui| {
         let cancel_handle = Cancellable::new();
+        let (snapshot_tx, snapshot_rx) = channel();
         #[cfg(feature="record-ui-test")]
         ui.recording.borrow_mut().log_open_file(
             &file.path().context("Cannot record UI test for non-local path")?,
@@ -1107,6 +1104,7 @@ fn start_file(action: FileAction, file: gio::File) -> Result<(), Error> {
         ui.vbox.insert_child_after(&ui.progress_bar, Some(&ui.separator));
         ui.show_progress = Some(action);
         ui.file_name = Some(basename.to_string_lossy().to_string());
+        ui.snapshot_rx = snapshot_rx;
         let capture = ui.capture.clone();
         let packet_count = capture.packet_index.len();
         CURRENT.store(0, Ordering::Relaxed);
@@ -1117,8 +1115,10 @@ fn start_file(action: FileAction, file: gio::File) -> Result<(), Error> {
         std::thread::spawn(move || {
             let start_time = Instant::now();
             let result = match action {
-                Load => load_file(file, format, writer.unwrap(), cancel_handle),
-                Save => save_file(file, format, capture, cancel_handle),
+                Load => load_file(
+                    file, format, writer.unwrap(), cancel_handle, snapshot_tx),
+                Save => save_file(
+                    file, format, capture, cancel_handle),
             };
             let duration = Instant::now().duration_since(start_time);
             if result.is_ok() {
@@ -1142,7 +1142,8 @@ fn start_file(action: FileAction, file: gio::File) -> Result<(), Error> {
 
 fn load<Source, Loader>(
     writer: CaptureWriter,
-    source: Source
+    source: Source,
+    snapshot_tx: Sender<CaptureReader>,
 ) -> Result<(), Error>
 where
     Source: Read,
@@ -1161,13 +1162,12 @@ where
                     let mut buf = [0; 1];
                     client.read(&mut buf).unwrap();
                 };
-                #[cfg(feature="record-ui-test")]
-                let guard = UPDATE_LOCK.lock();
                 decoder.handle_raw_packet(
                     packet.bytes(), packet.timestamp_ns())?;
-                #[cfg(feature="record-ui-test")]
-                drop(guard);
                 CURRENT.store(packet.total_bytes_read(), Ordering::Relaxed);
+                if SNAPSHOT_REQ.swap(false, Ordering::AcqRel) {
+                    snapshot_tx.send(decoder.capture.snapshot())?;
+                }
             },
             Metadata(meta) => decoder.handle_metadata(meta),
             LoadError(e) => return Err(e),
@@ -1186,7 +1186,8 @@ where
 fn load_file(file: gio::File,
              format: FileFormat,
              writer: CaptureWriter,
-             cancel_handle: Cancellable)
+             cancel_handle: Cancellable,
+             snapshot_tx: Sender<CaptureReader>)
     -> Result<(), Error>
 {
     use FileFormat::*;
@@ -1199,8 +1200,8 @@ fn load_file(file: gio::File,
     }
     let source = file.read(Some(&cancel_handle))?.into_read();
     match format {
-        Pcap => load::<_, PcapLoader<_>>(writer, source),
-        PcapNg => load::<_, PcapNgLoader<_>>(writer, source),
+        Pcap => load::<_, PcapLoader<_>>(writer, source, snapshot_tx),
+        PcapNg => load::<_, PcapNgLoader<_>>(writer, source, snapshot_tx),
     }
 }
 
@@ -1314,6 +1315,7 @@ pub fn start_capture() -> Result<(), Error> {
             .. device.metadata().clone()
         };
         writer.shared.metadata.swap(Arc::new(meta));
+        let (snapshot_tx, snapshot_rx) = channel();
         let (stream_handle, stop_handle) =
             device.start(speed, Box::new(display_error))?;
         ui.open_button.set_sensitive(false);
@@ -1322,12 +1324,16 @@ pub fn start_capture() -> Result<(), Error> {
         ui.capture_button.set_sensitive(false);
         ui.stop_button.set_sensitive(true);
         ui.stop_state = StopState::Backend(stop_handle);
+        ui.snapshot_rx = snapshot_rx;
         let read_packets = move || {
             let mut decoder = Decoder::new(writer)?;
             for result in stream_handle {
                 let packet = result
                     .context("Error processing raw capture data")?;
                 decoder.handle_raw_packet(&packet.bytes, packet.timestamp_ns)?;
+                if SNAPSHOT_REQ.swap(false, Ordering::AcqRel) {
+                    snapshot_tx.send(decoder.capture.snapshot())?;
+                }
             }
             let writer = decoder.finish()?;
             writer.shared.metadata.update(|meta| {
