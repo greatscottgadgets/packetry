@@ -201,7 +201,7 @@ fn set_expanded(ui: &mut UserInterface,
                 .expect("List item is not DeviceRowData")
                 .node()
                 .expect("Failed to get node from DeviceRowData");
-            model.set_expanded(&node, position, expanded)
+            model.set_expanded(&mut ui.capture, &node, position, expanded)
                 .expect("Failed to expand/collapse item");
         },
         log_name => {
@@ -215,7 +215,7 @@ fn set_expanded(ui: &mut UserInterface,
                 .expect("List item is not TrafficRowData")
                 .node()
                 .expect("Failed to get node from TrafficRowData");
-            model.set_expanded(&node, position, expanded)
+            model.set_expanded(&mut ui.capture, &node, position, expanded)
                 .expect("Failed to expand/collapse item");
         },
     }

@@ -755,8 +755,11 @@ fn create_view<Item, Model, RowData, ViewMode>(
                                       feature="record-ui-test"))]
                             recording.borrow_mut().log_item_expanded(
                                 name, position, expanded);
-                            display_error(
-                                model.set_expanded(&node_ref, position, expanded))
+                            display_error(with_ui(|ui| {
+                                model.set_expanded(
+                                    &mut ui.capture,
+                                    &node_ref, position, expanded)
+                            }))
                         }
                     )
                 );

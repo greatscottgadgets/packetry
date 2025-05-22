@@ -420,6 +420,7 @@ where Item: 'static + Clone + Debug,
 
     pub fn set_expanded(&self,
                         model: &Model,
+                        snapshot: &mut CaptureReader,
                         node_ref: &ItemNodeRc<Item>,
                         position: u64,
                         expanded: bool)
@@ -450,7 +451,7 @@ where Item: 'static + Clone + Debug,
             #[cfg(feature="debug-region-map")]
             println!("\nExpanding node at {}", position);
             // Update the region map for the added children.
-            self.expand(children_position, node_ref)?
+            self.expand(snapshot, children_position, node_ref)?
         } else {
             #[cfg(feature="debug-region-map")]
             println!("\nCollapsing node at {}", position);
@@ -460,10 +461,11 @@ where Item: 'static + Clone + Debug,
                 #[cfg(feature="debug-region-map")]
                 println!("\nRecursively collapsing child at {}",
                          child_position);
-                self.set_expanded(model, &child_ref, child_position, false)?;
+                self.set_expanded(
+                    model, snapshot, &child_ref, child_position, false)?;
             }
             // Update the region map for the removed children.
-            self.collapse(children_position, node_ref)?
+            self.collapse(snapshot, children_position, node_ref)?
         };
 
         // Merge adjacent regions with the same source.
@@ -496,9 +498,12 @@ where Item: 'static + Clone + Debug,
         Ok(())
     }
 
-    fn expand(&self, position: u64, node_ref: &ItemNodeRc<Item>)
-        -> Result<ModelUpdate, Error>
-    {
+    fn expand(
+        &self,
+        snapshot: &mut CaptureReader,
+        position: u64,
+        node_ref: &ItemNodeRc<Item>
+    ) -> Result<ModelUpdate, Error> {
         // Find the start of the parent region.
         let (&parent_start, _) = self.regions
             .borrow()
@@ -524,7 +529,8 @@ where Item: 'static + Clone + Debug,
             .into_iter();
 
         // Split the parent region and construct a new region between.
-        let update = self.split_parent(parent_start, &parent, node_ref,
+        let update = self.split_parent(
+            snapshot, parent_start, &parent, node_ref,
             vec![Region {
                 source: parent.source.clone(),
                 offset: parent.offset,
@@ -550,9 +556,12 @@ where Item: 'static + Clone + Debug,
         Ok(update)
     }
 
-    fn collapse(&self, position: u64, node_ref: &ItemNodeRc<Item>)
-        -> Result<ModelUpdate, Error>
-    {
+    fn collapse(
+        &self,
+        _snapshot: &mut CaptureReader,
+        position: u64,
+        node_ref: &ItemNodeRc<Item>
+    ) -> Result<ModelUpdate, Error> {
         // Clone the region starting at this position.
         let region = self.regions
             .borrow()
@@ -614,7 +623,9 @@ where Item: 'static + Clone + Debug,
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn split_parent(&self,
+                    _snapshot: &mut CaptureReader,
                     parent_start: u64,
                     parent: &Region<Item>,
                     _node_ref: &ItemNodeRc<Item>,

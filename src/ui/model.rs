@@ -29,6 +29,7 @@ pub trait GenericModel<Item, ViewMode> where Self: Sized {
 
     /// Set whether a tree node is expanded.
     fn set_expanded(&self,
+                    snapshot: &mut CaptureReader,
                     node: &ItemNodeRc<Item>,
                     position: u32,
                     expanded: bool)
@@ -78,6 +79,7 @@ macro_rules! model {
             }
 
             fn set_expanded(&self,
+                            snapshot: &mut CaptureReader,
                             node: &ItemNodeRc<$item>,
                             position: u32,
                             expanded: bool)
@@ -85,7 +87,7 @@ macro_rules! model {
             {
                 let tree_opt  = self.imp().tree.borrow();
                 let tree = tree_opt.as_ref().unwrap();
-                tree.set_expanded(self, node, position as u64, expanded)
+                tree.set_expanded(self, snapshot, node, position as u64, expanded)
             }
 
             fn update(&self, snapshot: &mut CaptureReader) -> Result<bool, Error> {
