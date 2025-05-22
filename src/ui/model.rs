@@ -37,7 +37,7 @@ pub trait GenericModel<Item, ViewMode> where Self: Sized {
     /// Update the model with new data from the capture.
     ///
     /// Returns true if there will be further updates in future.
-    fn update(&self) -> Result<bool, Error>;
+    fn update(&self, snapshot: &mut CaptureReader) -> Result<bool, Error>;
 
     /// Fetch the description for a given item.
     fn description(&self, item: &Item, detail: bool) -> String;
@@ -88,10 +88,10 @@ macro_rules! model {
                 tree.set_expanded(self, node, position as u64, expanded)
             }
 
-            fn update(&self) -> Result<bool, Error> {
+            fn update(&self, snapshot: &mut CaptureReader) -> Result<bool, Error> {
                 let tree_opt = self.imp().tree.borrow();
                 let tree = tree_opt.as_ref().unwrap();
-                tree.update(self)
+                tree.update(self, snapshot)
             }
 
             fn description(&self, item: &$item, detail: bool) -> String {

@@ -940,7 +940,7 @@ pub fn update_view() -> Result<(), Error> {
         #[cfg(feature="record-ui-test")]
         ui.recording
             .borrow_mut()
-            .log_update(ui.capture.packet_index.len());
+            .log_update(snapshot.packet_index.len());
         let mut more_updates = false;
         if ui.show_progress == Some(Save) {
             more_updates = true;
@@ -963,7 +963,7 @@ pub fn update_view() -> Result<(), Error> {
             ));
             for model in ui.traffic_models.values() {
                 let old_count = model.n_items();
-                more_updates |= model.update()?;
+                more_updates |= model.update(&mut ui.capture)?;
                 let new_count = model.n_items();
                 // If any endpoints were added, we need to redraw the rows above
                 // to add the additional columns of the connecting lines.
@@ -976,7 +976,7 @@ pub fn update_view() -> Result<(), Error> {
                 }
             }
             if let Some(model) = &ui.device_model {
-                more_updates |= model.update()?;
+                more_updates |= model.update(&mut ui.capture)?;
             }
         }
         if let Some(action) = ui.show_progress {

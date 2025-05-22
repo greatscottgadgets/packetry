@@ -354,7 +354,7 @@ impl std::fmt::Display for ModelUpdate {
 
 pub struct TreeListModel<Item, Model, RowData, ViewMode> {
     _marker: PhantomData<(Model, RowData)>,
-    capture: RefCell<CaptureReader>,
+    pub capture: RefCell<CaptureReader>,
     view_mode: ViewMode,
     root: RootNodeRc<Item>,
     regions: RefCell<BTreeMap<u64, Region<Item>>>,
@@ -725,10 +725,12 @@ where Item: 'static + Clone + Debug,
         self.regions.replace(new_regions);
     }
 
-    pub fn update(&self, model: &Model) -> Result<bool, Error> {
+    pub fn update(&self, model: &Model, snapshot: &mut CaptureReader)
+        -> Result<bool, Error>
+    {
         #[cfg(feature="debug-region-map")]
         let rows_before = self.row_count();
-        self.update_node(&self.root, 0, model)?;
+        self.update_node(&self.root, 0, model, snapshot)?;
         #[cfg(feature="debug-region-map")] {
             let rows_after = self.row_count();
             let rows_added = rows_after - rows_before;
@@ -749,7 +751,8 @@ where Item: 'static + Clone + Debug,
     fn update_node<T>(&self,
                    node_rc: &Rc<RefCell<T>>,
                    mut position: u64,
-                   model: &Model)
+                   model: &Model,
+                   snapshot: &mut CaptureReader)
         -> Result<u64, Error>
         where T: Node<Item> + 'static,
               Rc<RefCell<T>>: NodeRcOps<Item>,
@@ -765,9 +768,8 @@ where Item: 'static + Clone + Debug,
             .collect::<Vec<(u64, ItemNodeWeak<Item>)>>();
 
         // Check if this node had children added and/or was completed.
-        let mut cap = self.capture.borrow_mut();
         let (completion, new_direct_count) =
-            cap.item_children(node.item(), self.view_mode)?;
+            snapshot.item_children(node.item(), self.view_mode)?;
         let completed = completion.is_complete();
         let children_added = new_direct_count - old_direct_count;
         drop(node);
@@ -780,7 +782,7 @@ where Item: 'static + Clone + Debug,
             let item_updated = if children_added > 0 {
                 // Update due to added children.
                 true
-            } else if let Some(new_item) = cap.item_update(&item_node.item)? {
+            } else if let Some(new_item) = snapshot.item_update(&item_node.item)? {
                 // Update due to new version of item.
                 item_node.item = new_item;
                 true
@@ -791,7 +793,7 @@ where Item: 'static + Clone + Debug,
 
             if item_updated {
                 // The node's description may change.
-                let summary = cap.description(&item_node.item, false)?;
+                let summary = snapshot.description(&item_node.item, false)?;
                 #[cfg(any(test, feature="record-ui-test"))]
                 if let Ok(position) = u32::try_from(position) {
                     let mut on_item_update = self.on_item_update.borrow_mut();
@@ -811,8 +813,6 @@ where Item: 'static + Clone + Debug,
             position += 1;
         }
 
-        drop(cap);
-
         // If completed, remove from incomplete node list.
         if completed {
             node_rc.borrow_mut().set_completed();
@@ -830,7 +830,7 @@ where Item: 'static + Clone + Debug,
                         .rows_between(last_index, index);
                     // Recursively update this child.
                     position = self.update_node::<ItemNode<Item>>(
-                        &child_rc, position, model)?;
+                        &child_rc, position, model, snapshot)?;
                     last_index = index + 1;
                 } else {
                     // Child no longer referenced, remove it.
