@@ -20,7 +20,7 @@ use gtk::gio::prelude::ListModelExt;
 use derive_more::AddAssign;
 use itertools::Itertools;
 
-use crate::capture::CaptureReader;
+use crate::capture::{CaptureReader, CaptureSnapshot};
 use crate::item::ItemSource;
 use super::model::GenericModel;
 use super::row_data::GenericRowData;
@@ -354,7 +354,7 @@ impl std::fmt::Display for ModelUpdate {
 
 pub struct TreeListModel<Item, Model, RowData, ViewMode> {
     _marker: PhantomData<(Model, RowData)>,
-    capture: RefCell<CaptureReader>,
+    pub capture: RefCell<CaptureReader>,
     view_mode: ViewMode,
     root: RootNodeRc<Item>,
     regions: RefCell<BTreeMap<u64, Region<Item>>>,
@@ -373,6 +373,7 @@ where Item: 'static + Clone + Debug,
       Model: GenericModel<Item, ViewMode> + ListModelExt,
       RowData: GenericRowData<Item> + IsA<Object> + Cast,
       CaptureReader: ItemSource<Item, ViewMode>,
+      for<'r, 's> CaptureSnapshot<'r, 's>: ItemSource<Item, ViewMode>,
 {
     pub fn new(mut capture: CaptureReader,
                view_mode: ViewMode,
@@ -420,6 +421,7 @@ where Item: 'static + Clone + Debug,
 
     pub fn set_expanded(&self,
                         model: &Model,
+                        cap: &mut CaptureSnapshot,
                         node_ref: &ItemNodeRc<Item>,
                         position: u64,
                         expanded: bool)
@@ -450,7 +452,7 @@ where Item: 'static + Clone + Debug,
             #[cfg(feature="debug-region-map")]
             println!("\nExpanding node at {}", position);
             // Update the region map for the added children.
-            self.expand(children_position, node_ref)?
+            self.expand(cap, children_position, node_ref)?
         } else {
             #[cfg(feature="debug-region-map")]
             println!("\nCollapsing node at {}", position);
@@ -460,10 +462,11 @@ where Item: 'static + Clone + Debug,
                 #[cfg(feature="debug-region-map")]
                 println!("\nRecursively collapsing child at {}",
                          child_position);
-                self.set_expanded(model, &child_ref, child_position, false)?;
+                self.set_expanded(
+                    model, cap, &child_ref, child_position, false)?;
             }
             // Update the region map for the removed children.
-            self.collapse(children_position, node_ref)?
+            self.collapse(cap, children_position, node_ref)?
         };
 
         // Merge adjacent regions with the same source.
@@ -496,9 +499,12 @@ where Item: 'static + Clone + Debug,
         Ok(())
     }
 
-    fn expand(&self, position: u64, node_ref: &ItemNodeRc<Item>)
-        -> Result<ModelUpdate, Error>
-    {
+    fn expand(
+        &self,
+        cap: &mut CaptureSnapshot,
+        position: u64,
+        node_ref: &ItemNodeRc<Item>
+    ) -> Result<ModelUpdate, Error> {
         // Find the start of the parent region.
         let (&parent_start, _) = self.regions
             .borrow()
@@ -524,7 +530,8 @@ where Item: 'static + Clone + Debug,
             .into_iter();
 
         // Split the parent region and construct a new region between.
-        let update = self.split_parent(parent_start, &parent, node_ref,
+        let update = self.split_parent(
+            cap, parent_start, &parent, node_ref,
             vec![Region {
                 source: parent.source.clone(),
                 offset: parent.offset,
@@ -550,9 +557,12 @@ where Item: 'static + Clone + Debug,
         Ok(update)
     }
 
-    fn collapse(&self, position: u64, node_ref: &ItemNodeRc<Item>)
-        -> Result<ModelUpdate, Error>
-    {
+    fn collapse(
+        &self,
+        _cap: &mut CaptureSnapshot,
+        position: u64,
+        node_ref: &ItemNodeRc<Item>
+    ) -> Result<ModelUpdate, Error> {
         // Clone the region starting at this position.
         let region = self.regions
             .borrow()
@@ -614,7 +624,9 @@ where Item: 'static + Clone + Debug,
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn split_parent(&self,
+                    _cap: &mut CaptureSnapshot,
                     parent_start: u64,
                     parent: &Region<Item>,
                     _node_ref: &ItemNodeRc<Item>,
@@ -725,10 +737,12 @@ where Item: 'static + Clone + Debug,
         self.regions.replace(new_regions);
     }
 
-    pub fn update(&self, model: &Model) -> Result<bool, Error> {
+    pub fn update(&self, model: &Model, cap: &mut CaptureSnapshot)
+        -> Result<bool, Error>
+    {
         #[cfg(feature="debug-region-map")]
         let rows_before = self.row_count();
-        self.update_node(&self.root, 0, model)?;
+        self.update_node(&self.root, 0, model, cap)?;
         #[cfg(feature="debug-region-map")] {
             let rows_after = self.row_count();
             let rows_added = rows_after - rows_before;
@@ -749,7 +763,8 @@ where Item: 'static + Clone + Debug,
     fn update_node<T>(&self,
                    node_rc: &Rc<RefCell<T>>,
                    mut position: u64,
-                   model: &Model)
+                   model: &Model,
+                   cap: &mut CaptureSnapshot)
         -> Result<u64, Error>
         where T: Node<Item> + 'static,
               Rc<RefCell<T>>: NodeRcOps<Item>,
@@ -765,7 +780,6 @@ where Item: 'static + Clone + Debug,
             .collect::<Vec<(u64, ItemNodeWeak<Item>)>>();
 
         // Check if this node had children added and/or was completed.
-        let mut cap = self.capture.borrow_mut();
         let (completion, new_direct_count) =
             cap.item_children(node.item(), self.view_mode)?;
         let completed = completion.is_complete();
@@ -811,8 +825,6 @@ where Item: 'static + Clone + Debug,
             position += 1;
         }
 
-        drop(cap);
-
         // If completed, remove from incomplete node list.
         if completed {
             node_rc.borrow_mut().set_completed();
@@ -830,7 +842,7 @@ where Item: 'static + Clone + Debug,
                         .rows_between(last_index, index);
                     // Recursively update this child.
                     position = self.update_node::<ItemNode<Item>>(
-                        &child_rc, position, model)?;
+                        &child_rc, position, model, cap)?;
                     last_index = index + 1;
                 } else {
                     // Child no longer referenced, remove it.

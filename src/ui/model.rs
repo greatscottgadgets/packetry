@@ -11,7 +11,7 @@ use gtk::{gio, glib};
 
 use anyhow::Error;
 
-use crate::capture::CaptureReader;
+use crate::capture::{CaptureReader, CaptureSnapshot};
 use crate::item::{TrafficItem, TrafficViewMode, DeviceItem, DeviceViewMode};
 use crate::ui::tree_list_model::{TreeListModel, ItemNodeRc};
 
@@ -29,6 +29,7 @@ pub trait GenericModel<Item, ViewMode> where Self: Sized {
 
     /// Set whether a tree node is expanded.
     fn set_expanded(&self,
+                    cap: &mut CaptureSnapshot,
                     node: &ItemNodeRc<Item>,
                     position: u32,
                     expanded: bool)
@@ -37,7 +38,7 @@ pub trait GenericModel<Item, ViewMode> where Self: Sized {
     /// Update the model with new data from the capture.
     ///
     /// Returns true if there will be further updates in future.
-    fn update(&self) -> Result<bool, Error>;
+    fn update(&self, cap: &mut CaptureSnapshot) -> Result<bool, Error>;
 
     /// Fetch the description for a given item.
     fn description(&self, item: &Item, detail: bool) -> String;
@@ -78,6 +79,7 @@ macro_rules! model {
             }
 
             fn set_expanded(&self,
+                            cap: &mut CaptureSnapshot,
                             node: &ItemNodeRc<$item>,
                             position: u32,
                             expanded: bool)
@@ -85,13 +87,13 @@ macro_rules! model {
             {
                 let tree_opt  = self.imp().tree.borrow();
                 let tree = tree_opt.as_ref().unwrap();
-                tree.set_expanded(self, node, position as u64, expanded)
+                tree.set_expanded(self, cap, node, position as u64, expanded)
             }
 
-            fn update(&self) -> Result<bool, Error> {
+            fn update(&self, cap: &mut CaptureSnapshot) -> Result<bool, Error> {
                 let tree_opt = self.imp().tree.borrow();
                 let tree = tree_opt.as_ref().unwrap();
-                tree.update(self)
+                tree.update(self, cap)
             }
 
             fn description(&self, item: &$item, detail: bool) -> String {

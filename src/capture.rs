@@ -938,6 +938,7 @@ pub struct CaptureSnapshot<'r, 's> {
     endpoint_states: DataSnapshot<'r, 's, u8>,
     endpoint_state_index: CompactSnapshot<'r, 's, GroupId, Id<u8>>,
     end_index: CompactSnapshot<'r, 's, GroupId, TrafficItemId>,
+    complete: bool,
 }
 
 impl CaptureReader {
@@ -945,6 +946,7 @@ impl CaptureReader {
     pub fn at<'r, 's>(&'r mut self, snapshot: &'s Snapshot)
         -> CaptureSnapshot<'r, 's>
     {
+        let complete = self.complete();
         let endpoints = self.endpoints.at(snapshot);
         let shared_readers = self.shared.endpoint_readers.load();
         // For each endpoint in the snapshot, first ensure that we have an
@@ -990,6 +992,7 @@ impl CaptureReader {
             endpoint_states: self.endpoint_states.at(snapshot),
             endpoint_state_index: self.endpoint_state_index.at(snapshot),
             end_index: self.end_index.at(snapshot),
+            complete,
         }
     }
 }
@@ -1596,6 +1599,10 @@ impl<'a, 'b> CaptureReaderOps for CaptureSnapshot<'a, 'b> {
 
     fn end_index(&mut self) -> &mut impl CompactReaderOps<GroupId, TrafficItemId> {
         &mut self.end_index
+    }
+
+    fn complete(&self) -> bool {
+        self.complete
     }
 }
 
