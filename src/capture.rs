@@ -17,9 +17,11 @@ use crate::database::{
     CounterSet,
     CompactReader,
     CompactWriter,
+    CompactReaderOps,
     compact_index,
     DataReader,
     DataWriter,
+    DataReaderOps,
     data_stream,
     data_stream_with_block_size,
 };
@@ -741,9 +743,9 @@ impl Transaction {
         }
     }
 
-    pub fn description(
+    pub fn description<C: CaptureReaderOps>(
         &self,
-        capture: &mut CaptureReader,
+        capture: &mut C,
         endpoint: &Endpoint,
         detail: bool
     ) -> Result<String, Error> {
@@ -764,13 +766,13 @@ impl Transaction {
         })
     }
 
-    fn inner_description(&self,
-                         capture: &mut CaptureReader,
-                         endpoint: &Endpoint,
-                         pid: PID,
-                         detail: bool)
-        -> Result<String, Error>
-    {
+    fn inner_description<C: CaptureReaderOps>(
+        &self,
+        capture: &mut C,
+        endpoint: &Endpoint,
+        pid: PID,
+        detail: bool
+    ) -> Result<String, Error> {
         if endpoint.number() == INVALID_EP_NUM {
             return Ok(format!("{pid} transaction"));
         }
@@ -918,35 +920,35 @@ impl CaptureWriter {
     }
 }
 
-impl CaptureReader {
-    pub fn endpoint_traffic(&mut self, endpoint_id: EndpointId)
-        -> Result<&mut EndpointReader, Error>
-    {
-        if self.shared.endpoint_readers.load().get(endpoint_id).is_none() {
-            bail!("Capture has no endpoint ID {endpoint_id}")
-        }
+/// Operations supported by both `CaptureReader` and `CaptureSnapshot`.
+pub trait CaptureReaderOps {
+    fn shared(&self) -> &Arc<CaptureShared>;
+    fn endpoint_traffic(&mut self, endpoint_id: EndpointId)
+        -> Result<&mut impl EndpointReaderOps, Error>;
+    fn packet_data(&mut self) -> &mut impl DataReaderOps<u8, PACKET_DATA_BLOCK_SIZE>;
+    fn packet_index(&mut self) -> &mut impl CompactReaderOps<PacketId, PacketByteId>;
+    fn packet_times(&mut self) -> &mut impl CompactReaderOps<PacketId, Timestamp>;
+    fn transaction_index(&mut self) -> &mut impl CompactReaderOps<TransactionId, PacketId>;
+    fn group_index(&mut self) -> &mut impl DataReaderOps<GroupIndexEntry>;
+    fn item_index(&mut self) -> &mut impl CompactReaderOps<TrafficItemId, GroupId>;
+    fn devices(&mut self) -> &mut impl DataReaderOps<Device>;
+    fn endpoints(&mut self) -> &mut impl DataReaderOps<Endpoint>;
+    fn endpoint_states(&mut self) -> &mut impl DataReaderOps<u8>;
+    fn endpoint_state_index(&mut self) -> &mut impl CompactReaderOps<GroupId, Id<u8>>;
+    #[allow(dead_code)]
+    fn end_index(&mut self) -> &mut impl CompactReaderOps<GroupId, TrafficItemId>;
+    fn complete(&self) -> bool;
 
-        if self.endpoint_readers.get(endpoint_id).is_none() {
-            let reader = self.shared.endpoint_readers
-                .load()
-                .get(endpoint_id)
-                .unwrap()
-                .as_ref()
-                .clone();
-            self.endpoint_readers.set(endpoint_id, reader);
-        }
-
-        Ok(self.endpoint_readers.get_mut(endpoint_id).unwrap())
-    }
-
-    pub fn group_range(&mut self, entry: &GroupIndexEntry)
+    fn group_range(&mut self, entry: &GroupIndexEntry)
         -> Result<Range<EndpointTransactionId>, Error>
     {
         let endpoint_id = entry.endpoint_id();
         let ep_group_id = entry.group_id();
         let ep_traf = self.endpoint_traffic(endpoint_id)?;
-        ep_traf.group_index.target_range(
-            ep_group_id, ep_traf.transaction_ids.len())
+        let ep_transactions = ep_traf.transaction_ids().len();
+        ep_traf
+            .group_index()
+            .target_range(ep_group_id, ep_transactions)
     }
 
     fn transaction_fields(&mut self, transaction: &Transaction)
@@ -974,24 +976,26 @@ impl CaptureReader {
         }
     }
 
-    pub fn transaction_bytes(&mut self, transaction: &Transaction)
+    fn transaction_bytes(&mut self, transaction: &Transaction)
         -> Result<Vec<u8>, Error>
     {
         let data_packet_id = transaction.data_packet_id
             .context("Transaction has no data packet")?;
-        let packet_byte_range = self.packet_index.target_range(
-            data_packet_id, self.packet_data.len())?;
+        let total_packet_data = self.packet_data().len();
+        let packet_byte_range = self
+            .packet_index()
+            .target_range(data_packet_id, total_packet_data)?;
         let data_byte_range =
             packet_byte_range.start + 1 .. packet_byte_range.end - 2;
-        self.packet_data.get_range(&data_byte_range)
+        self.packet_data().get_range(&data_byte_range)
     }
 
-    pub fn transfer_bytes(&mut self,
-                          endpoint_id: EndpointId,
-                          data_range: &Range<EndpointDataEvent>,
-                          length: usize)
-        -> Result<Vec<u8>, Error>
-    {
+    fn transfer_bytes(
+        &mut self,
+        endpoint_id: EndpointId,
+        data_range: &Range<EndpointDataEvent>,
+        length: usize,
+    ) -> Result<Vec<u8>, Error> {
         let mut transfer_bytes = Vec::with_capacity(length);
         let mut data_range = data_range.clone();
         while transfer_bytes.len() < length {
@@ -999,8 +1003,8 @@ impl CaptureReader {
                 "Ran out of data events after fetching {}/{} requested bytes",
                 transfer_bytes.len(), length))?;
             let ep_traf = self.endpoint_traffic(endpoint_id)?;
-            let ep_transaction_id = ep_traf.data_transactions.get(data_id)?;
-            let transaction_id = ep_traf.transaction_ids.get(ep_transaction_id)?;
+            let ep_transaction_id = ep_traf.data_transactions().get(data_id)?;
+            let transaction_id = ep_traf.transaction_ids().get(ep_transaction_id)?;
             let transaction = self.transaction(transaction_id)?;
             let transaction_bytes = self.transaction_bytes(&transaction)?;
             let required = min(
@@ -1012,39 +1016,43 @@ impl CaptureReader {
         Ok(transfer_bytes)
     }
 
-    pub fn endpoint_state(&mut self, group_id: GroupId)
+    fn endpoint_state(&mut self, group_id: GroupId)
         -> Result<Vec<u8>, Error>
     {
-        let range = self.endpoint_state_index.target_range(
-            group_id, self.endpoint_states.len())?;
-        self.endpoint_states.get_range(&range)
+        let total_endpoint_states = self.endpoint_states().len();
+        let range = self
+            .endpoint_state_index()
+            .target_range(group_id, total_endpoint_states)?;
+        self.endpoint_states().get_range(&range)
     }
 
-    pub fn packet(&mut self, id: PacketId)
+    fn packet(&mut self, id: PacketId)
         -> Result<Vec<u8>, Error>
     {
-        let range = self.packet_index.target_range(
-            id, self.packet_data.len())?;
-        self.packet_data.get_range(&range)
+        let total_packet_data = self.packet_data().len();
+        let range = self
+            .packet_index()
+            .target_range(id, total_packet_data)?;
+        self.packet_data().get_range(&range)
     }
 
-    pub fn packet_time(&mut self, id: PacketId)
+    fn packet_time(&mut self, id: PacketId)
         -> Result<Timestamp, Error>
     {
-        self.packet_times.get(id)
+        self.packet_times().get(id)
     }
 
-    pub fn timestamped_packets(&mut self)
+    fn timestamped_packets(&mut self)
         -> Result<impl Iterator<Item=Result<(u64, Vec<u8>), Error>>, Error>
     {
-        let packet_count = self.packet_index.len();
+        let packet_count = self.packet_index().len();
         let packet_ids = PacketId::from(0)..PacketId::from(packet_count);
-        let timestamps = self.packet_times.iter(&packet_ids)?;
-        let packet_starts = self.packet_index.iter(&packet_ids)?;
-        let packet_ends = self.packet_index
+        let timestamps = self.packet_times().iter(&packet_ids)?;
+        let packet_starts = self.packet_index().iter(&packet_ids)?;
+        let packet_ends = self.packet_index()
             .iter(&packet_ids)?
             .skip(1)
-            .chain(once(Ok(PacketByteId::from(self.packet_data.len()))));
+            .chain(once(Ok(PacketByteId::from(self.packet_data().len()))));
         let data_ranges = packet_starts.zip(packet_ends);
         let packet_data = self.packet_data();
         Ok(timestamps
@@ -1061,15 +1069,17 @@ impl CaptureReader {
     fn packet_pid(&mut self, id: PacketId)
         -> Result<PID, Error>
     {
-        let offset: Id<u8> = self.packet_index.get(id)?;
-        Ok(PID::from(self.packet_data.get(offset)?))
+        let offset: Id<u8> = self.packet_index().get(id)?;
+        Ok(PID::from(self.packet_data().get(offset)?))
     }
 
-    pub fn transaction(&mut self, id: TransactionId)
+    fn transaction(&mut self, id: TransactionId)
         -> Result<Transaction, Error>
     {
-        let packet_id_range = self.transaction_index.target_range(
-            id, self.packet_index.len())?;
+        let total_packets = self.packet_index().len();
+        let packet_id_range = self
+            .transaction_index()
+            .target_range(id, total_packets)?;
         let packet_count = packet_id_range.len();
         let start_packet_id = packet_id_range.start;
         let start_pid = self.packet_pid(start_packet_id)?;
@@ -1099,9 +1109,11 @@ impl CaptureReader {
             _ => (None, None)
         };
         let payload_byte_range = if let Some(packet_id) = data_packet_id {
-            let packet_byte_range = self.packet_index.target_range(
-                packet_id, self.packet_data.len())?;
-            let pid = self.packet_data.get(packet_byte_range.start)?;
+            let total_packet_data = self.packet_data().len();
+            let packet_byte_range = self
+                .packet_index()
+                .target_range(packet_id, total_packet_data)?;
+            let pid = self.packet_data().get(packet_byte_range.start)?;
             match PID::from(pid) {
                 DATA0 | DATA1 => Some({
                     packet_byte_range.start + 1 .. packet_byte_range.end - 2
@@ -1121,10 +1133,10 @@ impl CaptureReader {
         })
     }
 
-    pub fn group(&mut self, group_id: GroupId) -> Result<Group, Error> {
-        let entry = self.group_index.get(group_id)?;
+    fn group(&mut self, group_id: GroupId) -> Result<Group, Error> {
+        let entry = self.group_index().get(group_id)?;
         let endpoint_id = entry.endpoint_id();
-        let endpoint = self.endpoints.get(endpoint_id)?;
+        let endpoint = self.endpoints().get(endpoint_id)?;
         let device_id = endpoint.device_id();
         let dev_data = self.device_data(device_id)?;
         let ep_addr = endpoint.address();
@@ -1146,10 +1158,12 @@ impl CaptureReader {
             _ => {
                 let ep_group_id = entry.group_id();
                 let ep_traf = self.endpoint_traffic(endpoint_id)?;
-                let range = ep_traf.group_index.target_range(
-                    ep_group_id, ep_traf.transaction_ids.len())?;
+                let ep_transactions = ep_traf.transaction_ids().len();
+                let range = ep_traf
+                    .group_index()
+                    .target_range(ep_group_id, ep_transactions)?;
                 let first_transaction_id =
-                    ep_traf.transaction_ids.get(range.start)?;
+                    ep_traf.transaction_ids().get(range.start)?;
                 let first_transaction =
                     self.transaction(first_transaction_id)?;
                 let count = if first_transaction.split.is_some() {
@@ -1191,7 +1205,7 @@ impl CaptureReader {
         -> Result<ControlTransfer, Error>
     {
         let ep_traf = self.endpoint_traffic(endpoint_id)?;
-        let transaction_ids = ep_traf.transaction_ids.get_range(range)?;
+        let transaction_ids = ep_traf.transaction_ids().get_range(range)?;
         let data_range = ep_traf.transfer_data_range(range)?;
         let data_length = ep_traf
             .transfer_data_length(&data_range)?
@@ -1238,23 +1252,23 @@ impl CaptureReader {
         })
     }
 
-    pub fn device_data(&self, id: DeviceId)
+    fn device_data(&self, id: DeviceId)
         -> Result<Arc<DeviceData>, Error>
     {
-        Ok(self.shared.device_data
+        Ok(self.shared().device_data
             .load()
             .get(id)
             .with_context(|| format!("Capture has no device with ID {id}"))?
             .clone())
     }
 
-    pub fn group_extended(
+    fn group_extended(
         &mut self,
         endpoint_id: EndpointId,
         group_id: GroupId
     ) -> Result<bool, Error> {
         use EndpointState::*;
-        let count = self.group_index.len();
+        let count = self.group_index().len();
         if group_id.value + 1 >= count {
             return Ok(false);
         };
@@ -1264,35 +1278,139 @@ impl CaptureReader {
             None => false
         })
     }
-
-    pub fn complete(&self) -> bool {
-        self.shared.complete.load(Acquire)
-    }
 }
 
-impl EndpointReader {
-    pub fn transfer_data_range(&mut self, range: &Range<EndpointTransactionId>)
+/// Operations supported by both `EndpointReader` and `EndpointSnapshot`.
+pub trait EndpointReaderOps {
+    fn shared(&self) -> &Arc<EndpointShared>;
+    fn transaction_ids(&mut self) -> &mut impl CompactReaderOps<EndpointTransactionId, TransactionId>;
+    fn group_index(&mut self) -> &mut impl CompactReaderOps<EndpointGroupId, EndpointTransactionId>;
+    fn data_transactions(&mut self) -> &mut impl CompactReaderOps<EndpointDataEvent, EndpointTransactionId>;
+    fn data_byte_counts(&mut self) -> &mut impl CompactReaderOps<EndpointDataEvent, EndpointByteCount>;
+    fn end_index(&mut self) -> &mut impl CompactReaderOps<EndpointGroupId, TrafficItemId>;
+
+    fn transfer_data_range(&mut self, range: &Range<EndpointTransactionId>)
         -> Result<Range<EndpointDataEvent>, Error>
     {
-        let first_data_id = self.data_transactions.bisect_left(&range.start)?;
-        let last_data_id = self.data_transactions.bisect_left(&range.end)?;
+        let first_data_id = self.data_transactions().bisect_left(&range.start)?;
+        let last_data_id = self.data_transactions().bisect_left(&range.end)?;
         Ok(first_data_id..last_data_id)
     }
 
-    pub fn transfer_data_length(&mut self, range: &Range<EndpointDataEvent>)
+    fn transfer_data_length(&mut self, range: &Range<EndpointDataEvent>)
         -> Result<u64, Error>
     {
         if range.start == range.end {
             return Ok(0);
         }
-        let num_data_events = self.data_byte_counts.len();
-        let first_byte_count = self.data_byte_counts.get(range.start)?;
+        let num_data_events = self.data_byte_counts().len();
+        let first_byte_count = self.data_byte_counts().get(range.start)?;
         let last_byte_count = if range.end >= num_data_events {
-            self.shared.as_ref().total_data.load()
+            self.shared().as_ref().total_data.load()
         } else {
-            self.data_byte_counts.get(range.end)?
+            self.data_byte_counts().get(range.end)?
         };
         Ok(last_byte_count - first_byte_count)
+    }
+}
+
+impl EndpointReaderOps for EndpointReader {
+    fn shared(&self) -> &Arc<EndpointShared> {
+        &self.shared
+    }
+
+    fn transaction_ids(&mut self) -> &mut impl CompactReaderOps<EndpointTransactionId, TransactionId> {
+        &mut self.transaction_ids
+    }
+
+    fn group_index(&mut self) -> &mut impl CompactReaderOps<EndpointGroupId, EndpointTransactionId> {
+        &mut self.group_index
+    }
+
+    fn data_transactions(&mut self) -> &mut impl CompactReaderOps<EndpointDataEvent, EndpointTransactionId> {
+        &mut self.data_transactions
+    }
+
+    fn data_byte_counts(&mut self) -> &mut impl CompactReaderOps<EndpointDataEvent, EndpointByteCount> {
+        &mut self.data_byte_counts
+    }
+
+    fn end_index(&mut self) -> &mut impl CompactReaderOps<EndpointGroupId, TrafficItemId> {
+        &mut self.end_index
+    }
+}
+
+impl CaptureReaderOps for CaptureReader {
+    fn shared(&self) -> &Arc<CaptureShared> {
+        &self.shared
+    }
+
+    fn endpoint_traffic(&mut self, endpoint_id: EndpointId)
+        -> Result<&mut impl EndpointReaderOps, Error>
+    {
+        if self.shared.endpoint_readers.load().get(endpoint_id).is_none() {
+            bail!("Capture has no endpoint ID {endpoint_id}")
+        }
+
+        if self.endpoint_readers.get(endpoint_id).is_none() {
+            let reader = self.shared().endpoint_readers
+                .load()
+                .get(endpoint_id)
+                .unwrap()
+                .as_ref()
+                .clone();
+            self.endpoint_readers.set(endpoint_id, reader);
+        }
+
+        Ok(self.endpoint_readers.get_mut(endpoint_id).unwrap())
+    }
+
+    fn packet_data(&mut self) -> &mut impl DataReaderOps<u8, PACKET_DATA_BLOCK_SIZE> {
+        &mut self.packet_data
+    }
+
+    fn packet_index(&mut self) -> &mut impl CompactReaderOps<PacketId, PacketByteId> {
+        &mut self.packet_index
+    }
+
+    fn packet_times(&mut self) -> &mut impl CompactReaderOps<PacketId, Timestamp> {
+        &mut self.packet_times
+    }
+
+    fn transaction_index(&mut self) -> &mut impl CompactReaderOps<TransactionId, PacketId> {
+        &mut self.transaction_index
+    }
+
+    fn group_index(&mut self) -> &mut impl DataReaderOps<GroupIndexEntry> {
+        &mut self.group_index
+    }
+
+    fn item_index(&mut self) -> &mut impl CompactReaderOps<TrafficItemId, GroupId> {
+        &mut self.item_index
+    }
+
+    fn devices(&mut self) -> &mut impl DataReaderOps<Device> {
+        &mut self.devices
+    }
+
+    fn endpoints(&mut self) -> &mut impl DataReaderOps<Endpoint> {
+        &mut self.endpoints
+    }
+
+    fn endpoint_states(&mut self) -> &mut impl DataReaderOps<u8> {
+        &mut self.endpoint_states
+    }
+
+    fn endpoint_state_index(&mut self) -> &mut impl CompactReaderOps<GroupId, Id<u8>> {
+        &mut self.endpoint_state_index
+    }
+
+    fn end_index(&mut self) -> &mut impl CompactReaderOps<GroupId, TrafficItemId> {
+        &mut self.end_index
+    }
+
+    fn complete(&self) -> bool {
+        self.shared().complete.load(Acquire)
     }
 }
 

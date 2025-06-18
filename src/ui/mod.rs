@@ -83,12 +83,18 @@ use crate::backend::{
 use crate::capture::{
     create_capture,
     CaptureReader,
+    CaptureReaderOps,
     CaptureWriter,
     CaptureMetadata,
     EndpointId,
     EndpointDataEvent,
+    EndpointReaderOps,
     Group,
     GroupContent,
+};
+use crate::database::{
+    DataReaderOps,
+    CompactReaderOps,
 };
 use crate::item::{
     ItemSource,
@@ -948,11 +954,11 @@ pub fn update_view() -> Result<(), Error> {
             more_updates = true;
         } else {
             let (devices, endpoints, transactions, packets) = {
-                let cap = &ui.capture;
-                let devices = cap.devices.len().saturating_sub(1);
-                let endpoints = cap.endpoints.len().saturating_sub(2);
-                let transactions = cap.transaction_index.len();
-                let packets = cap.packet_index.len();
+                let cap = &mut ui.capture;
+                let devices = cap.devices().len().saturating_sub(1);
+                let endpoints = cap.endpoints().len().saturating_sub(2);
+                let transactions = cap.transaction_index().len();
+                let packets = cap.packet_index().len();
                 (devices, endpoints, transactions, packets)
             };
             ui.status_label.set_text(&format!(
@@ -970,7 +976,7 @@ pub fn update_view() -> Result<(), Error> {
                 // If any endpoints were added, we need to redraw the rows above
                 // to add the additional columns of the connecting lines.
                 if new_count > old_count {
-                    let new_ep_count = ui.capture.endpoints.len() as u16;
+                    let new_ep_count = ui.capture.endpoints().len() as u16;
                     if new_ep_count > ui.endpoint_count {
                         model.items_changed(0, old_count, old_count);
                         ui.endpoint_count = new_ep_count;
@@ -1498,8 +1504,8 @@ fn save_data_transfer_payload(
         let mut length = 0;
         for data_id in data_range {
             let ep_traf = cap.endpoint_traffic(endpoint_id)?;
-            let ep_transaction_id = ep_traf.data_transactions.get(data_id)?;
-            let transaction_id = ep_traf.transaction_ids.get(ep_transaction_id)?;
+            let ep_transaction_id = ep_traf.data_transactions().get(data_id)?;
+            let transaction_id = ep_traf.transaction_ids().get(ep_transaction_id)?;
             let transaction = cap.transaction(transaction_id)?;
             let transaction_bytes = cap.transaction_bytes(&transaction)?;
             dest.write_all(&transaction_bytes)?;

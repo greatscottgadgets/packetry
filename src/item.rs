@@ -8,9 +8,10 @@ use std::fmt::Write;
 use anyhow::{Context, Error, bail};
 
 use crate::capture::{
-    CaptureReader,
+    CaptureReaderOps,
     DeviceId,
     DeviceVersion,
+    EndpointReaderOps,
     EndpointState,
     GroupContent,
     GroupId,
@@ -20,6 +21,7 @@ use crate::capture::{
     PacketId,
     INVALID_EP_ID,
 };
+use crate::database::{DataReaderOps, CompactReaderOps};
 use crate::usb::{self, prelude::*, validate_packet};
 use crate::util::{Bytes, RangeLength, fmt_count, fmt_size, titlecase};
 
@@ -160,7 +162,7 @@ impl TrafficViewMode {
 
 pub type DeviceViewMode = ();
 
-impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
+impl<T: CaptureReaderOps> ItemSource<TrafficItem, TrafficViewMode> for T {
     fn item(
         &mut self,
         parent: Option<&TrafficItem>,
@@ -173,7 +175,7 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
             None => Ok(match view_mode {
                 Hierarchical => {
                     let item_id = TrafficItemId::from(index);
-                    let group_id = self.item_index.get(item_id)?;
+                    let group_id = self.item_index().get(item_id)?;
                     TransactionGroup(group_id)
                 },
                 Transactions =>
@@ -201,16 +203,16 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
         Ok(match parent {
             TransactionGroup(group_id) =>
                 Transaction(Some(*group_id), {
-                    let entry = self.group_index.get(*group_id)?;
+                    let entry = self.group_index().get(*group_id)?;
                     let endpoint_id = entry.endpoint_id();
                     let ep_group_id = entry.group_id();
                     let ep_traf = self.endpoint_traffic(endpoint_id)?;
-                    let offset = ep_traf.group_index.get(ep_group_id)?;
-                    ep_traf.transaction_ids.get(offset + index)?
+                    let offset = ep_traf.group_index().get(ep_group_id)?;
+                    ep_traf.transaction_ids().get(offset + index)?
                 }),
             Transaction(group_id_opt, transaction_id) =>
                 Packet(*group_id_opt, Some(*transaction_id), {
-                    self.transaction_index.get(*transaction_id)? + index}),
+                    self.transaction_index().get(*transaction_id)? + index}),
             Packet(..) => bail!("Packets have no child items")
         })
     }
@@ -231,28 +233,31 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                     Ongoing
                 };
                 (completion, match view_mode {
-                    Hierarchical => self.item_index.len(),
-                    Transactions => self.transaction_index.len(),
-                    Packets => self.packet_index.len(),
+                    Hierarchical => self.item_index().len(),
+                    Transactions => self.transaction_index().len(),
+                    Packets => self.packet_index().len(),
                 })
             },
             Some(TransactionGroup(group_id)) => {
-                let entry = self.group_index.get(*group_id)?;
+                let entry = self.group_index().get(*group_id)?;
                 if !entry.is_start() {
                     return Ok((Complete, 0));
                 }
                 let transaction_count = self.group_range(&entry)?.len();
                 let ep_traf = self.endpoint_traffic(entry.endpoint_id())?;
-                if entry.group_id().value >= ep_traf.end_index.len() {
+                if entry.group_id().value >= ep_traf.end_index().len() {
                     (Ongoing, transaction_count)
                 } else {
                     (Complete, transaction_count)
                 }
             },
             Some(Transaction(_, transaction_id)) => {
-                let packet_count = self.transaction_index.target_range(
-                    *transaction_id, self.packet_index.len())?.len();
-                if transaction_id.value < self.transaction_index.len() - 1 {
+                let total_packets = self.packet_index().len();
+                let packet_count = self
+                    .transaction_index()
+                    .target_range(*transaction_id, total_packets)?
+                    .len();
+                if transaction_id.value < self.transaction_index().len() - 1 {
                     (Complete, packet_count)
                 } else {
                     (Ongoing, packet_count)
@@ -392,9 +397,10 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                 s
             },
             Transaction(group_id_opt, transaction_id) => {
-                let num_packets = self.packet_index.len();
-                let packet_id_range = self.transaction_index.target_range(
-                    *transaction_id, num_packets)?;
+                let num_packets = self.packet_index().len();
+                let packet_id_range = self
+                    .transaction_index()
+                    .target_range(*transaction_id, num_packets)?;
                 let start_packet_id = packet_id_range.start;
                 let start_packet = self.packet(start_packet_id)?;
                 let packet_count = packet_id_range.len();
@@ -428,17 +434,17 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                     }
                     let endpoint_id = match group_id_opt {
                         Some(group_id) => {
-                            let entry = self.group_index.get(*group_id)?;
+                            let entry = self.group_index().get(*group_id)?;
                             entry.endpoint_id()
                         },
-                        None => match self.shared.packet_endpoint(
+                        None => match self.shared().packet_endpoint(
                             pid, &start_packet)
                         {
                             Ok(endpoint_id) => endpoint_id,
                             Err(_) => INVALID_EP_ID
                         }
                     };
-                    let endpoint = self.endpoints.get(endpoint_id)?;
+                    let endpoint = self.endpoints().get(endpoint_id)?;
                     let transaction = self.transaction(*transaction_id)?;
                     s += &transaction.description(self, &endpoint, detail)?
                 } else {
@@ -458,9 +464,9 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                         self.endpoint_traffic(group.endpoint_id)?;
                     let start_ep_transaction_id = group.range.start;
                     let start_transaction_id =
-                        ep_traf.transaction_ids.get(start_ep_transaction_id)?;
+                        ep_traf.transaction_ids().get(start_ep_transaction_id)?;
                     let start_packet_id =
-                        self.transaction_index.get(start_transaction_id)?;
+                        self.transaction_index().get(start_transaction_id)?;
                     if group.count == 1 {
                         writeln!(s, "Transaction group with 1 transaction")?;
                     } else {
@@ -555,8 +561,10 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
         }
         let last_packet = match item {
             Packet(_, Some(transaction_id), packet_id) => {
-                let range = self.transaction_index.target_range(
-                    *transaction_id, self.packet_index.len())?;
+                let num_packets = self.packet_index().len();
+                let range = self
+                    .transaction_index()
+                    .target_range(*transaction_id, num_packets)?;
                 *packet_id == range.end - 1
             }, _ => false
         };
@@ -568,7 +576,7 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
                 (Packet(..), true )      => "└──",
             }));
         }
-        let endpoint_count = self.endpoints.len() as usize;
+        let endpoint_count = self.endpoints().len() as usize;
         let max_string_length = endpoint_count + "    └──".len();
         let mut connectors = String::with_capacity(max_string_length);
         let group_id = match item {
@@ -577,7 +585,7 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
             Packet(Some(i), ..) => *i,
             _ => unreachable!()
         };
-        let entry = self.group_index.get(group_id)?;
+        let entry = self.group_index().get(group_id)?;
         let endpoint_id = entry.endpoint_id();
         let endpoint_state = self.endpoint_state(group_id)?;
         let extended = self.group_extended(endpoint_id, group_id)?;
@@ -585,10 +593,12 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
         let last_transaction = match item {
             Transaction(_, transaction_id) |
             Packet(_, Some(transaction_id), _) => {
-                let range = ep_traf.group_index.target_range(
-                    entry.group_id(), ep_traf.transaction_ids.len())?;
+                let ep_transactions = ep_traf.transaction_ids().len();
+                let range = ep_traf
+                    .group_index()
+                    .target_range(entry.group_id(), ep_transactions)?;
                 let last_transaction_id =
-                    ep_traf.transaction_ids.get(range.end - 1)?;
+                    ep_traf.transaction_ids().get(range.end - 1)?;
                 *transaction_id == last_transaction_id
             }, _ => false
         };
@@ -658,23 +668,23 @@ impl ItemSource<TrafficItem, TrafficViewMode> for CaptureReader {
         use TrafficItem::*;
         let packet_id = match item {
             TransactionGroup(group_id) => {
-                let entry = self.group_index.get(*group_id)?;
+                let entry = self.group_index().get(*group_id)?;
                 let ep_traf = self.endpoint_traffic(entry.endpoint_id())?;
                 let ep_transaction_id =
-                    ep_traf.group_index.get(entry.group_id())?;
+                    ep_traf.group_index().get(entry.group_id())?;
                 let transaction_id =
-                    ep_traf.transaction_ids.get(ep_transaction_id)?;
-                self.transaction_index.get(transaction_id)?
+                    ep_traf.transaction_ids().get(ep_transaction_id)?;
+                self.transaction_index().get(transaction_id)?
             },
             Transaction(.., transaction_id) =>
-                self.transaction_index.get(*transaction_id)?,
+                self.transaction_index().get(*transaction_id)?,
             Packet(.., packet_id) => *packet_id,
         };
         self.packet_time(packet_id)
     }
 }
 
-impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
+impl<T: CaptureReaderOps> ItemSource<DeviceItem, DeviceViewMode> for T {
     fn item(
         &mut self,
         parent: Option<&DeviceItem>,
@@ -873,7 +883,7 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
                 } else {
                     Ongoing
                 };
-                let children = self.devices.len().saturating_sub(1) as usize;
+                let children = self.devices().len().saturating_sub(1) as usize;
                 (completion, children)
             },
             Some(item) => {
@@ -944,7 +954,7 @@ impl ItemSource<DeviceItem, DeviceViewMode> for CaptureReader {
         let data = self.device_data(item.device_id)?;
         Ok(match &item.content {
             Device(_) => {
-                let device = self.devices.get(item.device_id)?;
+                let device = self.devices().get(item.device_id)?;
                 format!("Device {}: {}", device.address, data.description())
             },
             DeviceDescriptor(desc) => {
