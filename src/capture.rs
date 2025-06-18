@@ -1046,7 +1046,7 @@ impl CaptureReader {
             .skip(1)
             .chain(once(Ok(PacketByteId::from(self.packet_data.len()))));
         let data_ranges = packet_starts.zip(packet_ends);
-        let mut packet_data = self.packet_data.clone();
+        let packet_data = self.packet_data();
         Ok(timestamps
             .zip(data_ranges)
             .map(move |(ts, (start, end))| -> Result<(u64, Vec<u8>), Error> {
