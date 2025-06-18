@@ -127,11 +127,17 @@ for line in cargo_result.stdout.decode().rstrip().split("\n"):
             ['LICENSE.md'],
             ['COPYING'],
         )
-        src_dir = os.path.join(deps.name, f'{package}-{version}')
-        for file_path in file_paths:
-            src_path = os.path.join(src_dir, *file_path)
-            if os.path.isfile(src_path):
-                break
+        for src_dir in [
+            package,
+            os.path.join(deps.name, f'{package}-{version}')
+        ]:
+            for file_path in file_paths:
+                src_path = os.path.join(src_dir, *file_path)
+                if os.path.isfile(src_path):
+                    break
+            else:
+                continue
+            break
         else:
             raise ValueError(
                 f"No license file found for {package} {version}.")
