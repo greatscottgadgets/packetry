@@ -17,13 +17,16 @@ use crate::database::{
     CounterSet,
     CompactReader,
     CompactWriter,
+    CompactSnapshot,
     CompactReaderOps,
     compact_index,
     DataReader,
     DataWriter,
+    DataSnapshot,
     DataReaderOps,
     data_stream,
     data_stream_with_block_size,
+    Snapshot,
 };
 use crate::usb::{self, prelude::*};
 use crate::util::{
@@ -887,13 +890,105 @@ impl CaptureWriter {
             percentage, fmt_size(overhead),
         )
     }
+
+    pub fn snapshot(&mut self) -> CaptureSnapshot {
+        CaptureSnapshot {
+            db: self.counters.snapshot(),
+            device_data: self.shared.device_data.load_full(),
+            endpoint_index: self.shared.endpoint_index.load_full(),
+            complete: self.shared.complete.load(Acquire),
+        }
+    }
+}
+
+/// Snapshot of a capture.
+#[derive(Clone)]
+pub struct CaptureSnapshot {
+    db: Snapshot,
+    device_data: Arc<VecMap<DeviceId, Arc<DeviceData>>>,
+    endpoint_index: Arc<VecMap<EndpointKey, EndpointId>>,
+    complete: bool,
+}
+
+/// Handle for access to a capture at a snapshot.
+pub struct CaptureSnapshotReader<'r, 's> {
+    endpoint_snapshots: VecMap<EndpointId, EndpointSnapshotReader<'r, 's>>,
+    device_data: &'s Arc<VecMap<DeviceId, Arc<DeviceData>>>,
+    endpoint_index: &'s Arc<VecMap<EndpointKey, EndpointId>>,
+    packet_data: DataSnapshot<'r, 's, u8, PACKET_DATA_BLOCK_SIZE>,
+    packet_index: CompactSnapshot<'r, 's, PacketId, PacketByteId>,
+    packet_times: CompactSnapshot<'r, 's, PacketId, Timestamp>,
+    transaction_index: CompactSnapshot<'r, 's, TransactionId, PacketId>,
+    group_index: DataSnapshot<'r, 's, GroupIndexEntry>,
+    item_index: CompactSnapshot<'r, 's, TrafficItemId, GroupId>,
+    devices: DataSnapshot<'r, 's, Device>,
+    endpoints: DataSnapshot<'r, 's, Endpoint>,
+    endpoint_states: DataSnapshot<'r, 's, u8>,
+    endpoint_state_index: CompactSnapshot<'r, 's, GroupId, Id<u8>>,
+    end_index: CompactSnapshot<'r, 's, GroupId, TrafficItemId>,
+    complete: bool,
+}
+
+impl CaptureReader {
+    /// Create a handle to access this capture at a snapshot.
+    pub fn at<'r, 's>(&'r mut self, snapshot: &'s CaptureSnapshot)
+        -> CaptureSnapshotReader<'r, 's>
+    {
+        let endpoints = self.endpoints.at(&snapshot.db);
+        let shared_readers = self.shared.endpoint_readers.load();
+        // For each endpoint in the snapshot, first ensure that we have an
+        // EndpointReader for it in this CaptureReader.
+        for i in 0..endpoints.len() {
+            let endpoint_id = EndpointId::from(i);
+            if self.endpoint_readers.get(endpoint_id).is_none() {
+                let reader = shared_readers
+                    .get(endpoint_id)
+                    .unwrap()
+                    .as_ref()
+                    .clone();
+                self.endpoint_readers.set(endpoint_id, reader);
+            }
+        }
+        // Now construct an EndpointSnapshotReader referencing each reader.
+        let mut endpoint_snapshots = VecMap::new();
+        for i in 0..endpoints.len() {
+            let endpoint_id = EndpointId::from(i);
+            // SAFETY:
+            // self.endpoint_readers is only ever modified above, and by the
+            // method self.endpoint_traffic(&mut self), which can't be called
+            // while we hold a &'r mut self reference. So it's safe to keep a
+            // reference to one of its elements for lifetime 'r.
+            let mut opt = self.endpoint_readers.get_mut(endpoint_id);
+            let reader: &'_ mut EndpointReader = opt.as_mut().unwrap();
+            let reader: &'r mut EndpointReader = unsafe {
+                std::mem::transmute(reader)
+            };
+            endpoint_snapshots.set(endpoint_id, reader.at(&snapshot.db));
+        }
+        CaptureSnapshotReader {
+            endpoint_snapshots,
+            device_data: &snapshot.device_data,
+            endpoint_index: &snapshot.endpoint_index,
+            packet_data: self.packet_data.at(&snapshot.db),
+            packet_index: self.packet_index.at(&snapshot.db),
+            packet_times: self.packet_times.at(&snapshot.db),
+            transaction_index: self.transaction_index.at(&snapshot.db),
+            group_index: self.group_index.at(&snapshot.db),
+            item_index: self.item_index.at(&snapshot.db),
+            devices: self.devices.at(&snapshot.db),
+            endpoints,
+            endpoint_states: self.endpoint_states.at(&snapshot.db),
+            endpoint_state_index: self.endpoint_state_index.at(&snapshot.db),
+            end_index: self.end_index.at(&snapshot.db),
+            complete: snapshot.complete,
+        }
+    }
 }
 
 /// Operations supported by both `CaptureReader` and `CaptureSnapshotReader`.
 pub trait CaptureReaderOps {
     fn device_data(&self, device_id: DeviceId)
         -> Result<Arc<DeviceData>, Error>;
-
     fn endpoint_traffic(&mut self, endpoint_id: EndpointId)
         -> Result<&mut impl EndpointReaderOps, Error>;
     fn packet_data(&mut self) -> &mut impl DataReaderOps<u8, PACKET_DATA_BLOCK_SIZE>;
@@ -1288,7 +1383,39 @@ impl EndpointLookup for CaptureReader {
     }
 }
 
-/// Operations supported by both `EndpointReader` and `EndpointSnapshot`.
+impl EndpointLookup for CaptureSnapshotReader<'_, '_> {
+    fn endpoint_lookup(&self, key: EndpointKey) -> Option<EndpointId> {
+        self.endpoint_index.get(key).copied()
+    }
+}
+
+/// Handle for access to an endpoint at a snapshot.
+pub struct EndpointSnapshotReader<'r, 's> {
+    transaction_ids: CompactSnapshot<'r, 's, EndpointTransactionId, TransactionId>,
+    group_index: CompactSnapshot<'r, 's, EndpointGroupId, EndpointTransactionId>,
+    data_transactions: CompactSnapshot<'r, 's, EndpointDataEvent, EndpointTransactionId>,
+    data_byte_counts: CompactSnapshot<'r, 's, EndpointDataEvent, EndpointByteCount>,
+    end_index: CompactSnapshot<'r, 's, EndpointGroupId, TrafficItemId>,
+    total_data: u64,
+}
+
+impl EndpointReader {
+    /// Create a handle to access this endpoint at a snapshot.
+    pub fn at<'r, 's>(&'r mut self, snapshot: &'s Snapshot)
+        -> EndpointSnapshotReader<'r, 's>
+    {
+        EndpointSnapshotReader {
+            transaction_ids: self.transaction_ids.at(snapshot),
+            group_index: self.group_index.at(snapshot),
+            data_transactions: self.data_transactions.at(snapshot),
+            data_byte_counts: self.data_byte_counts.at(snapshot),
+            end_index: self.end_index.at(snapshot),
+            total_data: self.shared.as_ref().total_data.load_at(snapshot),
+        }
+    }
+}
+
+/// Operations supported by both `EndpointReader` and `EndpointSnapshotReader`.
 pub trait EndpointReaderOps {
     fn transaction_ids(&mut self) -> &mut impl CompactReaderOps<EndpointTransactionId, TransactionId>;
     fn group_index(&mut self) -> &mut impl CompactReaderOps<EndpointGroupId, EndpointTransactionId>;
@@ -1345,6 +1472,32 @@ impl EndpointReaderOps for EndpointReader {
 
     fn total_data(&self) -> u64 {
         self.shared.as_ref().total_data.load()
+    }
+}
+
+impl EndpointReaderOps for EndpointSnapshotReader<'_, '_> {
+    fn transaction_ids(&mut self) -> &mut impl CompactReaderOps<EndpointTransactionId, TransactionId> {
+        &mut self.transaction_ids
+    }
+
+    fn group_index(&mut self) -> &mut impl CompactReaderOps<EndpointGroupId, EndpointTransactionId> {
+        &mut self.group_index
+    }
+
+    fn data_transactions(&mut self) -> &mut impl CompactReaderOps<EndpointDataEvent, EndpointTransactionId> {
+        &mut self.data_transactions
+    }
+
+    fn data_byte_counts(&mut self) -> &mut impl CompactReaderOps<EndpointDataEvent, EndpointByteCount> {
+        &mut self.data_byte_counts
+    }
+
+    fn end_index(&mut self) -> &mut impl CompactReaderOps<EndpointGroupId, TrafficItemId> {
+        &mut self.end_index
+    }
+
+    fn total_data(&self) -> u64 {
+        self.total_data
     }
 }
 
@@ -1427,6 +1580,75 @@ impl CaptureReaderOps for CaptureReader {
 
     fn complete(&self) -> bool {
         self.shared.complete.load(Acquire)
+    }
+}
+
+impl CaptureReaderOps for CaptureSnapshotReader<'_, '_> {
+
+    fn device_data(&self, id: DeviceId)
+        -> Result<Arc<DeviceData>, Error>
+    {
+        self.device_data
+            .get(id)
+            .with_context(|| format!("Snapshot has no device with ID {id}"))
+            .cloned()
+    }
+
+    fn endpoint_traffic(&mut self, endpoint_id: EndpointId)
+        -> Result<&mut impl EndpointReaderOps, Error>
+    {
+        match self.endpoint_snapshots.get_mut(endpoint_id) {
+            None => bail!("Snapshot has no endpoint ID {endpoint_id}"),
+            Some(reader) => Ok(reader),
+        }
+    }
+
+    fn packet_data(&mut self) -> &mut impl DataReaderOps<u8, PACKET_DATA_BLOCK_SIZE> {
+        &mut self.packet_data
+    }
+
+    fn packet_index(&mut self) -> &mut impl CompactReaderOps<PacketId, PacketByteId> {
+        &mut self.packet_index
+    }
+
+    fn packet_times(&mut self) -> &mut impl CompactReaderOps<PacketId, Timestamp> {
+        &mut self.packet_times
+    }
+
+    fn transaction_index(&mut self) -> &mut impl CompactReaderOps<TransactionId, PacketId> {
+        &mut self.transaction_index
+    }
+
+    fn group_index(&mut self) -> &mut impl DataReaderOps<GroupIndexEntry> {
+        &mut self.group_index
+    }
+
+    fn item_index(&mut self) -> &mut impl CompactReaderOps<TrafficItemId, GroupId> {
+        &mut self.item_index
+    }
+
+    fn devices(&mut self) -> &mut impl DataReaderOps<Device> {
+        &mut self.devices
+    }
+
+    fn endpoints(&mut self) -> &mut impl DataReaderOps<Endpoint> {
+        &mut self.endpoints
+    }
+
+    fn endpoint_states(&mut self) -> &mut impl DataReaderOps<u8> {
+        &mut self.endpoint_states
+    }
+
+    fn endpoint_state_index(&mut self) -> &mut impl CompactReaderOps<GroupId, Id<u8>> {
+        &mut self.endpoint_state_index
+    }
+
+    fn end_index(&mut self) -> &mut impl CompactReaderOps<GroupId, TrafficItemId> {
+        &mut self.end_index
+    }
+
+    fn complete(&self) -> bool {
+        self.complete
     }
 }
 

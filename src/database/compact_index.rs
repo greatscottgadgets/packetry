@@ -13,7 +13,7 @@ use anyhow::{Context, Error, anyhow, bail};
 use itertools::{structs::Zip, multizip};
 
 use crate::database::{
-    Counter, CounterSet,
+    Counter, CounterSet, Snapshot,
     data_stream::{
         data_stream, DataReader, DataWriter, DataIterator, DataReaderOps},
     index_stream::{index_stream, IndexReader, IndexWriter, IndexIterator},
@@ -63,6 +63,12 @@ pub struct CompactReader<Position, Value> {
     segment_width_reader: DataReader<u8>,
     /// Byte stream containing deltas for all segments.
     data_reader: DataReader<u8>,
+}
+
+/// Handle for read-only access to compact index at a snapshot.
+pub struct CompactSnapshot<'a, 'b, Position, Value> {
+    reader: &'a mut CompactReader<Position, Value>,
+    snapshot: &'b Snapshot,
 }
 
 /// Iterator over values in a compact index stream.
@@ -262,6 +268,13 @@ where
             self.segment_offset_reader.size() +
             self.segment_width_reader.size() +
             self.data_reader.size()
+    }
+
+    /// Create a handle to access this index at a snapshot.
+    pub fn at<'r, 's>(&'r mut self, snapshot: &'s Snapshot)
+        -> CompactSnapshot<'r, 's, Position, Value>
+    {
+        CompactSnapshot { reader: self, snapshot }
     }
 }
 
@@ -504,6 +517,57 @@ where
         }
         let position = delta_range.start + lower_bound as u64;
         Ok(position)
+    }
+}
+
+impl<Position, Value> CompactReaderOps<Position, Value>
+for CompactSnapshot<'_, '_, Position, Value>
+where
+    Position: Copy + From<u64> + Into<u64> + Ord
+        + Add<u64, Output=Position> + AddAssign<u64>
+        + Sub<u64, Output=Position> + SubAssign<u64> + Sub<Output=u64>
+        + Debug,
+    Value: Copy + From<u64> + Into<u64> + Ord
+        + Add<u64, Output=Value>
+        + Sub<Output=u64>
+{
+    fn len(&self) -> u64 {
+        self.reader.shared_length.load_at(self.snapshot)
+    }
+
+    fn get(&mut self, position: Position) -> Result<Value, Error> {
+        self.reader.get(position)
+    }
+
+    fn get_range(&mut self, range: &Range<Position>)
+        -> Result<Vec<Value>, Error>
+    {
+        self.reader.get_range(range)
+    }
+
+    fn iter(&mut self, range: &Range<Position>)
+        -> Result<CompactIterator<Position, Value>, Error>
+    {
+        self.reader.iter(range)
+    }
+
+    fn target_range(&mut self, position: Position, target_length: u64)
+        -> Result<Range<Value>, Error>
+    {
+        self.reader.target_range(position, target_length)
+    }
+
+    fn bisect_left(&mut self, value: &Value)
+        -> Result<Position, Error>
+    {
+        let range = Position::from(0)..Position::from(self.len());
+        self.reader.bisect_range_left(&range, value)
+    }
+
+    fn bisect_range_left(&mut self, range: &Range<Position>, value: &Value)
+        -> Result<Position, Error>
+    {
+        self.reader.bisect_range_left(range, value)
     }
 }
 

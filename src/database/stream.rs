@@ -22,7 +22,7 @@ use lrumap::{LruMap, LruBTreeMap};
 use memmap2::{Mmap, MmapOptions};
 use tempfile::tempfile;
 
-use crate::database::counter::{Counter, CounterSet};
+use crate::database::counter::{Counter, CounterSet, Snapshot};
 use crate::util::dump::Dump;
 
 /// Minimum block size, defined by largest minimum page size on target systems.
@@ -258,6 +258,11 @@ impl<const BLOCK_SIZE: usize> StreamReader<BLOCK_SIZE> {
     /// Get the current length of the stream, in bytes.
     pub fn len(&self) -> u64 {
         self.shared.length.load()
+    }
+
+    /// Get the length of the stream at a given snapshot, in bytes.
+    pub fn len_at(&self, snapshot: &Snapshot) -> u64 {
+        self.shared.length.load_at(snapshot)
     }
 
     /// Access data in the stream.

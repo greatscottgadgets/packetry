@@ -34,6 +34,12 @@ pub struct CounterSet {
     refs: Vec<Weak<CounterInner>>,
 }
 
+/// A snapshot of the values from a `CounterSet` at a given instant.
+#[derive(Clone)]
+pub struct Snapshot {
+    buffer: Arc<Buffer>,
+}
+
 struct CounterInner {
     buffer: ArcSwap<Buffer>,
     index: usize,
@@ -48,6 +54,11 @@ impl Counter {
     /// Get the current value from this counter.
     pub fn load(&self) -> u64 {
         self.buffer().get(self.inner.index).load(Acquire)
+    }
+
+    /// Get the value from this counter at the given snapshot.
+    pub fn load_at(&self, snapshot: &Snapshot) -> u64 {
+        snapshot.buffer.get(self.inner.index).load(Acquire)
     }
 
     fn buffer(&self) -> impl Deref<Target=Arc<Buffer>> {
@@ -140,6 +151,13 @@ impl CounterSet {
         self.length += 1;
         self.refs.push(Arc::downgrade(&inner));
         Counter { inner }
+    }
+
+    /// Take a snapshot of the current counter values.
+    pub fn snapshot(&mut self) -> Snapshot {
+        Snapshot {
+            buffer: Arc::new(self.reallocate(self.length)),
+        }
     }
 
     fn reallocate(&self, capacity: usize) -> Buffer {
