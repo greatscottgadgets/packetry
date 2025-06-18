@@ -569,7 +569,7 @@ impl Decoder {
     fn packet_endpoint(&mut self, pid: PID, packet: &[u8])
         -> Result<EndpointId, Error>
     {
-        Ok(match self.capture.shared.packet_endpoint(pid, packet) {
+        Ok(match self.capture.packet_endpoint(pid, packet) {
             Ok(id) => id,
             Err(key) => {
                 let id = self.add_endpoint(

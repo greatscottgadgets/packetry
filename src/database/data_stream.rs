@@ -42,6 +42,30 @@ struct Values<Data, Value> where Data: Deref<Target=[u8]> {
     data: Data,
 }
 
+/// Operations supported by both `DataReader` and `DataSnapshot`.
+pub trait DataReaderOps<Value, const S: usize = MIN_BLOCK> {
+    /// Current number of items in the stream.
+    fn len(&self) -> u64;
+
+    /// Get a single item from the stream.
+    fn get(&mut self, id: Id<Value>) -> Result<Value, Error>;
+
+    /// Get multiple items from the stream.
+    fn get_range(&mut self, range: &Range<Id<Value>>)
+        -> Result<Vec<Value>, Error>;
+
+    /// Access values in the stream.
+    ///
+    /// Returns a reference to a slice of values, which may have less than the
+    /// requested length. May be called again to access further values.
+    ///
+    fn access(&mut self, range: &Range<Id<Value>>)
+        -> Result<impl Deref<Target=[Value]>, Error>;
+
+    /// Create an iterator over values in the stream.
+    fn iter(&self, range: &Range<Id<Value>>) -> DataIterator<Value, S>;
+}
+
 /// Construct a new data stream with the default block size.
 ///
 /// Returns a unique writer and a cloneable reader.
@@ -107,34 +131,34 @@ where Value: Pod + Default
     }
 }
 
-impl<Value, const S: usize> DataReader<Value, S>
-where Value: Pod + Default
-{
-    /// Current number of items in the stream.
-    pub fn len(&self) -> u64 {
-        self.stream_reader.len() / size_of::<Value>() as u64
-    }
-
-    /// Number of items in one block of the stream.
-    pub const fn block_length(&self) -> usize {
-        StreamReader::<S>::block_size() / size_of::<Value>()
-    }
+impl<Value, const S: usize> DataReader<Value, S> {
 
     /// Current size of the stream in bytes.
     pub fn size(&self) -> u64 {
         self.stream_reader.len()
     }
 
-    /// Get a single item from the stream.
-    pub fn get(&mut self, id: Id<Value>) -> Result<Value, Error> {
+    /// Number of items in one block of the stream.
+    pub const fn block_length(&self) -> usize {
+        StreamReader::<S>::block_size() / size_of::<Value>()
+    }
+}
+
+impl<Value, const S: usize> DataReaderOps<Value, S> for DataReader<Value, S>
+where Value: Pod + Default
+{
+    fn len(&self) -> u64 {
+        self.stream_reader.len() / size_of::<Value>() as u64
+    }
+
+    fn get(&mut self, id: Id<Value>) -> Result<Value, Error> {
         let byte_range = id.offset_range();
         let bytes = self.stream_reader.access(&byte_range)?;
         let value = from_bytes(&bytes);
         Ok(*value)
     }
 
-    /// Get multiple items from the stream.
-    pub fn get_range(&mut self, range: &Range<Id<Value>>)
+    fn get_range(&mut self, range: &Range<Id<Value>>)
         -> Result<Vec<Value>, Error>
     {
         let count = (range.end - range.start).try_into().unwrap();
@@ -149,12 +173,7 @@ where Value: Pod + Default
         Ok(result)
     }
 
-    /// Access values in the stream.
-    ///
-    /// Returns a reference to a slice of values, which may have less than the
-    /// requested length. May be called again to access further values.
-    ///
-    pub fn access(&mut self, range: &Range<Id<Value>>)
+    fn access(&mut self, range: &Range<Id<Value>>)
         -> Result<impl Deref<Target=[Value]>, Error>
     {
         let range = range.start.offset()..range.end.offset();
@@ -164,8 +183,7 @@ where Value: Pod + Default
         })
     }
 
-    /// Create an iterator over values in the stream.
-    pub fn iter(&self, range: &Range<Id<Value>>) -> DataIterator<Value, S> {
+    fn iter(&self, range: &Range<Id<Value>>) -> DataIterator<Value, S> {
         DataIterator {
             range: range.clone(),
             stream_reader: self.stream_reader.clone(),

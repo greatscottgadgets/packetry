@@ -9,6 +9,7 @@ use gtk::prelude::*;
 use itertools::assert_equal;
 use serde_json::Deserializer;
 
+use crate::database::CompactReaderOps;
 use crate::decoder::Decoder;
 use crate::item::TrafficViewMode;
 use crate::file::{GenericPacket, GenericLoader, LoaderItem, PcapLoader};

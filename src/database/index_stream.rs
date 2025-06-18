@@ -15,7 +15,8 @@ use crate::database::{
         data_stream,
         DataReader,
         DataWriter,
-        DataIterator
+        DataIterator,
+        DataReaderOps,
     },
 };
 use crate::util::{dump::{Dump, restore}, id::Id, fmt_count, fmt_size};

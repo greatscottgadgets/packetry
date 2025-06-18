@@ -13,8 +13,9 @@ use anyhow::{Context, Error, anyhow, bail};
 use itertools::{structs::Zip, multizip};
 
 use crate::database::{
-    counter::{Counter, CounterSet},
-    data_stream::{data_stream, DataReader, DataWriter, DataIterator},
+    Counter, CounterSet,
+    data_stream::{
+        data_stream, DataReader, DataWriter, DataIterator, DataReaderOps},
     index_stream::{index_stream, IndexReader, IndexWriter, IndexIterator},
 };
 use crate::util::{dump::{Dump, restore}, id::Id, fmt_count, fmt_size};
@@ -95,6 +96,49 @@ struct Segment<Position, Value> {
     base_value: Value,
     data_offset: Offset,
     delta_width: Option<u8>,
+}
+
+/// Operations supported by both `CompactReader` and `CompactSnapshot`.
+pub trait CompactReaderOps<Position, Value>
+where
+    Position: Copy + From<u64> + Into<u64> + Ord
+        + Add<u64, Output=Position> + AddAssign<u64>
+        + Sub<u64, Output=Position> + SubAssign<u64> + Sub<Output=u64>
+        + Debug,
+    Value: Copy + From<u64> + Into<u64> + Ord
+        + Add<u64, Output=Value>
+        + Sub<Output=u64>
+{
+    /// Number of entries in the index.
+    fn len(&self) -> u64;
+
+    /// Get a single value from the index, by position.
+    fn get(&mut self, position: Position) -> Result<Value, Error>;
+
+    /// Get multiple values from the index, for a range of positions.
+    fn get_range(&mut self, range: &Range<Position>)
+        -> Result<Vec<Value>, Error>;
+
+    /// Create an iterator over values from the index.
+    fn iter(&mut self, range: &Range<Position>)
+        -> Result<CompactIterator<Position, Value>, Error>;
+
+    /// Get the range of values between the specified position and the next.
+    ///
+    /// The length of the data referenced by this index must be passed
+    /// as a parameter. If the specified position is the last in the
+    /// index, the range will be from the last value in the index to the
+    /// end of the referenced data.
+    fn target_range(&mut self, position: Position, target_length: u64)
+        -> Result<Range<Value>, Error>;
+
+    /// Leftmost position where a value would be ordered within this index.
+    fn bisect_left(&mut self, value: &Value)
+        -> Result<Position, Error>;
+
+    /// Leftmost position where a value would be ordered within this range.
+    fn bisect_range_left(&mut self, range: &Range<Position>, value: &Value)
+        -> Result<Position, Error>;
 }
 
 type CompactPair<P, V, const W: usize> =
@@ -211,11 +255,6 @@ where
         + Add<u64, Output=Value>
         + Sub<Output=u64>
 {
-    /// Number of entries in the index.
-    pub fn len(&self) -> u64 {
-        self.shared_length.load()
-    }
-
     /// Size of the index in bytes.
     pub fn size(&self) -> u64 {
         self.segment_start_reader.size() +
@@ -224,9 +263,24 @@ where
             self.segment_width_reader.size() +
             self.data_reader.size()
     }
+}
 
-    /// Get a single value from the index, by position.
-    pub fn get(&mut self, position: Position) -> Result<Value, Error> {
+impl<Position, Value> CompactReaderOps<Position, Value>
+for CompactReader<Position, Value>
+where
+    Position: Copy + From<u64> + Into<u64> + Ord
+        + Add<u64, Output=Position> + AddAssign<u64>
+        + Sub<u64, Output=Position> + SubAssign<u64> + Sub<Output=u64>
+        + Debug,
+    Value: Copy + From<u64> + Into<u64> + Ord
+        + Add<u64, Output=Value>
+        + Sub<Output=u64>
+{
+    fn len(&self) -> u64 {
+        self.shared_length.load()
+    }
+
+    fn get(&mut self, position: Position) -> Result<Value, Error> {
         // Check position is valid.
         let length = self.len();
         if position.into() >= length {
@@ -255,8 +309,7 @@ where
         Ok(base_value + delta)
     }
 
-    /// Get multiple values from the index, for a range of positions.
-    pub fn get_range(&mut self, range: &Range<Position>)
+    fn get_range(&mut self, range: &Range<Position>)
         -> Result<Vec<Value>, Error>
     {
         // Check range is valid.
@@ -339,8 +392,7 @@ where
         Ok(values)
     }
 
-    /// Create an iterator over values from the index.
-    pub fn iter(&mut self, range: &Range<Position>)
+    fn iter(&mut self, range: &Range<Position>)
         -> Result<CompactIterator<Position, Value>, Error>
     {
         let length = self.len();
@@ -368,13 +420,7 @@ where
         })
     }
 
-    /// Get the range of values between the specified position and the next.
-    ///
-    /// The length of the data referenced by this index must be passed
-    /// as a parameter. If the specified position is the last in the
-    /// index, the range will be from the last value in the index to the
-    /// end of the referenced data.
-    pub fn target_range(&mut self, position: Position, target_length: u64)
+    fn target_range(&mut self, position: Position, target_length: u64)
         -> Result<Range<Value>, Error>
     {
         let range = if position.into() + 2 > self.len() {
@@ -390,16 +436,14 @@ where
         Ok(range)
     }
 
-    /// Leftmost position where a value would be ordered within this index.
-    pub fn bisect_left(&mut self, value: &Value)
+    fn bisect_left(&mut self, value: &Value)
         -> Result<Position, Error>
     {
         let range = Position::from(0)..Position::from(self.len());
         self.bisect_range_left(&range, value)
     }
 
-    /// Leftmost position where a value would be ordered within this range.
-    pub fn bisect_range_left(&mut self, range: &Range<Position>, value: &Value)
+    fn bisect_range_left(&mut self, range: &Range<Position>, value: &Value)
         -> Result<Position, Error>
     {
         // Find the segment required.
