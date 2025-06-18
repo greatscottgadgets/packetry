@@ -13,6 +13,7 @@ accepted_license_strings = (
     'BSD-3-Clause',
     'BSL-1.0',
     'Unicode-DFS-2016',
+    'Unicode-3.0',
 )
 
 # We accept these licenses with manual validation.
