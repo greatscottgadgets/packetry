@@ -11,7 +11,7 @@ use bytemuck::{bytes_of, cast_slice, from_bytes, Pod};
 
 use crate::util::id::Id;
 use crate::database::{
-    counter::CounterSet,
+    counter::{CounterSet, Snapshot},
     stream::{stream, StreamReader, StreamWriter, Data, MIN_BLOCK},
 };
 use crate::util::{dump::{Dump, restore}, fmt_count, fmt_size};
@@ -27,6 +27,12 @@ pub struct DataWriter<Value, const S: usize = MIN_BLOCK> {
 pub struct DataReader<Value, const S: usize = MIN_BLOCK> {
     marker: PhantomData<Value>,
     stream_reader: StreamReader<S>,
+}
+
+/// Handle for read-only access to a data stream at a snapshot.
+pub struct DataSnapshot<'a, 'b, Value, const S: usize= MIN_BLOCK> {
+    reader: &'a mut DataReader<Value, S>,
+    snapshot: &'b Snapshot,
 }
 
 /// Iterator over data in a stream.
@@ -142,6 +148,13 @@ impl<Value, const S: usize> DataReader<Value, S> {
     pub const fn block_length(&self) -> usize {
         StreamReader::<S>::block_size() / size_of::<Value>()
     }
+
+    /// Create a handle to access this stream at a snapshot.
+    pub fn at<'r, 's>(&'r mut self, snapshot: &'s Snapshot)
+        -> DataSnapshot<'r, 's, Value, S>
+    {
+        DataSnapshot { reader: self, snapshot }
+    }
 }
 
 impl<Value, const S: usize> DataReaderOps<Value, S> for DataReader<Value, S>
@@ -189,6 +202,37 @@ where Value: Pod + Default
             stream_reader: self.stream_reader.clone(),
             current_data: None,
         }
+    }
+}
+
+impl<Value, const S: usize> DataReaderOps<Value, S>
+for DataSnapshot<'_, '_, Value, S>
+where Value: Pod + Default
+{
+    fn len(&self) -> u64 {
+        self.reader
+            .stream_reader
+            .len_at(self.snapshot) / size_of::<Value>() as u64
+    }
+
+    fn get(&mut self, id: Id<Value>) -> Result<Value, Error> {
+        self.reader.get(id)
+    }
+
+    fn get_range(&mut self, range: &Range<Id<Value>>)
+        -> Result<Vec<Value>, Error>
+    {
+        self.reader.get_range(range)
+    }
+
+    fn access(&mut self, range: &Range<Id<Value>>)
+        -> Result<impl Deref<Target=[Value]>, Error>
+    {
+        self.reader.access(range)
+    }
+
+    fn iter(&self, range: &Range<Id<Value>>) -> DataIterator<Value, S> {
+        self.reader.iter(range)
     }
 }
 
