@@ -115,6 +115,8 @@ where
         + Add<u64, Output=Value>
         + Sub<Output=u64>
 {
+    const SOURCE_DESCRIPTION: &str;
+
     /// Number of entries in the index.
     fn len(&self) -> u64;
 
@@ -145,6 +147,24 @@ where
     /// Leftmost position where a value would be ordered within this range.
     fn bisect_range_left(&mut self, range: &Range<Position>, value: &Value)
         -> Result<Position, Error>;
+
+    fn check_position(&self, position: Position) -> Result<(), Error> {
+        let length = self.len();
+        let src = Self::SOURCE_DESCRIPTION;
+        if position.into() >= length {
+            bail!("requested position {position:?} but {src} length is {length}")
+        }
+        Ok(())
+    }
+
+    fn check_range(&self, range: &Range<Position>) -> Result<(), Error> {
+        let length = self.len();
+        let src = Self::SOURCE_DESCRIPTION;
+        if range.end.into() > length {
+            bail!("requested range {range:?} but {src} length is {length}")
+        }
+        Ok(())
+    }
 }
 
 type CompactPair<P, V, const W: usize> =
@@ -289,16 +309,15 @@ where
         + Add<u64, Output=Value>
         + Sub<Output=u64>
 {
+    const SOURCE_DESCRIPTION: &str = "index";
+
     fn len(&self) -> u64 {
         self.shared_length.load()
     }
 
     fn get(&mut self, position: Position) -> Result<Value, Error> {
         // Check position is valid.
-        let length = self.len();
-        if position.into() >= length {
-            bail!("requested position {position:?} but index length is {length}")
-        }
+        self.check_position(position)?;
         // Find the segment required.
         let segment_id = self.segment_start_reader.bisect_right(&position)? - 1;
         let segment_start = self.segment_start_reader.get(segment_id)?;
@@ -326,10 +345,7 @@ where
         -> Result<Vec<Value>, Error>
     {
         // Check range is valid.
-        let length = self.len();
-        if range.end.into() > length {
-            bail!("requested range {range:?} but index length is {length}")
-        }
+        self.check_range(range)?;
         // Allocate space for the result.
         let total_count: usize = (range.end - range.start).try_into().unwrap();
         let mut values = Vec::with_capacity(total_count);
@@ -408,10 +424,8 @@ where
     fn iter(&mut self, range: &Range<Position>)
         -> Result<CompactIterator<Position, Value>, Error>
     {
-        let length = self.len();
-        if range.end.into() > length {
-            bail!("requested range {range:?} but index length is {length}")
-        }
+        // Check range is valid.
+        self.check_range(range)?;
         // Determine which segments we need to read from.
         let first = self.segment_start_reader.bisect_right(&range.start)? - 1;
         let last = self.segment_start_reader.bisect_left(&range.end)?;
@@ -436,6 +450,7 @@ where
     fn target_range(&mut self, position: Position, target_length: u64)
         -> Result<Range<Value>, Error>
     {
+        self.check_position(position)?;
         let range = if position.into() + 2 > self.len() {
             let start = self.get(position)?;
             let end = Value::from(target_length);
@@ -459,6 +474,7 @@ where
     fn bisect_range_left(&mut self, range: &Range<Position>, value: &Value)
         -> Result<Position, Error>
     {
+        self.check_range(range)?;
         // Find the segment required.
         let segment_id = match self.segment_base_reader.bisect_right(value)? {
             id if id.value == 0 => return Ok(Position::from(0)),
@@ -531,29 +547,35 @@ where
         + Add<u64, Output=Value>
         + Sub<Output=u64>
 {
+    const SOURCE_DESCRIPTION: &'static str = "snapshot";
+
     fn len(&self) -> u64 {
         self.reader.shared_length.load_at(self.snapshot)
     }
 
     fn get(&mut self, position: Position) -> Result<Value, Error> {
+        self.check_position(position)?;
         self.reader.get(position)
     }
 
     fn get_range(&mut self, range: &Range<Position>)
         -> Result<Vec<Value>, Error>
     {
+        self.check_range(range)?;
         self.reader.get_range(range)
     }
 
     fn iter(&mut self, range: &Range<Position>)
         -> Result<CompactIterator<Position, Value>, Error>
     {
+        self.check_range(range)?;
         self.reader.iter(range)
     }
 
     fn target_range(&mut self, position: Position, target_length: u64)
         -> Result<Range<Value>, Error>
     {
+        self.check_position(position)?;
         self.reader.target_range(position, target_length)
     }
 
@@ -567,6 +589,7 @@ where
     fn bisect_range_left(&mut self, range: &Range<Position>, value: &Value)
         -> Result<Position, Error>
     {
+        self.check_range(range)?;
         self.reader.bisect_range_left(range, value)
     }
 }

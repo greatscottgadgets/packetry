@@ -6,7 +6,7 @@ use std::marker::PhantomData;
 use std::mem::size_of;
 use std::ops::{Deref, Range};
 
-use anyhow::Error;
+use anyhow::{Error, bail};
 use bytemuck::{bytes_of, cast_slice, from_bytes, Pod};
 
 use crate::util::id::Id;
@@ -50,6 +50,8 @@ struct Values<Data, Value> where Data: Deref<Target=[u8]> {
 
 /// Operations supported by both `DataReader` and `DataSnapshot`.
 pub trait DataReaderOps<Value, const S: usize = MIN_BLOCK> {
+    const SOURCE_DESCRIPTION: &str;
+
     /// Current number of items in the stream.
     fn len(&self) -> u64;
 
@@ -70,6 +72,24 @@ pub trait DataReaderOps<Value, const S: usize = MIN_BLOCK> {
 
     /// Create an iterator over values in the stream.
     fn iter(&self, range: &Range<Id<Value>>) -> DataIterator<Value, S>;
+
+    fn check_id(&self, id: Id<Value>) -> Result<(), Error> {
+        let length = self.len();
+        let src = Self::SOURCE_DESCRIPTION;
+        if id.value >= length {
+            bail!("requested id {id:?} but {src} length is {length}")
+        }
+        Ok(())
+    }
+
+    fn check_range(&self, range: &Range<Id<Value>>) -> Result<(), Error> {
+        let length = self.len();
+        let src = Self::SOURCE_DESCRIPTION;
+        if range.end.value > length {
+            bail!("requested range {range:?} but {src} length is {length}")
+        }
+        Ok(())
+    }
 }
 
 /// Construct a new data stream with the default block size.
@@ -160,11 +180,14 @@ impl<Value, const S: usize> DataReader<Value, S> {
 impl<Value, const S: usize> DataReaderOps<Value, S> for DataReader<Value, S>
 where Value: Pod + Default
 {
+    const SOURCE_DESCRIPTION: &str = "data stream";
+
     fn len(&self) -> u64 {
         self.stream_reader.len() / size_of::<Value>() as u64
     }
 
     fn get(&mut self, id: Id<Value>) -> Result<Value, Error> {
+        self.check_id(id)?;
         let byte_range = id.offset_range();
         let bytes = self.stream_reader.access(&byte_range)?;
         let value = from_bytes(&bytes);
@@ -174,6 +197,7 @@ where Value: Pod + Default
     fn get_range(&mut self, range: &Range<Id<Value>>)
         -> Result<Vec<Value>, Error>
     {
+        self.check_range(range)?;
         let count = (range.end - range.start).try_into().unwrap();
         let mut result = Vec::with_capacity(count);
         let mut byte_range = range.start.offset()..range.end.offset();
@@ -189,6 +213,7 @@ where Value: Pod + Default
     fn access(&mut self, range: &Range<Id<Value>>)
         -> Result<impl Deref<Target=[Value]>, Error>
     {
+        self.check_range(range)?;
         let range = range.start.offset()..range.end.offset();
         Ok(Values {
             marker: PhantomData,
@@ -209,6 +234,8 @@ impl<Value, const S: usize> DataReaderOps<Value, S>
 for DataSnapshot<'_, '_, Value, S>
 where Value: Pod + Default
 {
+    const SOURCE_DESCRIPTION: &'static str = "snapshot";
+
     fn len(&self) -> u64 {
         self.reader
             .stream_reader
@@ -216,18 +243,21 @@ where Value: Pod + Default
     }
 
     fn get(&mut self, id: Id<Value>) -> Result<Value, Error> {
+        self.check_id(id)?;
         self.reader.get(id)
     }
 
     fn get_range(&mut self, range: &Range<Id<Value>>)
         -> Result<Vec<Value>, Error>
     {
+        self.check_range(range)?;
         self.reader.get_range(range)
     }
 
     fn access(&mut self, range: &Range<Id<Value>>)
         -> Result<impl Deref<Target=[Value]>, Error>
     {
+        self.check_range(range)?;
         self.reader.access(range)
     }
 
