@@ -1,0 +1,198 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- Created with Cambalache 0.94.1 -->
+<interface>
+  <!-- interface-name packetry.ui -->
+  <requires lib="gtk" version="4.12"/>
+  <object class="GtkApplicationWindow" id="window">
+    <property name="height-request">480</property>
+    <property name="title">Packetry</property>
+    <property name="width-request">720</property>
+    <child>
+      <object class="GtkBox" id="vbox">
+        <property name="orientation">vertical</property>
+        <child>
+          <object class="GtkActionBar">
+            <property name="hexpand">True</property>
+            <child>
+              <object class="GtkCenterBox">
+                <property name="end-widget">
+                  <object class="GtkMenuButton" id="menu_button"/>
+                </property>
+                <property name="hexpand">True</property>
+                <property name="start-widget">
+                  <object class="GtkBox">
+                    <child>
+                      <object class="GtkButton" id="open_button">
+                        <property name="action-name">win.open</property>
+                        <property name="icon-name">document-open</property>
+                        <property name="tooltip-text">Open</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="save_button">
+                        <property name="action-name">win.save</property>
+                        <property name="icon-name">document-save</property>
+                        <property name="tooltip-text">Save</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkSeparator"/>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="scan_button">
+                        <property name="action-name">win.scan</property>
+                        <property name="icon-name">view-refresh</property>
+                        <property name="tooltip-text">Scan for devices</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="capture_button">
+                        <property name="action-name">win.capture</property>
+                        <property name="icon-name">media-record</property>
+                        <property name="tooltip-text">Capture</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="stop_button">
+                        <property name="action-name">win.stop</property>
+                        <property name="icon-name">media-playback-stop</property>
+                        <property name="tooltip-text">Stop</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="label">Device: </property>
+                        <property name="margin-end">2</property>
+                        <property name="margin-start">2</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkDropDown" id="dev_dropdown"/>
+                    </child>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="label"> Speed: </property>
+                        <property name="margin-end">2</property>
+                        <property name="margin-start">2</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkDropDown" id="speed_dropdown"/>
+                    </child>
+                  </object>
+                </property>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="GtkSeparator"/>
+        </child>
+        <child>
+          <object class="GtkInfoBar">
+            <property name="revealed">False</property>
+          </object>
+        </child>
+        <child>
+          <object class="GtkPaned" id="vertical_panes">
+            <property name="orientation">vertical</property>
+            <property name="position">360</property>
+            <child>
+              <object class="GtkPaned">
+                <property name="position">640</property>
+                <child>
+                  <object class="GtkBox">
+                    <property name="orientation">vertical</property>
+                    <property name="vexpand">True</property>
+                    <child>
+                      <object class="GtkStackSwitcher">
+                        <property name="hexpand">True</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkStack">
+                        <property name="vexpand">True</property>
+                        <child>
+                          <object class="GtkStackPage">
+                            <property name="child">
+                              <object class="GtkScrolledWindow" id="traffic-hierarchical">
+                                <property name="child">
+                                  <object class="GtkListView"/>
+                                </property>
+                              </object>
+                            </property>
+                            <property name="title">Hierarchical</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkStackPage">
+                            <property name="child">
+                              <object class="GtkScrolledWindow" id="traffic-transactions">
+                                <property name="child">
+                                  <object class="GtkListView"/>
+                                </property>
+                              </object>
+                            </property>
+                            <property name="title">Transactions</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkStackPage">
+                            <property name="child">
+                              <object class="GtkScrolledWindow" id="traffic-packets">
+                                <property name="child">
+                                  <object class="GtkListView"/>
+                                </property>
+                              </object>
+                            </property>
+                            <property name="title">Packets</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkScrolledWindow" id="device_window">
+                    <property name="child">
+                      <object class="GtkListView"/>
+                    </property>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="GtkScrolledWindow">
+                <child>
+                  <object class="GtkTextView">
+                    <property name="buffer">
+                      <object class="GtkTextBuffer" id="detail_text"/>
+                    </property>
+                    <property name="editable">False</property>
+                    <property name="left-margin">5</property>
+                    <property name="vexpand">True</property>
+                    <property name="wrap-mode">word</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="GtkSeparator"/>
+        </child>
+        <child>
+          <object class="GtkLabel" id="status_label">
+            <property name="halign">start</property>
+            <property name="hexpand">True</property>
+            <property name="label">Ready</property>
+            <property name="margin-bottom">2</property>
+            <property name="margin-start">3</property>
+            <property name="margin-top">2</property>
+            <property name="single-line-mode">True</property>
+          </object>
+        </child>
+      </object>
+    </child>
+  </object>
+</interface>
