@@ -256,7 +256,7 @@ impl std::fmt::Display for Pid {
             Stall => "STALL",
             TsOverflow => "TS OVERFLOW",
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 

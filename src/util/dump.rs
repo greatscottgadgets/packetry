@@ -30,7 +30,7 @@ pub fn restore<T>(src: &Path) -> Result<T, Error> where T: Dump {
 impl Dump for String {
     fn dump(&self, dest: &Path) -> Result<(), Error> {
         let mut file = File::create(dest)?;
-        writeln!(file, "{}", self)?;
+        writeln!(file, "{self}")?;
         Ok(())
     }
 

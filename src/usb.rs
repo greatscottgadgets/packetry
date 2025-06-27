@@ -650,13 +650,13 @@ impl DescriptorType {
             BinaryObjectStore => "BOS",
             DeviceCapability => "device capability",
             UnknownStandard(code) =>
-                return format!("standard descriptor 0x{:02X}", code),
+                return format!("standard descriptor 0x{code:02X}"),
             Class(code) =>
-                return format!("class descriptor 0x{:02X}", code),
+                return format!("class descriptor 0x{code:02X}"),
             Custom(code) =>
-                return format!("custom descriptor 0x{:02X}", code),
+                return format!("custom descriptor 0x{code:02X}"),
             Reserved(code) =>
-                return format!("reserved descriptor 0x{:02X}", code),
+                return format!("reserved descriptor 0x{code:02X}"),
             Unknown => "unknown",
         })
     }
@@ -1018,8 +1018,7 @@ impl Descriptor {
                 let expected = desc_type
                     .expected_length()
                     .unwrap_or(desc_length);
-                format!("Truncated {} ({} of {} bytes)",
-                    description, length, expected)
+                format!("Truncated {description} ({length} of {expected} bytes)")
             }
         }
     }
@@ -1332,8 +1331,8 @@ impl ControlTransfer {
         let summary = parts.concat();
         match self.result {
             ControlResult::Completed => summary,
-            ControlResult::Incomplete => format!("{}, incomplete", summary),
-            ControlResult::Stalled => format!("{}, stalled", summary),
+            ControlResult::Incomplete => format!("{summary}, incomplete"),
+            ControlResult::Stalled => format!("{summary}, stalled"),
         }
     }
 }
@@ -1557,7 +1556,7 @@ mod tests {
             assert!(sof.frame_number() == 1758);
             assert!(sof.crc() == 0x03);
         } else {
-            panic!("Expected SOF but got {:?}", p);
+            panic!("Expected SOF but got {p:?}");
         }
 
     }
@@ -1572,7 +1571,7 @@ mod tests {
             assert!(tok.endpoint_number() == EndpointNum(0));
             assert!(tok.crc() == 0x15);
         } else {
-            panic!("Expected Token but got {:?}", p);
+            panic!("Expected Token but got {p:?}");
         }
 
     }
@@ -1587,7 +1586,7 @@ mod tests {
             assert!(tok.endpoint_number() == EndpointNum(1));
             assert!(tok.crc() == 0x03);
         } else {
-            panic!("Expected Token but got {:?}", p);
+            panic!("Expected Token but got {p:?}");
         }
 
     }
@@ -1600,7 +1599,7 @@ mod tests {
         if let PacketFields::Data(data) = p {
             assert!(data.crc == 0xd5aa);
         } else {
-            panic!("Expected Data but got {:?}", p);
+            panic!("Expected Data but got {p:?}");
         }
     }
 
