@@ -29,11 +29,11 @@ impl std::fmt::Display for UiAction {
             Open(path) =>
                 write!(f, "Opening file {}", path.display()),
             Update(count) =>
-                write!(f, "Updating after {} packets decoded", count),
+                write!(f, "Updating after {count} packets decoded"),
             SetExpanded(name, position, true) =>
-                write!(f, "Expanding {} view, row {}", name, position),
+                write!(f, "Expanding {name} view, row {position}"),
             SetExpanded(name, position, false) =>
-                write!(f, "Collapsing {} view, row {}", name, position),
+                write!(f, "Collapsing {name} view, row {position}"),
         }
     }
 }
@@ -92,9 +92,9 @@ impl Recording {
 
         if let UiAction::SetExpanded(ref name, position, _) = action {
             let summary = self.summary(name, position);
-            self.log_output(format!("{}: {}\n", action, summary));
+            self.log_output(format!("{action}: {summary}\n"));
         } else {
-            self.log_output(format!("{}\n", action));
+            self.log_output(format!("{action}\n"));
         }
     }
 
@@ -146,9 +146,9 @@ impl Recording {
     {
         let old_summary = self.summary(name, position).to_string();
         if new_summary != old_summary {
-            self.log_output(format!("At {} row {}:\n", name, position));
-            self.log_output(format!("- {}\n", old_summary));
-            self.log_output(format!("+ {}\n", new_summary));
+            self.log_output(format!("At {name} row {position}:\n"));
+            self.log_output(format!("- {old_summary}\n"));
+            self.log_output(format!("+ {new_summary}\n"));
         }
     }
 
@@ -182,19 +182,19 @@ impl Recording {
             .or_default()
             .splice(removed_range, added_items.clone())
             .collect();
-        self.log_output(format!("At {} row {}:\n", name, position));
+        self.log_output(format!("At {name} row {position}:\n"));
         for (n, string) in removed_items.iter().dedup_with_count() {
             if n == 1 {
-                self.log_output(format!("- {}\n", string));
+                self.log_output(format!("- {string}\n"));
             } else {
-                self.log_output(format!("- {} times: {}\n", n, string));
+                self.log_output(format!("- {n} times: {string}\n"));
             }
         }
         for (n, string) in added_items.iter().dedup_with_count() {
             if n == 1 {
-                self.log_output(format!("+ {}\n", string));
+                self.log_output(format!("+ {string}\n"));
             } else {
-                self.log_output(format!("+ {} times: {}\n", n, string));
+                self.log_output(format!("+ {n} times: {string}\n"));
             }
         }
     }

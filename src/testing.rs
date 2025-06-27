@@ -177,7 +177,7 @@ fn test(save_capture: bool,
             }
         }
 
-        println!("Found {} SOF packets with expected interval range", sof_count);
+        println!("Found {sof_count} SOF packets with expected interval range");
 
         ensure!(gaps.len() <= 1, "More than one gap in SOF packets seen");
 
