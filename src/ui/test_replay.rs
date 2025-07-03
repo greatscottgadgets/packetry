@@ -120,8 +120,13 @@ fn check_replays() {
                             .expect("Failed to open pcap file");
                         let loader = PcapLoader::new(file)
                             .expect("Failed to create pcap loader");
-                        let decoder = Decoder::new(writer)
+                        let mut decoder = Decoder::new(writer)
                             .expect("Failed to create decoder");
+                        let snapshot = decoder.capture.counters.snapshot();
+                        with_ui(|ui| {
+                            ui.snapshot = snapshot;
+                            Ok(())
+                        }).unwrap();
                         replay = Some((loader, decoder, capture));
                     }
                 },
@@ -146,6 +151,10 @@ fn check_replays() {
                             End => panic!("No next loader item"),
                         };
                     }
+                    with_ui(|ui| {
+                        ui.snapshot = decoder.capture.counters.snapshot();
+                        Ok(())
+                    }).unwrap();
                     update_view()
                         .expect("Failed to update view");
                 },
@@ -187,6 +196,7 @@ fn set_expanded(ui: &mut UserInterface,
                 position: u32,
                 expanded: bool)
 {
+    let mut cap = ui.capture.at(&ui.snapshot);
     match name {
         "devices" => {
             let model = ui.device_model
@@ -198,7 +208,7 @@ fn set_expanded(ui: &mut UserInterface,
                 .expect("List item is not DeviceRowData")
                 .node()
                 .expect("Failed to get node from DeviceRowData");
-            model.set_expanded(&node, position, expanded)
+            model.set_expanded(&mut cap, &node, position, expanded)
                 .expect("Failed to expand/collapse item");
         },
         log_name => {
@@ -212,7 +222,7 @@ fn set_expanded(ui: &mut UserInterface,
                 .expect("List item is not TrafficRowData")
                 .node()
                 .expect("Failed to get node from TrafficRowData");
-            model.set_expanded(&node, position, expanded)
+            model.set_expanded(&mut cap, &node, position, expanded)
                 .expect("Failed to expand/collapse item");
         },
     }

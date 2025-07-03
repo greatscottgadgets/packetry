@@ -6,14 +6,12 @@ use std::ffi::OsStr;
 use std::io::{Read, Write};
 use std::ops::Range;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::mpsc::{Sender, Receiver, channel};
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 
 #[cfg(feature="step-decoder")]
 use std::net::TcpListener;
-
-#[cfg(feature="record-ui-test")]
-use std::sync::Mutex;
 
 use anyhow::{Context as ErrorContext, Error, bail};
 use chrono::{DateTime, Local};
@@ -95,6 +93,7 @@ use crate::capture::{
 use crate::database::{
     DataReaderOps,
     CompactReaderOps,
+    Snapshot
 };
 use crate::item::{
     ItemSource,
@@ -150,9 +149,7 @@ static TOTAL: AtomicU64 = AtomicU64::new(0);
 static CURRENT: AtomicU64 = AtomicU64::new(0);
 static STOP: AtomicBool = AtomicBool::new(false);
 static UPDATE_INTERVAL: Duration = Duration::from_millis(10);
-
-#[cfg(feature="record-ui-test")]
-static UPDATE_LOCK: Mutex<()> = Mutex::new(());
+static SNAPSHOT_REQ: AtomicBool = AtomicBool::new(false);
 
 thread_local!(
     static WINDOW: RefCell<Option<ApplicationWindow>> =
@@ -375,7 +372,9 @@ impl DeviceWarning {
 }
 
 pub struct UserInterface {
-    pub capture: CaptureReader,
+    snapshot_rx: Receiver<Snapshot>,
+    capture: CaptureReader,
+    snapshot: Snapshot,
     selector: DeviceSelector,
     file_name: Option<String>,
     stop_state: StopState,
@@ -535,7 +534,8 @@ pub fn activate(application: &Application) -> Result<(), Error> {
     window.show();
     WINDOW.with(|win_opt| win_opt.replace(Some(window.clone())));
 
-    let (_, capture) = create_capture()?;
+    let (mut writer, capture) = create_capture()?;
+    let snapshot = writer.counters.snapshot();
 
     let mut traffic_windows = BTreeMap::new();
 
@@ -641,12 +641,15 @@ pub fn activate(application: &Application) -> Result<(), Error> {
     window.set_child(Some(&vbox));
 
     UI.with(|cell| {
+        let (_snapshot_tx, snapshot_rx) = channel();
         cell.borrow_mut().replace(
             UserInterface {
                 #[cfg(any(test, feature="record-ui-test"))]
                 recording: Rc::new(RefCell::new(
                     Recording::new(capture.clone()))),
+                snapshot_rx,
                 capture,
+                snapshot,
                 selector,
                 file_name: None,
                 stop_state: StopState::Disabled,
@@ -690,6 +693,7 @@ type ContextFn<Item> =
 fn create_view<Item, Model, RowData, ViewMode>(
         title: &str,
         capture: &CaptureReader,
+        snapshot: &Snapshot,
         view_mode: ViewMode,
         context_menu_fn: ContextFn<Item>,
         #[cfg(any(test, feature="record-ui-test"))]
@@ -710,6 +714,7 @@ fn create_view<Item, Model, RowData, ViewMode>(
     };
     let model = Model::new(
         capture.clone(),
+        snapshot.clone(),
         view_mode,
         #[cfg(any(test, feature="record-ui-test"))]
         Rc::new(
@@ -762,8 +767,12 @@ fn create_view<Item, Model, RowData, ViewMode>(
                                       feature="record-ui-test"))]
                             recording.borrow_mut().log_item_expanded(
                                 name, position, expanded);
-                            display_error(
-                                model.set_expanded(&node_ref, position, expanded))
+                            display_error(with_ui(|ui| {
+                                let mut cap = ui.capture.at(&ui.snapshot);
+                                model.set_expanded(
+                                    &mut cap,
+                                    &node_ref, position, expanded)
+                            }))
                         }
                     )
                 );
@@ -869,7 +878,8 @@ fn create_view<Item, Model, RowData, ViewMode>(
 }
 
 pub fn reset_capture() -> Result<CaptureWriter, Error> {
-    let (writer, reader) = create_capture()?;
+    let (mut writer, reader) = create_capture()?;
+    let snapshot = writer.counters.snapshot();
     with_ui(|ui| {
         for mode in TRAFFIC_MODES {
             let (traffic_model, traffic_selection, traffic_view) =
@@ -881,6 +891,7 @@ pub fn reset_capture() -> Result<CaptureWriter, Error> {
                 >(
                     "Traffic",
                     &reader,
+                    &snapshot,
                     mode,
                     traffic_context_menu,
                     #[cfg(any(test, feature="record-ui-test"))]
@@ -922,12 +933,14 @@ pub fn reset_capture() -> Result<CaptureWriter, Error> {
             >(
                 "Devices",
                 &reader,
+                &snapshot,
                 (),
                 device_context_menu,
                 #[cfg(any(test, feature="record-ui-test"))]
                 (&ui.recording, "devices")
             );
         ui.capture = reader;
+        ui.snapshot = snapshot;
         ui.device_model = Some(device_model);
         ui.endpoint_count = 2;
         ui.device_window.set_child(Some(&device_view));
@@ -939,22 +952,21 @@ pub fn reset_capture() -> Result<CaptureWriter, Error> {
 
 pub fn update_view() -> Result<(), Error> {
     with_ui(|ui| {
+        SNAPSHOT_REQ.store(true, Ordering::Relaxed);
+        if let Ok(snapshot) = ui.snapshot_rx.try_recv() {
+            ui.snapshot = snapshot;
+        }
+        let mut cap = ui.capture.at(&ui.snapshot);
         use FileAction::*;
         #[cfg(feature="record-ui-test")]
-        let guard = {
-            let guard = UPDATE_LOCK.lock();
-            let packet_count = ui.capture.packet_index.len();
-            ui.recording
-                .borrow_mut()
-                .log_update(packet_count);
-            guard
-        };
+        ui.recording
+            .borrow_mut()
+            .log_update(cap.packet_index().len());
         let mut more_updates = false;
         if ui.show_progress == Some(Save) {
             more_updates = true;
         } else {
             let (devices, endpoints, transactions, packets) = {
-                let cap = &mut ui.capture;
                 let devices = cap.devices().len().saturating_sub(1);
                 let endpoints = cap.endpoints().len().saturating_sub(2);
                 let transactions = cap.transaction_index().len();
@@ -971,12 +983,12 @@ pub fn update_view() -> Result<(), Error> {
             ));
             for model in ui.traffic_models.values() {
                 let old_count = model.n_items();
-                more_updates |= model.update()?;
+                more_updates |= model.update(&ui.snapshot)?;
                 let new_count = model.n_items();
                 // If any endpoints were added, we need to redraw the rows above
                 // to add the additional columns of the connecting lines.
                 if new_count > old_count {
-                    let new_ep_count = ui.capture.endpoints().len() as u16;
+                    let new_ep_count = cap.endpoints().len() as u16;
                     if new_ep_count > ui.endpoint_count {
                         model.items_changed(0, old_count, old_count);
                         ui.endpoint_count = new_ep_count;
@@ -984,7 +996,7 @@ pub fn update_view() -> Result<(), Error> {
                 }
             }
             if let Some(model) = &ui.device_model {
-                more_updates |= model.update()?;
+                more_updates |= model.update(&ui.snapshot)?;
             }
         }
         if let Some(action) = ui.show_progress {
@@ -1017,8 +1029,6 @@ pub fn update_view() -> Result<(), Error> {
                 || display_error(update_view())
             );
         }
-        #[cfg(feature="record-ui-test")]
-        drop(guard);
         Ok(())
     })
 }
@@ -1098,6 +1108,7 @@ fn start_file(action: FileAction, file: gio::File) -> Result<(), Error> {
     };
     with_ui(|ui| {
         let cancel_handle = Cancellable::new();
+        let (snapshot_tx, snapshot_rx) = channel();
         #[cfg(feature="record-ui-test")]
         ui.recording.borrow_mut().log_open_file(
             &file.path().context("Cannot record UI test for non-local path")?,
@@ -1113,6 +1124,7 @@ fn start_file(action: FileAction, file: gio::File) -> Result<(), Error> {
         ui.vbox.insert_child_after(&ui.progress_bar, Some(&ui.separator));
         ui.show_progress = Some(action);
         ui.file_name = Some(basename.to_string_lossy().to_string());
+        ui.snapshot_rx = snapshot_rx;
         let capture = ui.capture.clone();
         let packet_count = capture.packet_index.len();
         CURRENT.store(0, Ordering::Relaxed);
@@ -1123,8 +1135,10 @@ fn start_file(action: FileAction, file: gio::File) -> Result<(), Error> {
         std::thread::spawn(move || {
             let start_time = Instant::now();
             let result = match action {
-                Load => load_file(file, format, writer.unwrap(), cancel_handle),
-                Save => save_file(file, format, capture, cancel_handle),
+                Load => load_file(
+                    file, format, writer.unwrap(), cancel_handle, snapshot_tx),
+                Save => save_file(
+                    file, format, capture, cancel_handle),
             };
             let duration = Instant::now().duration_since(start_time);
             if result.is_ok() {
@@ -1148,7 +1162,8 @@ fn start_file(action: FileAction, file: gio::File) -> Result<(), Error> {
 
 fn load<Source, Loader>(
     writer: CaptureWriter,
-    source: Source
+    source: Source,
+    snapshot_tx: Sender<Snapshot>,
 ) -> Result<(), Error>
 where
     Source: Read,
@@ -1167,13 +1182,12 @@ where
                     let mut buf = [0; 1];
                     client.read(&mut buf).unwrap();
                 };
-                #[cfg(feature="record-ui-test")]
-                let guard = UPDATE_LOCK.lock();
                 decoder.handle_raw_packet(
                     packet.bytes(), packet.timestamp_ns())?;
-                #[cfg(feature="record-ui-test")]
-                drop(guard);
                 CURRENT.store(packet.total_bytes_read(), Ordering::Relaxed);
+                if SNAPSHOT_REQ.swap(false, Ordering::AcqRel) {
+                    snapshot_tx.send(decoder.capture.counters.snapshot())?;
+                }
             },
             Metadata(meta) => decoder.handle_metadata(meta),
             LoadError(e) => return Err(e),
@@ -1184,7 +1198,8 @@ where
             break;
         }
     }
-    let writer = decoder.finish()?;
+    let mut writer = decoder.finish()?;
+    snapshot_tx.send(writer.counters.snapshot())?;
     writer.print_storage_summary();
     Ok(())
 }
@@ -1192,7 +1207,8 @@ where
 fn load_file(file: gio::File,
              format: FileFormat,
              writer: CaptureWriter,
-             cancel_handle: Cancellable)
+             cancel_handle: Cancellable,
+             snapshot_tx: Sender<Snapshot>)
     -> Result<(), Error>
 {
     use FileFormat::*;
@@ -1205,8 +1221,8 @@ fn load_file(file: gio::File,
     }
     let source = file.read(Some(&cancel_handle))?.into_read();
     match format {
-        Pcap => load::<_, PcapLoader<_>>(writer, source),
-        PcapNg => load::<_, PcapNgLoader<_>>(writer, source),
+        Pcap => load::<_, PcapLoader<_>>(writer, source, snapshot_tx),
+        PcapNg => load::<_, PcapNgLoader<_>>(writer, source, snapshot_tx),
     }
 }
 
@@ -1320,8 +1336,10 @@ pub fn start_capture() -> Result<(), Error> {
             .. device.metadata().clone()
         };
         writer.shared.metadata.swap(Arc::new(meta));
+        let (snapshot_tx, snapshot_rx) = channel();
         let (stream_handle, stop_handle) =
             device.start(speed, Box::new(display_error))?;
+        ui.snapshot_rx = snapshot_rx;
         ui.open_button.set_sensitive(false);
         ui.scan_button.set_sensitive(false);
         ui.selector.set_sensitive(false);
@@ -1334,8 +1352,12 @@ pub fn start_capture() -> Result<(), Error> {
                 let packet = result
                     .context("Error processing raw capture data")?;
                 decoder.handle_raw_packet(&packet.bytes, packet.timestamp_ns)?;
+                if SNAPSHOT_REQ.swap(false, Ordering::AcqRel) {
+                    snapshot_tx.send(decoder.capture.counters.snapshot())?;
+                }
             }
-            let writer = decoder.finish()?;
+            let mut writer = decoder.finish()?;
+            snapshot_tx.send(writer.counters.snapshot())?;
             writer.shared.metadata.update(|meta| {
                 meta.end_time = SystemTime::now()
                     .duration_since(SystemTime::UNIX_EPOCH)

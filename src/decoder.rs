@@ -486,7 +486,7 @@ impl EndpointData {
 }
 
 pub struct Decoder {
-    capture: CaptureWriter,
+    pub capture: CaptureWriter,
     device_index: VecMap<DeviceAddr, DeviceId>,
     endpoint_data: VecMap<EndpointId, EndpointData>,
     last_endpoint_state: Vec<u8>,
