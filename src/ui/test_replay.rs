@@ -109,10 +109,10 @@ fn check_replays() {
                         .expect("Resetting capture failed");
                     let mut capture = None;
                     with_ui(|ui| {
-                        capture = Some(ui.capture.clone());
+                        capture = Some(ui.capture.reader.clone());
                         ui.recording
                             .borrow_mut()
-                            .log_open_file(&path, &ui.capture);
+                            .log_open_file(&path, &ui.capture.reader);
                         Ok(())
                     }).unwrap();
                     if let Some(capture) = capture {
@@ -120,8 +120,13 @@ fn check_replays() {
                             .expect("Failed to open pcap file");
                         let loader = PcapLoader::new(file)
                             .expect("Failed to create pcap loader");
-                        let decoder = Decoder::new(writer)
+                        let mut decoder = Decoder::new(writer)
                             .expect("Failed to create decoder");
+                        let snapshot = decoder.capture.snapshot();
+                        with_ui(|ui| {
+                            ui.capture.set_snapshot(snapshot);
+                            Ok(())
+                        }).unwrap();
                         replay = Some((loader, decoder, capture));
                     }
                 },
@@ -146,6 +151,11 @@ fn check_replays() {
                             End => panic!("No next loader item"),
                         };
                     }
+                    let snapshot = decoder.capture.snapshot();
+                    with_ui(|ui| {
+                        ui.capture.set_snapshot(snapshot);
+                        Ok(())
+                    }).unwrap();
                     update_view()
                         .expect("Failed to update view");
                 },
@@ -198,7 +208,7 @@ fn set_expanded(ui: &mut UserInterface,
                 .expect("List item is not DeviceRowData")
                 .node()
                 .expect("Failed to get node from DeviceRowData");
-            model.set_expanded(&node, position, expanded)
+            model.set_expanded(&mut ui.capture, &node, position, expanded)
                 .expect("Failed to expand/collapse item");
         },
         log_name => {
@@ -212,7 +222,7 @@ fn set_expanded(ui: &mut UserInterface,
                 .expect("List item is not TrafficRowData")
                 .node()
                 .expect("Failed to get node from TrafficRowData");
-            model.set_expanded(&node, position, expanded)
+            model.set_expanded(&mut ui.capture, &node, position, expanded)
                 .expect("Failed to expand/collapse item");
         },
     }

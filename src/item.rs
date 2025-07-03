@@ -1052,7 +1052,7 @@ mod tests {
     use std::path::PathBuf;
     use itertools::Itertools;
     use crate::capture::{CaptureReader, create_capture};
-    use crate::database::CounterSet;
+    use crate::database::{CounterSet, DataReaderOps, CompactReaderOps};
     use crate::decoder::Decoder;
     use crate::file::{GenericLoader, GenericPacket, LoaderItem, PcapLoader};
     use crate::util::dump::Dump;

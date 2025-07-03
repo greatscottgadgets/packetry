@@ -6,14 +6,12 @@ use std::ffi::OsStr;
 use std::io::{Read, Write};
 use std::ops::Range;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::mpsc::{Sender, Receiver, channel};
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 
 #[cfg(feature="step-decoder")]
 use std::net::TcpListener;
-
-#[cfg(feature="record-ui-test")]
-use std::sync::Mutex;
 
 use anyhow::{Context as ErrorContext, Error, bail};
 use chrono::{DateTime, Local};
@@ -46,7 +44,6 @@ use gtk::{
     Grid,
     ColumnView,
     ColumnViewColumn,
-    MessageType,
     Paned,
     PopoverMenu,
     ProgressBar,
@@ -62,6 +59,7 @@ use gtk::{
 #[cfg(not(test))]
 use gtk::{
     MessageDialog,
+    MessageType,
     ButtonsType,
 };
 
@@ -73,6 +71,7 @@ use crate::capture::{
     create_capture,
     CaptureReader,
     CaptureReaderOps,
+    CaptureSnapshot,
     CaptureWriter,
     CaptureMetadata,
     EndpointId,
@@ -108,6 +107,7 @@ use crate::usb::{Descriptor, PacketFields, Speed, validate_packet};
 use crate::util::{rcu::SingleWriterRcu, fmt_count, fmt_size};
 use crate::version::{version, version_info};
 
+pub mod capture;
 pub mod device;
 pub mod item_widget;
 pub mod model;
@@ -120,6 +120,7 @@ pub mod record_ui;
 #[cfg(test)]
 mod test_replay;
 
+use capture::{Capture, CaptureState};
 use device::{DeviceSelector, DeviceWarning};
 use item_widget::ItemWidget;
 use model::{GenericModel, TrafficModel, DeviceModel};
@@ -145,9 +146,7 @@ static TOTAL: AtomicU64 = AtomicU64::new(0);
 static CURRENT: AtomicU64 = AtomicU64::new(0);
 static STOP: AtomicBool = AtomicBool::new(false);
 static UPDATE_INTERVAL: Duration = Duration::from_millis(10);
-
-#[cfg(feature="record-ui-test")]
-static UPDATE_LOCK: Mutex<()> = Mutex::new(());
+static SNAPSHOT_REQ: AtomicBool = AtomicBool::new(false);
 
 thread_local!(
     static UI: RefCell<Option<UserInterface>> =
@@ -174,7 +173,8 @@ enum StopState {
 
 pub struct UserInterface {
     window: PacketryWindow,
-    pub capture: CaptureReader,
+    capture: Capture,
+    snapshot_rx: Option<Receiver<CaptureSnapshot>>,
     selector: DeviceSelector,
     power: PowerControl,
     file_name: Option<String>,
@@ -184,7 +184,7 @@ pub struct UserInterface {
     pub traffic_models: BTreeMap<TrafficViewMode, TrafficModel>,
     pub device_model: Option<DeviceModel>,
     detail_text: TextBuffer,
-    endpoint_count: u16,
+    endpoint_count: u64,
     show_progress: Option<FileAction>,
     progress_bar: ProgressBar,
     separator: Separator,
@@ -252,7 +252,7 @@ type ContextFn<Item> =
 
 fn create_view<Item, Model, RowData, ViewMode>(
         title: &str,
-        capture: &CaptureReader,
+        capture: &Capture,
         view_mode: ViewMode,
         context_menu_fn: ContextFn<Item>,
         #[cfg(any(test, feature="record-ui-test"))]
@@ -260,7 +260,7 @@ fn create_view<Item, Model, RowData, ViewMode>(
     -> (Model, SingleSelection, ColumnView)
     where
         Item: Clone + 'static,
-        ViewMode: Copy,
+        ViewMode: Copy + 'static,
         Model: GenericModel<Item, ViewMode> + IsA<ListModel> + IsA<Object>,
         RowData: GenericRowData<Item> + IsA<Object>,
         CaptureReader: ItemSource<Item, ViewMode>,
@@ -308,7 +308,7 @@ fn create_view<Item, Model, RowData, ViewMode>(
                 let node = node_ref.borrow();
                 let item = node.item.clone();
                 let summary = model.description(&item, false);
-                let connectors = model.connectors(&item);
+                let connectors = model.connectors(view_mode, &item);
                 item_widget.set_text(summary);
                 item_widget.set_connectors(connectors);
                 expander.set_visible(node.expandable());
@@ -325,8 +325,11 @@ fn create_view<Item, Model, RowData, ViewMode>(
                                       feature="record-ui-test"))]
                             recording.borrow_mut().log_item_expanded(
                                 name, position, expanded);
-                            display_error(
-                                model.set_expanded(&node_ref, position, expanded))
+                            display_error(with_ui(|ui| {
+                                model.set_expanded(
+                                    &mut ui.capture,
+                                    &node_ref, position, expanded)
+                            }))
                         }
                     )
                 );
@@ -335,7 +338,8 @@ fn create_view<Item, Model, RowData, ViewMode>(
                     let mut popover = None;
                     display_error(
                         with_ui(|ui| {
-                            popover = context_menu_fn(&mut ui.capture, &item)?;
+                            popover = context_menu_fn(
+                                &mut ui.capture.reader, &item)?;
                             Ok(())
                         }).context("Failed to generate context menu")
                     );
@@ -432,8 +436,13 @@ fn create_view<Item, Model, RowData, ViewMode>(
 }
 
 pub fn reset_capture() -> Result<CaptureWriter, Error> {
-    let (writer, reader) = create_capture()?;
+    let (mut writer, reader) = create_capture()?;
+    let snapshot = writer.snapshot();
     with_ui(|ui| {
+        let capture = Capture {
+            reader,
+            state: CaptureState::Ongoing(snapshot),
+        };
         for mode in TRAFFIC_MODES {
             let (traffic_model, traffic_selection, traffic_view) =
                 create_view::<
@@ -443,7 +452,7 @@ pub fn reset_capture() -> Result<CaptureWriter, Error> {
                     TrafficViewMode
                 >(
                     "Traffic",
-                    &reader,
+                    &capture,
                     mode,
                     traffic_context_menu,
                     #[cfg(any(test, feature="record-ui-test"))]
@@ -484,13 +493,13 @@ pub fn reset_capture() -> Result<CaptureWriter, Error> {
                 DeviceViewMode
             >(
                 "Devices",
-                &reader,
+                &capture,
                 (),
                 device_context_menu,
                 #[cfg(any(test, feature="record-ui-test"))]
                 (&ui.recording, "devices")
             );
-        ui.capture = reader;
+        ui.capture = capture;
         ui.device_model = Some(device_model);
         ui.endpoint_count = 2;
         ui.device_window.set_child(Some(&device_view));
@@ -501,29 +510,42 @@ pub fn reset_capture() -> Result<CaptureWriter, Error> {
 }
 
 pub fn update_view() -> Result<(), Error> {
+    use FileAction::*;
     with_ui(|ui| {
-        use FileAction::*;
-        #[cfg(feature="record-ui-test")]
-        let guard = {
-            let guard = UPDATE_LOCK.lock();
-            let packet_count = ui.capture.packet_index.len();
-            ui.recording
-                .borrow_mut()
-                .log_update(packet_count);
-            guard
-        };
-        let mut more_updates = false;
-        if ui.show_progress == Some(Save) {
-            more_updates = true;
-        } else {
-            let (devices, endpoints, transactions, packets) = {
-                let cap = &mut ui.capture;
+        SNAPSHOT_REQ.store(true, Ordering::Relaxed);
+        if let Some(snapshot_rx) = &mut ui.snapshot_rx {
+            if let Ok(snapshot) = snapshot_rx.try_recv() {
+                ui.capture.set_snapshot(snapshot);
+            }
+        }
+        let (devices, endpoints, transactions, packets) =
+            match &mut ui.capture.state
+        {
+            CaptureState::Ongoing(snapshot) => {
+                let mut cap = ui.capture.reader.at(snapshot);
                 let devices = cap.devices().len().saturating_sub(1);
                 let endpoints = cap.endpoints().len().saturating_sub(2);
                 let transactions = cap.transaction_index().len();
                 let packets = cap.packet_index().len();
                 (devices, endpoints, transactions, packets)
-            };
+            },
+            CaptureState::Complete => {
+                let cap = &mut ui.capture.reader;
+                let devices = cap.devices().len().saturating_sub(1);
+                let endpoints = cap.endpoints().len().saturating_sub(2);
+                let transactions = cap.transaction_index().len();
+                let packets = cap.packet_index().len();
+                (devices, endpoints, transactions, packets)
+            },
+        };
+        #[cfg(feature="record-ui-test")]
+        ui.recording
+            .borrow_mut()
+            .log_update(packets);
+        let mut more_updates = false;
+        if ui.show_progress == Some(Save) {
+            more_updates = true;
+        } else {
             ui.status_label.set_text(&format!(
                 "{}: {} devices, {} endpoints, {} transactions, {} packets",
                 ui.file_name.as_deref().unwrap_or("Unsaved capture"),
@@ -534,20 +556,17 @@ pub fn update_view() -> Result<(), Error> {
             ));
             for model in ui.traffic_models.values() {
                 let old_count = model.n_items();
-                more_updates |= model.update()?;
+                more_updates |= model.update(&mut ui.capture)?;
                 let new_count = model.n_items();
                 // If any endpoints were added, we need to redraw the rows above
                 // to add the additional columns of the connecting lines.
-                if new_count > old_count {
-                    let new_ep_count = ui.capture.endpoints().len() as u16;
-                    if new_ep_count > ui.endpoint_count {
-                        model.items_changed(0, old_count, old_count);
-                        ui.endpoint_count = new_ep_count;
-                    }
+                if new_count > old_count && endpoints > ui.endpoint_count {
+                    model.items_changed(0, old_count, old_count);
                 }
+                ui.endpoint_count = endpoints;
             }
             if let Some(model) = &ui.device_model {
-                more_updates |= model.update()?;
+                more_updates |= model.update(&mut ui.capture)?;
             }
         }
         if let Some(action) = ui.show_progress {
@@ -579,9 +598,10 @@ pub fn update_view() -> Result<(), Error> {
                 UPDATE_INTERVAL,
                 || display_error(update_view())
             );
+        } else {
+            ui.capture.set_completed();
+            ui.snapshot_rx = None;
         }
-        #[cfg(feature="record-ui-test")]
-        drop(guard);
         Ok(())
     })
 }
@@ -659,10 +679,11 @@ fn start_file(action: FileAction, file: gio::File) -> Result<(), Error> {
     };
     with_ui(|ui| {
         let cancel_handle = Cancellable::new();
+        let (snapshot_tx, snapshot_rx) = channel();
         #[cfg(feature="record-ui-test")]
         ui.recording.borrow_mut().log_open_file(
             &file.path().context("Cannot record UI test for non-local path")?,
-            &ui.capture);
+            &ui.capture.reader);
         ui.open_button.set_sensitive(false);
         ui.save_button.set_sensitive(false);
         ui.scan_button.set_sensitive(false);
@@ -674,8 +695,9 @@ fn start_file(action: FileAction, file: gio::File) -> Result<(), Error> {
         ui.vbox.insert_child_after(&ui.progress_bar, Some(&ui.separator));
         ui.show_progress = Some(action);
         ui.file_name = Some(basename.to_string_lossy().to_string());
-        let capture = ui.capture.clone();
-        let packet_count = capture.packet_index.len();
+        ui.snapshot_rx = Some(snapshot_rx);
+        let mut capture = ui.capture.reader.clone();
+        let packet_count = capture.packet_index().len();
         CURRENT.store(0, Ordering::Relaxed);
         TOTAL.store(match action {
             Load => 0,
@@ -684,8 +706,10 @@ fn start_file(action: FileAction, file: gio::File) -> Result<(), Error> {
         std::thread::spawn(move || {
             let start_time = Instant::now();
             let result = match action {
-                Load => load_file(file, format, writer.unwrap(), cancel_handle),
-                Save => save_file(file, format, capture, cancel_handle),
+                Load => load_file(
+                    file, format, writer.unwrap(), cancel_handle, snapshot_tx),
+                Save => save_file(
+                    file, format, capture, cancel_handle),
             };
             let duration = Instant::now().duration_since(start_time);
             if result.is_ok() {
@@ -709,7 +733,8 @@ fn start_file(action: FileAction, file: gio::File) -> Result<(), Error> {
 
 fn load<Source, Loader>(
     writer: CaptureWriter,
-    source: Source
+    source: Source,
+    snapshot_tx: Sender<CaptureSnapshot>,
 ) -> Result<(), Error>
 where
     Source: Read,
@@ -728,13 +753,12 @@ where
                     let mut buf = [0; 1];
                     client.read(&mut buf).unwrap();
                 };
-                #[cfg(feature="record-ui-test")]
-                let guard = UPDATE_LOCK.lock();
                 decoder.handle_raw_packet(
                     packet.bytes(), packet.timestamp_ns())?;
-                #[cfg(feature="record-ui-test")]
-                drop(guard);
                 CURRENT.store(packet.total_bytes_read(), Ordering::Relaxed);
+                if SNAPSHOT_REQ.swap(false, Ordering::AcqRel) {
+                    snapshot_tx.send(decoder.capture.snapshot())?;
+                }
             },
             Metadata(meta) => decoder.handle_metadata(meta),
             LoadError(e) => return Err(e),
@@ -745,7 +769,8 @@ where
             break;
         }
     }
-    let writer = decoder.finish()?;
+    let mut writer = decoder.finish()?;
+    snapshot_tx.send(writer.snapshot())?;
     writer.print_storage_summary();
     Ok(())
 }
@@ -753,7 +778,8 @@ where
 fn load_file(file: gio::File,
              format: FileFormat,
              writer: CaptureWriter,
-             cancel_handle: Cancellable)
+             cancel_handle: Cancellable,
+             snapshot_tx: Sender<CaptureSnapshot>)
     -> Result<(), Error>
 {
     use FileFormat::*;
@@ -766,8 +792,8 @@ fn load_file(file: gio::File,
     }
     let source = file.read(Some(&cancel_handle))?.into_read();
     match format {
-        Pcap => load::<_, PcapLoader<_>>(writer, source),
-        PcapNg => load::<_, PcapNgLoader<_>>(writer, source),
+        Pcap => load::<_, PcapLoader<_>>(writer, source, snapshot_tx),
+        PcapNg => load::<_, PcapNgLoader<_>>(writer, source, snapshot_tx),
     }
 }
 
@@ -890,8 +916,10 @@ pub fn start_capture() -> Result<(), Error> {
             .. device.metadata().clone()
         };
         writer.shared.metadata.swap(Arc::new(meta));
+        let (snapshot_tx, snapshot_rx) = channel();
         let (stream_handle, stop_handle) =
             device.start(speed, Box::new(display_error))?;
+        ui.snapshot_rx = Some(snapshot_rx);
         ui.power.started();
         ui.open_button.set_sensitive(false);
         ui.scan_button.set_sensitive(false);
@@ -905,8 +933,12 @@ pub fn start_capture() -> Result<(), Error> {
                 let packet = result
                     .context("Error processing raw capture data")?;
                 decoder.handle_raw_packet(&packet.bytes, packet.timestamp_ns)?;
+                if SNAPSHOT_REQ.swap(false, Ordering::AcqRel) {
+                    snapshot_tx.send(decoder.capture.snapshot())?;
+                }
             }
-            let writer = decoder.finish()?;
+            let mut writer = decoder.finish()?;
+            snapshot_tx.send(writer.snapshot())?;
             writer.shared.metadata.update(|meta| {
                 meta.end_time = SystemTime::now()
                     .duration_since(SystemTime::UNIX_EPOCH)
@@ -1068,7 +1100,7 @@ fn save_data_transfer_payload(
     data_range: Range<EndpointDataEvent>
 ) -> Result<(), Error> {
     with_ui(|ui| {
-        let cap = &mut ui.capture;
+        let cap = &mut ui.capture.reader;
         let mut dest = file
             .replace(None, false, FileCreateFlags::NONE, Cancellable::NONE)?
             .into_write();
@@ -1126,7 +1158,7 @@ fn show_metadata() -> Result<(), Error> {
     let grid = Grid::new();
     let comment_buffer = TextBuffer::new(None);
     with_ui(|ui| {
-        let meta = ui.capture.shared.metadata.load();
+        let meta = ui.capture.reader.shared.metadata.load();
         const NONE: &str = "(not specified)";
         let mut current_row = 0;
         let row = &mut current_row;
@@ -1225,7 +1257,7 @@ fn show_metadata() -> Result<(), Error> {
         dialog.connect_response(move |dialog, response| {
             if response == ResponseType::Apply {
                 display_error(with_ui(|ui| {
-                    ui.capture.shared.metadata.update(|meta| {
+                    ui.capture.reader.shared.metadata.update(|meta| {
                         let start = buf.iter_at_offset(0);
                         let end = buf.iter_at_offset(-1);
                         let text = buf.text(&start, &end, false);
