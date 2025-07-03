@@ -1,0 +1,3553 @@
+Opening file tests/hub/capture.pcap
+Updating after 1 packets decoded
+At traffic-hierarchical row 0:
++ 1 SOF groups
+At traffic-interleaved row 0:
++ 1 SOF groups
+At traffic-transactions row 0:
++ 1 SOF packets
+At traffic-packets row 0:
++ SOF packet with frame number 1022, CRC 03
+Updating after 2 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 2 SOF packets
+At traffic-packets row 1:
++ SOF packet with frame number 1022, CRC 03
+Updating after 3 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 3 SOF packets
+At traffic-packets row 2:
++ SOF packet with frame number 1022, CRC 03
+Updating after 4 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 4 SOF packets
+At traffic-packets row 3:
++ SOF packet with frame number 1022, CRC 03
+Updating after 5 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 5 SOF packets
+At traffic-packets row 4:
++ SOF packet with frame number 1022, CRC 03
+Updating after 6 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 6 SOF packets
+At traffic-packets row 5:
++ SOF packet with frame number 1022, CRC 03
+Updating after 7 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 7 SOF packets
+At traffic-packets row 6:
++ SOF packet with frame number 1022, CRC 03
+Updating after 8 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 8 SOF packets
+At traffic-packets row 7:
++ SOF packet with frame number 1022, CRC 03
+Updating after 9 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 9 SOF packets
+At traffic-packets row 8:
++ SOF packet with frame number 1023, CRC 1C
+Updating after 10 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 10 SOF packets
+At traffic-packets row 9:
++ SOF packet with frame number 1023, CRC 1C
+Updating after 11 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 11 SOF packets
+At traffic-packets row 10:
++ SOF packet with frame number 1023, CRC 1C
+Expanding traffic-interleaved view, row 0: 1 SOF groups
+At traffic-interleaved row 1:
++ 11 SOF packets
+Updating after 12 packets decoded
+At traffic-interleaved row 1:
+- 11 SOF packets
++ 12 SOF packets
+At traffic-transactions row 0:
+- 1 SOF packets
++ 12 SOF packets
+At traffic-packets row 11:
++ SOF packet with frame number 1023, CRC 1C
+Updating after 13 packets decoded
+At traffic-interleaved row 1:
+- 11 SOF packets
++ 13 SOF packets
+At traffic-transactions row 0:
+- 1 SOF packets
++ 13 SOF packets
+At traffic-packets row 12:
++ SOF packet with frame number 1023, CRC 1C
+Updating after 14 packets decoded
+At traffic-interleaved row 1:
+- 11 SOF packets
++ 14 SOF packets
+At traffic-transactions row 0:
+- 1 SOF packets
++ 14 SOF packets
+At traffic-packets row 13:
++ SOF packet with frame number 1023, CRC 1C
+Updating after 15 packets decoded
+At traffic-interleaved row 1:
+- 11 SOF packets
++ 15 SOF packets
+At traffic-transactions row 0:
+- 1 SOF packets
++ 15 SOF packets
+At traffic-packets row 14:
++ SOF packet with frame number 1023, CRC 1C
+Expanding traffic-interleaved view, row 1: 11 SOF packets
+At traffic-interleaved row 2:
++ 8 times: SOF packet with frame number 1022, CRC 03
++ 7 times: SOF packet with frame number 1023, CRC 1C
+Updating after 16 packets decoded
+At traffic-interleaved row 1:
+- 11 SOF packets
++ 16 SOF packets
+At traffic-interleaved row 17:
++ SOF packet with frame number 1023, CRC 1C
+At traffic-transactions row 0:
+- 1 SOF packets
++ 16 SOF packets
+At traffic-packets row 15:
++ SOF packet with frame number 1023, CRC 1C
+Updating after 17 packets decoded
+At traffic-interleaved row 1:
+- 11 SOF packets
++ 17 SOF packets
+At traffic-interleaved row 18:
++ SOF packet with frame number 1024, CRC 16
+At traffic-transactions row 0:
+- 1 SOF packets
++ 17 SOF packets
+At traffic-packets row 16:
++ SOF packet with frame number 1024, CRC 16
+Updating after 18 packets decoded
+At traffic-interleaved row 1:
+- 11 SOF packets
++ 18 SOF packets
+At traffic-interleaved row 19:
++ SOF packet with frame number 1024, CRC 16
+At traffic-transactions row 0:
+- 1 SOF packets
++ 18 SOF packets
+At traffic-packets row 17:
++ SOF packet with frame number 1024, CRC 16
+Collapsing traffic-interleaved view, row 0: 1 SOF groups
+At traffic-interleaved row 2:
+- 8 times: SOF packet with frame number 1022, CRC 03
+- 8 times: SOF packet with frame number 1023, CRC 1C
+- 2 times: SOF packet with frame number 1024, CRC 16
+At traffic-interleaved row 1:
+- 11 SOF packets
+Updating after 19 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 19 SOF packets
+At traffic-packets row 18:
++ SOF packet with frame number 1024, CRC 16
+Updating after 20 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 20 SOF packets
+At traffic-packets row 19:
++ SOF packet with frame number 1024, CRC 16
+Updating after 21 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 21 SOF packets
+At traffic-packets row 20:
++ SOF packet with frame number 1024, CRC 16
+Updating after 22 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 22 SOF packets
+At traffic-packets row 21:
++ SOF packet with frame number 1024, CRC 16
+Updating after 23 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 23 SOF packets
+At traffic-packets row 22:
++ SOF packet with frame number 1024, CRC 16
+Updating after 24 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 24 SOF packets
+At traffic-packets row 23:
++ SOF packet with frame number 1024, CRC 16
+Updating after 25 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 25 SOF packets
+At traffic-packets row 24:
++ SOF packet with frame number 1025, CRC 09
+Updating after 26 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 26 SOF packets
+At traffic-packets row 25:
++ SOF packet with frame number 1025, CRC 09
+Updating after 27 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 27 SOF packets
+At traffic-packets row 26:
++ SOF packet with frame number 1025, CRC 09
+Updating after 28 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 28 SOF packets
+At traffic-packets row 27:
++ SOF packet with frame number 1025, CRC 09
+Updating after 29 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 29 SOF packets
+At traffic-packets row 28:
++ SOF packet with frame number 1025, CRC 09
+Updating after 30 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 30 SOF packets
+At traffic-packets row 29:
++ SOF packet with frame number 1025, CRC 09
+Updating after 31 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 31 SOF packets
+At traffic-packets row 30:
++ SOF packet with frame number 1025, CRC 09
+Updating after 32 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 32 SOF packets
+At traffic-packets row 31:
++ SOF packet with frame number 1025, CRC 09
+Updating after 33 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 33 SOF packets
+At traffic-packets row 32:
++ SOF packet with frame number 1026, CRC 01
+Updating after 34 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 34 SOF packets
+At traffic-packets row 33:
++ SOF packet with frame number 1026, CRC 01
+Updating after 35 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 35 SOF packets
+At traffic-packets row 34:
++ SOF packet with frame number 1026, CRC 01
+Updating after 36 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 36 SOF packets
+At traffic-packets row 35:
++ SOF packet with frame number 1026, CRC 01
+Updating after 37 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 37 SOF packets
+At traffic-packets row 36:
++ SOF packet with frame number 1026, CRC 01
+Updating after 38 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 38 SOF packets
+At traffic-packets row 37:
++ SOF packet with frame number 1026, CRC 01
+Updating after 39 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 39 SOF packets
+At traffic-packets row 38:
++ SOF packet with frame number 1026, CRC 01
+Updating after 40 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 40 SOF packets
+At traffic-packets row 39:
++ SOF packet with frame number 1026, CRC 01
+Updating after 41 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 41 SOF packets
+At traffic-packets row 40:
++ SOF packet with frame number 1027, CRC 1E
+Updating after 42 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 42 SOF packets
+At traffic-packets row 41:
++ SOF packet with frame number 1027, CRC 1E
+Updating after 43 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 43 SOF packets
+At traffic-packets row 42:
++ SOF packet with frame number 1027, CRC 1E
+Updating after 44 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 44 SOF packets
+At traffic-packets row 43:
++ SOF packet with frame number 1027, CRC 1E
+Updating after 45 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 45 SOF packets
+At traffic-packets row 44:
++ SOF packet with frame number 1027, CRC 1E
+Updating after 46 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 46 SOF packets
+At traffic-packets row 45:
++ SOF packet with frame number 1027, CRC 1E
+Updating after 47 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 47 SOF packets
+At traffic-packets row 46:
++ SOF packet with frame number 1027, CRC 1E
+Updating after 48 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 48 SOF packets
+At traffic-packets row 47:
++ SOF packet with frame number 1027, CRC 1E
+Updating after 49 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 49 SOF packets
+At traffic-packets row 48:
++ SOF packet with frame number 1028, CRC 11
+Updating after 50 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 50 SOF packets
+At traffic-packets row 49:
++ SOF packet with frame number 1028, CRC 11
+Updating after 51 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 51 SOF packets
+At traffic-packets row 50:
++ SOF packet with frame number 1028, CRC 11
+Updating after 52 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 52 SOF packets
+At traffic-packets row 51:
++ SOF packet with frame number 1028, CRC 11
+Updating after 53 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 53 SOF packets
+At traffic-packets row 52:
++ SOF packet with frame number 1028, CRC 11
+Updating after 54 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 54 SOF packets
+At traffic-packets row 53:
++ SOF packet with frame number 1028, CRC 11
+Updating after 55 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 55 SOF packets
+At traffic-packets row 54:
++ SOF packet with frame number 1028, CRC 11
+Updating after 56 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 56 SOF packets
+At traffic-packets row 55:
++ SOF packet with frame number 1028, CRC 11
+Updating after 57 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 57 SOF packets
+At traffic-packets row 56:
++ SOF packet with frame number 1029, CRC 0E
+Updating after 58 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 58 SOF packets
+At traffic-packets row 57:
++ SOF packet with frame number 1029, CRC 0E
+Updating after 59 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 59 SOF packets
+At traffic-packets row 58:
++ SOF packet with frame number 1029, CRC 0E
+Updating after 60 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 60 SOF packets
+At traffic-packets row 59:
++ SOF packet with frame number 1029, CRC 0E
+Updating after 61 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 61 SOF packets
+At traffic-packets row 60:
++ SOF packet with frame number 1029, CRC 0E
+Updating after 62 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 62 SOF packets
+At traffic-packets row 61:
++ SOF packet with frame number 1029, CRC 0E
+Updating after 63 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 63 SOF packets
+At traffic-packets row 62:
++ SOF packet with frame number 1029, CRC 0E
+Updating after 64 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 64 SOF packets
+At traffic-packets row 63:
++ SOF packet with frame number 1029, CRC 0E
+Updating after 65 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 65 SOF packets
+At traffic-packets row 64:
++ SOF packet with frame number 1030, CRC 06
+Updating after 66 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 66 SOF packets
+At traffic-packets row 65:
++ SOF packet with frame number 1030, CRC 06
+Updating after 67 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 67 SOF packets
+At traffic-packets row 66:
++ SOF packet with frame number 1030, CRC 06
+Updating after 68 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 68 SOF packets
+At traffic-packets row 67:
++ SOF packet with frame number 1030, CRC 06
+Updating after 69 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 69 SOF packets
+At traffic-packets row 68:
++ SOF packet with frame number 1030, CRC 06
+Updating after 70 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 70 SOF packets
+At traffic-packets row 69:
++ SOF packet with frame number 1030, CRC 06
+Updating after 71 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 71 SOF packets
+At traffic-packets row 70:
++ SOF packet with frame number 1030, CRC 06
+Updating after 72 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 72 SOF packets
+At traffic-packets row 71:
++ SOF packet with frame number 1030, CRC 06
+Updating after 73 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 73 SOF packets
+At traffic-packets row 72:
++ SOF packet with frame number 1031, CRC 19
+Updating after 74 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 74 SOF packets
+At traffic-packets row 73:
++ SOF packet with frame number 1031, CRC 19
+Updating after 75 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 75 SOF packets
+At traffic-packets row 74:
++ SOF packet with frame number 1031, CRC 19
+Updating after 76 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 76 SOF packets
+At traffic-packets row 75:
++ SOF packet with frame number 1031, CRC 19
+Updating after 77 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 77 SOF packets
+At traffic-packets row 76:
++ SOF packet with frame number 1031, CRC 19
+Updating after 78 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 78 SOF packets
+At traffic-packets row 77:
++ SOF packet with frame number 1031, CRC 19
+Updating after 79 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 79 SOF packets
+At traffic-packets row 78:
++ SOF packet with frame number 1031, CRC 19
+Updating after 80 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 80 SOF packets
+At traffic-packets row 79:
++ SOF packet with frame number 1031, CRC 19
+Updating after 81 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 81 SOF packets
+At traffic-packets row 80:
++ SOF packet with frame number 1032, CRC 18
+Updating after 82 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 82 SOF packets
+At traffic-packets row 81:
++ SOF packet with frame number 1032, CRC 18
+Updating after 83 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 83 SOF packets
+At traffic-packets row 82:
++ SOF packet with frame number 1032, CRC 18
+Updating after 84 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 84 SOF packets
+At traffic-packets row 83:
++ SOF packet with frame number 1032, CRC 18
+Updating after 85 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 85 SOF packets
+At traffic-packets row 84:
++ SOF packet with frame number 1032, CRC 18
+Updating after 86 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 86 SOF packets
+At traffic-packets row 85:
++ SOF packet with frame number 1032, CRC 18
+Updating after 87 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 87 SOF packets
+At traffic-packets row 86:
++ SOF packet with frame number 1032, CRC 18
+Updating after 88 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 88 SOF packets
+At traffic-packets row 87:
++ SOF packet with frame number 1032, CRC 18
+Updating after 89 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 89 SOF packets
+At traffic-packets row 88:
++ SOF packet with frame number 1033, CRC 07
+Updating after 90 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 90 SOF packets
+At traffic-packets row 89:
++ SOF packet with frame number 1033, CRC 07
+Updating after 91 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 91 SOF packets
+At traffic-packets row 90:
++ SOF packet with frame number 1033, CRC 07
+Updating after 92 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 92 SOF packets
+At traffic-packets row 91:
++ SOF packet with frame number 1033, CRC 07
+Updating after 93 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 93 SOF packets
+At traffic-packets row 92:
++ SOF packet with frame number 1033, CRC 07
+Updating after 94 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 94 SOF packets
+At traffic-packets row 93:
++ SOF packet with frame number 1033, CRC 07
+Updating after 95 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 95 SOF packets
+At traffic-packets row 94:
++ SOF packet with frame number 1033, CRC 07
+Updating after 96 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 96 SOF packets
+At traffic-packets row 95:
++ SOF packet with frame number 1033, CRC 07
+Updating after 97 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 97 SOF packets
+At traffic-packets row 96:
++ SOF packet with frame number 1034, CRC 0F
+Updating after 98 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 98 SOF packets
+At traffic-packets row 97:
++ SOF packet with frame number 1034, CRC 0F
+Updating after 99 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 99 SOF packets
+At traffic-packets row 98:
++ SOF packet with frame number 1034, CRC 0F
+Updating after 100 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 100 SOF packets
+At traffic-packets row 99:
++ SOF packet with frame number 1034, CRC 0F
+Updating after 101 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 101 SOF packets
+At traffic-packets row 100:
++ SOF packet with frame number 1034, CRC 0F
+Updating after 102 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 102 SOF packets
+At traffic-packets row 101:
++ SOF packet with frame number 1034, CRC 0F
+Updating after 103 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 103 SOF packets
+At traffic-packets row 102:
++ SOF packet with frame number 1034, CRC 0F
+Updating after 104 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 104 SOF packets
+At traffic-packets row 103:
++ SOF packet with frame number 1034, CRC 0F
+Updating after 105 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 105 SOF packets
+At traffic-packets row 104:
++ SOF packet with frame number 1035, CRC 10
+Updating after 106 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 106 SOF packets
+At traffic-packets row 105:
++ SOF packet with frame number 1035, CRC 10
+Updating after 107 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 107 SOF packets
+At traffic-packets row 106:
++ SOF packet with frame number 1035, CRC 10
+Updating after 108 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 108 SOF packets
+At traffic-packets row 107:
++ SOF packet with frame number 1035, CRC 10
+Updating after 109 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 109 SOF packets
+At traffic-packets row 108:
++ SOF packet with frame number 1035, CRC 10
+Updating after 110 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 110 SOF packets
+At traffic-packets row 109:
++ SOF packet with frame number 1035, CRC 10
+Updating after 111 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 111 SOF packets
+At traffic-packets row 110:
++ SOF packet with frame number 1035, CRC 10
+Updating after 112 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 112 SOF packets
+At traffic-packets row 111:
++ SOF packet with frame number 1035, CRC 10
+Updating after 113 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 113 SOF packets
+At traffic-packets row 112:
++ SOF packet with frame number 1036, CRC 1F
+Updating after 114 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 114 SOF packets
+At traffic-packets row 113:
++ SOF packet with frame number 1036, CRC 1F
+Updating after 115 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 115 SOF packets
+At traffic-packets row 114:
++ SOF packet with frame number 1036, CRC 1F
+Updating after 116 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 116 SOF packets
+At traffic-packets row 115:
++ SOF packet with frame number 1036, CRC 1F
+Updating after 117 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 117 SOF packets
+At traffic-packets row 116:
++ SOF packet with frame number 1036, CRC 1F
+Updating after 118 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 118 SOF packets
+At traffic-packets row 117:
++ SOF packet with frame number 1036, CRC 1F
+Updating after 119 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 119 SOF packets
+At traffic-packets row 118:
++ SOF packet with frame number 1036, CRC 1F
+Updating after 120 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 120 SOF packets
+At traffic-packets row 119:
++ SOF packet with frame number 1036, CRC 1F
+Updating after 121 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 121 SOF packets
+At traffic-packets row 120:
++ SOF packet with frame number 1037, CRC 00
+Updating after 122 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 122 SOF packets
+At traffic-packets row 121:
++ SOF packet with frame number 1037, CRC 00
+Updating after 123 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 123 SOF packets
+At traffic-packets row 122:
++ SOF packet with frame number 1037, CRC 00
+Updating after 124 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 124 SOF packets
+At traffic-packets row 123:
++ SOF packet with frame number 1037, CRC 00
+Updating after 125 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 125 SOF packets
+At traffic-packets row 124:
++ SOF packet with frame number 1037, CRC 00
+Updating after 126 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 126 SOF packets
+At traffic-packets row 125:
++ SOF packet with frame number 1037, CRC 00
+Updating after 127 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 127 SOF packets
+At traffic-packets row 126:
++ SOF packet with frame number 1037, CRC 00
+Updating after 128 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 128 SOF packets
+At traffic-packets row 127:
++ SOF packet with frame number 1037, CRC 00
+Updating after 129 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 129 SOF packets
+At traffic-packets row 128:
++ SOF packet with frame number 1038, CRC 08
+Updating after 130 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 130 SOF packets
+At traffic-packets row 129:
++ SOF packet with frame number 1038, CRC 08
+Updating after 131 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 131 SOF packets
+At traffic-packets row 130:
++ SOF packet with frame number 1038, CRC 08
+Updating after 132 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 132 SOF packets
+At traffic-packets row 131:
++ SOF packet with frame number 1038, CRC 08
+Updating after 133 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 133 SOF packets
+At traffic-packets row 132:
++ SOF packet with frame number 1038, CRC 08
+Updating after 134 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 134 SOF packets
+At traffic-packets row 133:
++ SOF packet with frame number 1038, CRC 08
+Updating after 135 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 135 SOF packets
+At traffic-packets row 134:
++ SOF packet with frame number 1038, CRC 08
+Updating after 136 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 136 SOF packets
+At traffic-packets row 135:
++ SOF packet with frame number 1038, CRC 08
+Updating after 137 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 137 SOF packets
+At traffic-packets row 136:
++ SOF packet with frame number 1039, CRC 17
+Updating after 138 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 138 SOF packets
+At traffic-packets row 137:
++ SOF packet with frame number 1039, CRC 17
+Updating after 139 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 139 SOF packets
+At traffic-packets row 138:
++ SOF packet with frame number 1039, CRC 17
+Updating after 140 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 140 SOF packets
+At traffic-packets row 139:
++ SOF packet with frame number 1039, CRC 17
+Updating after 141 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 141 SOF packets
+At traffic-packets row 140:
++ SOF packet with frame number 1039, CRC 17
+Updating after 142 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 142 SOF packets
+At traffic-packets row 141:
++ SOF packet with frame number 1039, CRC 17
+Updating after 143 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 143 SOF packets
+At traffic-packets row 142:
++ SOF packet with frame number 1039, CRC 17
+Updating after 144 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 144 SOF packets
+At traffic-packets row 143:
++ SOF packet with frame number 1039, CRC 17
+Updating after 145 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 145 SOF packets
+At traffic-packets row 144:
++ SOF packet with frame number 1040, CRC 0A
+Updating after 146 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 146 SOF packets
+At traffic-packets row 145:
++ SOF packet with frame number 1040, CRC 0A
+Updating after 147 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 147 SOF packets
+At traffic-packets row 146:
++ SOF packet with frame number 1040, CRC 0A
+Updating after 148 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 148 SOF packets
+At traffic-packets row 147:
++ SOF packet with frame number 1040, CRC 0A
+Updating after 149 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 149 SOF packets
+At traffic-packets row 148:
++ SOF packet with frame number 1040, CRC 0A
+Updating after 150 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 150 SOF packets
+At traffic-packets row 149:
++ SOF packet with frame number 1040, CRC 0A
+Updating after 151 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 151 SOF packets
+At traffic-packets row 150:
++ SOF packet with frame number 1040, CRC 0A
+Updating after 152 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 152 SOF packets
+At traffic-packets row 151:
++ SOF packet with frame number 1040, CRC 0A
+Updating after 153 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 153 SOF packets
+At traffic-packets row 152:
++ SOF packet with frame number 1041, CRC 15
+Updating after 154 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 154 SOF packets
+At traffic-packets row 153:
++ SOF packet with frame number 1041, CRC 15
+Updating after 155 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 155 SOF packets
+At traffic-packets row 154:
++ SOF packet with frame number 1041, CRC 15
+Updating after 156 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 156 SOF packets
+At traffic-packets row 155:
++ SOF packet with frame number 1041, CRC 15
+Updating after 157 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 157 SOF packets
+At traffic-packets row 156:
++ SOF packet with frame number 1041, CRC 15
+Updating after 158 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 158 SOF packets
+At traffic-packets row 157:
++ SOF packet with frame number 1041, CRC 15
+Updating after 159 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 159 SOF packets
+At traffic-packets row 158:
++ SOF packet with frame number 1041, CRC 15
+Updating after 160 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 160 SOF packets
+At traffic-packets row 159:
++ SOF packet with frame number 1041, CRC 15
+Updating after 161 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 161 SOF packets
+At traffic-packets row 160:
++ SOF packet with frame number 1042, CRC 1D
+Updating after 162 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 162 SOF packets
+At traffic-packets row 161:
++ SOF packet with frame number 1042, CRC 1D
+Updating after 163 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 163 SOF packets
+At traffic-packets row 162:
++ SOF packet with frame number 1042, CRC 1D
+Updating after 164 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 164 SOF packets
+At traffic-packets row 163:
++ SOF packet with frame number 1042, CRC 1D
+Updating after 165 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 165 SOF packets
+At traffic-packets row 164:
++ SOF packet with frame number 1042, CRC 1D
+Updating after 166 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 166 SOF packets
+At traffic-packets row 165:
++ SOF packet with frame number 1042, CRC 1D
+Updating after 167 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 167 SOF packets
+At traffic-packets row 166:
++ SOF packet with frame number 1042, CRC 1D
+Updating after 168 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 168 SOF packets
+At traffic-packets row 167:
++ SOF packet with frame number 1042, CRC 1D
+Updating after 169 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 169 SOF packets
+At traffic-packets row 168:
++ SOF packet with frame number 1043, CRC 02
+Updating after 170 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 170 SOF packets
+At traffic-packets row 169:
++ SOF packet with frame number 1043, CRC 02
+Updating after 171 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 171 SOF packets
+At traffic-packets row 170:
++ SOF packet with frame number 1043, CRC 02
+Updating after 172 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 172 SOF packets
+At traffic-packets row 171:
++ SOF packet with frame number 1043, CRC 02
+Updating after 173 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 173 SOF packets
+At traffic-packets row 172:
++ SOF packet with frame number 1043, CRC 02
+Updating after 174 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 174 SOF packets
+At traffic-packets row 173:
++ SOF packet with frame number 1043, CRC 02
+Updating after 175 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 175 SOF packets
+At traffic-packets row 174:
++ SOF packet with frame number 1043, CRC 02
+Updating after 176 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 176 SOF packets
+At traffic-packets row 175:
++ SOF packet with frame number 1043, CRC 02
+Updating after 177 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 177 SOF packets
+At traffic-packets row 176:
++ SOF packet with frame number 1044, CRC 0D
+Updating after 178 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 178 SOF packets
+At traffic-packets row 177:
++ SOF packet with frame number 1044, CRC 0D
+Updating after 179 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 179 SOF packets
+At traffic-packets row 178:
++ SOF packet with frame number 1044, CRC 0D
+Updating after 180 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 180 SOF packets
+At traffic-packets row 179:
++ SOF packet with frame number 1044, CRC 0D
+Updating after 181 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 181 SOF packets
+At traffic-packets row 180:
++ SOF packet with frame number 1044, CRC 0D
+Updating after 182 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 182 SOF packets
+At traffic-packets row 181:
++ SOF packet with frame number 1044, CRC 0D
+Updating after 183 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 183 SOF packets
+At traffic-packets row 182:
++ SOF packet with frame number 1044, CRC 0D
+Updating after 184 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 184 SOF packets
+At traffic-packets row 183:
++ SOF packet with frame number 1044, CRC 0D
+Updating after 185 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 185 SOF packets
+At traffic-packets row 184:
++ SOF packet with frame number 1045, CRC 12
+Updating after 186 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 186 SOF packets
+At traffic-packets row 185:
++ SOF packet with frame number 1045, CRC 12
+Updating after 187 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 187 SOF packets
+At traffic-packets row 186:
++ SOF packet with frame number 1045, CRC 12
+Updating after 188 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 188 SOF packets
+At traffic-packets row 187:
++ SOF packet with frame number 1045, CRC 12
+Updating after 189 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 189 SOF packets
+At traffic-packets row 188:
++ SOF packet with frame number 1045, CRC 12
+Updating after 190 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 190 SOF packets
+At traffic-packets row 189:
++ SOF packet with frame number 1045, CRC 12
+Updating after 191 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 191 SOF packets
+At traffic-packets row 190:
++ SOF packet with frame number 1045, CRC 12
+Updating after 192 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 192 SOF packets
+At traffic-packets row 191:
++ SOF packet with frame number 1045, CRC 12
+Updating after 193 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 193 SOF packets
+At traffic-packets row 192:
++ SOF packet with frame number 1046, CRC 1A
+Updating after 194 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 194 SOF packets
+At traffic-packets row 193:
++ SOF packet with frame number 1046, CRC 1A
+Updating after 195 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 195 SOF packets
+At traffic-packets row 194:
++ SOF packet with frame number 1046, CRC 1A
+Updating after 196 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 196 SOF packets
+At traffic-packets row 195:
++ SOF packet with frame number 1046, CRC 1A
+Updating after 197 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 197 SOF packets
+At traffic-packets row 196:
++ SOF packet with frame number 1046, CRC 1A
+Updating after 198 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 198 SOF packets
+At traffic-packets row 197:
++ SOF packet with frame number 1046, CRC 1A
+Updating after 199 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 199 SOF packets
+At traffic-packets row 198:
++ SOF packet with frame number 1046, CRC 1A
+Updating after 200 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 200 SOF packets
+At traffic-packets row 199:
++ SOF packet with frame number 1046, CRC 1A
+Updating after 201 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 201 SOF packets
+At traffic-packets row 200:
++ SOF packet with frame number 1047, CRC 05
+Updating after 202 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 202 SOF packets
+At traffic-packets row 201:
++ SOF packet with frame number 1047, CRC 05
+Updating after 203 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 203 SOF packets
+At traffic-packets row 202:
++ SOF packet with frame number 1047, CRC 05
+Updating after 204 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 204 SOF packets
+At traffic-packets row 203:
++ SOF packet with frame number 1047, CRC 05
+Updating after 205 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 205 SOF packets
+At traffic-packets row 204:
++ SOF packet with frame number 1047, CRC 05
+Updating after 206 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 206 SOF packets
+At traffic-packets row 205:
++ SOF packet with frame number 1047, CRC 05
+Updating after 207 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 207 SOF packets
+At traffic-packets row 206:
++ SOF packet with frame number 1047, CRC 05
+Updating after 208 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 208 SOF packets
+At traffic-packets row 207:
++ SOF packet with frame number 1047, CRC 05
+Updating after 209 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 209 SOF packets
+At traffic-packets row 208:
++ SOF packet with frame number 1048, CRC 04
+Updating after 210 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 210 SOF packets
+At traffic-packets row 209:
++ SOF packet with frame number 1048, CRC 04
+Updating after 211 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 211 SOF packets
+At traffic-packets row 210:
++ SOF packet with frame number 1048, CRC 04
+Updating after 212 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 212 SOF packets
+At traffic-packets row 211:
++ SOF packet with frame number 1048, CRC 04
+Updating after 213 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 213 SOF packets
+At traffic-packets row 212:
++ SOF packet with frame number 1048, CRC 04
+Updating after 214 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 214 SOF packets
+At traffic-packets row 213:
++ SOF packet with frame number 1048, CRC 04
+Updating after 215 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 215 SOF packets
+At traffic-packets row 214:
++ SOF packet with frame number 1048, CRC 04
+Updating after 216 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 216 SOF packets
+At traffic-packets row 215:
++ SOF packet with frame number 1048, CRC 04
+Updating after 217 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 217 SOF packets
+At traffic-packets row 216:
++ SOF packet with frame number 1049, CRC 1B
+Updating after 218 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 218 SOF packets
+At traffic-packets row 217:
++ SOF packet with frame number 1049, CRC 1B
+Updating after 219 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 219 SOF packets
+At traffic-packets row 218:
++ SOF packet with frame number 1049, CRC 1B
+Updating after 220 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 220 SOF packets
+At traffic-packets row 219:
++ SOF packet with frame number 1049, CRC 1B
+Updating after 221 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 221 SOF packets
+At traffic-packets row 220:
++ SOF packet with frame number 1049, CRC 1B
+Updating after 222 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 222 SOF packets
+At traffic-packets row 221:
++ SOF packet with frame number 1049, CRC 1B
+Updating after 223 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 223 SOF packets
+At traffic-packets row 222:
++ SOF packet with frame number 1049, CRC 1B
+Updating after 224 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 224 SOF packets
+At traffic-packets row 223:
++ SOF packet with frame number 1049, CRC 1B
+Updating after 225 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 225 SOF packets
+At traffic-packets row 224:
++ SOF packet with frame number 1050, CRC 13
+Updating after 226 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 226 SOF packets
+At traffic-packets row 225:
++ SOF packet with frame number 1050, CRC 13
+Updating after 227 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 227 SOF packets
+At traffic-packets row 226:
++ SOF packet with frame number 1050, CRC 13
+Updating after 228 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 228 SOF packets
+At traffic-packets row 227:
++ SOF packet with frame number 1050, CRC 13
+Updating after 229 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 229 SOF packets
+At traffic-packets row 228:
++ SOF packet with frame number 1050, CRC 13
+Updating after 230 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 230 SOF packets
+At traffic-packets row 229:
++ SOF packet with frame number 1050, CRC 13
+Updating after 231 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 231 SOF packets
+At traffic-packets row 230:
++ SOF packet with frame number 1050, CRC 13
+Updating after 232 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 232 SOF packets
+At traffic-packets row 231:
++ SOF packet with frame number 1050, CRC 13
+Updating after 233 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 233 SOF packets
+At traffic-packets row 232:
++ SOF packet with frame number 1051, CRC 0C
+Updating after 234 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 234 SOF packets
+At traffic-packets row 233:
++ SOF packet with frame number 1051, CRC 0C
+Updating after 235 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 235 SOF packets
+At traffic-packets row 234:
++ SOF packet with frame number 1051, CRC 0C
+Updating after 236 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 236 SOF packets
+At traffic-packets row 235:
++ SOF packet with frame number 1051, CRC 0C
+Updating after 237 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 237 SOF packets
+At traffic-packets row 236:
++ SOF packet with frame number 1051, CRC 0C
+Updating after 238 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 238 SOF packets
+At traffic-packets row 237:
++ SOF packet with frame number 1051, CRC 0C
+Updating after 239 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 239 SOF packets
+At traffic-packets row 238:
++ SOF packet with frame number 1051, CRC 0C
+Updating after 240 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 240 SOF packets
+At traffic-packets row 239:
++ SOF packet with frame number 1051, CRC 0C
+Updating after 241 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 241 SOF packets
+At traffic-packets row 240:
++ SOF packet with frame number 1052, CRC 03
+Updating after 242 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 242 SOF packets
+At traffic-packets row 241:
++ SOF packet with frame number 1052, CRC 03
+Updating after 243 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 243 SOF packets
+At traffic-packets row 242:
++ SOF packet with frame number 1052, CRC 03
+Updating after 244 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 244 SOF packets
+At traffic-packets row 243:
++ SOF packet with frame number 1052, CRC 03
+Updating after 245 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 245 SOF packets
+At traffic-packets row 244:
++ SOF packet with frame number 1052, CRC 03
+Updating after 246 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 246 SOF packets
+At traffic-packets row 245:
++ SOF packet with frame number 1052, CRC 03
+Updating after 247 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 247 SOF packets
+At traffic-packets row 246:
++ SOF packet with frame number 1052, CRC 03
+Updating after 248 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 248 SOF packets
+At traffic-packets row 247:
++ SOF packet with frame number 1052, CRC 03
+Updating after 249 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 249 SOF packets
+At traffic-packets row 248:
++ SOF packet with frame number 1053, CRC 1C
+Updating after 250 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 250 SOF packets
+At traffic-packets row 249:
++ SOF packet with frame number 1053, CRC 1C
+Updating after 251 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 251 SOF packets
+At traffic-packets row 250:
++ SOF packet with frame number 1053, CRC 1C
+Updating after 252 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 252 SOF packets
+At traffic-packets row 251:
++ SOF packet with frame number 1053, CRC 1C
+Updating after 253 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 253 SOF packets
+At traffic-packets row 252:
++ SOF packet with frame number 1053, CRC 1C
+Updating after 254 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 254 SOF packets
+At traffic-packets row 253:
++ SOF packet with frame number 1053, CRC 1C
+Updating after 255 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 255 SOF packets
+At traffic-packets row 254:
++ SOF packet with frame number 1053, CRC 1C
+Updating after 256 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 256 SOF packets
+At traffic-packets row 255:
++ SOF packet with frame number 1053, CRC 1C
+Updating after 257 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 257 SOF packets
+At traffic-packets row 256:
++ SOF packet with frame number 1054, CRC 14
+Updating after 258 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 258 SOF packets
+At traffic-packets row 257:
++ SOF packet with frame number 1054, CRC 14
+Updating after 259 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 259 SOF packets
+At traffic-packets row 258:
++ SOF packet with frame number 1054, CRC 14
+Updating after 260 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 260 SOF packets
+At traffic-packets row 259:
++ SOF packet with frame number 1054, CRC 14
+Updating after 261 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 261 SOF packets
+At traffic-packets row 260:
++ SOF packet with frame number 1054, CRC 14
+Updating after 262 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 262 SOF packets
+At traffic-packets row 261:
++ SOF packet with frame number 1054, CRC 14
+Updating after 263 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 263 SOF packets
+At traffic-packets row 262:
++ SOF packet with frame number 1054, CRC 14
+Updating after 264 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 264 SOF packets
+At traffic-packets row 263:
++ SOF packet with frame number 1054, CRC 14
+Updating after 265 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 265 SOF packets
+At traffic-packets row 264:
++ SOF packet with frame number 1055, CRC 0B
+Updating after 266 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 266 SOF packets
+At traffic-packets row 265:
++ SOF packet with frame number 1055, CRC 0B
+Updating after 267 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 267 SOF packets
+At traffic-packets row 266:
++ SOF packet with frame number 1055, CRC 0B
+Updating after 268 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 268 SOF packets
+At traffic-packets row 267:
++ SOF packet with frame number 1055, CRC 0B
+Updating after 269 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 269 SOF packets
+At traffic-packets row 268:
++ SOF packet with frame number 1055, CRC 0B
+Updating after 270 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 270 SOF packets
+At traffic-packets row 269:
++ SOF packet with frame number 1055, CRC 0B
+Updating after 271 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 271 SOF packets
+At traffic-packets row 270:
++ SOF packet with frame number 1055, CRC 0B
+Updating after 272 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 272 SOF packets
+At traffic-packets row 271:
++ SOF packet with frame number 1055, CRC 0B
+Updating after 273 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 273 SOF packets
+At traffic-packets row 272:
++ SOF packet with frame number 1056, CRC 07
+Updating after 274 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 274 SOF packets
+At traffic-packets row 273:
++ SOF packet with frame number 1056, CRC 07
+Updating after 275 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 275 SOF packets
+At traffic-packets row 274:
++ SOF packet with frame number 1056, CRC 07
+Updating after 276 packets decoded
+At traffic-transactions row 0:
+- 1 SOF packets
++ 276 SOF packets
+At traffic-packets row 275:
++ SOF packet with frame number 1056, CRC 07
+Updating after 277 packets decoded
+At traffic-hierarchical row 1:
++ Incomplete control transfer on device 0
+At traffic-hierarchical row 0:
+- 1 SOF groups
++ 1 SOF groups
+At traffic-interleaved row 1:
++ Incomplete control transfer on device 0
+At traffic-transactions row 1:
++ SETUP transaction on 0.0
+At traffic-packets row 276:
++ SETUP packet on 0.0, CRC 02
+Updating after 278 packets decoded
+At traffic-transactions row 1:
+- SETUP transaction on 0.0
++ SETUP transaction on 0.0 with 8 data bytes: [80, 06, 00, 01, 00, 00, 40, 00]
+At traffic-packets row 277:
++ DATA0 packet with CRC 94DD and 8 data bytes: [80, 06, 00, 01, 00, 00, 40, 00]
+Updating after 279 packets decoded
+At traffic-transactions row 1:
+- SETUP transaction on 0.0
++ SETUP transaction on 0.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 40, 00]
+At traffic-packets row 278:
++ ACK packet
+Updating after 280 packets decoded
+At traffic-hierarchical row 0:
+- 1 SOF groups
++ 2 SOF groups
+At traffic-interleaved row 0:
+- 1 SOF groups
++ 2 SOF groups
+At traffic-transactions row 2:
++ 1 SOF packets
+At traffic-packets row 279:
++ SOF packet with frame number 1056, CRC 07
+Updating after 281 packets decoded
+At traffic-transactions row 2:
+- 1 SOF packets
++ 2 SOF packets
+At traffic-packets row 280:
++ SOF packet with frame number 1056, CRC 07
+Updating after 282 packets decoded
+At traffic-transactions row 2:
+- 1 SOF packets
++ 3 SOF packets
+At traffic-packets row 281:
++ SOF packet with frame number 1056, CRC 07
+Updating after 283 packets decoded
+At traffic-transactions row 2:
+- 1 SOF packets
++ 4 SOF packets
+At traffic-packets row 282:
++ SOF packet with frame number 1056, CRC 07
+Updating after 284 packets decoded
+At traffic-transactions row 2:
+- 1 SOF packets
++ 5 SOF packets
+At traffic-packets row 283:
++ SOF packet with frame number 1057, CRC 18
+Updating after 285 packets decoded
+At traffic-transactions row 2:
+- 1 SOF packets
++ 6 SOF packets
+At traffic-packets row 284:
++ SOF packet with frame number 1057, CRC 18
+Updating after 286 packets decoded
+At traffic-transactions row 2:
+- 1 SOF packets
++ 7 SOF packets
+At traffic-packets row 285:
++ SOF packet with frame number 1057, CRC 18
+Updating after 287 packets decoded
+At traffic-transactions row 2:
+- 1 SOF packets
++ 8 SOF packets
+At traffic-packets row 286:
++ SOF packet with frame number 1057, CRC 18
+Updating after 288 packets decoded
+At traffic-hierarchical row 1:
+- Incomplete control transfer on device 0
++ Getting device descriptor #0 for device 0, reading 0 of 64 requested bytes, incomplete
+At traffic-interleaved row 1:
+- Incomplete control transfer on device 0
++ Getting device descriptor #0 for device 0, reading 0 of 64 requested bytes, incomplete
+At traffic-transactions row 3:
++ IN transaction on 0.0
+At traffic-packets row 287:
++ IN packet on 0.0, CRC 02
+Updating after 289 packets decoded
+At traffic-transactions row 3:
+- IN transaction on 0.0
++ IN transaction on 0.0 with 18 data bytes: [12, 01, 00, 02, 09, 00, 01, 40, 40, 1A, 01, 01, 11, 01, 00, 01, 00, 01]
+At traffic-packets row 288:
++ DATA1 packet with CRC C597 and 18 data bytes: [12, 01, 00, 02, 09, 00, 01, 40, 40, 1A, 01, 01, 11, 01, 00, 01, 00, 01]
+Updating after 290 packets decoded
+At traffic-transactions row 3:
+- IN transaction on 0.0
++ IN transaction on 0.0 with 18 data bytes, ACK: [12, 01, 00, 02, 09, 00, 01, 40, 40, 1A, 01, 01, 11, 01, 00, 01, 00, 01]
+At traffic-packets row 289:
++ ACK packet
+Updating after 291 packets decoded
+At traffic-hierarchical row 0:
+- 1 SOF groups
++ 3 SOF groups
+At traffic-interleaved row 0:
+- 1 SOF groups
++ 3 SOF groups
+At traffic-transactions row 4:
++ 1 SOF packets
+At traffic-packets row 290:
++ SOF packet with frame number 1057, CRC 18
+Expanding traffic-interleaved view, row 1: Incomplete control transfer on device 0
+At traffic-interleaved row 2:
++ SETUP transaction on 0.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 40, 00]
++ IN transaction on 0.0 with 18 data bytes, ACK: [12, 01, 00, 02, 09, 00, 01, 40, 40, 1A, 01, 01, 11, 01, 00, 01, 00, 01]
+Updating after 292 packets decoded
+At traffic-transactions row 4:
+- 1 SOF packets
++ 2 SOF packets
+At traffic-packets row 291:
++ SOF packet with frame number 1057, CRC 18
+Updating after 293 packets decoded
+At traffic-transactions row 4:
+- 1 SOF packets
++ 3 SOF packets
+At traffic-packets row 292:
++ SOF packet with frame number 1057, CRC 18
+Updating after 294 packets decoded
+At traffic-transactions row 4:
+- 1 SOF packets
++ 4 SOF packets
+At traffic-packets row 293:
++ SOF packet with frame number 1057, CRC 18
+Updating after 295 packets decoded
+At traffic-transactions row 4:
+- 1 SOF packets
++ 5 SOF packets
+At traffic-packets row 294:
++ SOF packet with frame number 1058, CRC 10
+Updating after 296 packets decoded
+At traffic-transactions row 4:
+- 1 SOF packets
++ 6 SOF packets
+At traffic-packets row 295:
++ SOF packet with frame number 1058, CRC 10
+Updating after 297 packets decoded
+At traffic-transactions row 4:
+- 1 SOF packets
++ 7 SOF packets
+At traffic-packets row 296:
++ SOF packet with frame number 1058, CRC 10
+Updating after 298 packets decoded
+At traffic-transactions row 4:
+- 1 SOF packets
++ 8 SOF packets
+At traffic-packets row 297:
++ SOF packet with frame number 1058, CRC 10
+Updating after 299 packets decoded
+At traffic-hierarchical row 1:
+- Incomplete control transfer on device 0
++ Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes, incomplete
+At traffic-interleaved row 1:
+- Incomplete control transfer on device 0
++ Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes, incomplete
+At traffic-interleaved row 4:
++ OUT transaction on 0.0
+At traffic-transactions row 5:
++ OUT transaction on 0.0
+At traffic-packets row 298:
++ OUT packet on 0.0, CRC 02
+Updating after 300 packets decoded
+At traffic-interleaved row 4:
+- OUT transaction on 0.0
++ OUT transaction on 0.0 with no data
+At traffic-transactions row 5:
+- OUT transaction on 0.0
++ OUT transaction on 0.0 with no data
+At traffic-packets row 299:
++ DATA1 packet with CRC 0000 and no data
+Updating after 301 packets decoded
+At traffic-interleaved row 4:
+- OUT transaction on 0.0
++ OUT transaction on 0.0 with no data, ACK
+At traffic-transactions row 5:
+- OUT transaction on 0.0
++ OUT transaction on 0.0 with no data, ACK
+At traffic-packets row 300:
++ ACK packet
+Updating after 302 packets decoded
+At traffic-hierarchical row 0:
+- 1 SOF groups
++ 4 SOF groups
+At traffic-interleaved row 0:
+- 1 SOF groups
++ 4 SOF groups
+At traffic-transactions row 6:
++ 1 SOF packets
+At traffic-packets row 301:
++ SOF packet with frame number 1058, CRC 10
+Updating after 303 packets decoded
+At traffic-transactions row 6:
+- 1 SOF packets
++ 2 SOF packets
+At traffic-packets row 302:
++ SOF packet with frame number 1058, CRC 10
+Updating after 304 packets decoded
+At traffic-transactions row 6:
+- 1 SOF packets
++ 3 SOF packets
+At traffic-packets row 303:
++ SOF packet with frame number 1058, CRC 10
+Updating after 305 packets decoded
+At traffic-transactions row 6:
+- 1 SOF packets
++ 4 SOF packets
+At traffic-packets row 304:
++ SOF packet with frame number 1058, CRC 10
+Updating after 306 packets decoded
+At traffic-hierarchical row 2:
++ Incomplete control transfer on device 0
+At traffic-interleaved row 5:
++ Incomplete control transfer on device 0
+At traffic-transactions row 7:
++ SETUP transaction on 0.0
+At traffic-packets row 305:
++ SETUP packet on 0.0, CRC 02
+Updating after 307 packets decoded
+At traffic-transactions row 7:
+- SETUP transaction on 0.0
++ SETUP transaction on 0.0 with 8 data bytes: [00, 05, 0C, 00, 00, 00, 00, 00]
+At traffic-packets row 306:
++ DATA0 packet with CRC 38EA and 8 data bytes: [00, 05, 0C, 00, 00, 00, 00, 00]
+Updating after 308 packets decoded
+At traffic-transactions row 7:
+- SETUP transaction on 0.0
++ SETUP transaction on 0.0 with 8 data bytes, ACK: [00, 05, 0C, 00, 00, 00, 00, 00]
+At traffic-packets row 307:
++ ACK packet
+Updating after 309 packets decoded
+At traffic-hierarchical row 2:
+- Incomplete control transfer on device 0
++ Setting address to 12 for device 0, incomplete
+At traffic-interleaved row 5:
+- Incomplete control transfer on device 0
++ Setting address to 12 for device 0, incomplete
+At traffic-transactions row 8:
++ IN transaction on 0.0
+At traffic-packets row 308:
++ IN packet on 0.0, CRC 02
+Updating after 310 packets decoded
+At traffic-transactions row 8:
+- IN transaction on 0.0
++ IN transaction on 0.0 with no data
+At traffic-packets row 309:
++ DATA1 packet with CRC 0000 and no data
+Updating after 311 packets decoded
+At traffic-transactions row 8:
+- IN transaction on 0.0
++ IN transaction on 0.0 with no data, ACK
+At traffic-packets row 310:
++ ACK packet
+Updating after 312 packets decoded
+At traffic-hierarchical row 0:
+- 1 SOF groups
++ 5 SOF groups
+At traffic-interleaved row 0:
+- 1 SOF groups
++ 5 SOF groups
+At traffic-transactions row 9:
++ 1 SOF packets
+At traffic-packets row 311:
++ SOF packet with frame number 1059, CRC 0F
+Updating after 313 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 2 SOF packets
+At traffic-packets row 312:
++ SOF packet with frame number 1059, CRC 0F
+Updating after 314 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 3 SOF packets
+At traffic-packets row 313:
++ SOF packet with frame number 1059, CRC 0F
+Updating after 315 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 4 SOF packets
+At traffic-packets row 314:
++ SOF packet with frame number 1059, CRC 0F
+Updating after 316 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 5 SOF packets
+At traffic-packets row 315:
++ SOF packet with frame number 1059, CRC 0F
+Updating after 317 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 6 SOF packets
+At traffic-packets row 316:
++ SOF packet with frame number 1059, CRC 0F
+Updating after 318 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 7 SOF packets
+At traffic-packets row 317:
++ SOF packet with frame number 1059, CRC 0F
+Updating after 319 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 8 SOF packets
+At traffic-packets row 318:
++ SOF packet with frame number 1059, CRC 0F
+Updating after 320 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 9 SOF packets
+At traffic-packets row 319:
++ SOF packet with frame number 1060, CRC 00
+Updating after 321 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 10 SOF packets
+At traffic-packets row 320:
++ SOF packet with frame number 1060, CRC 00
+Updating after 322 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 11 SOF packets
+At traffic-packets row 321:
++ SOF packet with frame number 1060, CRC 00
+Updating after 323 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 12 SOF packets
+At traffic-packets row 322:
++ SOF packet with frame number 1060, CRC 00
+Updating after 324 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 13 SOF packets
+At traffic-packets row 323:
++ SOF packet with frame number 1060, CRC 00
+Updating after 325 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 14 SOF packets
+At traffic-packets row 324:
++ SOF packet with frame number 1060, CRC 00
+Updating after 326 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 15 SOF packets
+At traffic-packets row 325:
++ SOF packet with frame number 1060, CRC 00
+Updating after 327 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 16 SOF packets
+At traffic-packets row 326:
++ SOF packet with frame number 1060, CRC 00
+Updating after 328 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 17 SOF packets
+At traffic-packets row 327:
++ SOF packet with frame number 1061, CRC 1F
+Updating after 329 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 18 SOF packets
+At traffic-packets row 328:
++ SOF packet with frame number 1061, CRC 1F
+Updating after 330 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 19 SOF packets
+At traffic-packets row 329:
++ SOF packet with frame number 1061, CRC 1F
+Updating after 331 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 20 SOF packets
+At traffic-packets row 330:
++ SOF packet with frame number 1061, CRC 1F
+Updating after 332 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 21 SOF packets
+At traffic-packets row 331:
++ SOF packet with frame number 1061, CRC 1F
+Updating after 333 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 22 SOF packets
+At traffic-packets row 332:
++ SOF packet with frame number 1061, CRC 1F
+Updating after 334 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 23 SOF packets
+At traffic-packets row 333:
++ SOF packet with frame number 1061, CRC 1F
+Updating after 335 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 24 SOF packets
+At traffic-packets row 334:
++ SOF packet with frame number 1061, CRC 1F
+Updating after 336 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 25 SOF packets
+At traffic-packets row 335:
++ SOF packet with frame number 1062, CRC 17
+Updating after 337 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 26 SOF packets
+At traffic-packets row 336:
++ SOF packet with frame number 1062, CRC 17
+Updating after 338 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 27 SOF packets
+At traffic-packets row 337:
++ SOF packet with frame number 1062, CRC 17
+Updating after 339 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 28 SOF packets
+At traffic-packets row 338:
++ SOF packet with frame number 1062, CRC 17
+Updating after 340 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 29 SOF packets
+At traffic-packets row 339:
++ SOF packet with frame number 1062, CRC 17
+Updating after 341 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 30 SOF packets
+At traffic-packets row 340:
++ SOF packet with frame number 1062, CRC 17
+Updating after 342 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 31 SOF packets
+At traffic-packets row 341:
++ SOF packet with frame number 1062, CRC 17
+Updating after 343 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 32 SOF packets
+At traffic-packets row 342:
++ SOF packet with frame number 1062, CRC 17
+Updating after 344 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 33 SOF packets
+At traffic-packets row 343:
++ SOF packet with frame number 1063, CRC 08
+Updating after 345 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 34 SOF packets
+At traffic-packets row 344:
++ SOF packet with frame number 1063, CRC 08
+Updating after 346 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 35 SOF packets
+At traffic-packets row 345:
++ SOF packet with frame number 1063, CRC 08
+Updating after 347 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 36 SOF packets
+At traffic-packets row 346:
++ SOF packet with frame number 1063, CRC 08
+Updating after 348 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 37 SOF packets
+At traffic-packets row 347:
++ SOF packet with frame number 1063, CRC 08
+Updating after 349 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 38 SOF packets
+At traffic-packets row 348:
++ SOF packet with frame number 1063, CRC 08
+Updating after 350 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 39 SOF packets
+At traffic-packets row 349:
++ SOF packet with frame number 1063, CRC 08
+Updating after 351 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 40 SOF packets
+At traffic-packets row 350:
++ SOF packet with frame number 1063, CRC 08
+Updating after 352 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 41 SOF packets
+At traffic-packets row 351:
++ SOF packet with frame number 1064, CRC 09
+Updating after 353 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 42 SOF packets
+At traffic-packets row 352:
++ SOF packet with frame number 1064, CRC 09
+Expanding traffic-interleaved view, row 5: Incomplete control transfer on device 0
+At traffic-interleaved row 6:
++ SETUP transaction on 0.0 with 8 data bytes, ACK: [00, 05, 0C, 00, 00, 00, 00, 00]
++ IN transaction on 0.0 with no data, ACK
+Updating after 354 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 43 SOF packets
+At traffic-packets row 353:
++ SOF packet with frame number 1064, CRC 09
+Updating after 355 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 44 SOF packets
+At traffic-packets row 354:
++ SOF packet with frame number 1064, CRC 09
+Updating after 356 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 45 SOF packets
+At traffic-packets row 355:
++ SOF packet with frame number 1064, CRC 09
+Updating after 357 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 46 SOF packets
+At traffic-packets row 356:
++ SOF packet with frame number 1064, CRC 09
+Updating after 358 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 47 SOF packets
+At traffic-packets row 357:
++ SOF packet with frame number 1064, CRC 09
+Updating after 359 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 48 SOF packets
+At traffic-packets row 358:
++ SOF packet with frame number 1064, CRC 09
+Updating after 360 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 49 SOF packets
+At traffic-packets row 359:
++ SOF packet with frame number 1065, CRC 16
+Updating after 361 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 50 SOF packets
+At traffic-packets row 360:
++ SOF packet with frame number 1065, CRC 16
+Updating after 362 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 51 SOF packets
+At traffic-packets row 361:
++ SOF packet with frame number 1065, CRC 16
+Updating after 363 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 52 SOF packets
+At traffic-packets row 362:
++ SOF packet with frame number 1065, CRC 16
+Updating after 364 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 53 SOF packets
+At traffic-packets row 363:
++ SOF packet with frame number 1065, CRC 16
+Updating after 365 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 54 SOF packets
+At traffic-packets row 364:
++ SOF packet with frame number 1065, CRC 16
+Updating after 366 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 55 SOF packets
+At traffic-packets row 365:
++ SOF packet with frame number 1065, CRC 16
+Updating after 367 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 56 SOF packets
+At traffic-packets row 366:
++ SOF packet with frame number 1065, CRC 16
+Updating after 368 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 57 SOF packets
+At traffic-packets row 367:
++ SOF packet with frame number 1066, CRC 1E
+Updating after 369 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 58 SOF packets
+At traffic-packets row 368:
++ SOF packet with frame number 1066, CRC 1E
+Updating after 370 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 59 SOF packets
+At traffic-packets row 369:
++ SOF packet with frame number 1066, CRC 1E
+Updating after 371 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 60 SOF packets
+At traffic-packets row 370:
++ SOF packet with frame number 1066, CRC 1E
+Updating after 372 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 61 SOF packets
+At traffic-packets row 371:
++ SOF packet with frame number 1066, CRC 1E
+Updating after 373 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 62 SOF packets
+At traffic-packets row 372:
++ SOF packet with frame number 1066, CRC 1E
+Updating after 374 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 63 SOF packets
+At traffic-packets row 373:
++ SOF packet with frame number 1066, CRC 1E
+Updating after 375 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 64 SOF packets
+At traffic-packets row 374:
++ SOF packet with frame number 1066, CRC 1E
+Updating after 376 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 65 SOF packets
+At traffic-packets row 375:
++ SOF packet with frame number 1067, CRC 01
+Updating after 377 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 66 SOF packets
+At traffic-packets row 376:
++ SOF packet with frame number 1067, CRC 01
+Updating after 378 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 67 SOF packets
+At traffic-packets row 377:
++ SOF packet with frame number 1067, CRC 01
+Updating after 379 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 68 SOF packets
+At traffic-packets row 378:
++ SOF packet with frame number 1067, CRC 01
+Updating after 380 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 69 SOF packets
+At traffic-packets row 379:
++ SOF packet with frame number 1067, CRC 01
+Updating after 381 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 70 SOF packets
+At traffic-packets row 380:
++ SOF packet with frame number 1067, CRC 01
+Updating after 382 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 71 SOF packets
+At traffic-packets row 381:
++ SOF packet with frame number 1067, CRC 01
+Updating after 383 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 72 SOF packets
+At traffic-packets row 382:
++ SOF packet with frame number 1067, CRC 01
+Updating after 384 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 73 SOF packets
+At traffic-packets row 383:
++ SOF packet with frame number 1068, CRC 0E
+Updating after 385 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 74 SOF packets
+At traffic-packets row 384:
++ SOF packet with frame number 1068, CRC 0E
+Updating after 386 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 75 SOF packets
+At traffic-packets row 385:
++ SOF packet with frame number 1068, CRC 0E
+Updating after 387 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 76 SOF packets
+At traffic-packets row 386:
++ SOF packet with frame number 1068, CRC 0E
+Updating after 388 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 77 SOF packets
+At traffic-packets row 387:
++ SOF packet with frame number 1068, CRC 0E
+Updating after 389 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 78 SOF packets
+At traffic-packets row 388:
++ SOF packet with frame number 1068, CRC 0E
+Updating after 390 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 79 SOF packets
+At traffic-packets row 389:
++ SOF packet with frame number 1068, CRC 0E
+Updating after 391 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 80 SOF packets
+At traffic-packets row 390:
++ SOF packet with frame number 1068, CRC 0E
+Updating after 392 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 81 SOF packets
+At traffic-packets row 391:
++ SOF packet with frame number 1069, CRC 11
+Updating after 393 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 82 SOF packets
+At traffic-packets row 392:
++ SOF packet with frame number 1069, CRC 11
+Updating after 394 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 83 SOF packets
+At traffic-packets row 393:
++ SOF packet with frame number 1069, CRC 11
+Updating after 395 packets decoded
+At traffic-transactions row 9:
+- 1 SOF packets
++ 84 SOF packets
+At traffic-packets row 394:
++ SOF packet with frame number 1069, CRC 11
+Updating after 396 packets decoded
+At traffic-hierarchical row 3:
++ Incomplete control transfer on device 12
+At traffic-hierarchical row 0:
+- 1 SOF groups
+- 2 times: Incomplete control transfer on device 0
++ 5 SOF groups
++ Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
++ Setting address to 12 for device 0
+At traffic-interleaved row 8:
++ Incomplete control transfer on device 12
+At traffic-transactions row 10:
++ SETUP transaction on 12.0
+At traffic-packets row 395:
++ SETUP packet on 12.0, CRC 0B
+At devices row 0:
++ Device 12: Unknown
+Updating after 397 packets decoded
+At traffic-transactions row 10:
+- SETUP transaction on 12.0
++ SETUP transaction on 12.0 with 8 data bytes: [80, 06, 00, 01, 00, 00, 12, 00]
+At traffic-packets row 396:
++ DATA0 packet with CRC F4E0 and 8 data bytes: [80, 06, 00, 01, 00, 00, 12, 00]
+Updating after 398 packets decoded
+At traffic-transactions row 10:
+- SETUP transaction on 12.0
++ SETUP transaction on 12.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 12, 00]
+At traffic-packets row 397:
++ ACK packet
+Updating after 399 packets decoded
+At traffic-hierarchical row 0:
+- 5 SOF groups
++ 6 SOF groups
+At traffic-interleaved row 0:
+- 1 SOF groups
++ 6 SOF groups
+At traffic-transactions row 11:
++ 1 SOF packets
+At traffic-packets row 398:
++ SOF packet with frame number 1069, CRC 11
+Updating after 400 packets decoded
+At traffic-transactions row 11:
+- 1 SOF packets
++ 2 SOF packets
+At traffic-packets row 399:
++ SOF packet with frame number 1069, CRC 11
+Expanding traffic-interleaved view, row 0: 1 SOF groups
+At traffic-interleaved row 1:
+- Incomplete control transfer on device 0
+- SETUP transaction on 0.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 40, 00]
+- IN transaction on 0.0 with 18 data bytes, ACK: [12, 01, 00, 02, 09, 00, 01, 40, 40, 1A, 01, 01, 11, 01, 00, 01, 00, 01]
+- OUT transaction on 0.0
+- Incomplete control transfer on device 0
+- SETUP transaction on 0.0 with 8 data bytes, ACK: [00, 05, 0C, 00, 00, 00, 00, 00]
+- IN transaction on 0.0 with no data, ACK
+- Incomplete control transfer on device 12
++ 276 SOF packets
++ Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
++ SETUP transaction on 0.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 40, 00]
++ 8 SOF packets
++ IN transaction on 0.0 with 18 data bytes, ACK: [12, 01, 00, 02, 09, 00, 01, 40, 40, 1A, 01, 01, 11, 01, 00, 01, 00, 01]
++ 8 SOF packets
++ OUT transaction on 0.0 with no data, ACK
++ 4 SOF packets
++ Setting address to 12 for device 0
++ SETUP transaction on 0.0 with 8 data bytes, ACK: [00, 05, 0C, 00, 00, 00, 00, 00]
++ IN transaction on 0.0 with no data, ACK
++ 84 SOF packets
++ Getting device descriptor #0 for device 12, reading 0 of 18 requested bytes, incomplete
++ 2 SOF packets
+Updating after 401 packets decoded
+At traffic-interleaved row 14:
+- 2 SOF packets
++ 3 SOF packets
+At traffic-transactions row 11:
+- 1 SOF packets
++ 3 SOF packets
+At traffic-packets row 400:
++ SOF packet with frame number 1069, CRC 11
+Updating after 402 packets decoded
+At traffic-interleaved row 14:
+- 2 SOF packets
++ 4 SOF packets
+At traffic-transactions row 11:
+- 1 SOF packets
++ 4 SOF packets
+At traffic-packets row 401:
++ SOF packet with frame number 1069, CRC 11
+Updating after 403 packets decoded
+At traffic-interleaved row 14:
+- 2 SOF packets
++ 5 SOF packets
+At traffic-transactions row 11:
+- 1 SOF packets
++ 5 SOF packets
+At traffic-packets row 402:
++ SOF packet with frame number 1070, CRC 19
+Updating after 404 packets decoded
+At traffic-interleaved row 14:
+- 2 SOF packets
++ 6 SOF packets
+At traffic-transactions row 11:
+- 1 SOF packets
++ 6 SOF packets
+At traffic-packets row 403:
++ SOF packet with frame number 1070, CRC 19
+Updating after 405 packets decoded
+At traffic-interleaved row 14:
+- 2 SOF packets
++ 7 SOF packets
+At traffic-transactions row 11:
+- 1 SOF packets
++ 7 SOF packets
+At traffic-packets row 404:
++ SOF packet with frame number 1070, CRC 19
+Updating after 406 packets decoded
+At traffic-interleaved row 14:
+- 2 SOF packets
++ 8 SOF packets
+At traffic-transactions row 11:
+- 1 SOF packets
++ 8 SOF packets
+At traffic-packets row 405:
++ SOF packet with frame number 1070, CRC 19
+Updating after 407 packets decoded
+At traffic-hierarchical row 3:
+- Incomplete control transfer on device 12
++ Getting device descriptor #0 for device 12, reading 0 of 18 requested bytes, incomplete
+At traffic-transactions row 12:
++ IN transaction on 12.0
+At traffic-packets row 406:
++ IN packet on 12.0, CRC 0B
+Updating after 408 packets decoded
+At traffic-transactions row 12:
+- IN transaction on 12.0
++ IN transaction on 12.0 with 18 data bytes: [12, 01, 00, 02, 09, 00, 01, 40, 40, 1A, 01, 01, 11, 01, 00, 01, 00, 01]
+At traffic-packets row 407:
++ DATA1 packet with CRC C597 and 18 data bytes: [12, 01, 00, 02, 09, 00, 01, 40, 40, 1A, 01, 01, 11, 01, 00, 01, 00, 01]
+Updating after 409 packets decoded
+At traffic-transactions row 12:
+- IN transaction on 12.0
++ IN transaction on 12.0 with 18 data bytes, ACK: [12, 01, 00, 02, 09, 00, 01, 40, 40, 1A, 01, 01, 11, 01, 00, 01, 00, 01]
+At traffic-packets row 408:
++ ACK packet
+Updating after 410 packets decoded
+At traffic-hierarchical row 0:
+- 5 SOF groups
++ 7 SOF groups
+At traffic-interleaved row 0:
+- 1 SOF groups
++ 7 SOF groups
+At traffic-interleaved row 15:
++ 1 SOF packets
+At traffic-transactions row 13:
++ 1 SOF packets
+At traffic-packets row 409:
++ SOF packet with frame number 1070, CRC 19
+Updating after 411 packets decoded
+At traffic-interleaved row 15:
+- 1 SOF packets
++ 2 SOF packets
+At traffic-transactions row 13:
+- 1 SOF packets
++ 2 SOF packets
+At traffic-packets row 410:
++ SOF packet with frame number 1070, CRC 19
+Updating after 412 packets decoded
+At traffic-interleaved row 15:
+- 1 SOF packets
++ 3 SOF packets
+At traffic-transactions row 13:
+- 1 SOF packets
++ 3 SOF packets
+At traffic-packets row 411:
++ SOF packet with frame number 1070, CRC 19
+Updating after 413 packets decoded
+At traffic-interleaved row 15:
+- 1 SOF packets
++ 4 SOF packets
+At traffic-transactions row 13:
+- 1 SOF packets
++ 4 SOF packets
+At traffic-packets row 412:
++ SOF packet with frame number 1070, CRC 19
+Updating after 414 packets decoded
+At traffic-interleaved row 15:
+- 1 SOF packets
++ 5 SOF packets
+At traffic-transactions row 13:
+- 1 SOF packets
++ 5 SOF packets
+At traffic-packets row 413:
++ SOF packet with frame number 1071, CRC 06
+Updating after 415 packets decoded
+At traffic-interleaved row 15:
+- 1 SOF packets
++ 6 SOF packets
+At traffic-transactions row 13:
+- 1 SOF packets
++ 6 SOF packets
+At traffic-packets row 414:
++ SOF packet with frame number 1071, CRC 06
+Updating after 416 packets decoded
+At traffic-interleaved row 15:
+- 1 SOF packets
++ 7 SOF packets
+At traffic-transactions row 13:
+- 1 SOF packets
++ 7 SOF packets
+At traffic-packets row 415:
++ SOF packet with frame number 1071, CRC 06
+Updating after 417 packets decoded
+At traffic-interleaved row 15:
+- 1 SOF packets
++ 8 SOF packets
+At traffic-transactions row 13:
+- 1 SOF packets
++ 8 SOF packets
+At traffic-packets row 416:
++ SOF packet with frame number 1071, CRC 06
+Updating after 418 packets decoded
+At traffic-hierarchical row 3:
+- Incomplete control transfer on device 12
++ Getting device descriptor #0 for device 12, reading 18 bytes, incomplete
+At traffic-interleaved row 13:
+- Getting device descriptor #0 for device 12, reading 0 of 18 requested bytes, incomplete
++ Getting device descriptor #0 for device 12, reading 18 bytes, incomplete
+At traffic-transactions row 14:
++ OUT transaction on 12.0
+At traffic-packets row 417:
++ OUT packet on 12.0, CRC 0B
+Updating after 419 packets decoded
+At traffic-transactions row 14:
+- OUT transaction on 12.0
++ OUT transaction on 12.0 with no data
+At traffic-packets row 418:
++ DATA1 packet with CRC 0000 and no data
+Updating after 420 packets decoded
+At traffic-transactions row 14:
+- OUT transaction on 12.0
++ OUT transaction on 12.0 with no data, ACK
+At traffic-packets row 419:
++ ACK packet
+At devices row 0:
+- Device 12: Unknown
++ Device 12: 1A40:0101
+Updating after 421 packets decoded
+At traffic-hierarchical row 0:
+- 5 SOF groups
++ 8 SOF groups
+At traffic-interleaved row 0:
+- 1 SOF groups
++ 8 SOF groups
+At traffic-interleaved row 16:
++ 1 SOF packets
+At traffic-transactions row 15:
++ 1 SOF packets
+At traffic-packets row 420:
++ SOF packet with frame number 1071, CRC 06
+Updating after 422 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 2 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 2 SOF packets
+At traffic-packets row 421:
++ SOF packet with frame number 1071, CRC 06
+Updating after 423 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 3 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 3 SOF packets
+At traffic-packets row 422:
++ SOF packet with frame number 1071, CRC 06
+Updating after 424 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 4 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 4 SOF packets
+At traffic-packets row 423:
++ SOF packet with frame number 1071, CRC 06
+Updating after 425 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 5 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 5 SOF packets
+At traffic-packets row 424:
++ SOF packet with frame number 1072, CRC 1B
+Updating after 426 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 6 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 6 SOF packets
+At traffic-packets row 425:
++ SOF packet with frame number 1072, CRC 1B
+Updating after 427 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 7 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 7 SOF packets
+At traffic-packets row 426:
++ SOF packet with frame number 1072, CRC 1B
+Updating after 428 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 8 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 8 SOF packets
+At traffic-packets row 427:
++ SOF packet with frame number 1072, CRC 1B
+Updating after 429 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 9 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 9 SOF packets
+At traffic-packets row 428:
++ SOF packet with frame number 1072, CRC 1B
+Updating after 430 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 10 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 10 SOF packets
+At traffic-packets row 429:
++ SOF packet with frame number 1072, CRC 1B
+Updating after 431 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 11 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 11 SOF packets
+At traffic-packets row 430:
++ SOF packet with frame number 1072, CRC 1B
+Updating after 432 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 12 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 12 SOF packets
+At traffic-packets row 431:
++ SOF packet with frame number 1072, CRC 1B
+Updating after 433 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 13 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 13 SOF packets
+At traffic-packets row 432:
++ SOF packet with frame number 1073, CRC 04
+Updating after 434 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 14 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 14 SOF packets
+At traffic-packets row 433:
++ SOF packet with frame number 1073, CRC 04
+Updating after 435 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 15 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 15 SOF packets
+At traffic-packets row 434:
++ SOF packet with frame number 1073, CRC 04
+Updating after 436 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 16 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 16 SOF packets
+At traffic-packets row 435:
++ SOF packet with frame number 1073, CRC 04
+Updating after 437 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 17 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 17 SOF packets
+At traffic-packets row 436:
++ SOF packet with frame number 1073, CRC 04
+Updating after 438 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 18 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 18 SOF packets
+At traffic-packets row 437:
++ SOF packet with frame number 1073, CRC 04
+Updating after 439 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 19 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 19 SOF packets
+At traffic-packets row 438:
++ SOF packet with frame number 1073, CRC 04
+Updating after 440 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 20 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 20 SOF packets
+At traffic-packets row 439:
++ SOF packet with frame number 1073, CRC 04
+Updating after 441 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 21 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 21 SOF packets
+At traffic-packets row 440:
++ SOF packet with frame number 1074, CRC 0C
+Updating after 442 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 22 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 22 SOF packets
+At traffic-packets row 441:
++ SOF packet with frame number 1074, CRC 0C
+Updating after 443 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 23 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 23 SOF packets
+At traffic-packets row 442:
++ SOF packet with frame number 1074, CRC 0C
+Updating after 444 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 24 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 24 SOF packets
+At traffic-packets row 443:
++ SOF packet with frame number 1074, CRC 0C
+Updating after 445 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 25 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 25 SOF packets
+At traffic-packets row 444:
++ SOF packet with frame number 1074, CRC 0C
+Updating after 446 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 26 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 26 SOF packets
+At traffic-packets row 445:
++ SOF packet with frame number 1074, CRC 0C
+Updating after 447 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 27 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 27 SOF packets
+At traffic-packets row 446:
++ SOF packet with frame number 1074, CRC 0C
+Updating after 448 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 28 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 28 SOF packets
+At traffic-packets row 447:
++ SOF packet with frame number 1074, CRC 0C
+Updating after 449 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 29 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 29 SOF packets
+At traffic-packets row 448:
++ SOF packet with frame number 1075, CRC 13
+Updating after 450 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 30 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 30 SOF packets
+At traffic-packets row 449:
++ SOF packet with frame number 1075, CRC 13
+Updating after 451 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 31 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 31 SOF packets
+At traffic-packets row 450:
++ SOF packet with frame number 1075, CRC 13
+Updating after 452 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 32 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 32 SOF packets
+At traffic-packets row 451:
++ SOF packet with frame number 1075, CRC 13
+Updating after 453 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 33 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 33 SOF packets
+At traffic-packets row 452:
++ SOF packet with frame number 1075, CRC 13
+Updating after 454 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 34 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 34 SOF packets
+At traffic-packets row 453:
++ SOF packet with frame number 1075, CRC 13
+Updating after 455 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 35 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 35 SOF packets
+At traffic-packets row 454:
++ SOF packet with frame number 1075, CRC 13
+Updating after 456 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 36 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 36 SOF packets
+At traffic-packets row 455:
++ SOF packet with frame number 1075, CRC 13
+Updating after 457 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 37 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 37 SOF packets
+At traffic-packets row 456:
++ SOF packet with frame number 1076, CRC 1C
+Updating after 458 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 38 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 38 SOF packets
+At traffic-packets row 457:
++ SOF packet with frame number 1076, CRC 1C
+Updating after 459 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 39 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 39 SOF packets
+At traffic-packets row 458:
++ SOF packet with frame number 1076, CRC 1C
+Updating after 460 packets decoded
+At traffic-interleaved row 16:
+- 1 SOF packets
++ 40 SOF packets
+At traffic-transactions row 15:
+- 1 SOF packets
++ 40 SOF packets
+At traffic-packets row 459:
++ SOF packet with frame number 1076, CRC 1C
+Updating after 461 packets decoded
+At traffic-hierarchical row 4:
++ Incomplete control transfer on device 12
+At traffic-interleaved row 17:
++ Incomplete control transfer on device 12
+At traffic-transactions row 16:
++ SETUP transaction on 12.0
+At traffic-packets row 460:
++ SETUP packet on 12.0, CRC 0B
+Updating after 462 packets decoded
+At traffic-transactions row 16:
+- SETUP transaction on 12.0
++ SETUP transaction on 12.0 with 8 data bytes: [80, 06, 00, 02, 00, 00, FF, 00]
+At traffic-packets row 461:
++ DATA0 packet with CRC A4E9 and 8 data bytes: [80, 06, 00, 02, 00, 00, FF, 00]
+Updating after 463 packets decoded
+At traffic-transactions row 16:
+- SETUP transaction on 12.0
++ SETUP transaction on 12.0 with 8 data bytes, ACK: [80, 06, 00, 02, 00, 00, FF, 00]
+At traffic-packets row 462:
++ ACK packet
+Updating after 464 packets decoded
+At traffic-hierarchical row 0:
+- 5 SOF groups
++ 9 SOF groups
+At traffic-interleaved row 0:
+- 1 SOF groups
++ 9 SOF groups
+At traffic-interleaved row 18:
++ 1 SOF packets
+At traffic-transactions row 17:
++ 1 SOF packets
+At traffic-packets row 463:
++ SOF packet with frame number 1076, CRC 1C
+Updating after 465 packets decoded
+At traffic-interleaved row 18:
+- 1 SOF packets
++ 2 SOF packets
+At traffic-transactions row 17:
+- 1 SOF packets
++ 2 SOF packets
+At traffic-packets row 464:
++ SOF packet with frame number 1076, CRC 1C
+Updating after 466 packets decoded
+At traffic-interleaved row 18:
+- 1 SOF packets
++ 3 SOF packets
+At traffic-transactions row 17:
+- 1 SOF packets
++ 3 SOF packets
+At traffic-packets row 465:
++ SOF packet with frame number 1076, CRC 1C
+Updating after 467 packets decoded
+At traffic-interleaved row 18:
+- 1 SOF packets
++ 4 SOF packets
+At traffic-transactions row 17:
+- 1 SOF packets
++ 4 SOF packets
+At traffic-packets row 466:
++ SOF packet with frame number 1076, CRC 1C
+Updating after 468 packets decoded
+At traffic-interleaved row 18:
+- 1 SOF packets
++ 5 SOF packets
+At traffic-transactions row 17:
+- 1 SOF packets
++ 5 SOF packets
+At traffic-packets row 467:
++ SOF packet with frame number 1077, CRC 03
+Updating after 469 packets decoded
+At traffic-interleaved row 18:
+- 1 SOF packets
++ 6 SOF packets
+At traffic-transactions row 17:
+- 1 SOF packets
++ 6 SOF packets
+At traffic-packets row 468:
++ SOF packet with frame number 1077, CRC 03
+Updating after 470 packets decoded
+At traffic-interleaved row 18:
+- 1 SOF packets
++ 7 SOF packets
+At traffic-transactions row 17:
+- 1 SOF packets
++ 7 SOF packets
+At traffic-packets row 469:
++ SOF packet with frame number 1077, CRC 03
+Updating after 471 packets decoded
+At traffic-interleaved row 18:
+- 1 SOF packets
++ 8 SOF packets
+At traffic-transactions row 17:
+- 1 SOF packets
++ 8 SOF packets
+At traffic-packets row 470:
++ SOF packet with frame number 1077, CRC 03
+Updating after 472 packets decoded
+At traffic-hierarchical row 4:
+- Incomplete control transfer on device 12
++ Getting configuration descriptor #0 for device 12, reading 0 of 255 requested bytes, incomplete
+At traffic-interleaved row 17:
+- Incomplete control transfer on device 12
++ Getting configuration descriptor #0 for device 12, reading 0 of 255 requested bytes, incomplete
+At traffic-transactions row 18:
++ IN transaction on 12.0
+At traffic-packets row 471:
++ IN packet on 12.0, CRC 0B
+Updating after 473 packets decoded
+At traffic-transactions row 18:
+- IN transaction on 12.0
++ IN transaction on 12.0 with 25 data bytes: [09, 02, 19, 00, 01, 01, 00, E0, 32, 09, 04, 00, 00, 01, 09, 00, 00, 00, 07, 05, 81, 03, 01, 00, 0C]
+At traffic-packets row 472:
++ DATA1 packet with CRC 6A0C and 25 data bytes: [09, 02, 19, 00, 01, 01, 00, E0, 32, 09, 04, 00, 00, 01, 09, 00, 00, 00, 07, 05, 81, 03, 01, 00, 0C]
+Updating after 474 packets decoded
+At traffic-transactions row 18:
+- IN transaction on 12.0
++ IN transaction on 12.0 with 25 data bytes, ACK: [09, 02, 19, 00, 01, 01, 00, E0, 32, 09, 04, 00, 00, 01, 09, 00, 00, 00, 07, 05, 81, 03, 01, 00, 0C]
+At traffic-packets row 473:
++ ACK packet
+Updating after 475 packets decoded
+At traffic-hierarchical row 0:
+- 5 SOF groups
++ 10 SOF groups
+At traffic-interleaved row 0:
+- 1 SOF groups
++ 10 SOF groups
+At traffic-interleaved row 19:
++ 1 SOF packets
+At traffic-transactions row 19:
++ 1 SOF packets
+At traffic-packets row 474:
++ SOF packet with frame number 1077, CRC 03
+Updating after 476 packets decoded
+At traffic-interleaved row 19:
+- 1 SOF packets
++ 2 SOF packets
+At traffic-transactions row 19:
+- 1 SOF packets
++ 2 SOF packets
+At traffic-packets row 475:
++ SOF packet with frame number 1077, CRC 03
+Collapsing traffic-interleaved view, row 0: 1 SOF groups
+At traffic-interleaved row 1:
+- 276 SOF packets
+- Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
+- SETUP transaction on 0.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 40, 00]
+- 8 SOF packets
+- IN transaction on 0.0 with 18 data bytes, ACK: [12, 01, 00, 02, 09, 00, 01, 40, 40, 1A, 01, 01, 11, 01, 00, 01, 00, 01]
+- 8 SOF packets
+- OUT transaction on 0.0 with no data, ACK
+- 4 SOF packets
+- Setting address to 12 for device 0
+- SETUP transaction on 0.0 with 8 data bytes, ACK: [00, 05, 0C, 00, 00, 00, 00, 00]
+- IN transaction on 0.0 with no data, ACK
+- 84 SOF packets
+- Getting device descriptor #0 for device 12, reading 0 of 18 requested bytes, incomplete
+- 2 SOF packets
+- 2 times: 1 SOF packets
+- Incomplete control transfer on device 12
+- 2 times: 1 SOF packets
++ Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
++ SETUP transaction on 0.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 40, 00]
++ IN transaction on 0.0 with 18 data bytes, ACK: [12, 01, 00, 02, 09, 00, 01, 40, 40, 1A, 01, 01, 11, 01, 00, 01, 00, 01]
++ OUT transaction on 0.0 with no data, ACK
++ Setting address to 12 for device 0
++ SETUP transaction on 0.0 with 8 data bytes, ACK: [00, 05, 0C, 00, 00, 00, 00, 00]
++ IN transaction on 0.0 with no data, ACK
++ Getting device descriptor #0 for device 12, reading 18 bytes
++ Getting configuration descriptor #0 for device 12, reading 25 of 255 requested bytes, incomplete
+Updating after 477 packets decoded
+At traffic-transactions row 19:
+- 1 SOF packets
++ 3 SOF packets
+At traffic-packets row 476:
++ SOF packet with frame number 1077, CRC 03
+Updating after 478 packets decoded
+At traffic-transactions row 19:
+- 1 SOF packets
++ 4 SOF packets
+At traffic-packets row 477:
++ SOF packet with frame number 1077, CRC 03
+Updating after 479 packets decoded
+At traffic-transactions row 19:
+- 1 SOF packets
++ 5 SOF packets
+At traffic-packets row 478:
++ SOF packet with frame number 1078, CRC 0B
+Updating after 480 packets decoded
+At traffic-transactions row 19:
+- 1 SOF packets
++ 6 SOF packets
+At traffic-packets row 479:
++ SOF packet with frame number 1078, CRC 0B
+Updating after 481 packets decoded
+At traffic-transactions row 19:
+- 1 SOF packets
++ 7 SOF packets
+At traffic-packets row 480:
++ SOF packet with frame number 1078, CRC 0B
+Updating after 482 packets decoded
+At traffic-transactions row 19:
+- 1 SOF packets
++ 8 SOF packets
+At traffic-packets row 481:
++ SOF packet with frame number 1078, CRC 0B
+Updating after 483 packets decoded
+At traffic-hierarchical row 4:
+- Incomplete control transfer on device 12
++ Getting configuration descriptor #0 for device 12, reading 25 of 255 requested bytes, incomplete
+At traffic-transactions row 20:
++ OUT transaction on 12.0
+At traffic-packets row 482:
++ OUT packet on 12.0, CRC 0B
+Updating after 484 packets decoded
+At traffic-transactions row 20:
+- OUT transaction on 12.0
++ OUT transaction on 12.0 with no data
+At traffic-packets row 483:
++ DATA1 packet with CRC 0000 and no data
+Updating after 485 packets decoded
+At traffic-transactions row 20:
+- OUT transaction on 12.0
++ OUT transaction on 12.0 with no data, ACK
+At traffic-packets row 484:
++ ACK packet
+At devices row 0:
+- Device 12: Unknown
++ Device 12: 1A40:0101
+Updating after 486 packets decoded
+At traffic-hierarchical row 0:
+- 5 SOF groups
++ 11 SOF groups
+At traffic-interleaved row 0:
+- 1 SOF groups
++ 11 SOF groups
+At traffic-transactions row 21:
++ 1 SOF packets
+At traffic-packets row 485:
++ SOF packet with frame number 1078, CRC 0B
+At devices row 0:
+- Device 12: Unknown
++ Device 12: 1A40:0101
+Updating after 487 packets decoded
+At traffic-transactions row 21:
+- 1 SOF packets
++ 2 SOF packets
+At traffic-packets row 486:
++ SOF packet with frame number 1078, CRC 0B
+Updating after 488 packets decoded
+At traffic-transactions row 21:
+- 1 SOF packets
++ 3 SOF packets
+At traffic-packets row 487:
++ SOF packet with frame number 1078, CRC 0B
+Updating after 489 packets decoded
+At traffic-transactions row 21:
+- 1 SOF packets
++ 4 SOF packets
+At traffic-packets row 488:
++ SOF packet with frame number 1078, CRC 0B
+Updating after 490 packets decoded
+At traffic-transactions row 21:
+- 1 SOF packets
++ 5 SOF packets
+At traffic-packets row 489:
++ SOF packet with frame number 1079, CRC 14
+Updating after 491 packets decoded
+At traffic-transactions row 21:
+- 1 SOF packets
++ 6 SOF packets
+At traffic-packets row 490:
++ SOF packet with frame number 1079, CRC 14
+Updating after 492 packets decoded
+At traffic-transactions row 21:
+- 1 SOF packets
++ 7 SOF packets
+At traffic-packets row 491:
++ SOF packet with frame number 1079, CRC 14
+Updating after 493 packets decoded
+At traffic-transactions row 21:
+- 1 SOF packets
++ 8 SOF packets
+At traffic-packets row 492:
++ SOF packet with frame number 1079, CRC 14
+Updating after 494 packets decoded
+At traffic-hierarchical row 5:
++ Incomplete control transfer on device 12
+At traffic-interleaved row 10:
++ Incomplete control transfer on device 12
+At traffic-transactions row 22:
++ SETUP transaction on 12.0
+At traffic-packets row 493:
++ SETUP packet on 12.0, CRC 0B
+Updating after 495 packets decoded
+At traffic-transactions row 22:
+- SETUP transaction on 12.0
++ SETUP transaction on 12.0 with 8 data bytes: [80, 06, 00, 03, 00, 00, FF, 00]
+At traffic-packets row 494:
++ DATA0 packet with CRC 64D4 and 8 data bytes: [80, 06, 00, 03, 00, 00, FF, 00]
+Updating after 496 packets decoded
+At traffic-transactions row 22:
+- SETUP transaction on 12.0
++ SETUP transaction on 12.0 with 8 data bytes, ACK: [80, 06, 00, 03, 00, 00, FF, 00]
+At traffic-packets row 495:
++ ACK packet
+Updating after 497 packets decoded
+At traffic-hierarchical row 0:
+- 5 SOF groups
++ 12 SOF groups
+At traffic-interleaved row 0:
+- 1 SOF groups
++ 12 SOF groups
+At traffic-transactions row 23:
++ 1 SOF packets
+At traffic-packets row 496:
++ SOF packet with frame number 1079, CRC 14
+Updating after 498 packets decoded
+At traffic-transactions row 23:
+- 1 SOF packets
++ 2 SOF packets
+At traffic-packets row 497:
++ SOF packet with frame number 1079, CRC 14
+Updating after 499 packets decoded
+At traffic-transactions row 23:
+- 1 SOF packets
++ 3 SOF packets
+At traffic-packets row 498:
++ SOF packet with frame number 1079, CRC 14
+Updating after 500 packets decoded
+At traffic-transactions row 23:
+- 1 SOF packets
++ 4 SOF packets
+At traffic-packets row 499:
++ SOF packet with frame number 1079, CRC 14
+Expanding traffic-interleaved view, row 6: SETUP transaction on 0.0 with 8 data bytes, ACK: [00, 05, 0C, 00, 00, 00, 00, 00]
+At traffic-interleaved row 7:
++ SETUP packet on 0.0, CRC 02
++ DATA0 packet with CRC 38EA and 8 data bytes: [00, 05, 0C, 00, 00, 00, 00, 00]
++ ACK packet
+Updating after 501 packets decoded
+At traffic-transactions row 23:
+- 1 SOF packets
++ 5 SOF packets
+At traffic-packets row 500:
++ SOF packet with frame number 1080, CRC 15
+Expanding traffic-interleaved view, row 3: IN transaction on 0.0 with 18 data bytes, ACK: [12, 01, 00, 02, 09, 00, 01, 40, 40, 1A, 01, 01, 11, 01, 00, 01, 00, 01]
+At traffic-interleaved row 4:
++ IN packet on 0.0, CRC 02
++ DATA1 packet with CRC C597 and 18 data bytes: [12, 01, 00, 02, 09, 00, 01, 40, 40, 1A, 01, 01, 11, 01, 00, 01, 00, 01]
++ ACK packet
+Updating after 502 packets decoded
+At traffic-transactions row 23:
+- 1 SOF packets
++ 6 SOF packets
+At traffic-packets row 501:
++ SOF packet with frame number 1080, CRC 15
+Updating after 503 packets decoded
+At traffic-transactions row 23:
+- 1 SOF packets
++ 7 SOF packets
+At traffic-packets row 502:
++ SOF packet with frame number 1080, CRC 15
+Updating after 504 packets decoded
+At traffic-transactions row 23:
+- 1 SOF packets
++ 8 SOF packets
+At traffic-packets row 503:
++ SOF packet with frame number 1080, CRC 15
+Updating after 505 packets decoded
+At traffic-hierarchical row 5:
+- Incomplete control transfer on device 12
++ Getting string descriptor #0 for device 12, reading 0 of 255 requested bytes, incomplete
+At traffic-interleaved row 16:
+- Incomplete control transfer on device 12
++ Getting string descriptor #0 for device 12, reading 0 of 255 requested bytes, incomplete
+At traffic-transactions row 24:
++ IN transaction on 12.0
+At traffic-packets row 504:
++ IN packet on 12.0, CRC 0B
+Updating after 506 packets decoded
+At traffic-transactions row 24:
+- IN transaction on 12.0
++ IN transaction on 12.0 with 4 data bytes: [04, 03, 09, 04]
+At traffic-packets row 505:
++ DATA1 packet with CRC 7809 and 4 data bytes: [04, 03, 09, 04]
+Updating after 507 packets decoded
+At traffic-transactions row 24:
+- IN transaction on 12.0
++ IN transaction on 12.0 with 4 data bytes, ACK: [04, 03, 09, 04]
+At traffic-packets row 506:
++ ACK packet
+Updating after 508 packets decoded
+At traffic-hierarchical row 0:
+- 5 SOF groups
++ 13 SOF groups
+At traffic-interleaved row 0:
+- 1 SOF groups
++ 13 SOF groups
+At traffic-transactions row 25:
++ 1 SOF packets
+At traffic-packets row 507:
++ SOF packet with frame number 1080, CRC 15
+Updating after 509 packets decoded
+At traffic-transactions row 25:
+- 1 SOF packets
++ 2 SOF packets
+At traffic-packets row 508:
++ SOF packet with frame number 1080, CRC 15
+Updating after 510 packets decoded
+At traffic-transactions row 25:
+- 1 SOF packets
++ 3 SOF packets
+At traffic-packets row 509:
++ SOF packet with frame number 1080, CRC 15
+Expanding traffic-interleaved view, row 0: 1 SOF groups
+At traffic-interleaved row 1:
+- Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
+- SETUP transaction on 0.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 40, 00]
+- IN transaction on 0.0 with 18 data bytes, ACK: [12, 01, 00, 02, 09, 00, 01, 40, 40, 1A, 01, 01, 11, 01, 00, 01, 00, 01]
+- IN packet on 0.0, CRC 02
+- DATA1 packet with CRC C597 and 18 data bytes: [12, 01, 00, 02, 09, 00, 01, 40, 40, 1A, 01, 01, 11, 01, 00, 01, 00, 01]
+- ACK packet
+- OUT transaction on 0.0 with no data, ACK
+- Setting address to 12 for device 0
+- SETUP transaction on 0.0 with 8 data bytes, ACK: [00, 05, 0C, 00, 00, 00, 00, 00]
+- SETUP packet on 0.0, CRC 02
+- DATA0 packet with CRC 38EA and 8 data bytes: [00, 05, 0C, 00, 00, 00, 00, 00]
+- ACK packet
+- IN transaction on 0.0 with no data, ACK
+- Getting device descriptor #0 for device 12, reading 18 bytes
+- Getting configuration descriptor #0 for device 12, reading 25 of 255 requested bytes, incomplete
+- Incomplete control transfer on device 12
++ 276 SOF packets
++ Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
++ SETUP transaction on 0.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 40, 00]
++ 8 SOF packets
++ IN transaction on 0.0 with 18 data bytes, ACK: [12, 01, 00, 02, 09, 00, 01, 40, 40, 1A, 01, 01, 11, 01, 00, 01, 00, 01]
++ IN packet on 0.0, CRC 02
++ DATA1 packet with CRC C597 and 18 data bytes: [12, 01, 00, 02, 09, 00, 01, 40, 40, 1A, 01, 01, 11, 01, 00, 01, 00, 01]
++ ACK packet
++ 8 SOF packets
++ OUT transaction on 0.0 with no data, ACK
++ 4 SOF packets
++ Setting address to 12 for device 0
++ SETUP transaction on 0.0 with 8 data bytes, ACK: [00, 05, 0C, 00, 00, 00, 00, 00]
++ SETUP packet on 0.0, CRC 02
++ DATA0 packet with CRC 38EA and 8 data bytes: [00, 05, 0C, 00, 00, 00, 00, 00]
++ ACK packet
++ IN transaction on 0.0 with no data, ACK
++ 84 SOF packets
++ Getting device descriptor #0 for device 12, reading 18 bytes
++ 2 times: 8 SOF packets
++ 40 SOF packets
++ Getting configuration descriptor #0 for device 12, reading 25 of 255 requested bytes
++ 3 times: 8 SOF packets
++ Getting string descriptor #0 for device 12, reading 4 of 255 requested bytes, incomplete
++ 8 SOF packets
++ 3 SOF packets
+Updating after 511 packets decoded
+At traffic-interleaved row 29:
+- 3 SOF packets
++ 4 SOF packets
+At traffic-transactions row 25:
+- 1 SOF packets
++ 4 SOF packets
+At traffic-packets row 510:
++ SOF packet with frame number 1080, CRC 15

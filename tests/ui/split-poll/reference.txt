@@ -1,0 +1,220 @@
+Opening file tests/split-poll/capture.pcap
+Updating after 40 packets decoded
+At traffic-hierarchical row 0:
++ Polling 4 times for interrupt transfer on endpoint 14.1 IN
++ Polling 4 times for interrupt transfer on endpoint 14.2 IN
+At traffic-interleaved row 0:
++ Polling 4 times for interrupt transfer on endpoint 14.1 IN
++ Polling 4 times for interrupt transfer on endpoint 14.2 IN
+At traffic-transactions row 0:
++ 2 times: Starting IN transaction
++ 2 times: Completing IN transaction
++ 2 times: Starting IN transaction
++ 2 times: Completing IN transaction
++ 2 times: Starting IN transaction
++ 2 times: Completing IN transaction
++ 2 times: Starting IN transaction
++ 2 times: Completing IN transaction
+At traffic-packets row 0:
++ SPLIT packet starting low speed interrupt transaction on hub 12 port 2
++ IN packet on 14.1, CRC 0A
++ SPLIT packet starting low speed interrupt transaction on hub 12 port 2
++ IN packet on 14.2, CRC 19
++ SPLIT packet completing low speed interrupt transaction on hub 12 port 2
++ IN packet on 14.1, CRC 0A
++ NAK packet
++ SPLIT packet completing low speed interrupt transaction on hub 12 port 2
++ IN packet on 14.2, CRC 19
++ NAK packet
++ SPLIT packet starting low speed interrupt transaction on hub 12 port 2
++ IN packet on 14.1, CRC 0A
++ SPLIT packet starting low speed interrupt transaction on hub 12 port 2
++ IN packet on 14.2, CRC 19
++ SPLIT packet completing low speed interrupt transaction on hub 12 port 2
++ IN packet on 14.1, CRC 0A
++ NAK packet
++ SPLIT packet completing low speed interrupt transaction on hub 12 port 2
++ IN packet on 14.2, CRC 19
++ NAK packet
++ SPLIT packet starting low speed interrupt transaction on hub 12 port 2
++ IN packet on 14.1, CRC 0A
++ SPLIT packet starting low speed interrupt transaction on hub 12 port 2
++ IN packet on 14.2, CRC 19
++ SPLIT packet completing low speed interrupt transaction on hub 12 port 2
++ IN packet on 14.1, CRC 0A
++ NAK packet
++ SPLIT packet completing low speed interrupt transaction on hub 12 port 2
++ IN packet on 14.2, CRC 19
++ NAK packet
++ SPLIT packet starting low speed interrupt transaction on hub 12 port 2
++ IN packet on 14.1, CRC 0A
++ SPLIT packet starting low speed interrupt transaction on hub 12 port 2
++ IN packet on 14.2, CRC 19
++ SPLIT packet completing low speed interrupt transaction on hub 12 port 2
++ IN packet on 14.1, CRC 0A
++ NAK packet
++ SPLIT packet completing low speed interrupt transaction on hub 12 port 2
++ IN packet on 14.2, CRC 19
++ NAK packet
+At devices row 0:
++ Device 14: Unknown
+Expanding traffic-interleaved view, row 0: Polling 4 times for interrupt transfer on endpoint 14.1 IN
+At traffic-interleaved row 1:
+- Polling 4 times for interrupt transfer on endpoint 14.2 IN
++ Starting IN transaction on 14.1
++ Polling 4 times for interrupt transfer on endpoint 14.2 IN
++ Completing IN transaction on 14.1, NAK
++ Starting IN transaction on 14.1
++ Completing IN transaction on 14.1, NAK
++ Starting IN transaction on 14.1
++ Completing IN transaction on 14.1, NAK
++ Starting IN transaction on 14.1
++ Completing IN transaction on 14.1, NAK
+Expanding traffic-interleaved view, row 1: Starting IN transaction on 14.1
+At traffic-interleaved row 2:
++ SPLIT packet starting low speed interrupt transaction on hub 12 port 2
++ IN packet on 14.1, CRC 0A
+Expanding traffic-interleaved view, row 4: Polling 4 times for interrupt transfer on endpoint 14.2 IN
+At traffic-interleaved row 5:
+- Completing IN transaction on 14.1, NAK
+- Starting IN transaction on 14.1
+- Completing IN transaction on 14.1, NAK
+- Starting IN transaction on 14.1
+- Completing IN transaction on 14.1, NAK
+- Starting IN transaction on 14.1
+- Completing IN transaction on 14.1, NAK
++ Starting IN transaction on 14.2
++ Completing IN transaction on 14.1, NAK
++ Completing IN transaction on 14.2, NAK
++ Starting IN transaction on 14.1
++ Starting IN transaction on 14.2
++ Completing IN transaction on 14.1, NAK
++ Completing IN transaction on 14.2, NAK
++ Starting IN transaction on 14.1
++ Starting IN transaction on 14.2
++ Completing IN transaction on 14.1, NAK
++ Completing IN transaction on 14.2, NAK
++ Starting IN transaction on 14.1
++ Starting IN transaction on 14.2
++ Completing IN transaction on 14.1, NAK
++ Completing IN transaction on 14.2, NAK
+Expanding traffic-interleaved view, row 19: Completing IN transaction on 14.2, NAK
+At traffic-interleaved row 20:
++ SPLIT packet completing low speed interrupt transaction on hub 12 port 2
++ IN packet on 14.2, CRC 19
++ NAK packet
+Expanding traffic-interleaved view, row 17: Starting IN transaction on 14.2
+At traffic-interleaved row 18:
++ SPLIT packet starting low speed interrupt transaction on hub 12 port 2
++ IN packet on 14.2, CRC 19
+Expanding traffic-interleaved view, row 12: Starting IN transaction on 14.1
+At traffic-interleaved row 13:
++ SPLIT packet starting low speed interrupt transaction on hub 12 port 2
++ IN packet on 14.1, CRC 0A
+Expanding traffic-interleaved view, row 9: Starting IN transaction on 14.2
+At traffic-interleaved row 10:
++ SPLIT packet starting low speed interrupt transaction on hub 12 port 2
++ IN packet on 14.2, CRC 19
+Collapsing traffic-interleaved view, row 4: Polling 4 times for interrupt transfer on endpoint 14.2 IN
+At traffic-interleaved row 26:
+- SPLIT packet completing low speed interrupt transaction on hub 12 port 2
+- IN packet on 14.2, CRC 19
+- NAK packet
+At traffic-interleaved row 22:
+- SPLIT packet starting low speed interrupt transaction on hub 12 port 2
+- IN packet on 14.2, CRC 19
+At traffic-interleaved row 10:
+- SPLIT packet starting low speed interrupt transaction on hub 12 port 2
+- IN packet on 14.2, CRC 19
+At traffic-interleaved row 5:
+- Starting IN transaction on 14.2
+- Completing IN transaction on 14.1, NAK
+- Completing IN transaction on 14.2, NAK
+- Starting IN transaction on 14.1
+- Starting IN transaction on 14.2
+- Completing IN transaction on 14.1, NAK
+- Completing IN transaction on 14.2, NAK
+- Starting IN transaction on 14.1
+- SPLIT packet starting low speed interrupt transaction on hub 12 port 2
+- IN packet on 14.1, CRC 0A
+- Starting IN transaction on 14.2
+- Completing IN transaction on 14.1, NAK
+- Completing IN transaction on 14.2, NAK
+- Starting IN transaction on 14.1
+- Starting IN transaction on 14.2
+- Completing IN transaction on 14.1, NAK
+- Completing IN transaction on 14.2, NAK
++ Completing IN transaction on 14.1, NAK
++ Starting IN transaction on 14.1
++ Completing IN transaction on 14.1, NAK
++ Starting IN transaction on 14.1
++ SPLIT packet starting low speed interrupt transaction on hub 12 port 2
++ IN packet on 14.1, CRC 0A
++ Completing IN transaction on 14.1, NAK
++ Starting IN transaction on 14.1
++ Completing IN transaction on 14.1, NAK
+Collapsing traffic-interleaved view, row 0: Polling 4 times for interrupt transfer on endpoint 14.1 IN
+At traffic-interleaved row 9:
+- SPLIT packet starting low speed interrupt transaction on hub 12 port 2
+- IN packet on 14.1, CRC 0A
+At traffic-interleaved row 2:
+- SPLIT packet starting low speed interrupt transaction on hub 12 port 2
+- IN packet on 14.1, CRC 0A
+At traffic-interleaved row 1:
+- Starting IN transaction on 14.1
+- Polling 4 times for interrupt transfer on endpoint 14.2 IN
+- Completing IN transaction on 14.1, NAK
+- Starting IN transaction on 14.1
+- Completing IN transaction on 14.1, NAK
+- Starting IN transaction on 14.1
+- Completing IN transaction on 14.1, NAK
+- Starting IN transaction on 14.1
+- Completing IN transaction on 14.1, NAK
++ Polling 4 times for interrupt transfer on endpoint 14.2 IN
+Expanding traffic-interleaved view, row 0: Polling 4 times for interrupt transfer on endpoint 14.1 IN
+At traffic-interleaved row 1:
+- Polling 4 times for interrupt transfer on endpoint 14.2 IN
++ Starting IN transaction on 14.1
++ Polling 4 times for interrupt transfer on endpoint 14.2 IN
++ Completing IN transaction on 14.1, NAK
++ Starting IN transaction on 14.1
++ Completing IN transaction on 14.1, NAK
++ Starting IN transaction on 14.1
++ Completing IN transaction on 14.1, NAK
++ Starting IN transaction on 14.1
++ Completing IN transaction on 14.1, NAK
+Expanding traffic-interleaved view, row 3: Completing IN transaction on 14.1, NAK
+At traffic-interleaved row 4:
++ SPLIT packet completing low speed interrupt transaction on hub 12 port 2
++ IN packet on 14.1, CRC 0A
++ NAK packet
+Expanding traffic-interleaved view, row 2: Polling 4 times for interrupt transfer on endpoint 14.2 IN
+At traffic-interleaved row 3:
+- Completing IN transaction on 14.1, NAK
+- SPLIT packet completing low speed interrupt transaction on hub 12 port 2
+- IN packet on 14.1, CRC 0A
+- NAK packet
+- Starting IN transaction on 14.1
+- Completing IN transaction on 14.1, NAK
+- Starting IN transaction on 14.1
+- Completing IN transaction on 14.1, NAK
+- Starting IN transaction on 14.1
+- Completing IN transaction on 14.1, NAK
++ Starting IN transaction on 14.2
++ Completing IN transaction on 14.1, NAK
++ SPLIT packet completing low speed interrupt transaction on hub 12 port 2
++ IN packet on 14.1, CRC 0A
++ NAK packet
++ Completing IN transaction on 14.2, NAK
++ Starting IN transaction on 14.1
++ Starting IN transaction on 14.2
++ Completing IN transaction on 14.1, NAK
++ Completing IN transaction on 14.2, NAK
++ Starting IN transaction on 14.1
++ Starting IN transaction on 14.2
++ Completing IN transaction on 14.1, NAK
++ Completing IN transaction on 14.2, NAK
++ Starting IN transaction on 14.1
++ Starting IN transaction on 14.2
++ Completing IN transaction on 14.1, NAK
++ Completing IN transaction on 14.2, NAK

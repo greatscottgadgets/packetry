@@ -27,6 +27,7 @@ use num_enum::{IntoPrimitive, FromPrimitive};
 use derive_more::{From, Into, Display};
 use usb_ids::FromId;
 
+use crate::database::CounterSet;
 use crate::util::{
     dump::Dump,
     vec_map::VecMap,
@@ -167,8 +168,8 @@ macro_rules! byte_type {
                 self.0.to_string().dump(dest)
             }
 
-            fn restore(src: &Path) -> Result<Self, Error> {
-                Ok(Self(u8::from_str(&String::restore(src)?)?))
+            fn restore(db: &mut CounterSet, src: &Path) -> Result<Self, Error> {
+                Ok(Self(u8::from_str(&String::restore(db, src)?)?))
             }
         }
     }
@@ -292,8 +293,8 @@ impl Dump for EndpointType {
         self.to_string().dump(dest)
     }
 
-    fn restore(src: &Path) -> Result<Self, Error> {
-        Self::from_str(&String::restore(src)?)
+    fn restore(db: &mut CounterSet, src: &Path) -> Result<Self, Error> {
+        Self::from_str(&String::restore(db, src)?)
     }
 }
 
@@ -764,7 +765,7 @@ impl Dump for DeviceDescriptor {
         Ok(())
     }
 
-    fn restore(src: &Path) -> Result<Self, Error> {
+    fn restore(_db: &mut CounterSet, src: &Path) -> Result<Self, Error> {
         let mut buf = vec![0; std::mem::size_of::<DeviceDescriptor>()];
         let mut file = File::open(src)?;
         file.read_exact(&mut buf)?;
@@ -1231,7 +1232,7 @@ impl Dump for Configuration {
         Ok(())
     }
 
-    fn restore(src: &Path) -> Result<Self, Error> {
+    fn restore(_db: &mut CounterSet, src: &Path) -> Result<Self, Error> {
         let mut bytes = Vec::new();
         let mut file = File::open(src)?;
         file.read_to_end(&mut bytes)?;
@@ -1387,7 +1388,7 @@ impl Dump for UTF16ByteVec {
         Ok(())
     }
 
-    fn restore(src: &Path) -> Result<Self, Error> {
+    fn restore(_db: &mut CounterSet, src: &Path) -> Result<Self, Error> {
         let mut vec = Vec::new();
         let mut file = File::open(src)?;
         file.read_to_end(&mut vec)?;
