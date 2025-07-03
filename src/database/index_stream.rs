@@ -9,12 +9,14 @@ use std::ops::Range;
 use anyhow::Error;
 
 use crate::database::{
+    counter::CounterSet,
     stream::MIN_BLOCK,
     data_stream::{
         data_stream,
         DataReader,
         DataWriter,
-        DataIterator
+        DataIterator,
+        DataReaderOps,
     },
 };
 use crate::util::{dump::{Dump, restore}, id::Id, fmt_count, fmt_size};
@@ -46,8 +48,10 @@ type IndexPair<P, V> = (IndexWriter<P, V>, IndexReader<P, V>);
 ///
 /// Returns a unique writer and a cloneable reader.
 ///
-pub fn index_stream<P, V>() -> Result<IndexPair<P, V>, Error> {
-    let (data_writer, data_reader) = data_stream()?;
+pub fn index_stream<P, V>(db: &mut CounterSet)
+    -> Result<IndexPair<P, V>, Error>
+{
+    let (data_writer, data_reader) = data_stream(db)?;
     let writer = IndexWriter {
         marker: PhantomData,
         data_writer,
@@ -301,10 +305,12 @@ impl<P, V, const S: usize> Dump for IndexReader<P, V, S> {
         self.data_reader.dump(dest)
     }
 
-    fn restore(src: &std::path::Path) -> Result<Self, anyhow::Error> {
+    fn restore(db: &mut CounterSet, src: &std::path::Path)
+        -> Result<Self, anyhow::Error>
+    {
         Ok(IndexReader {
             marker: PhantomData,
-            data_reader: restore(src)?
+            data_reader: restore(db, src)?
         })
     }
 }
@@ -315,7 +321,8 @@ mod tests {
 
     #[test]
     fn test_index_stream() {
-        let (mut writer, mut reader) = index_stream().unwrap();
+        let mut db = CounterSet::new();
+        let (mut writer, mut reader) = index_stream(&mut db).unwrap();
         let mut expected = Vec::<Id<u8>>::new();
         let mut x = 10;
         let n = 4321;

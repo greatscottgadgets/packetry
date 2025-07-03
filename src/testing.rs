@@ -5,11 +5,14 @@ use crate::backend::cynthion::{CynthionDevice, CynthionHandle, VID_PID};
 use crate::capture::{
     create_capture,
     CaptureReader,
+    CaptureReaderOps,
     DeviceId,
     EndpointId,
     EndpointGroupId,
+    EndpointReaderOps,
     PacketId,
 };
+use crate::database::CompactReaderOps;
 use crate::decoder::Decoder;
 use crate::file::{GenericSaver, PcapSaver};
 
@@ -143,13 +146,15 @@ fn test(save_capture: bool,
         let endpoint_id = EndpointId::from(1);
         let ep_group_id = EndpointGroupId::from(0);
         let ep_traf = reader.endpoint_traffic(endpoint_id)?;
+        let ep_transactions = ep_traf.transaction_ids().len();
         let ep_transaction_ids = ep_traf
-            .group_index
-            .target_range(ep_group_id, ep_traf.transaction_ids.len())?;
+            .group_index()
+            .target_range(ep_group_id, ep_transactions)?;
         let mut sof_count = 0;
         let mut last = None;
         let mut gaps = Vec::new();
-        for transaction_id in ep_traf.transaction_ids
+        for transaction_id in ep_traf
+            .transaction_ids()
             .get_range(&ep_transaction_ids)?
         {
             let range = reader.transaction_index
@@ -244,9 +249,10 @@ fn bytes_on_endpoint(reader: &mut CaptureReader) -> Result<Vec<u8>, Error> {
     // We're looking for the first and only transfer on the endpoint.
     let ep_group_id = EndpointGroupId::from(0);
     let ep_traf = reader.endpoint_traffic(endpoint_id)?;
+    let ep_transactions = ep_traf.transaction_ids().len();
     let ep_transaction_ids = ep_traf
-        .group_index
-        .target_range(ep_group_id, ep_traf.transaction_ids.len())?;
+        .group_index()
+        .target_range(ep_group_id, ep_transactions)?;
     let data_range = ep_traf.transfer_data_range(&ep_transaction_ids)?;
     let data_length = ep_traf
         .transfer_data_length(&data_range)?
