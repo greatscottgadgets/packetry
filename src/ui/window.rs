@@ -7,6 +7,7 @@ use anyhow::Error;
 use gtk::{
     self,
     prelude::*,
+    subclass::prelude::*,
     glib,
     gio::{
         ActionEntry,
@@ -20,6 +21,7 @@ use gtk::{
     ApplicationWindow,
     MenuButton,
     Orientation,
+    Paned,
     Stack,
     StackSwitcher,
     Widget,
@@ -62,6 +64,13 @@ impl Default for PacketryWindow {
     fn default() -> Self {
         glib::Object::new::<PacketryWindow>()
     }
+}
+
+#[derive(Default)]
+pub struct Panes {
+    initialised: bool,
+    vertical: Paned,
+    horizontal: Paned,
 }
 
 macro_rules! button_action {
@@ -193,8 +202,6 @@ impl PacketryWindow {
         for mode in TRAFFIC_MODES {
             let window = gtk::ScrolledWindow::builder()
                 .hscrollbar_policy(gtk::PolicyType::Automatic)
-                .min_content_height(480)
-                .min_content_width(640)
                 .build();
             traffic_windows
                 .insert(mode, window.clone());
@@ -217,8 +224,6 @@ impl PacketryWindow {
 
         let device_window = gtk::ScrolledWindow::builder()
             .hscrollbar_policy(gtk::PolicyType::Automatic)
-            .min_content_height(480)
-            .min_content_width(240)
             .build();
 
         let detail_text = gtk::TextBuffer::new(None);
@@ -232,8 +237,6 @@ impl PacketryWindow {
 
         let detail_window = gtk::ScrolledWindow::builder()
             .hscrollbar_policy(gtk::PolicyType::Automatic)
-            .min_content_width(640)
-            .min_content_height(120)
             .child(&detail_view)
             .build();
 
@@ -252,6 +255,14 @@ impl PacketryWindow {
             .end_child(&detail_window)
             .hexpand(true)
             .build();
+
+        window.imp().panes.replace(
+            Panes {
+                initialised: false,
+                vertical: vertical_panes.clone(),
+                horizontal: horizontal_panes.clone(),
+            }
+        );
 
         let separator = gtk::Separator::new(Orientation::Horizontal);
 
@@ -324,16 +335,20 @@ impl PacketryWindow {
 
 /// The internal implementation module.
 mod imp {
+    use std::cell::RefCell;
     use gtk::{
         self,
         subclass::prelude::*,
         glib,
         ApplicationWindow,
     };
+    use super::Panes;
 
     /// The inner type to be used in the GObject type system.
     #[derive(Default)]
-    pub struct PacketryWindow {}
+    pub struct PacketryWindow {
+        pub panes: RefCell<Panes>,
+    }
 
     #[glib::object_subclass]
     impl ObjectSubclass for PacketryWindow {
@@ -344,7 +359,18 @@ mod imp {
 
     impl ObjectImpl for PacketryWindow {}
 
-    impl WidgetImpl for PacketryWindow {}
+    impl WidgetImpl for PacketryWindow {
+        // Set the traffic window to 3/4 of initial height and width.
+        fn size_allocate(&self, width: i32, height: i32, baseline: i32) {
+            self.parent_size_allocate(width, height, baseline);
+            let mut panes = self.panes.borrow_mut();
+            if !panes.initialised {
+                panes.vertical.set_position(3 * height / 4);
+                panes.horizontal.set_position(3 * width / 4);
+                panes.initialised = true;
+            }
+        }
+    }
 
     impl WindowImpl for PacketryWindow {}
 
