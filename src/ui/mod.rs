@@ -49,6 +49,7 @@ use gtk::{
     ColumnView,
     ColumnViewColumn,
     MessageType,
+    Paned,
     PopoverMenu,
     ProgressBar,
     ResponseType,
@@ -59,7 +60,6 @@ use gtk::{
     StringList,
     TextBuffer,
     TextView,
-    Orientation,
 };
 
 #[cfg(not(test))]
@@ -177,37 +177,22 @@ struct DeviceSelector {
     dev_dropdown: DropDown,
     speed_dropdown: DropDown,
     change_handler: Option<SignalHandlerId>,
-    container: gtk::Box,
 }
 
 impl DeviceSelector {
-    fn new() -> Result<Self, Error> {
-        let selector = DeviceSelector {
+    fn new(dev_dropdown: DropDown, speed_dropdown: DropDown)
+        -> Result<Self, Error>
+    {
+        dev_dropdown.set_model(Some(&StringList::new(&[])));
+        speed_dropdown.set_model(Some(&StringList::new(&[])));
+        Ok(DeviceSelector {
             devices: vec![],
             dev_strings: vec![],
             dev_speeds: vec![],
-            dev_dropdown: DropDown::from_strings(&[]),
-            speed_dropdown: DropDown::from_strings(&[]),
+            dev_dropdown,
+            speed_dropdown,
             change_handler: None,
-            container: gtk::Box::builder()
-                .orientation(Orientation::Horizontal)
-                .build()
-        };
-        let device_label = Label::builder()
-            .label("Device: ")
-            .margin_start(2)
-            .margin_end(2)
-            .build();
-        let speed_label = Label::builder()
-            .label(" Speed: ")
-            .margin_start(2)
-            .margin_end(2)
-            .build();
-        selector.container.append(&device_label);
-        selector.container.append(&selector.dev_dropdown);
-        selector.container.append(&speed_label);
-        selector.container.append(&selector.speed_dropdown);
-        Ok(selector)
+        })
     }
 
     fn current_device(&self) -> Option<&ProbeResult> {
@@ -336,17 +321,12 @@ struct DeviceWarning {
 }
 
 impl DeviceWarning {
-    fn new() -> DeviceWarning {
-        let info_bar = InfoBar::new();
-        info_bar.set_show_close_button(true);
+    fn new(info_bar: InfoBar, label: Label) -> DeviceWarning {
         info_bar.connect_response(|info_bar, response| {
             if response == ResponseType::Close {
                 info_bar.set_revealed(false);
             }
         });
-        let label = Label::new(None);
-        label.set_wrap(true);
-        info_bar.add_child(&label);
         DeviceWarning {
             info_bar,
             label,
@@ -380,7 +360,7 @@ pub struct UserInterface {
     progress_bar: ProgressBar,
     separator: Separator,
     vbox: gtk::Box,
-    vertical_panes: gtk::Paned,
+    vertical_panes: Paned,
     open_button: Button,
     save_button: Button,
     scan_button: Button,
