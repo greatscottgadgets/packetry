@@ -20,6 +20,7 @@ use super::{
     BackendHandle,
     PacketIterator,
     PacketResult,
+    PowerConfig,
     Speed,
     TimestampedPacket,
     TransferQueue,
@@ -89,6 +90,18 @@ impl BackendHandle for Ice40UsbtraceHandle {
 
     fn metadata(&self) -> &CaptureMetadata {
         &self.metadata
+    }
+
+    fn power_sources(&self) -> Option<&[&str]> {
+        None
+    }
+
+    fn power_config(&self) -> Option<PowerConfig> {
+        None
+    }
+
+    fn set_power_config(&mut self, _config: PowerConfig) -> Result<(), Error> {
+        Ok(())
     }
 
     fn begin_capture(
