@@ -117,6 +117,7 @@ pub fn probe(device_info: DeviceInfo) -> Result<Box<dyn BackendDevice>, Error> {
 impl CynthionDevice {
     /// Check whether a Cynthion device has an accessible analyzer interface.
     pub fn new(device_info: DeviceInfo) -> Result<CynthionDevice, Error> {
+        use Speed::*;
 
         // Check we can open the device.
         let device = device_info
@@ -166,6 +167,18 @@ impl CynthionDevice {
                         .context("Failed to select alternate setting")?;
                 }
 
+                // Fetch the available speeds.
+                let mut speeds = Vec::new();
+                let speed_byte = read_byte(&interface, 2)?;
+                for speed in [Auto, High, Full, Low] {
+                    if speed_byte & speed.mask() != 0 {
+                        speeds.push(speed);
+                    }
+                }
+
+                // Fetch the minor protocol version.
+                let protocol_minor = read_byte(&interface, 4).unwrap_or(0);
+
                 let metadata = CaptureMetadata {
                     iface_desc: Some("Cynthion USB Analyzer".to_string()),
                     iface_hardware: Some({
@@ -175,16 +188,10 @@ impl CynthionDevice {
                         format!("Cynthion r{major}.{minor}")
                     }),
                     iface_os: Some(
-                        format!("USB Analyzer v{protocol}")),
+                        format!("USB Analyzer v{protocol}.{protocol_minor}")),
                     iface_snaplen: Some(NonZeroU32::new(0xFFFF).unwrap()),
                     .. Default::default()
                 };
-
-                // Fetch the available speeds.
-                let handle = CynthionHandle { interface, metadata };
-                let speeds = handle
-                    .speeds()
-                    .context("Failed to fetch available speeds")?;
 
                 // Now we have a usable device.
                 return Ok(
@@ -193,7 +200,7 @@ impl CynthionDevice {
                         interface_number,
                         alt_setting_number,
                         speeds,
-                        metadata: handle.metadata,
+                        metadata,
                     }
                 )
             }
@@ -270,33 +277,6 @@ impl BackendHandle for CynthionHandle {
 }
 
 impl CynthionHandle {
-
-    fn speeds(&self) -> Result<Vec<Speed>, Error> {
-        use Speed::*;
-        let control = Control {
-            control_type: ControlType::Vendor,
-            recipient: Recipient::Interface,
-            request: 2,
-            value: 0,
-            index: self.interface.interface_number() as u16,
-        };
-        let mut buf = [0; 64];
-        let timeout = Duration::from_secs(1);
-        let size = self.interface
-            .control_in_blocking(control, &mut buf, timeout)
-            .context("Failed retrieving supported speeds from device")?;
-        if size != 1 {
-            bail!("Expected 1-byte response to speed request, got {size}");
-        }
-        let mut speeds = Vec::new();
-        for speed in [Auto, High, Full, Low] {
-            if buf[0] & speed.mask() != 0 {
-                speeds.push(speed);
-            }
-        }
-        Ok(speeds)
-    }
-
     fn start_capture (&mut self, speed: Speed) -> Result<(), Error> {
         self.write_request(1, State::new(true, speed).0)
     }
@@ -329,6 +309,26 @@ impl CynthionHandle {
         Ok(())
     }
 }
+
+fn read_byte(interface: &Interface, request: u8) -> Result<u8, Error> {
+    let control = Control {
+        control_type: ControlType::Vendor,
+        recipient: Recipient::Interface,
+        request,
+        value: 0,
+        index: interface.interface_number() as u16,
+    };
+    let mut buf = [0; 64];
+    let timeout = Duration::from_secs(1);
+    let size = interface
+        .control_in_blocking(control, &mut buf, timeout)
+        .context("Failed retrieving supported speeds from device")?;
+    if size != 1 {
+        bail!("Expected 1-byte response, got {size}");
+    }
+    Ok(buf[0])
+}
+
 
 impl PacketIterator for CynthionStream {}
 
