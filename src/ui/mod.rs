@@ -146,8 +146,6 @@ static UPDATE_INTERVAL: Duration = Duration::from_millis(10);
 static UPDATE_LOCK: Mutex<()> = Mutex::new(());
 
 thread_local!(
-    static WINDOW: RefCell<Option<PacketryWindow>> =
-        const { RefCell::new(None) };
     static UI: RefCell<Option<UserInterface>> =
         const { RefCell::new(None) };
 );
@@ -346,6 +344,7 @@ impl DeviceWarning {
 }
 
 pub struct UserInterface {
+    window: PacketryWindow,
     pub capture: CaptureReader,
     selector: DeviceSelector,
     file_name: Option<String>,
@@ -387,11 +386,10 @@ pub fn with_ui<F>(f: F) -> Result<(), Error>
 
 pub fn activate(application: &Application) -> Result<(), Error> {
 
-    let (window, ui) = PacketryWindow::setup(application)?;
+    let ui = PacketryWindow::setup(application)?;
 
     #[cfg(not(test))]
-    window.show();
-    WINDOW.with(|win_opt| win_opt.replace(Some(window.clone())));
+    ui.window.show();
 
     UI.with(|cell| {
         cell.borrow_mut().replace(ui);
@@ -755,47 +753,45 @@ fn choose_file<F>(
     where F: Fn(gio::File) -> Result<(), Error> + 'static
 {
     use FileAction::*;
-    let chooser = WINDOW.with(|cell| {
-        let borrow = cell.borrow();
-        let window = borrow.as_ref();
-        match action {
+    with_ui(|ui| {
+        let chooser = match action {
             Load => gtk::FileChooserDialog::new(
                 Some(&format!("Open {description}")),
-                window,
+                Some(&ui.window),
                 gtk::FileChooserAction::Open,
                 &[("Open", gtk::ResponseType::Accept)]
             ),
             Save => gtk::FileChooserDialog::new(
                 Some(&format!("Save {description}")),
-                window,
+                Some(&ui.window),
                 gtk::FileChooserAction::Save,
                 &[("Save", gtk::ResponseType::Accept)]
             ),
-        }
-    });
-    let all = gtk::FileFilter::new();
-    let pcap = gtk::FileFilter::new();
-    let pcapng = gtk::FileFilter::new();
-    all.add_suffix("pcap");
-    all.add_suffix("pcapng");
-    pcap.add_suffix("pcap");
-    pcapng.add_suffix("pcapng");
-    all.set_name(Some("All captures (*.pcap, *.pcapng)"));
-    pcap.set_name(Some("pcap (*.pcap)"));
-    pcapng.set_name(Some("pcap-NG (*.pcapng)"));
-    chooser.add_filter(&all);
-    chooser.add_filter(&pcap);
-    chooser.add_filter(&pcapng);
-    chooser.connect_response(move |dialog, response| {
-        if response == gtk::ResponseType::Accept {
-            if let Some(file) = dialog.file() {
-                display_error(handler(file));
+        };
+        let all = gtk::FileFilter::new();
+        let pcap = gtk::FileFilter::new();
+        let pcapng = gtk::FileFilter::new();
+        all.add_suffix("pcap");
+        all.add_suffix("pcapng");
+        pcap.add_suffix("pcap");
+        pcapng.add_suffix("pcapng");
+        all.set_name(Some("All captures (*.pcap, *.pcapng)"));
+        pcap.set_name(Some("pcap (*.pcap)"));
+        pcapng.set_name(Some("pcap-NG (*.pcapng)"));
+        chooser.add_filter(&all);
+        chooser.add_filter(&pcap);
+        chooser.add_filter(&pcapng);
+        chooser.connect_response(move |dialog, response| {
+            if response == gtk::ResponseType::Accept {
+                if let Some(file) = dialog.file() {
+                    display_error(handler(file));
+                }
+                dialog.destroy();
             }
-            dialog.destroy();
-        }
-    });
-    chooser.show();
-    Ok(())
+        });
+        chooser.show();
+        Ok(())
+    })
 }
 
 fn choose_capture_file(action: FileAction) -> Result<(), Error> {
@@ -1364,12 +1360,9 @@ fn show_metadata() -> Result<(), Error> {
             .margin_bottom(5)
             .build();
         grid.attach(&comment_view, 0, current_row, 2, 1);
-        Ok(())
-    })?;
-    WINDOW.with(|win| {
         let dialog = Dialog::with_buttons(
             Some("Capture Metadata"),
-            win.borrow().as_ref(),
+            Some(&ui.window),
             DialogFlags::DESTROY_WITH_PARENT,
             &[
                 ("Close", ResponseType::Close),
@@ -1397,8 +1390,8 @@ fn show_metadata() -> Result<(), Error> {
             dialog.destroy();
         });
         dialog.present();
-    });
-    Ok(())
+        Ok(())
+    })
 }
 
 fn show_about() -> Result<(), Error> {
@@ -1437,18 +1430,18 @@ pub fn display_error(result: Result<(), Error>) {
             write!(message, "\n\nBacktrace:\n{backtrace}").unwrap();
         }
         gtk::glib::idle_add_once(move || {
-            WINDOW.with(|win_opt| {
-                match win_opt.borrow().as_ref() {
+            UI.with(|ui_opt| {
+                match ui_opt.borrow().as_ref() {
                     None => println!("{message}"),
-                    Some(window) => {
+                    Some(ui) => {
                         let dialog = MessageDialog::new(
-                            Some(window),
+                            Some(&ui.window),
                             DialogFlags::MODAL,
                             MessageType::Error,
                             ButtonsType::Close,
                             &message
                         );
-                        dialog.set_transient_for(Some(window));
+                        dialog.set_transient_for(Some(&ui.window));
                         dialog.set_modal(true);
                         dialog.connect_response(
                             move |dialog, _| dialog.destroy());

@@ -78,8 +78,7 @@ macro_rules! button_action {
 }
 
 impl PacketryWindow {
-    pub fn setup(application: &Application)
-        -> Result<(PacketryWindow, UserInterface), Error>
+    pub fn setup(application: &Application) -> Result<UserInterface, Error>
     {
         use FileAction::*;
         use TrafficViewMode::*;
@@ -179,6 +178,7 @@ impl PacketryWindow {
         let (_, capture) = create_capture()?;
 
         let ui = UserInterface {
+            window,
             #[cfg(any(test, feature="record-ui-test"))]
             recording: Rc::new(RefCell::new(
                 Recording::new(capture.clone()))),
@@ -207,7 +207,7 @@ impl PacketryWindow {
             metadata_action,
         };
 
-        Ok((window, ui))
+        Ok(ui)
     }
 }
 
