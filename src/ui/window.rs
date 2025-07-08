@@ -27,6 +27,7 @@ use gtk::{
 use crate::capture::create_capture;
 use crate::item::TrafficViewMode;
 use crate::ui::{
+    power::PowerControl,
     DeviceSelector,
     DeviceWarning,
     FileAction,
@@ -155,6 +156,16 @@ impl PacketryWindow {
         );
         warning.update(selector.device_unusable());
 
+        let power = PowerControl {
+            action_bar: window.imp().action_bar.clone(),
+            controls: window.imp().power_controls.clone(),
+            switch: window.imp().power_switch.clone(),
+            source_dropdown: window.imp().power_source_dropdown.clone(),
+            source_strings: window.imp().power_source_strings.clone(),
+            start_on: window.imp().power_start_on.clone(),
+            stop_off: window.imp().power_stop_off.clone(),
+        };
+
         let mut traffic_windows = BTreeMap::new();
         traffic_windows.insert(Hierarchical, window.imp().hierarchical.clone());
         traffic_windows.insert(Transactions, window.imp().transactions.clone());
@@ -184,6 +195,7 @@ impl PacketryWindow {
                 Recording::new(capture.clone()))),
             capture,
             selector,
+            power,
             file_name: None,
             stop_state: StopState::Disabled,
             traffic_windows,
@@ -218,8 +230,10 @@ mod imp {
         self,
         subclass::prelude::*,
         glib::{self, subclass::InitializingObject},
+        ActionBar,
         ApplicationWindow,
         Button,
+        CheckButton,
         CompositeTemplate,
         DropDown,
         InfoBar,
@@ -227,6 +241,8 @@ mod imp {
         MenuButton,
         Paned,
         ScrolledWindow,
+        StringList,
+        Switch,
         TextBuffer,
     };
 
@@ -235,6 +251,8 @@ mod imp {
     #[template(file="packetry.ui")]
     pub struct PacketryWindow {
         panes_initialised: Cell<bool>,
+        #[template_child]
+        pub action_bar: TemplateChild<ActionBar>,
         #[template_child]
         pub open_button: TemplateChild<Button>,
         #[template_child]
@@ -273,6 +291,18 @@ mod imp {
         pub status_label: TemplateChild<Label>,
         #[template_child]
         pub vbox: TemplateChild<gtk::Box>,
+        #[template_child]
+        pub power_controls: TemplateChild<gtk::Box>,
+        #[template_child]
+        pub power_switch: TemplateChild<Switch>,
+        #[template_child]
+        pub power_source_dropdown: TemplateChild<DropDown>,
+        #[template_child]
+        pub power_source_strings: TemplateChild<StringList>,
+        #[template_child]
+        pub power_start_on: TemplateChild<CheckButton>,
+        #[template_child]
+        pub power_stop_off: TemplateChild<CheckButton>,
     }
 
     #[glib::object_subclass]

@@ -143,6 +143,14 @@ impl DeviceSelector {
         Ok(())
     }
 
+    pub fn handle(&mut self) -> Option<&mut Box<dyn BackendHandle>> {
+        if let Some(Ok(ActiveDevice { handle, .. })) = &mut self.active {
+            Some(handle)
+        } else {
+            None
+        }
+    }
+
     pub fn handle_and_speed(&self)
         -> Result<(Box<dyn BackendHandle>, Speed), Error>
     {
