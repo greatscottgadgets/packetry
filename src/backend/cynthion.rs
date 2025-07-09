@@ -3,8 +3,9 @@
 use std::cmp::Ordering;
 use std::collections::VecDeque;
 use std::num::NonZeroU32;
+use std::ops::Deref;
 use std::time::Duration;
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc, Mutex};
 
 use anyhow::{Context as ErrorContext, Error, bail};
 use nusb::{
@@ -89,7 +90,8 @@ pub struct CynthionDevice {
 /// A handle to an open Cynthion device.
 #[derive(Clone)]
 pub struct CynthionHandle {
-    interface: Interface,
+    interface: Arc<Mutex<Interface>>,
+    interface_number: u8,
     metadata: CaptureMetadata,
 }
 
@@ -217,7 +219,8 @@ impl CynthionDevice {
             interface.set_alt_setting(self.alt_setting_number)?;
         }
         Ok(CynthionHandle {
-            interface,
+            interface: Arc::new(Mutex::new(interface)),
+            interface_number: self.interface_number,
             metadata: self.metadata.clone()
         })
     }
@@ -246,7 +249,7 @@ impl BackendHandle for CynthionHandle {
     {
         self.start_capture(speed)?;
 
-        Ok(TransferQueue::new(&self.interface, data_tx,
+        Ok(TransferQueue::new(self.interface().deref(), data_tx,
             ENDPOINT, NUM_TRANSFERS, READ_LEN))
     }
 
@@ -277,6 +280,10 @@ impl BackendHandle for CynthionHandle {
 }
 
 impl CynthionHandle {
+    fn interface(&self) -> impl Deref<Target=Interface> + use<'_> {
+        self.interface.lock().unwrap()
+    }
+
     fn start_capture (&mut self, speed: Speed) -> Result<(), Error> {
         self.write_request(1, State::new(true, speed).0)
     }
@@ -299,11 +306,12 @@ impl CynthionHandle {
             recipient: Recipient::Interface,
             request,
             value: u16::from(value),
-            index: self.interface.interface_number() as u16,
+            index: self.interface_number as u16,
         };
         let data = &[];
         let timeout = Duration::from_secs(1);
-        self.interface
+        self
+            .interface()
             .control_out_blocking(control, data, timeout)
             .context("Write request failed")?;
         Ok(())
