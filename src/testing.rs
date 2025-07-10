@@ -61,13 +61,12 @@ fn test(save_capture: bool,
         .context("Failed to list USB devices")?
         .filter(|info| (info.vendor_id(), info.product_id()) == VID_PID)
         .collect::<Vec<_>>();
-    let target_info = match (candidates.len(), candidates.pop()) {
+    let device_info = match (candidates.len(), candidates.pop()) {
         (0, None) => bail!("No Cynthion devices found"),
         (1, Some(info)) => info,
         (..) => bail!("Multiple Cynthion devices found"),
     };
-    let mut analyzer = CynthionDevice::new(target_info)
-        .context("Failed to probe Cynthion device")?
+    let mut analyzer = CynthionDevice { device_info }
         .open()
         .context("Failed to open analyzer")?;
 

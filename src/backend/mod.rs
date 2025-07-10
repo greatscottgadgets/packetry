@@ -63,9 +63,6 @@ pub fn scan() -> Result<Vec<ProbeResult>, Error> {
 pub trait BackendDevice {
     /// Open this device to use it as a generic capture device.
     fn open_as_generic(&self) -> Result<Box<dyn BackendHandle>, Error>;
-
-    /// Which speeds this device supports.
-    fn supported_speeds(&self) -> &[Speed];
 }
 
 /// A timestamped packet.
@@ -85,6 +82,9 @@ pub trait PacketIterator: Iterator<Item=PacketResult> + Send {}
 
 /// A handle to an open capture device.
 pub trait BackendHandle: Send + Sync {
+
+    /// Which speeds this device supports.
+    fn supported_speeds(&self) -> &[Speed];
 
     /// Get metadata about the capture device.
     fn metadata(&self) -> &CaptureMetadata;

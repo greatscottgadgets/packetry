@@ -31,7 +31,7 @@ use gtk::gio::{
     MenuItem,
     SimpleActionGroup
 };
-use gtk::glib::{Object, clone};
+use gtk::glib::{self, Object, clone};
 use gtk::{
     prelude::*,
     AboutDialog,
@@ -208,6 +208,12 @@ pub fn with_ui<F>(f: F) -> Result<(), Error>
 pub fn activate(application: &Application) -> Result<(), Error> {
 
     let ui = PacketryWindow::setup(application)?;
+
+    ui.selector.connect_signals(|| {
+        glib::idle_add_once(||
+            display_error(device_selection_changed())
+        );
+    });
 
     #[cfg(not(test))]
     ui.window.show();
@@ -828,18 +834,18 @@ pub fn rearm() -> Result<(), Error> {
 
 fn detect_hardware() -> Result<(), Error> {
     with_ui(|ui| {
+        ui.capture_button.set_sensitive(false);
+        ui.warning.update(None);
         ui.selector.scan()?;
-        ui.capture_button.set_sensitive(ui.selector.device_available());
-        ui.warning.update(ui.selector.device_unusable());
         Ok(())
     })
 }
 
 fn device_selection_changed() -> Result<(), Error> {
     with_ui(|ui| {
+        ui.selector.open_device()?;
         ui.capture_button.set_sensitive(ui.selector.device_available());
         ui.warning.update(ui.selector.device_unusable());
-        ui.selector.update_speeds();
         Ok(())
     })
 }
@@ -848,7 +854,7 @@ pub fn start_capture() -> Result<(), Error> {
     let writer = reset_capture()?;
 
     with_ui(|ui| {
-        let (device, speed) = ui.selector.open()?;
+        let (device, speed) = ui.selector.handle_and_speed()?;
         let meta = CaptureMetadata {
             application: Some(format!("Packetry {}", version())),
             os: Some(std::env::consts::OS.to_string()),

@@ -80,11 +80,7 @@ impl TestConfig {
 
 /// A Cynthion device attached to the system.
 pub struct CynthionDevice {
-    device_info: DeviceInfo,
-    interface_number: u8,
-    alt_setting_number: u8,
-    speeds: Vec<Speed>,
-    metadata: CaptureMetadata,
+    pub device_info: DeviceInfo,
 }
 
 /// A handle to an open Cynthion device.
@@ -92,6 +88,7 @@ pub struct CynthionDevice {
 pub struct CynthionHandle {
     interface: Arc<Mutex<Interface>>,
     interface_number: u8,
+    speeds: Vec<Speed>,
     metadata: CaptureMetadata,
 }
 
@@ -113,16 +110,16 @@ fn clk_to_ns(clk_cycles: u64) -> u64 {
 
 /// Probe a Cynthion device.
 pub fn probe(device_info: DeviceInfo) -> Result<Box<dyn BackendDevice>, Error> {
-    Ok(Box::new(CynthionDevice::new(device_info)?))
+    Ok(Box::new(CynthionDevice {device_info }))
 }
 
 impl CynthionDevice {
-    /// Check whether a Cynthion device has an accessible analyzer interface.
-    pub fn new(device_info: DeviceInfo) -> Result<CynthionDevice, Error> {
+    /// Open this device.
+    pub fn open(&self) -> Result<CynthionHandle, Error> {
         use Speed::*;
 
         // Check we can open the device.
-        let device = device_info
+        let device = self.device_info
             .open()
             .context("Failed to open device")?;
 
@@ -184,7 +181,7 @@ impl CynthionDevice {
                 let metadata = CaptureMetadata {
                     iface_desc: Some("Cynthion USB Analyzer".to_string()),
                     iface_hardware: Some({
-                        let bcd = device_info.device_version();
+                        let bcd = self.device_info.device_version();
                         let major = bcd >> 8;
                         let minor = bcd as u8;
                         format!("Cynthion r{major}.{minor}")
@@ -196,33 +193,16 @@ impl CynthionDevice {
                 };
 
                 // Now we have a usable device.
-                return Ok(
-                    CynthionDevice {
-                        device_info,
-                        interface_number,
-                        alt_setting_number,
-                        speeds,
-                        metadata,
-                    }
-                )
+                return Ok(CynthionHandle {
+                    interface: Arc::new(Mutex::new(interface)),
+                    interface_number,
+                    speeds,
+                    metadata,
+                })
             }
         }
 
         bail!("No supported analyzer interface found");
-    }
-
-    /// Open this device.
-    pub fn open(&self) -> Result<CynthionHandle, Error> {
-        let device = self.device_info.open()?;
-        let interface = device.claim_interface(self.interface_number)?;
-        if self.alt_setting_number != 0 {
-            interface.set_alt_setting(self.alt_setting_number)?;
-        }
-        Ok(CynthionHandle {
-            interface: Arc::new(Mutex::new(interface)),
-            interface_number: self.interface_number,
-            metadata: self.metadata.clone()
-        })
     }
 }
 
@@ -230,13 +210,13 @@ impl BackendDevice for CynthionDevice {
     fn open_as_generic(&self) -> Result<Box<dyn BackendHandle>, Error> {
         Ok(Box::new(self.open()?))
     }
-
-    fn supported_speeds(&self) -> &[Speed] {
-        &self.speeds
-    }
 }
 
 impl BackendHandle for CynthionHandle {
+    fn supported_speeds(&self) -> &[Speed] {
+        &self.speeds
+    }
+
     fn metadata(&self) -> &CaptureMetadata {
         &self.metadata
     }
