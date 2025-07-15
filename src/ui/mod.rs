@@ -526,7 +526,7 @@ pub fn update_view() -> Result<(), Error> {
                 let devices = cap.devices().len().saturating_sub(1);
                 let endpoints = cap.endpoints().len().saturating_sub(2);
                 let transactions = cap.transaction_index().len();
-                let packets = cap.packet_index().len();
+                let packets = cap.packet_count();
                 (devices, endpoints, transactions, packets)
             },
             CaptureState::Complete => {
@@ -534,7 +534,7 @@ pub fn update_view() -> Result<(), Error> {
                 let devices = cap.devices().len().saturating_sub(1);
                 let endpoints = cap.endpoints().len().saturating_sub(2);
                 let transactions = cap.transaction_index().len();
-                let packets = cap.packet_index().len();
+                let packets = cap.packet_count();
                 (devices, endpoints, transactions, packets)
             },
         };
@@ -696,8 +696,8 @@ fn start_file(action: FileAction, file: gio::File) -> Result<(), Error> {
         ui.show_progress = Some(action);
         ui.file_name = Some(basename.to_string_lossy().to_string());
         ui.snapshot_rx = Some(snapshot_rx);
-        let mut capture = ui.capture.reader.clone();
-        let packet_count = capture.packet_index().len();
+        let capture = ui.capture.reader.clone();
+        let packet_count = capture.packet_count();
         CURRENT.store(0, Ordering::Relaxed);
         TOTAL.store(match action {
             Load => 0,

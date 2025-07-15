@@ -1015,9 +1015,11 @@ pub trait CaptureReaderOps {
         -> Result<Arc<DeviceData>, Error>;
     fn endpoint_traffic(&mut self, endpoint_id: EndpointId)
         -> Result<&mut impl EndpointReaderOps, Error>;
+    fn packet_count(&self) -> u64;
+    fn packet_start(&mut self, id: PacketId) -> Result<PacketByteId, Error>;
+    fn packet_byte_range(&mut self, id: PacketId) -> Result<Range<PacketByteId>, Error>;
+    fn packet_time(&mut self, id: PacketId) -> Result<Timestamp, Error>;
     fn packet_data(&mut self) -> &mut impl DataReaderOps<u8, PACKET_DATA_BLOCK_SIZE>;
-    fn packet_index(&mut self) -> &mut impl CompactReaderOps<PacketId, PacketByteId>;
-    fn packet_times(&mut self) -> &mut impl CompactReaderOps<PacketId, Timestamp>;
     fn transaction_index(&mut self) -> &mut impl CompactReaderOps<TransactionId, PacketId>;
     fn group_index(&mut self) -> &mut impl DataReaderOps<GroupIndexEntry>;
     fn item_index(&mut self) -> &mut impl CompactReaderOps<TrafficItemId, GroupId>;
@@ -1071,10 +1073,7 @@ pub trait CaptureReaderOps {
     {
         let data_packet_id = transaction.data_packet_id
             .context("Transaction has no data packet")?;
-        let total_packet_data = self.packet_data().len();
-        let packet_byte_range = self
-            .packet_index()
-            .target_range(data_packet_id, total_packet_data)?;
+        let packet_byte_range = self.packet_byte_range(data_packet_id)?;
         let data_byte_range =
             packet_byte_range.start + 1 .. packet_byte_range.end - 2;
         self.packet_data().get_range(&data_byte_range)
@@ -1119,30 +1118,21 @@ pub trait CaptureReaderOps {
     fn packet(&mut self, id: PacketId)
         -> Result<Vec<u8>, Error>
     {
-        let total_packet_data = self.packet_data().len();
-        let range = self
-            .packet_index()
-            .target_range(id, total_packet_data)?;
+        let range = self.packet_byte_range(id)?;
         self.packet_data().get_range(&range)
-    }
-
-    fn packet_time(&mut self, id: PacketId)
-        -> Result<Timestamp, Error>
-    {
-        self.packet_times().get(id)
     }
 
     fn packet_pid(&mut self, id: PacketId)
         -> Result<PID, Error>
     {
-        let offset: Id<u8> = self.packet_index().get(id)?;
-        Ok(PID::from(self.packet_data().get(offset)?))
+        let byte_id = self.packet_start(id)?;
+        Ok(PID::from(self.packet_data().get(byte_id)?))
     }
 
     fn transaction(&mut self, id: TransactionId)
         -> Result<Transaction, Error>
     {
-        let total_packets = self.packet_index().len();
+        let total_packets = self.packet_count();
         let packet_id_range = self
             .transaction_index()
             .target_range(id, total_packets)?;
@@ -1175,10 +1165,7 @@ pub trait CaptureReaderOps {
             _ => (None, None)
         };
         let payload_byte_range = if let Some(packet_id) = data_packet_id {
-            let total_packet_data = self.packet_data().len();
-            let packet_byte_range = self
-                .packet_index()
-                .target_range(packet_id, total_packet_data)?;
+            let packet_byte_range = self.packet_byte_range(packet_id)?;
             let pid = self.packet_data().get(packet_byte_range.start)?;
             match PID::from(pid) {
                 DATA0 | DATA1 => Some({
@@ -1534,16 +1521,27 @@ impl CaptureReaderOps for CaptureReader {
         Ok(self.endpoint_readers.get_mut(endpoint_id).unwrap())
     }
 
+    fn packet_count(&self) -> u64 {
+        self.packet_index.len()
+    }
+
+    fn packet_start(&mut self, id: PacketId) -> Result<PacketByteId, Error> {
+        self.packet_index.get(id)
+    }
+
+    fn packet_byte_range(&mut self, id: PacketId)
+        -> Result<Range<PacketByteId>, Error>
+    {
+        let total_packet_data = self.packet_data.len();
+        self.packet_index.target_range(id, total_packet_data)
+    }
+
+    fn packet_time(&mut self, id: PacketId) -> Result<Timestamp, Error> {
+        self.packet_times.get(id)
+    }
+
     fn packet_data(&mut self) -> &mut impl DataReaderOps<u8, PACKET_DATA_BLOCK_SIZE> {
         &mut self.packet_data
-    }
-
-    fn packet_index(&mut self) -> &mut impl CompactReaderOps<PacketId, PacketByteId> {
-        &mut self.packet_index
-    }
-
-    fn packet_times(&mut self) -> &mut impl CompactReaderOps<PacketId, Timestamp> {
-        &mut self.packet_times
     }
 
     fn transaction_index(&mut self) -> &mut impl CompactReaderOps<TransactionId, PacketId> {
@@ -1603,16 +1601,27 @@ impl CaptureReaderOps for CaptureSnapshotReader<'_, '_> {
         }
     }
 
+    fn packet_count(&self) -> u64 {
+        self.packet_index.len()
+    }
+
+    fn packet_start(&mut self, id: PacketId) -> Result<PacketByteId, Error> {
+        self.packet_index.get(id)
+    }
+
+    fn packet_byte_range(&mut self, id: PacketId)
+        -> Result<Range<PacketByteId>, Error>
+    {
+        let total_packet_data = self.packet_data.len();
+        self.packet_index.target_range(id, total_packet_data)
+    }
+
+    fn packet_time(&mut self, id: PacketId) -> Result<Timestamp, Error> {
+        self.packet_times.get(id)
+    }
+
     fn packet_data(&mut self) -> &mut impl DataReaderOps<u8, PACKET_DATA_BLOCK_SIZE> {
         &mut self.packet_data
-    }
-
-    fn packet_index(&mut self) -> &mut impl CompactReaderOps<PacketId, PacketByteId> {
-        &mut self.packet_index
-    }
-
-    fn packet_times(&mut self) -> &mut impl CompactReaderOps<PacketId, Timestamp> {
-        &mut self.packet_times
     }
 
     fn transaction_index(&mut self) -> &mut impl CompactReaderOps<TransactionId, PacketId> {

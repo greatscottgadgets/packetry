@@ -238,7 +238,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                 (completion, match view_mode {
                     Hierarchical => self.item_index().len(),
                     Transactions => self.transaction_index().len(),
-                    Packets => self.packet_index().len(),
+                    Packets => self.packet_count(),
                 })
             },
             Some(TransactionGroup(group_id)) => {
@@ -255,7 +255,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                 }
             },
             Some(Transaction(_, transaction_id)) => {
-                let total_packets = self.packet_index().len();
+                let total_packets = self.packet_count();
                 let packet_count = self
                     .transaction_index()
                     .target_range(*transaction_id, total_packets)?
@@ -400,7 +400,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                 s
             },
             Transaction(group_id_opt, transaction_id) => {
-                let num_packets = self.packet_index().len();
+                let num_packets = self.packet_count();
                 let packet_id_range = self
                     .transaction_index()
                     .target_range(*transaction_id, num_packets)?;
@@ -564,7 +564,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
         }
         let last_packet = match item {
             Packet(_, Some(transaction_id), packet_id) => {
-                let num_packets = self.packet_index().len();
+                let num_packets = self.packet_count();
                 let range = self
                     .transaction_index()
                     .target_range(*transaction_id, num_packets)?;
