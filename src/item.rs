@@ -178,7 +178,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
             None => Ok(match view_mode {
                 Hierarchical => {
                     let item_id = TrafficItemId::from(index);
-                    let group_id = self.item_index().get(item_id)?;
+                    let group_id = self.item_group(item_id)?;
                     TransactionGroup(group_id)
                 },
                 Transactions =>
@@ -237,7 +237,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                     Ongoing
                 };
                 (completion, match view_mode {
-                    Hierarchical => self.item_index().len(),
+                    Hierarchical => self.item_count(),
                     Transactions => self.transaction_count(),
                     Packets => self.packet_count(),
                 })

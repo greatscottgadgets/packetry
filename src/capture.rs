@@ -1025,7 +1025,8 @@ pub trait CaptureReaderOps {
     fn transaction_packet_range(&mut self, id: TransactionId)
         -> Result<Range<PacketId>, Error>;
     fn group_index(&mut self) -> &mut impl DataReaderOps<GroupIndexEntry>;
-    fn item_index(&mut self) -> &mut impl CompactReaderOps<TrafficItemId, GroupId>;
+    fn item_count(&self) -> u64;
+    fn item_group(&mut self, id: TrafficItemId) -> Result<GroupId, Error>;
     fn devices(&mut self) -> &mut impl DataReaderOps<Device>;
     fn endpoints(&mut self) -> &mut impl DataReaderOps<Endpoint>;
     fn endpoint_states(&mut self) -> &mut impl DataReaderOps<u8>;
@@ -1563,8 +1564,12 @@ impl CaptureReaderOps for CaptureReader {
         &mut self.group_index
     }
 
-    fn item_index(&mut self) -> &mut impl CompactReaderOps<TrafficItemId, GroupId> {
-        &mut self.item_index
+    fn item_count(&self) -> u64 {
+        self.item_index.len()
+    }
+
+    fn item_group(&mut self, id: TrafficItemId) -> Result<GroupId, Error> {
+        self.item_index.get(id)
     }
 
     fn devices(&mut self) -> &mut impl DataReaderOps<Device> {
@@ -1654,8 +1659,12 @@ impl CaptureReaderOps for CaptureSnapshotReader<'_, '_> {
         &mut self.group_index
     }
 
-    fn item_index(&mut self) -> &mut impl CompactReaderOps<TrafficItemId, GroupId> {
-        &mut self.item_index
+    fn item_count(&self) -> u64 {
+        self.item_index.len()
+    }
+
+    fn item_group(&mut self, id: TrafficItemId) -> Result<GroupId, Error> {
+        self.item_index.get(id)
     }
 
     fn devices(&mut self) -> &mut impl DataReaderOps<Device> {
