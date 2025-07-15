@@ -525,7 +525,7 @@ pub fn update_view() -> Result<(), Error> {
                 let mut cap = ui.capture.reader.at(snapshot);
                 let devices = cap.devices().len().saturating_sub(1);
                 let endpoints = cap.endpoints().len().saturating_sub(2);
-                let transactions = cap.transaction_index().len();
+                let transactions = cap.transaction_count();
                 let packets = cap.packet_count();
                 (devices, endpoints, transactions, packets)
             },
@@ -533,7 +533,7 @@ pub fn update_view() -> Result<(), Error> {
                 let cap = &mut ui.capture.reader;
                 let devices = cap.devices().len().saturating_sub(1);
                 let endpoints = cap.endpoints().len().saturating_sub(2);
-                let transactions = cap.transaction_index().len();
+                let transactions = cap.transaction_count();
                 let packets = cap.packet_count();
                 (devices, endpoints, transactions, packets)
             },

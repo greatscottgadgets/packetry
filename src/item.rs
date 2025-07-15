@@ -214,8 +214,9 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                     ep_traf.transaction_ids().get(offset + index)?
                 }),
             Transaction(group_id_opt, transaction_id) =>
-                Packet(*group_id_opt, Some(*transaction_id), {
-                    self.transaction_index().get(*transaction_id)? + index}),
+                Packet(*group_id_opt, Some(*transaction_id),
+                    self.transaction_start(*transaction_id)? + index
+                ),
             Packet(..) => bail!("Packets have no child items")
         })
     }
@@ -237,7 +238,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                 };
                 (completion, match view_mode {
                     Hierarchical => self.item_index().len(),
-                    Transactions => self.transaction_index().len(),
+                    Transactions => self.transaction_count(),
                     Packets => self.packet_count(),
                 })
             },
@@ -255,12 +256,10 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                 }
             },
             Some(Transaction(_, transaction_id)) => {
-                let total_packets = self.packet_count();
                 let packet_count = self
-                    .transaction_index()
-                    .target_range(*transaction_id, total_packets)?
+                    .transaction_packet_range(*transaction_id)?
                     .len();
-                if transaction_id.value < self.transaction_index().len() - 1 {
+                if transaction_id.value < self.transaction_count() - 1 {
                     (Complete, packet_count)
                 } else {
                     (Ongoing, packet_count)
@@ -400,10 +399,8 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                 s
             },
             Transaction(group_id_opt, transaction_id) => {
-                let num_packets = self.packet_count();
-                let packet_id_range = self
-                    .transaction_index()
-                    .target_range(*transaction_id, num_packets)?;
+                let packet_id_range =
+                    self.transaction_packet_range(*transaction_id)?;
                 let start_packet_id = packet_id_range.start;
                 let start_packet = self.packet(start_packet_id)?;
                 let packet_count = packet_id_range.len();
@@ -421,6 +418,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                     writeln!(s)?;
                 }
                 if let Ok(pid) = validate_packet(&start_packet) {
+                    let num_packets = self.packet_count();
                     if pid == SPLIT && start_packet_id.value + 1 == num_packets {
                         // We can't know the endpoint yet.
                         let split = SplitFields::from_packet(&start_packet);
@@ -469,7 +467,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                     let start_transaction_id =
                         ep_traf.transaction_ids().get(start_ep_transaction_id)?;
                     let start_packet_id =
-                        self.transaction_index().get(start_transaction_id)?;
+                        self.transaction_start(start_transaction_id)?;
                     if group.count == 1 {
                         writeln!(s, "Transaction group with 1 transaction")?;
                     } else {
@@ -564,10 +562,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
         }
         let last_packet = match item {
             Packet(_, Some(transaction_id), packet_id) => {
-                let num_packets = self.packet_count();
-                let range = self
-                    .transaction_index()
-                    .target_range(*transaction_id, num_packets)?;
+                let range = self.transaction_packet_range(*transaction_id)?;
                 *packet_id == range.end - 1
             }, _ => false
         };
@@ -677,10 +672,10 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                     ep_traf.group_index().get(entry.group_id())?;
                 let transaction_id =
                     ep_traf.transaction_ids().get(ep_transaction_id)?;
-                self.transaction_index().get(transaction_id)?
+                self.transaction_start(transaction_id)?
             },
             Transaction(.., transaction_id) =>
-                self.transaction_index().get(*transaction_id)?,
+                self.transaction_start(*transaction_id)?,
             Packet(.., packet_id) => *packet_id,
         };
         self.packet_time(packet_id)

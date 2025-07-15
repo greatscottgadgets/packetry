@@ -1020,7 +1020,10 @@ pub trait CaptureReaderOps {
     fn packet_byte_range(&mut self, id: PacketId) -> Result<Range<PacketByteId>, Error>;
     fn packet_time(&mut self, id: PacketId) -> Result<Timestamp, Error>;
     fn packet_data(&mut self) -> &mut impl DataReaderOps<u8, PACKET_DATA_BLOCK_SIZE>;
-    fn transaction_index(&mut self) -> &mut impl CompactReaderOps<TransactionId, PacketId>;
+    fn transaction_count(&self) -> u64;
+    fn transaction_start(&mut self, id: TransactionId) -> Result<PacketId, Error>;
+    fn transaction_packet_range(&mut self, id: TransactionId)
+        -> Result<Range<PacketId>, Error>;
     fn group_index(&mut self) -> &mut impl DataReaderOps<GroupIndexEntry>;
     fn item_index(&mut self) -> &mut impl CompactReaderOps<TrafficItemId, GroupId>;
     fn devices(&mut self) -> &mut impl DataReaderOps<Device>;
@@ -1132,10 +1135,7 @@ pub trait CaptureReaderOps {
     fn transaction(&mut self, id: TransactionId)
         -> Result<Transaction, Error>
     {
-        let total_packets = self.packet_count();
-        let packet_id_range = self
-            .transaction_index()
-            .target_range(id, total_packets)?;
+        let packet_id_range = self.transaction_packet_range(id)?;
         let packet_count = packet_id_range.len();
         let start_packet_id = packet_id_range.start;
         let start_pid = self.packet_pid(start_packet_id)?;
@@ -1544,8 +1544,19 @@ impl CaptureReaderOps for CaptureReader {
         &mut self.packet_data
     }
 
-    fn transaction_index(&mut self) -> &mut impl CompactReaderOps<TransactionId, PacketId> {
-        &mut self.transaction_index
+    fn transaction_count(&self) -> u64 {
+        self.transaction_index.len()
+    }
+
+    fn transaction_start(&mut self, id: TransactionId) -> Result<PacketId, Error> {
+        self.transaction_index.get(id)
+    }
+
+    fn transaction_packet_range(&mut self, id: TransactionId)
+        -> Result<Range<PacketId>, Error>
+    {
+        let total_packets = self.packet_index.len();
+        self.transaction_index.target_range(id, total_packets)
     }
 
     fn group_index(&mut self) -> &mut impl DataReaderOps<GroupIndexEntry> {
@@ -1624,8 +1635,19 @@ impl CaptureReaderOps for CaptureSnapshotReader<'_, '_> {
         &mut self.packet_data
     }
 
-    fn transaction_index(&mut self) -> &mut impl CompactReaderOps<TransactionId, PacketId> {
-        &mut self.transaction_index
+    fn transaction_count(&self) -> u64 {
+        self.transaction_index.len()
+    }
+
+    fn transaction_start(&mut self, id: TransactionId) -> Result<PacketId, Error> {
+        self.transaction_index.get(id)
+    }
+
+    fn transaction_packet_range(&mut self, id: TransactionId)
+        -> Result<Range<PacketId>, Error>
+    {
+        let total_packets = self.packet_index.len();
+        self.transaction_index.target_range(id, total_packets)
     }
 
     fn group_index(&mut self) -> &mut impl DataReaderOps<GroupIndexEntry> {
