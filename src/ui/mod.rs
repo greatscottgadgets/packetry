@@ -522,8 +522,8 @@ pub fn update_view() -> Result<(), Error> {
             match &mut ui.capture.state
         {
             CaptureState::Ongoing(snapshot) => {
-                let mut cap = ui.capture.reader.at(snapshot);
-                let devices = cap.devices().len().saturating_sub(1);
+                let cap = ui.capture.reader.at(snapshot);
+                let devices = cap.device_count().saturating_sub(1);
                 let endpoints = cap.endpoint_count().saturating_sub(2);
                 let transactions = cap.transaction_count();
                 let packets = cap.packet_count();
@@ -531,7 +531,7 @@ pub fn update_view() -> Result<(), Error> {
             },
             CaptureState::Complete => {
                 let cap = &mut ui.capture.reader;
-                let devices = cap.devices().len().saturating_sub(1);
+                let devices = cap.device_count().saturating_sub(1);
                 let endpoints = cap.endpoint_count().saturating_sub(2);
                 let transactions = cap.transaction_count();
                 let packets = cap.packet_count();
