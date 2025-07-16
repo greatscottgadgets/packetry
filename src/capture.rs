@@ -1095,7 +1095,7 @@ pub trait CaptureReaderOps {
                 "Ran out of data events after fetching {}/{} requested bytes",
                 transfer_bytes.len(), length))?;
             let ep_traf = self.endpoint_traffic(endpoint_id)?;
-            let ep_transaction_id = ep_traf.data_transactions().get(data_id)?;
+            let ep_transaction_id = ep_traf.data_transaction(data_id)?;
             let transaction_id = ep_traf.transaction_id(ep_transaction_id)?;
             let transaction = self.transaction(transaction_id)?;
             let transaction_bytes = self.transaction_bytes(&transaction)?;
@@ -1406,7 +1406,12 @@ pub trait EndpointReaderOps {
     fn group_range(&mut self, ep_group_id: EndpointGroupId)
         -> Result<Range<EndpointTransactionId>, Error>;
 
-    fn data_transactions(&mut self) -> &mut impl CompactReaderOps<EndpointDataEvent, EndpointTransactionId>;
+    fn data_transaction(&mut self, data_id: EndpointDataEvent)
+        -> Result<EndpointTransactionId, Error>;
+
+    fn data_for_transaction(&mut self, ep_id: EndpointTransactionId)
+        -> Result<EndpointDataEvent, Error>;
+
     fn data_byte_counts(&mut self) -> &mut impl CompactReaderOps<EndpointDataEvent, EndpointByteCount>;
     fn end_index(&mut self) -> &mut impl CompactReaderOps<EndpointGroupId, TrafficItemId>;
     fn total_data(&self) -> u64;
@@ -1414,8 +1419,8 @@ pub trait EndpointReaderOps {
     fn transfer_data_range(&mut self, range: &Range<EndpointTransactionId>)
         -> Result<Range<EndpointDataEvent>, Error>
     {
-        let first_data_id = self.data_transactions().bisect_left(&range.start)?;
-        let last_data_id = self.data_transactions().bisect_left(&range.end)?;
+        let first_data_id = self.data_for_transaction(range.start)?;
+        let last_data_id = self.data_for_transaction(range.end)?;
         Ok(first_data_id..last_data_id)
     }
 
@@ -1467,8 +1472,16 @@ impl EndpointReaderOps for EndpointReader {
         self.group_index.target_range(ep_group_id, transaction_count)
     }
 
-    fn data_transactions(&mut self) -> &mut impl CompactReaderOps<EndpointDataEvent, EndpointTransactionId> {
-        &mut self.data_transactions
+    fn data_transaction(&mut self, data_id: EndpointDataEvent)
+        -> Result<EndpointTransactionId, Error>
+    {
+        self.data_transactions.get(data_id)
+    }
+
+    fn data_for_transaction(&mut self, ep_id: EndpointTransactionId)
+        -> Result<EndpointDataEvent, Error>
+    {
+        self.data_transactions.bisect_left(&ep_id)
     }
 
     fn data_byte_counts(&mut self) -> &mut impl CompactReaderOps<EndpointDataEvent, EndpointByteCount> {
@@ -1515,8 +1528,16 @@ impl EndpointReaderOps for EndpointSnapshotReader<'_, '_> {
         self.group_index.target_range(ep_group_id, transaction_count)
     }
 
-    fn data_transactions(&mut self) -> &mut impl CompactReaderOps<EndpointDataEvent, EndpointTransactionId> {
-        &mut self.data_transactions
+    fn data_transaction(&mut self, data_id: EndpointDataEvent)
+        -> Result<EndpointTransactionId, Error>
+    {
+        self.data_transactions.get(data_id)
+    }
+
+    fn data_for_transaction(&mut self, ep_id: EndpointTransactionId)
+        -> Result<EndpointDataEvent, Error>
+    {
+        self.data_transactions.bisect_left(&ep_id)
     }
 
     fn data_byte_counts(&mut self) -> &mut impl CompactReaderOps<EndpointDataEvent, EndpointByteCount> {

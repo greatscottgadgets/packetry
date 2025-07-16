@@ -1107,7 +1107,7 @@ fn save_data_transfer_payload(
         let mut length = 0;
         for data_id in data_range {
             let ep_traf = cap.endpoint_traffic(endpoint_id)?;
-            let ep_transaction_id = ep_traf.data_transactions().get(data_id)?;
+            let ep_transaction_id = ep_traf.data_transaction(data_id)?;
             let transaction_id = ep_traf.transaction_id(ep_transaction_id)?;
             let transaction = cap.transaction(transaction_id)?;
             let transaction_bytes = cap.transaction_bytes(&transaction)?;
