@@ -206,7 +206,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
         Ok(match parent {
             TransactionGroup(group_id) =>
                 Transaction(Some(*group_id), {
-                    let entry = self.group_index().get(*group_id)?;
+                    let entry = self.group_entry(*group_id)?;
                     let endpoint_id = entry.endpoint_id();
                     let ep_group_id = entry.group_id();
                     let ep_traf = self.endpoint_traffic(endpoint_id)?;
@@ -243,7 +243,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                 })
             },
             Some(TransactionGroup(group_id)) => {
-                let entry = self.group_index().get(*group_id)?;
+                let entry = self.group_entry(*group_id)?;
                 if !entry.is_start() {
                     return Ok((Complete, 0));
                 }
@@ -435,8 +435,8 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                     }
                     let endpoint_id = match group_id_opt {
                         Some(group_id) => {
-                            let entry = self.group_index().get(*group_id)?;
-                            entry.endpoint_id()
+                            self.group_entry(*group_id)?
+                                .endpoint_id()
                         },
                         None => match self.packet_endpoint(
                             pid, &start_packet)
@@ -583,7 +583,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
             Packet(Some(i), ..) => *i,
             _ => unreachable!()
         };
-        let entry = self.group_index().get(group_id)?;
+        let entry = self.group_entry(group_id)?;
         let endpoint_id = entry.endpoint_id();
         let endpoint_state = self.endpoint_state(group_id)?;
         let extended = self.group_extended(endpoint_id, group_id)?;
@@ -666,7 +666,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
         use TrafficItem::*;
         let packet_id = match item {
             TransactionGroup(group_id) => {
-                let entry = self.group_index().get(*group_id)?;
+                let entry = self.group_entry(*group_id)?;
                 let ep_traf = self.endpoint_traffic(entry.endpoint_id())?;
                 let ep_transaction_id =
                     ep_traf.group_index().get(entry.group_id())?;
