@@ -1016,11 +1016,12 @@ pub trait CaptureReaderOps {
         -> Result<Arc<DeviceData>, Error>;
     fn endpoint_traffic(&mut self, endpoint_id: EndpointId)
         -> Result<&mut impl EndpointReaderOps, Error>;
+    fn byte(&mut self, id: PacketByteId) -> Result<u8, Error>;
+    fn bytes(&mut self, range: &Range<PacketByteId>) -> Result<Vec<u8>, Error>;
     fn packet_count(&self) -> u64;
     fn packet_start(&mut self, id: PacketId) -> Result<PacketByteId, Error>;
     fn packet_byte_range(&mut self, id: PacketId) -> Result<Range<PacketByteId>, Error>;
     fn packet_time(&mut self, id: PacketId) -> Result<Timestamp, Error>;
-    fn packet_data(&mut self) -> &mut impl DataReaderOps<u8, PACKET_DATA_BLOCK_SIZE>;
     fn transaction_count(&self) -> u64;
     fn transaction_start(&mut self, id: TransactionId) -> Result<PacketId, Error>;
     fn transaction_packet_range(&mut self, id: TransactionId)
@@ -1081,7 +1082,7 @@ pub trait CaptureReaderOps {
         let packet_byte_range = self.packet_byte_range(data_packet_id)?;
         let data_byte_range =
             packet_byte_range.start + 1 .. packet_byte_range.end - 2;
-        self.packet_data().get_range(&data_byte_range)
+        self.bytes(&data_byte_range)
     }
 
     fn transfer_bytes(
@@ -1114,14 +1115,14 @@ pub trait CaptureReaderOps {
         -> Result<Vec<u8>, Error>
     {
         let range = self.packet_byte_range(id)?;
-        self.packet_data().get_range(&range)
+        self.bytes(&range)
     }
 
     fn packet_pid(&mut self, id: PacketId)
         -> Result<PID, Error>
     {
         let byte_id = self.packet_start(id)?;
-        Ok(PID::from(self.packet_data().get(byte_id)?))
+        Ok(PID::from(self.byte(byte_id)?))
     }
 
     fn transaction(&mut self, id: TransactionId)
@@ -1158,7 +1159,7 @@ pub trait CaptureReaderOps {
         };
         let payload_byte_range = if let Some(packet_id) = data_packet_id {
             let packet_byte_range = self.packet_byte_range(packet_id)?;
-            let pid = self.packet_data().get(packet_byte_range.start)?;
+            let pid = self.byte(packet_byte_range.start)?;
             match PID::from(pid) {
                 DATA0 | DATA1 => Some({
                     packet_byte_range.start + 1 .. packet_byte_range.end - 2
@@ -1513,6 +1514,14 @@ impl CaptureReaderOps for CaptureReader {
         Ok(self.endpoint_readers.get_mut(endpoint_id).unwrap())
     }
 
+    fn byte(&mut self, id: PacketByteId) -> Result<u8, Error> {
+        self.packet_data.get(id)
+    }
+
+    fn bytes(&mut self, range: &Range<PacketByteId>) -> Result<Vec<u8>, Error> {
+        self.packet_data.get_range(range)
+    }
+
     fn packet_count(&self) -> u64 {
         self.packet_index.len()
     }
@@ -1530,10 +1539,6 @@ impl CaptureReaderOps for CaptureReader {
 
     fn packet_time(&mut self, id: PacketId) -> Result<Timestamp, Error> {
         self.packet_times.get(id)
-    }
-
-    fn packet_data(&mut self) -> &mut impl DataReaderOps<u8, PACKET_DATA_BLOCK_SIZE> {
-        &mut self.packet_data
     }
 
     fn transaction_count(&self) -> u64 {
@@ -1615,6 +1620,14 @@ impl CaptureReaderOps for CaptureSnapshotReader<'_, '_> {
         }
     }
 
+    fn byte(&mut self, id: PacketByteId) -> Result<u8, Error> {
+        self.packet_data.get(id)
+    }
+
+    fn bytes(&mut self, range: &Range<PacketByteId>) -> Result<Vec<u8>, Error> {
+        self.packet_data.get_range(range)
+    }
+
     fn packet_count(&self) -> u64 {
         self.packet_index.len()
     }
@@ -1632,10 +1645,6 @@ impl CaptureReaderOps for CaptureSnapshotReader<'_, '_> {
 
     fn packet_time(&mut self, id: PacketId) -> Result<Timestamp, Error> {
         self.packet_times.get(id)
-    }
-
-    fn packet_data(&mut self) -> &mut impl DataReaderOps<u8, PACKET_DATA_BLOCK_SIZE> {
-        &mut self.packet_data
     }
 
     fn transaction_count(&self) -> u64 {
