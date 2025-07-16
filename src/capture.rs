@@ -1043,7 +1043,7 @@ pub trait CaptureReaderOps {
         let endpoint_id = entry.endpoint_id();
         let ep_group_id = entry.group_id();
         let ep_traf = self.endpoint_traffic(endpoint_id)?;
-        let ep_transactions = ep_traf.transaction_ids().len();
+        let ep_transactions = ep_traf.transaction_count();
         ep_traf
             .group_index()
             .target_range(ep_group_id, ep_transactions)
@@ -1099,7 +1099,7 @@ pub trait CaptureReaderOps {
                 transfer_bytes.len(), length))?;
             let ep_traf = self.endpoint_traffic(endpoint_id)?;
             let ep_transaction_id = ep_traf.data_transactions().get(data_id)?;
-            let transaction_id = ep_traf.transaction_ids().get(ep_transaction_id)?;
+            let transaction_id = ep_traf.transaction_id(ep_transaction_id)?;
             let transaction = self.transaction(transaction_id)?;
             let transaction_bytes = self.transaction_bytes(&transaction)?;
             let required = min(
@@ -1204,12 +1204,12 @@ pub trait CaptureReaderOps {
             _ => {
                 let ep_group_id = entry.group_id();
                 let ep_traf = self.endpoint_traffic(endpoint_id)?;
-                let ep_transactions = ep_traf.transaction_ids().len();
+                let ep_transactions = ep_traf.transaction_count();
                 let range = ep_traf
                     .group_index()
                     .target_range(ep_group_id, ep_transactions)?;
                 let first_transaction_id =
-                    ep_traf.transaction_ids().get(range.start)?;
+                    ep_traf.transaction_id(range.start)?;
                 let first_transaction =
                     self.transaction(first_transaction_id)?;
                 let count = if first_transaction.split.is_some() {
@@ -1251,7 +1251,7 @@ pub trait CaptureReaderOps {
         -> Result<ControlTransfer, Error>
     {
         let ep_traf = self.endpoint_traffic(endpoint_id)?;
-        let transaction_ids = ep_traf.transaction_ids().get_range(range)?;
+        let transaction_ids = ep_traf.transaction_id_range(range)?;
         let data_range = ep_traf.transfer_data_range(range)?;
         let data_length = ep_traf
             .transfer_data_length(&data_range)?
@@ -1397,7 +1397,15 @@ impl EndpointReader {
 
 /// Operations supported by both `EndpointReader` and `EndpointSnapshotReader`.
 pub trait EndpointReaderOps {
-    fn transaction_ids(&mut self) -> &mut impl CompactReaderOps<EndpointTransactionId, TransactionId>;
+
+    fn transaction_count(&self) -> u64;
+
+    fn transaction_id(&mut self, ep_id: EndpointTransactionId)
+        -> Result<TransactionId, Error>;
+
+    fn transaction_id_range(&mut self, ep_id_range: &Range<EndpointTransactionId>)
+        -> Result<Vec<TransactionId>, Error>;
+
     fn group_index(&mut self) -> &mut impl CompactReaderOps<EndpointGroupId, EndpointTransactionId>;
     fn data_transactions(&mut self) -> &mut impl CompactReaderOps<EndpointDataEvent, EndpointTransactionId>;
     fn data_byte_counts(&mut self) -> &mut impl CompactReaderOps<EndpointDataEvent, EndpointByteCount>;
@@ -1430,8 +1438,21 @@ pub trait EndpointReaderOps {
 }
 
 impl EndpointReaderOps for EndpointReader {
-    fn transaction_ids(&mut self) -> &mut impl CompactReaderOps<EndpointTransactionId, TransactionId> {
-        &mut self.transaction_ids
+
+    fn transaction_count(&self) -> u64 {
+        self.transaction_ids.len()
+    }
+
+    fn transaction_id(&mut self, ep_id: EndpointTransactionId)
+        -> Result<TransactionId, Error>
+    {
+        self.transaction_ids.get(ep_id)
+    }
+
+    fn transaction_id_range(&mut self, ep_id_range: &Range<EndpointTransactionId>)
+        -> Result<Vec<TransactionId>, Error>
+    {
+        self.transaction_ids.get_range(ep_id_range)
     }
 
     fn group_index(&mut self) -> &mut impl CompactReaderOps<EndpointGroupId, EndpointTransactionId> {
@@ -1456,8 +1477,21 @@ impl EndpointReaderOps for EndpointReader {
 }
 
 impl EndpointReaderOps for EndpointSnapshotReader<'_, '_> {
-    fn transaction_ids(&mut self) -> &mut impl CompactReaderOps<EndpointTransactionId, TransactionId> {
-        &mut self.transaction_ids
+
+    fn transaction_count(&self) -> u64 {
+        self.transaction_ids.len()
+    }
+
+    fn transaction_id(&mut self, ep_id: EndpointTransactionId)
+        -> Result<TransactionId, Error>
+    {
+        self.transaction_ids.get(ep_id)
+    }
+
+    fn transaction_id_range(&mut self, ep_id_range: &Range<EndpointTransactionId>)
+        -> Result<Vec<TransactionId>, Error>
+    {
+        self.transaction_ids.get_range(ep_id_range)
     }
 
     fn group_index(&mut self) -> &mut impl CompactReaderOps<EndpointGroupId, EndpointTransactionId> {
