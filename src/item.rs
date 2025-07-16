@@ -22,7 +22,7 @@ use crate::capture::{
     PacketId,
     INVALID_EP_ID,
 };
-use crate::database::{DataReaderOps, CompactReaderOps};
+use crate::database::CompactReaderOps;
 use crate::usb::{self, prelude::*, validate_packet};
 use crate::util::{Bytes, RangeLength, fmt_count, fmt_size, titlecase};
 
@@ -881,7 +881,7 @@ impl<T: CaptureReaderOps> ItemSource<DeviceItem, DeviceViewMode> for T {
                 } else {
                     Ongoing
                 };
-                let children = self.devices().len().saturating_sub(1) as usize;
+                let children = self.device_count().saturating_sub(1) as usize;
                 (completion, children)
             },
             Some(item) => {
@@ -952,7 +952,7 @@ impl<T: CaptureReaderOps> ItemSource<DeviceItem, DeviceViewMode> for T {
         let data = self.device_data(item.device_id)?;
         Ok(match &item.content {
             Device(_) => {
-                let device = self.devices().get(item.device_id)?;
+                let device = self.device(item.device_id)?;
                 format!("Device {}: {}", device.address, data.description())
             },
             DeviceDescriptor(desc) => {
