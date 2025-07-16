@@ -211,7 +211,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                     let ep_group_id = entry.group_id();
                     let ep_traf = self.endpoint_traffic(endpoint_id)?;
                     let offset = ep_traf.group_index().get(ep_group_id)?;
-                    ep_traf.transaction_ids().get(offset + index)?
+                    ep_traf.transaction_id(offset + index)?
                 }),
             Transaction(group_id_opt, transaction_id) =>
                 Packet(*group_id_opt, Some(*transaction_id),
@@ -465,7 +465,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                         self.endpoint_traffic(group.endpoint_id)?;
                     let start_ep_transaction_id = group.range.start;
                     let start_transaction_id =
-                        ep_traf.transaction_ids().get(start_ep_transaction_id)?;
+                        ep_traf.transaction_id(start_ep_transaction_id)?;
                     let start_packet_id =
                         self.transaction_start(start_transaction_id)?;
                     if group.count == 1 {
@@ -591,12 +591,12 @@ ItemSource<TrafficItem, TrafficViewMode> for T
         let last_transaction = match item {
             Transaction(_, transaction_id) |
             Packet(_, Some(transaction_id), _) => {
-                let ep_transactions = ep_traf.transaction_ids().len();
+                let ep_transactions = ep_traf.transaction_count();
                 let range = ep_traf
                     .group_index()
                     .target_range(entry.group_id(), ep_transactions)?;
                 let last_transaction_id =
-                    ep_traf.transaction_ids().get(range.end - 1)?;
+                    ep_traf.transaction_id(range.end - 1)?;
                 *transaction_id == last_transaction_id
             }, _ => false
         };
@@ -671,7 +671,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                 let ep_transaction_id =
                     ep_traf.group_index().get(entry.group_id())?;
                 let transaction_id =
-                    ep_traf.transaction_ids().get(ep_transaction_id)?;
+                    ep_traf.transaction_id(ep_transaction_id)?;
                 self.transaction_start(transaction_id)?
             },
             Transaction(.., transaction_id) =>

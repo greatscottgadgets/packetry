@@ -145,7 +145,7 @@ fn test(save_capture: bool,
         let endpoint_id = EndpointId::from(1);
         let ep_group_id = EndpointGroupId::from(0);
         let ep_traf = reader.endpoint_traffic(endpoint_id)?;
-        let ep_transactions = ep_traf.transaction_ids().len();
+        let ep_transactions = ep_traf.transaction_count();
         let ep_transaction_ids = ep_traf
             .group_index()
             .target_range(ep_group_id, ep_transactions)?;
@@ -153,8 +153,7 @@ fn test(save_capture: bool,
         let mut last = None;
         let mut gaps = Vec::new();
         for transaction_id in ep_traf
-            .transaction_ids()
-            .get_range(&ep_transaction_ids)?
+            .transaction_id_range(&ep_transaction_ids)?
         {
             let range = reader.transaction_index
                 .target_range(transaction_id, reader.packet_index.len())?;
@@ -248,7 +247,7 @@ fn bytes_on_endpoint(reader: &mut CaptureReader) -> Result<Vec<u8>, Error> {
     // We're looking for the first and only transfer on the endpoint.
     let ep_group_id = EndpointGroupId::from(0);
     let ep_traf = reader.endpoint_traffic(endpoint_id)?;
-    let ep_transactions = ep_traf.transaction_ids().len();
+    let ep_transactions = ep_traf.transaction_count();
     let ep_transaction_ids = ep_traf
         .group_index()
         .target_range(ep_group_id, ep_transactions)?;
