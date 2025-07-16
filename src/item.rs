@@ -445,7 +445,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                             Err(_) => INVALID_EP_ID
                         }
                     };
-                    let endpoint = self.endpoints().get(endpoint_id)?;
+                    let endpoint = self.endpoint(endpoint_id)?;
                     let transaction = self.transaction(*transaction_id)?;
                     s += &transaction.description(self, &endpoint, detail)?
                 } else {
@@ -574,7 +574,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                 (Packet(..), true )      => "└──",
             }));
         }
-        let endpoint_count = self.endpoints().len() as usize;
+        let endpoint_count = self.endpoint_count() as usize;
         let max_string_length = endpoint_count + "    └──".len();
         let mut connectors = String::with_capacity(max_string_length);
         let group_id = match item {
