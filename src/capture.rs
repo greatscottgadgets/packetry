@@ -925,6 +925,7 @@ pub struct CaptureSnapshotReader<'r, 's> {
     endpoints: DataSnapshot<'r, 's, Endpoint>,
     endpoint_states: DataSnapshot<'r, 's, u8>,
     endpoint_state_index: CompactSnapshot<'r, 's, GroupId, Id<u8>>,
+    #[allow(dead_code)]
     end_index: CompactSnapshot<'r, 's, GroupId, TrafficItemId>,
     complete: bool,
 }
@@ -1033,8 +1034,6 @@ pub trait CaptureReaderOps {
     fn endpoint_count(&self) -> u64;
     fn endpoint(&mut self, id: EndpointId) -> Result<Endpoint, Error>;
     fn endpoint_state(&mut self, group_id: GroupId) -> Result<Vec<u8>, Error>;
-    #[allow(dead_code)]
-    fn end_index(&mut self) -> &mut impl CompactReaderOps<GroupId, TrafficItemId>;
     fn complete(&self) -> bool;
 
     fn group_range(&mut self, entry: &GroupIndexEntry)
@@ -1591,10 +1590,6 @@ impl CaptureReaderOps for CaptureReader {
         self.endpoint_states.get_range(&range)
     }
 
-    fn end_index(&mut self) -> &mut impl CompactReaderOps<GroupId, TrafficItemId> {
-        &mut self.end_index
-    }
-
     fn complete(&self) -> bool {
         self.shared.complete.load(Acquire)
     }
@@ -1695,10 +1690,6 @@ impl CaptureReaderOps for CaptureSnapshotReader<'_, '_> {
         let range = self.endpoint_state_index
             .target_range(group_id, total_endpoint_states)?;
         self.endpoint_states.get_range(&range)
-    }
-
-    fn end_index(&mut self) -> &mut impl CompactReaderOps<GroupId, TrafficItemId> {
-        &mut self.end_index
     }
 
     fn complete(&self) -> bool {
