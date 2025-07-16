@@ -1032,8 +1032,7 @@ pub trait CaptureReaderOps {
     fn device(&mut self, id: DeviceId) -> Result<Device, Error>;
     fn endpoint_count(&self) -> u64;
     fn endpoint(&mut self, id: EndpointId) -> Result<Endpoint, Error>;
-    fn endpoint_states(&mut self) -> &mut impl DataReaderOps<u8>;
-    fn endpoint_state_index(&mut self) -> &mut impl CompactReaderOps<GroupId, Id<u8>>;
+    fn endpoint_state(&mut self, group_id: GroupId) -> Result<Vec<u8>, Error>;
     #[allow(dead_code)]
     fn end_index(&mut self) -> &mut impl CompactReaderOps<GroupId, TrafficItemId>;
     fn complete(&self) -> bool;
@@ -1110,16 +1109,6 @@ pub trait CaptureReaderOps {
             transfer_bytes.extend(&transaction_bytes[..required]);
         }
         Ok(transfer_bytes)
-    }
-
-    fn endpoint_state(&mut self, group_id: GroupId)
-        -> Result<Vec<u8>, Error>
-    {
-        let total_endpoint_states = self.endpoint_states().len();
-        let range = self
-            .endpoint_state_index()
-            .target_range(group_id, total_endpoint_states)?;
-        self.endpoint_states().get_range(&range)
     }
 
     fn packet(&mut self, id: PacketId)
@@ -1595,12 +1584,11 @@ impl CaptureReaderOps for CaptureReader {
         self.endpoints.get(id)
     }
 
-    fn endpoint_states(&mut self) -> &mut impl DataReaderOps<u8> {
-        &mut self.endpoint_states
-    }
-
-    fn endpoint_state_index(&mut self) -> &mut impl CompactReaderOps<GroupId, Id<u8>> {
-        &mut self.endpoint_state_index
+    fn endpoint_state(&mut self, group_id: GroupId) -> Result<Vec<u8>, Error> {
+        let total_endpoint_states = self.endpoint_states.len();
+        let range = self.endpoint_state_index
+            .target_range(group_id, total_endpoint_states)?;
+        self.endpoint_states.get_range(&range)
     }
 
     fn end_index(&mut self) -> &mut impl CompactReaderOps<GroupId, TrafficItemId> {
@@ -1702,12 +1690,11 @@ impl CaptureReaderOps for CaptureSnapshotReader<'_, '_> {
         self.endpoints.get(id)
     }
 
-    fn endpoint_states(&mut self) -> &mut impl DataReaderOps<u8> {
-        &mut self.endpoint_states
-    }
-
-    fn endpoint_state_index(&mut self) -> &mut impl CompactReaderOps<GroupId, Id<u8>> {
-        &mut self.endpoint_state_index
+    fn endpoint_state(&mut self, group_id: GroupId) -> Result<Vec<u8>, Error> {
+        let total_endpoint_states = self.endpoint_states.len();
+        let range = self.endpoint_state_index
+            .target_range(group_id, total_endpoint_states)?;
+        self.endpoint_states.get_range(&range)
     }
 
     fn end_index(&mut self) -> &mut impl CompactReaderOps<GroupId, TrafficItemId> {
