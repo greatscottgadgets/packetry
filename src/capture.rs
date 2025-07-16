@@ -1029,7 +1029,8 @@ pub trait CaptureReaderOps {
     fn group_count(&self) -> u64;
     fn group_entry(&mut self, id: GroupId) -> Result<GroupIndexEntry, Error>;
     fn devices(&mut self) -> &mut impl DataReaderOps<Device>;
-    fn endpoints(&mut self) -> &mut impl DataReaderOps<Endpoint>;
+    fn endpoint_count(&self) -> u64;
+    fn endpoint(&mut self, id: EndpointId) -> Result<Endpoint, Error>;
     fn endpoint_states(&mut self) -> &mut impl DataReaderOps<u8>;
     fn endpoint_state_index(&mut self) -> &mut impl CompactReaderOps<GroupId, Id<u8>>;
     #[allow(dead_code)]
@@ -1191,7 +1192,7 @@ pub trait CaptureReaderOps {
     fn group(&mut self, group_id: GroupId) -> Result<Group, Error> {
         let entry = self.group_entry(group_id)?;
         let endpoint_id = entry.endpoint_id();
-        let endpoint = self.endpoints().get(endpoint_id)?;
+        let endpoint = self.endpoint(endpoint_id)?;
         let device_id = endpoint.device_id();
         let dev_data = self.device_data(device_id)?;
         let ep_addr = endpoint.address();
@@ -1581,8 +1582,12 @@ impl CaptureReaderOps for CaptureReader {
         &mut self.devices
     }
 
-    fn endpoints(&mut self) -> &mut impl DataReaderOps<Endpoint> {
-        &mut self.endpoints
+    fn endpoint_count(&self) -> u64 {
+        self.endpoints.len()
+    }
+
+    fn endpoint(&mut self, id: EndpointId) -> Result<Endpoint, Error> {
+        self.endpoints.get(id)
     }
 
     fn endpoint_states(&mut self) -> &mut impl DataReaderOps<u8> {
@@ -1680,8 +1685,12 @@ impl CaptureReaderOps for CaptureSnapshotReader<'_, '_> {
         &mut self.devices
     }
 
-    fn endpoints(&mut self) -> &mut impl DataReaderOps<Endpoint> {
-        &mut self.endpoints
+    fn endpoint_count(&self) -> u64 {
+        self.endpoints.len()
+    }
+
+    fn endpoint(&mut self, id: EndpointId) -> Result<Endpoint, Error> {
+        self.endpoints.get(id)
     }
 
     fn endpoint_states(&mut self) -> &mut impl DataReaderOps<u8> {
