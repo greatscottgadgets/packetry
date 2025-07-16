@@ -210,7 +210,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                     let endpoint_id = entry.endpoint_id();
                     let ep_group_id = entry.group_id();
                     let ep_traf = self.endpoint_traffic(endpoint_id)?;
-                    let offset = ep_traf.group_index().get(ep_group_id)?;
+                    let offset = ep_traf.group_start(ep_group_id)?;
                     ep_traf.transaction_id(offset + index)?
                 }),
             Transaction(group_id_opt, transaction_id) =>
@@ -591,10 +591,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
         let last_transaction = match item {
             Transaction(_, transaction_id) |
             Packet(_, Some(transaction_id), _) => {
-                let ep_transactions = ep_traf.transaction_count();
-                let range = ep_traf
-                    .group_index()
-                    .target_range(entry.group_id(), ep_transactions)?;
+                let range = ep_traf.group_range(entry.group_id())?;
                 let last_transaction_id =
                     ep_traf.transaction_id(range.end - 1)?;
                 *transaction_id == last_transaction_id
@@ -669,7 +666,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                 let entry = self.group_entry(*group_id)?;
                 let ep_traf = self.endpoint_traffic(entry.endpoint_id())?;
                 let ep_transaction_id =
-                    ep_traf.group_index().get(entry.group_id())?;
+                    ep_traf.group_start(entry.group_id())?;
                 let transaction_id =
                     ep_traf.transaction_id(ep_transaction_id)?;
                 self.transaction_start(transaction_id)?
