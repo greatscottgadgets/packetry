@@ -22,7 +22,6 @@ use crate::capture::{
     PacketId,
     INVALID_EP_ID,
 };
-use crate::database::CompactReaderOps;
 use crate::usb::{self, prelude::*, validate_packet};
 use crate::util::{Bytes, RangeLength, fmt_count, fmt_size, titlecase};
 
@@ -249,7 +248,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                 }
                 let transaction_count = self.group_range(&entry)?.len();
                 let ep_traf = self.endpoint_traffic(entry.endpoint_id())?;
-                if entry.group_id().value >= ep_traf.end_index().len() {
+                if entry.group_id().value >= ep_traf.end_count() {
                     (Ongoing, transaction_count)
                 } else {
                     (Complete, transaction_count)
@@ -1044,7 +1043,7 @@ mod tests {
     use std::path::PathBuf;
     use itertools::Itertools;
     use crate::capture::{CaptureReader, create_capture};
-    use crate::database::{CounterSet, DataReaderOps};
+    use crate::database::{CounterSet, DataReaderOps, CompactReaderOps};
     use crate::decoder::Decoder;
     use crate::file::{GenericLoader, GenericPacket, LoaderItem, PcapLoader};
     use crate::util::dump::Dump;

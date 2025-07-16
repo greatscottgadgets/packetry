@@ -1417,7 +1417,8 @@ pub trait EndpointReaderOps {
     fn data_event_byte_count(&mut self, data_id: EndpointDataEvent)
         -> Result<EndpointByteCount, Error>;
 
-    fn end_index(&mut self) -> &mut impl CompactReaderOps<EndpointGroupId, TrafficItemId>;
+    fn end_count(&self) -> u64;
+
     fn total_data(&self) -> u64;
 
     fn transfer_data_range(&mut self, range: &Range<EndpointTransactionId>)
@@ -1498,8 +1499,8 @@ impl EndpointReaderOps for EndpointReader {
         self.data_byte_counts.get(data_id)
     }
 
-    fn end_index(&mut self) -> &mut impl CompactReaderOps<EndpointGroupId, TrafficItemId> {
-        &mut self.end_index
+    fn end_count(&self) -> u64 {
+        self.end_index.len()
     }
 
     fn total_data(&self) -> u64 {
@@ -1560,8 +1561,8 @@ impl EndpointReaderOps for EndpointSnapshotReader<'_, '_> {
         self.data_byte_counts.get(data_id)
     }
 
-    fn end_index(&mut self) -> &mut impl CompactReaderOps<EndpointGroupId, TrafficItemId> {
-        &mut self.end_index
+    fn end_count(&self) -> u64 {
+        self.end_index.len()
     }
 
     fn total_data(&self) -> u64 {
