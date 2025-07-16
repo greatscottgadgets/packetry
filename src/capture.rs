@@ -1412,7 +1412,11 @@ pub trait EndpointReaderOps {
     fn data_for_transaction(&mut self, ep_id: EndpointTransactionId)
         -> Result<EndpointDataEvent, Error>;
 
-    fn data_byte_counts(&mut self) -> &mut impl CompactReaderOps<EndpointDataEvent, EndpointByteCount>;
+    fn data_event_count(&self) -> u64;
+
+    fn data_event_byte_count(&mut self, data_id: EndpointDataEvent)
+        -> Result<EndpointByteCount, Error>;
+
     fn end_index(&mut self) -> &mut impl CompactReaderOps<EndpointGroupId, TrafficItemId>;
     fn total_data(&self) -> u64;
 
@@ -1430,12 +1434,12 @@ pub trait EndpointReaderOps {
         if range.start == range.end {
             return Ok(0);
         }
-        let num_data_events = self.data_byte_counts().len();
-        let first_byte_count = self.data_byte_counts().get(range.start)?;
+        let num_data_events = self.data_event_count();
+        let first_byte_count = self.data_event_byte_count(range.start)?;
         let last_byte_count = if range.end >= num_data_events {
             self.total_data()
         } else {
-            self.data_byte_counts().get(range.end)?
+            self.data_event_byte_count(range.end)?
         };
         Ok(last_byte_count - first_byte_count)
     }
@@ -1484,8 +1488,14 @@ impl EndpointReaderOps for EndpointReader {
         self.data_transactions.bisect_left(&ep_id)
     }
 
-    fn data_byte_counts(&mut self) -> &mut impl CompactReaderOps<EndpointDataEvent, EndpointByteCount> {
-        &mut self.data_byte_counts
+    fn data_event_count(&self) -> u64 {
+        self.data_byte_counts.len()
+    }
+
+    fn data_event_byte_count(&mut self, data_id: EndpointDataEvent)
+        -> Result<EndpointByteCount, Error>
+    {
+        self.data_byte_counts.get(data_id)
     }
 
     fn end_index(&mut self) -> &mut impl CompactReaderOps<EndpointGroupId, TrafficItemId> {
@@ -1540,8 +1550,14 @@ impl EndpointReaderOps for EndpointSnapshotReader<'_, '_> {
         self.data_transactions.bisect_left(&ep_id)
     }
 
-    fn data_byte_counts(&mut self) -> &mut impl CompactReaderOps<EndpointDataEvent, EndpointByteCount> {
-        &mut self.data_byte_counts
+    fn data_event_count(&self) -> u64 {
+        self.data_byte_counts.len()
+    }
+
+    fn data_event_byte_count(&mut self, data_id: EndpointDataEvent)
+        -> Result<EndpointByteCount, Error>
+    {
+        self.data_byte_counts.get(data_id)
     }
 
     fn end_index(&mut self) -> &mut impl CompactReaderOps<EndpointGroupId, TrafficItemId> {
