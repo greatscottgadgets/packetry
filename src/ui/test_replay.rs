@@ -9,7 +9,7 @@ use gtk::prelude::*;
 use itertools::assert_equal;
 use serde_json::Deserializer;
 
-use crate::database::CompactReaderOps;
+use crate::capture::CaptureReaderOps;
 use crate::decoder::Decoder;
 use crate::item::TrafficViewMode;
 use crate::file::{GenericPacket, GenericLoader, LoaderItem, PcapLoader};
@@ -138,7 +138,7 @@ fn check_replays() {
                             .log_update(count);
                         Ok(())
                     }).unwrap();
-                    while capture.packet_index.len() < count {
+                    while capture.packet_count() < count {
                         use LoaderItem::*;
                         match loader.next() {
                             Packet(packet) => decoder

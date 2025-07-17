@@ -12,7 +12,6 @@ use crate::capture::{
     EndpointReaderOps,
     PacketId,
 };
-use crate::database::CompactReaderOps;
 use crate::decoder::Decoder;
 use crate::file::{GenericSaver, PcapSaver};
 
@@ -111,7 +110,7 @@ fn test(save_capture: bool,
         let file = File::create(path)?;
         let meta = reader.shared.metadata.load_full();
         let mut saver = PcapSaver::new(file, meta)?;
-        for i in 0..reader.packet_index.len() {
+        for i in 0..reader.packet_count() {
             let packet_id = PacketId::from(i);
             let packet = reader.packet(packet_id)?;
             let timestamp_ns = reader.packet_time(packet_id)?;
@@ -152,12 +151,11 @@ fn test(save_capture: bool,
         for transaction_id in ep_traf
             .transaction_id_range(&ep_transaction_ids)?
         {
-            let range = reader.transaction_index
-                .target_range(transaction_id, reader.packet_index.len())?;
+            let range = reader.transaction_packet_range(transaction_id)?;
             for id in range.start.value..range.end.value {
                 let packet_id = PacketId::from(id);
                 let timestamp = Duration::from_nanos(
-                    reader.packet_times.get(packet_id)?);
+                    reader.packet_time(packet_id)?);
                 if let Some(prev) = last.replace(timestamp) {
                     let interval = timestamp - prev;
                     if !(interval > min_interval && interval < max_interval) {

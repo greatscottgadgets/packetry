@@ -80,10 +80,6 @@ use crate::capture::{
     Group,
     GroupContent,
 };
-use crate::database::{
-    DataReaderOps,
-    CompactReaderOps,
-};
 use crate::item::{
     ItemSource,
     TrafficItem,
@@ -805,7 +801,7 @@ where
     Saver: GenericSaver<Dest>,
     Dest: Write
 {
-    let packet_count = capture.packet_index.len();
+    let packet_count = capture.packet_count();
     let meta = capture.shared.metadata.load_full();
     let mut saver = Saver::new(dest, meta)?;
     if packet_count > 0 {
@@ -1024,7 +1020,7 @@ fn traffic_context_menu(
         Transaction(_, transaction_id) => {
             let transaction = capture.transaction(*transaction_id)?;
             if let Some(range) = transaction.payload_byte_range {
-                let payload = capture.packet_data.get_range(&range)?;
+                let payload = capture.bytes(&range)?;
                 Some(context_popover(
                     "save-transaction-payload",
                     "Save transaction payload to file...",
