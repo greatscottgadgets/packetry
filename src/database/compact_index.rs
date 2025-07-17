@@ -7,14 +7,15 @@ use std::fmt::Debug;
 use std::iter::{Peekable, once};
 use std::marker::PhantomData;
 use std::ops::{Add, AddAssign, Range, Sub, SubAssign};
-use std::sync::atomic::{AtomicU64, Ordering::{Acquire, Release}};
 use std::sync::Arc;
 
 use anyhow::{Context, Error, anyhow, bail};
 use itertools::{structs::Zip, multizip};
 
 use crate::database::{
-    data_stream::{data_stream, DataReader, DataWriter, DataIterator},
+    Counter, CounterSet, Snapshot,
+    data_stream::{
+        data_stream, DataReader, DataWriter, DataIterator, DataReaderOps},
     index_stream::{index_stream, IndexReader, IndexWriter, IndexIterator},
 };
 use crate::util::{dump::{Dump, restore}, id::Id, fmt_count, fmt_size};
@@ -25,7 +26,7 @@ type SegmentId = Id<u8>;
 /// Unique handle for append-only write access to a compact index stream.
 pub struct CompactWriter<Position, Value, const MIN_WIDTH: usize = 1> {
     /// Committed length of this index available to readers.
-    shared_length: Arc<AtomicU64>,
+    shared_length: Arc<Counter>,
     /// Index of starting positions of each segment.
     segment_start_writer: IndexWriter<SegmentId, Position>,
     /// Index of base values of each segment.
@@ -51,7 +52,7 @@ pub struct CompactWriter<Position, Value, const MIN_WIDTH: usize = 1> {
 pub struct CompactReader<Position, Value> {
     _marker: PhantomData<Value>,
     /// Committed length of this index available to readers.
-    shared_length: Arc<AtomicU64>,
+    shared_length: Arc<Counter>,
     /// Index of starting positions of each segment.
     segment_start_reader: IndexReader<SegmentId, Position>,
     /// Index of base values of each segment.
@@ -62,6 +63,12 @@ pub struct CompactReader<Position, Value> {
     segment_width_reader: DataReader<u8>,
     /// Byte stream containing deltas for all segments.
     data_reader: DataReader<u8>,
+}
+
+/// Handle for read-only access to compact index at a snapshot.
+pub struct CompactSnapshot<'a, 'b, Position, Value> {
+    reader: &'a mut CompactReader<Position, Value>,
+    snapshot: &'b Snapshot,
 }
 
 /// Iterator over values in a compact index stream.
@@ -97,6 +104,69 @@ struct Segment<Position, Value> {
     delta_width: Option<u8>,
 }
 
+/// Operations supported by both `CompactReader` and `CompactSnapshot`.
+pub trait CompactReaderOps<Position, Value>
+where
+    Position: Copy + From<u64> + Into<u64> + Ord
+        + Add<u64, Output=Position> + AddAssign<u64>
+        + Sub<u64, Output=Position> + SubAssign<u64> + Sub<Output=u64>
+        + Debug,
+    Value: Copy + From<u64> + Into<u64> + Ord
+        + Add<u64, Output=Value>
+        + Sub<Output=u64>
+{
+    const SOURCE_DESCRIPTION: &str;
+
+    /// Number of entries in the index.
+    fn len(&self) -> u64;
+
+    /// Get a single value from the index, by position.
+    fn get(&mut self, position: Position) -> Result<Value, Error>;
+
+    /// Get multiple values from the index, for a range of positions.
+    fn get_range(&mut self, range: &Range<Position>)
+        -> Result<Vec<Value>, Error>;
+
+    /// Create an iterator over values from the index.
+    fn iter(&mut self, range: &Range<Position>)
+        -> Result<CompactIterator<Position, Value>, Error>;
+
+    /// Get the range of values between the specified position and the next.
+    ///
+    /// The length of the data referenced by this index must be passed
+    /// as a parameter. If the specified position is the last in the
+    /// index, the range will be from the last value in the index to the
+    /// end of the referenced data.
+    fn target_range(&mut self, position: Position, target_length: u64)
+        -> Result<Range<Value>, Error>;
+
+    /// Leftmost position where a value would be ordered within this index.
+    fn bisect_left(&mut self, value: &Value)
+        -> Result<Position, Error>;
+
+    /// Leftmost position where a value would be ordered within this range.
+    fn bisect_range_left(&mut self, range: &Range<Position>, value: &Value)
+        -> Result<Position, Error>;
+
+    fn check_position(&self, position: Position) -> Result<(), Error> {
+        let length = self.len();
+        let src = Self::SOURCE_DESCRIPTION;
+        if position.into() >= length {
+            bail!("requested position {position:?} but {src} length is {length}")
+        }
+        Ok(())
+    }
+
+    fn check_range(&self, range: &Range<Position>) -> Result<(), Error> {
+        let length = self.len();
+        let src = Self::SOURCE_DESCRIPTION;
+        if range.end.into() > length {
+            bail!("requested range {range:?} but {src} length is {length}")
+        }
+        Ok(())
+    }
+}
+
 type CompactPair<P, V, const W: usize> =
     (CompactWriter<P, V, W>, CompactReader<P, V>);
 
@@ -104,15 +174,15 @@ type CompactPair<P, V, const W: usize> =
 ///
 /// Returns a unique writer and a cloneable reader.
 ///
-pub fn compact_index<P, V, const W: usize>()
+pub fn compact_index<P, V, const W: usize>(db: &mut CounterSet)
     -> Result<CompactPair<P, V, W>, Error>
 {
-    let (segment_start_writer, segment_start_reader) = index_stream()?;
-    let (segment_base_writer, segment_base_reader) = index_stream()?;
-    let (segment_offset_writer, segment_offset_reader) = index_stream()?;
-    let (segment_width_writer, segment_width_reader) = data_stream()?;
-    let (data_writer, data_reader) = data_stream()?;
-    let shared_length = Arc::new(AtomicU64::from(0));
+    let (segment_start_writer, segment_start_reader) = index_stream(db)?;
+    let (segment_base_writer, segment_base_reader) = index_stream(db)?;
+    let (segment_offset_writer, segment_offset_reader) = index_stream(db)?;
+    let (segment_width_writer, segment_width_reader) = data_stream(db)?;
+    let (data_writer, data_reader) = data_stream(db)?;
+    let shared_length = Arc::new(db.new_counter());
     let writer = CompactWriter {
         shared_length: shared_length.clone(),
         segment_start_writer,
@@ -186,7 +256,7 @@ where Position: Copy + From<u64> + Into<u64>,
         }
         let position = Position::from(self.length);
         self.length += 1;
-        self.shared_length.store(self.length, Release);
+        self.shared_length.store(self.length);
         Ok(position)
     }
 
@@ -211,11 +281,6 @@ where
         + Add<u64, Output=Value>
         + Sub<Output=u64>
 {
-    /// Number of entries in the index.
-    pub fn len(&self) -> u64 {
-        self.shared_length.load(Acquire)
-    }
-
     /// Size of the index in bytes.
     pub fn size(&self) -> u64 {
         self.segment_start_reader.size() +
@@ -225,13 +290,34 @@ where
             self.data_reader.size()
     }
 
-    /// Get a single value from the index, by position.
-    pub fn get(&mut self, position: Position) -> Result<Value, Error> {
+    /// Create a handle to access this index at a snapshot.
+    pub fn at<'r, 's>(&'r mut self, snapshot: &'s Snapshot)
+        -> CompactSnapshot<'r, 's, Position, Value>
+    {
+        CompactSnapshot { reader: self, snapshot }
+    }
+}
+
+impl<Position, Value> CompactReaderOps<Position, Value>
+for CompactReader<Position, Value>
+where
+    Position: Copy + From<u64> + Into<u64> + Ord
+        + Add<u64, Output=Position> + AddAssign<u64>
+        + Sub<u64, Output=Position> + SubAssign<u64> + Sub<Output=u64>
+        + Debug,
+    Value: Copy + From<u64> + Into<u64> + Ord
+        + Add<u64, Output=Value>
+        + Sub<Output=u64>
+{
+    const SOURCE_DESCRIPTION: &str = "index";
+
+    fn len(&self) -> u64 {
+        self.shared_length.load()
+    }
+
+    fn get(&mut self, position: Position) -> Result<Value, Error> {
         // Check position is valid.
-        let length = self.len();
-        if position.into() >= length {
-            bail!("requested position {position:?} but index length is {length}")
-        }
+        self.check_position(position)?;
         // Find the segment required.
         let segment_id = self.segment_start_reader.bisect_right(&position)? - 1;
         let segment_start = self.segment_start_reader.get(segment_id)?;
@@ -255,15 +341,11 @@ where
         Ok(base_value + delta)
     }
 
-    /// Get multiple values from the index, for a range of positions.
-    pub fn get_range(&mut self, range: &Range<Position>)
+    fn get_range(&mut self, range: &Range<Position>)
         -> Result<Vec<Value>, Error>
     {
         // Check range is valid.
-        let length = self.len();
-        if range.end.into() > length {
-            bail!("requested range {range:?} but index length is {length}")
-        }
+        self.check_range(range)?;
         // Allocate space for the result.
         let total_count: usize = (range.end - range.start).try_into().unwrap();
         let mut values = Vec::with_capacity(total_count);
@@ -339,14 +421,11 @@ where
         Ok(values)
     }
 
-    /// Create an iterator over values from the index.
-    pub fn iter(&mut self, range: &Range<Position>)
+    fn iter(&mut self, range: &Range<Position>)
         -> Result<CompactIterator<Position, Value>, Error>
     {
-        let length = self.len();
-        if range.end.into() > length {
-            bail!("requested range {range:?} but index length is {length}")
-        }
+        // Check range is valid.
+        self.check_range(range)?;
         // Determine which segments we need to read from.
         let first = self.segment_start_reader.bisect_right(&range.start)? - 1;
         let last = self.segment_start_reader.bisect_left(&range.end)?;
@@ -368,15 +447,10 @@ where
         })
     }
 
-    /// Get the range of values between the specified position and the next.
-    ///
-    /// The length of the data referenced by this index must be passed
-    /// as a parameter. If the specified position is the last in the
-    /// index, the range will be from the last value in the index to the
-    /// end of the referenced data.
-    pub fn target_range(&mut self, position: Position, target_length: u64)
+    fn target_range(&mut self, position: Position, target_length: u64)
         -> Result<Range<Value>, Error>
     {
+        self.check_position(position)?;
         let range = if position.into() + 2 > self.len() {
             let start = self.get(position)?;
             let end = Value::from(target_length);
@@ -390,18 +464,17 @@ where
         Ok(range)
     }
 
-    /// Leftmost position where a value would be ordered within this index.
-    pub fn bisect_left(&mut self, value: &Value)
+    fn bisect_left(&mut self, value: &Value)
         -> Result<Position, Error>
     {
         let range = Position::from(0)..Position::from(self.len());
         self.bisect_range_left(&range, value)
     }
 
-    /// Leftmost position where a value would be ordered within this range.
-    pub fn bisect_range_left(&mut self, range: &Range<Position>, value: &Value)
+    fn bisect_range_left(&mut self, range: &Range<Position>, value: &Value)
         -> Result<Position, Error>
     {
+        self.check_range(range)?;
         // Find the segment required.
         let segment_id = match self.segment_base_reader.bisect_right(value)? {
             id if id.value == 0 => return Ok(Position::from(0)),
@@ -460,6 +533,64 @@ where
         }
         let position = delta_range.start + lower_bound as u64;
         Ok(position)
+    }
+}
+
+impl<Position, Value> CompactReaderOps<Position, Value>
+for CompactSnapshot<'_, '_, Position, Value>
+where
+    Position: Copy + From<u64> + Into<u64> + Ord
+        + Add<u64, Output=Position> + AddAssign<u64>
+        + Sub<u64, Output=Position> + SubAssign<u64> + Sub<Output=u64>
+        + Debug,
+    Value: Copy + From<u64> + Into<u64> + Ord
+        + Add<u64, Output=Value>
+        + Sub<Output=u64>
+{
+    const SOURCE_DESCRIPTION: &'static str = "snapshot";
+
+    fn len(&self) -> u64 {
+        self.reader.shared_length.load_at(self.snapshot)
+    }
+
+    fn get(&mut self, position: Position) -> Result<Value, Error> {
+        self.check_position(position)?;
+        self.reader.get(position)
+    }
+
+    fn get_range(&mut self, range: &Range<Position>)
+        -> Result<Vec<Value>, Error>
+    {
+        self.check_range(range)?;
+        self.reader.get_range(range)
+    }
+
+    fn iter(&mut self, range: &Range<Position>)
+        -> Result<CompactIterator<Position, Value>, Error>
+    {
+        self.check_range(range)?;
+        self.reader.iter(range)
+    }
+
+    fn target_range(&mut self, position: Position, target_length: u64)
+        -> Result<Range<Value>, Error>
+    {
+        self.check_position(position)?;
+        self.reader.target_range(position, target_length)
+    }
+
+    fn bisect_left(&mut self, value: &Value)
+        -> Result<Position, Error>
+    {
+        let range = Position::from(0)..Position::from(self.len());
+        self.reader.bisect_range_left(&range, value)
+    }
+
+    fn bisect_range_left(&mut self, range: &Range<Position>, value: &Value)
+        -> Result<Position, Error>
+    {
+        self.check_range(range)?;
+        self.reader.bisect_range_left(range, value)
     }
 }
 
@@ -620,15 +751,17 @@ where
         Ok(())
     }
 
-    fn restore(src: &std::path::Path) -> Result<Self, anyhow::Error> {
+    fn restore(db: &mut CounterSet, src: &std::path::Path)
+        -> Result<Self, anyhow::Error>
+    {
         Ok(CompactReader {
             _marker: PhantomData,
-            shared_length: restore(&src.join("length"))?,
-            segment_start_reader: restore(&src.join("segment_starts"))?,
-            segment_base_reader: restore(&src.join("segment_bases"))?,
-            segment_offset_reader: restore(&src.join("segment_offsets"))?,
-            segment_width_reader: restore(&src.join("segment_widths"))?,
-            data_reader: restore(&src.join("deltas"))?,
+            shared_length: restore(db, &src.join("length"))?,
+            segment_start_reader: restore(db, &src.join("segment_starts"))?,
+            segment_base_reader: restore(db, &src.join("segment_bases"))?,
+            segment_offset_reader: restore(db, &src.join("segment_offsets"))?,
+            segment_width_reader: restore(db, &src.join("segment_widths"))?,
+            data_reader: restore(db, &src.join("deltas"))?,
         })
     }
 }
@@ -652,7 +785,9 @@ mod tests {
 
     #[test]
     fn test_compact_index() {
-        let (mut writer, mut reader) = compact_index::<_, _, 1>().unwrap();
+        let mut db = CounterSet::new();
+        let (mut writer, mut reader) =
+            compact_index::<_, _, 1>(&mut db).unwrap();
         let mut expected = Vec::<Id<u8>>::new();
         let mut x = 10;
         let n = 4321;

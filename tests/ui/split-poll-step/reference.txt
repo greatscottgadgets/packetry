@@ -7,6 +7,8 @@ At traffic-packets row 0:
 Updating after 2 packets decoded
 At traffic-hierarchical row 0:
 + Polling 1 times for interrupt transfer on endpoint 14.1 IN
+At traffic-interleaved row 0:
++ Polling 1 times for interrupt transfer on endpoint 14.1 IN
 At traffic-transactions row 0:
 - Starting low speed interrupt transaction on hub 12 port 2
 + Starting IN transaction
@@ -33,6 +35,8 @@ At traffic-hierarchical row 0:
 - Starting IN transaction on 14.1
 + Polling 1 times for interrupt transfer on endpoint 14.1 IN
 + Starting IN transaction on 14.1
+At traffic-interleaved row 1:
++ Polling 1 times for interrupt transfer on endpoint 14.2 IN
 At traffic-transactions row 1:
 - Starting low speed interrupt transaction on hub 12 port 2
 + Starting IN transaction
@@ -90,6 +94,9 @@ At traffic-hierarchical row 0:
 + Polling 2 times for interrupt transfer on endpoint 14.1 IN
 At traffic-hierarchical row 3:
 + Starting IN transaction on 14.1
+At traffic-interleaved row 0:
+- Polling 1 times for interrupt transfer on endpoint 14.1 IN
++ Polling 2 times for interrupt transfer on endpoint 14.1 IN
 At traffic-transactions row 4:
 - Starting low speed interrupt transaction on hub 12 port 2
 + Starting IN transaction
@@ -106,6 +113,9 @@ At traffic-hierarchical row 4:
 + Polling 2 times for interrupt transfer on endpoint 14.2 IN
 At traffic-hierarchical row 7:
 + Starting IN transaction on 14.2
+At traffic-interleaved row 1:
+- Polling 1 times for interrupt transfer on endpoint 14.2 IN
++ Polling 2 times for interrupt transfer on endpoint 14.2 IN
 At traffic-transactions row 5:
 - Starting low speed interrupt transaction on hub 12 port 2
 + Starting IN transaction
@@ -128,6 +138,9 @@ At traffic-hierarchical row 0:
 + Polling 2 times for interrupt transfer on endpoint 14.1 IN
 At traffic-hierarchical row 4:
 + Completing IN transaction on 14.1, NAK
+At traffic-interleaved row 0:
+- Polling 1 times for interrupt transfer on endpoint 14.1 IN
++ Polling 2 times for interrupt transfer on endpoint 14.1 IN
 At traffic-transactions row 6:
 - Completing low speed interrupt transaction on hub 12 port 2
 + Completing IN transaction
@@ -150,6 +163,9 @@ At traffic-hierarchical row 5:
 + Polling 2 times for interrupt transfer on endpoint 14.2 IN
 At traffic-hierarchical row 9:
 + Completing IN transaction on 14.2, NAK
+At traffic-interleaved row 1:
+- Polling 1 times for interrupt transfer on endpoint 14.2 IN
++ Polling 2 times for interrupt transfer on endpoint 14.2 IN
 At traffic-transactions row 7:
 - Completing low speed interrupt transaction on hub 12 port 2
 + Completing IN transaction
@@ -166,6 +182,9 @@ At traffic-hierarchical row 0:
 + Polling 3 times for interrupt transfer on endpoint 14.1 IN
 At traffic-hierarchical row 5:
 + Starting IN transaction on 14.1
+At traffic-interleaved row 0:
+- Polling 1 times for interrupt transfer on endpoint 14.1 IN
++ Polling 3 times for interrupt transfer on endpoint 14.1 IN
 At traffic-transactions row 8:
 - Starting low speed interrupt transaction on hub 12 port 2
 + Starting IN transaction
@@ -182,6 +201,9 @@ At traffic-hierarchical row 6:
 + Polling 3 times for interrupt transfer on endpoint 14.2 IN
 At traffic-hierarchical row 11:
 + Starting IN transaction on 14.2
+At traffic-interleaved row 1:
+- Polling 1 times for interrupt transfer on endpoint 14.2 IN
++ Polling 3 times for interrupt transfer on endpoint 14.2 IN
 At traffic-transactions row 9:
 - Starting low speed interrupt transaction on hub 12 port 2
 + Starting IN transaction
@@ -204,6 +226,9 @@ At traffic-hierarchical row 0:
 + Polling 3 times for interrupt transfer on endpoint 14.1 IN
 At traffic-hierarchical row 6:
 + Completing IN transaction on 14.1, NAK
+At traffic-interleaved row 0:
+- Polling 1 times for interrupt transfer on endpoint 14.1 IN
++ Polling 3 times for interrupt transfer on endpoint 14.1 IN
 At traffic-transactions row 10:
 - Completing low speed interrupt transaction on hub 12 port 2
 + Completing IN transaction
@@ -226,6 +251,9 @@ At traffic-hierarchical row 7:
 + Polling 3 times for interrupt transfer on endpoint 14.2 IN
 At traffic-hierarchical row 13:
 + Completing IN transaction on 14.2, NAK
+At traffic-interleaved row 1:
+- Polling 1 times for interrupt transfer on endpoint 14.2 IN
++ Polling 3 times for interrupt transfer on endpoint 14.2 IN
 At traffic-transactions row 11:
 - Completing low speed interrupt transaction on hub 12 port 2
 + Completing IN transaction
@@ -242,6 +270,9 @@ At traffic-hierarchical row 0:
 + Polling 4 times for interrupt transfer on endpoint 14.1 IN
 At traffic-hierarchical row 7:
 + Starting IN transaction on 14.1
+At traffic-interleaved row 0:
+- Polling 1 times for interrupt transfer on endpoint 14.1 IN
++ Polling 4 times for interrupt transfer on endpoint 14.1 IN
 At traffic-transactions row 12:
 - Starting low speed interrupt transaction on hub 12 port 2
 + Starting IN transaction
@@ -258,6 +289,9 @@ At traffic-hierarchical row 8:
 + Polling 4 times for interrupt transfer on endpoint 14.2 IN
 At traffic-hierarchical row 15:
 + Starting IN transaction on 14.2
+At traffic-interleaved row 1:
+- Polling 1 times for interrupt transfer on endpoint 14.2 IN
++ Polling 4 times for interrupt transfer on endpoint 14.2 IN
 At traffic-transactions row 13:
 - Starting low speed interrupt transaction on hub 12 port 2
 + Starting IN transaction
@@ -280,6 +314,9 @@ At traffic-hierarchical row 0:
 + Polling 4 times for interrupt transfer on endpoint 14.1 IN
 At traffic-hierarchical row 8:
 + Completing IN transaction on 14.1, NAK
+At traffic-interleaved row 0:
+- Polling 1 times for interrupt transfer on endpoint 14.1 IN
++ Polling 4 times for interrupt transfer on endpoint 14.1 IN
 At traffic-transactions row 14:
 - Completing low speed interrupt transaction on hub 12 port 2
 + Completing IN transaction
@@ -302,6 +339,9 @@ At traffic-hierarchical row 9:
 + Polling 4 times for interrupt transfer on endpoint 14.2 IN
 At traffic-hierarchical row 17:
 + Completing IN transaction on 14.2, NAK
+At traffic-interleaved row 1:
+- Polling 1 times for interrupt transfer on endpoint 14.2 IN
++ Polling 4 times for interrupt transfer on endpoint 14.2 IN
 At traffic-transactions row 15:
 - Completing low speed interrupt transaction on hub 12 port 2
 + Completing IN transaction

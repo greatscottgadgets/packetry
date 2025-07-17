@@ -1,0 +1,981 @@
+ Device 12: USB 2.0 Hub
+    Device descriptor
+       Length: 18 bytes
+       Type: 0x01
+       USB Version: 2.00
+       Class: 0x09: Hub
+       Subclass: 0x00: Unused
+       Protocol: 0x01: Single TT
+       Max EP0 packet size: 64 bytes
+       Vendor ID: 0x1A40: Terminus Technology Inc.
+       Product ID: 0x0101: Hub
+       Version: 1.11
+       Manufacturer string: (none)
+       Product string: #1 'USB 2.0 Hub'
+       Serial string: (none)
+    Configuration 1
+       Configuration descriptor
+          Length: 9 bytes
+          Type: 0x02
+          Total length: 25 bytes
+          Number of interfaces: 1
+          Configuration number: 1
+          Configuration string: (none)
+          Attributes: 0xE0
+          Max power: 100mA
+       Interface 0: Hub
+          Interface descriptor
+             Length: 9 bytes
+             Type: 0x04
+             Interface number: 0
+             Alternate setting: 0
+             Number of endpoints: 1
+             Class: 0x09: Hub
+             Subclass: 0x00: Unused
+             Protocol: 0x00: Full speed (or root) hub
+             Interface string: (none)
+          Endpoint 1 IN (interrupt)
+             Endpoint descriptor
+                Length: 7 bytes
+                Type: 0x05
+                Endpoint address: 0x81
+                Attributes: 0x03
+                Max packet size: 1 bytes
+                Interval: 0x0C
+ Device 13: USB 2.0 Hub
+    Device descriptor
+       Length: 18 bytes
+       Type: 0x01
+       USB Version: 2.00
+       Class: 0x09: Hub
+       Subclass: 0x00: Unused
+       Protocol: 0x01: Single TT
+       Max EP0 packet size: 64 bytes
+       Vendor ID: 0x1A40: Terminus Technology Inc.
+       Product ID: 0x0101: Hub
+       Version: 1.11
+       Manufacturer string: (none)
+       Product string: #1 'USB 2.0 Hub'
+       Serial string: (none)
+    Configuration 1
+       Configuration descriptor
+          Length: 9 bytes
+          Type: 0x02
+          Total length: 25 bytes
+          Number of interfaces: 1
+          Configuration number: 1
+          Configuration string: (none)
+          Attributes: 0xE0
+          Max power: 100mA
+       Interface 0: Hub
+          Interface descriptor
+             Length: 9 bytes
+             Type: 0x04
+             Interface number: 0
+             Alternate setting: 0
+             Number of endpoints: 1
+             Class: 0x09: Hub
+             Subclass: 0x00: Unused
+             Protocol: 0x00: Full speed (or root) hub
+             Interface string: (none)
+          Endpoint 1 IN (interrupt)
+             Endpoint descriptor
+                Length: 7 bytes
+                Type: 0x05
+                Endpoint address: 0x81
+                Attributes: 0x03
+                Max packet size: 1 bytes
+                Interval: 0x0C
+ Device 14: USB Device
+    Device descriptor
+       Length: 18 bytes
+       Type: 0x01
+       USB Version: 2.00
+       Class: 0x00: (Defined at Interface level)
+       Subclass: 0x00
+       Protocol: 0x00
+       Max EP0 packet size: 8 bytes
+       Vendor ID: 0x0C45: Microdia
+       Product ID: 0x7403: Foot Switch
+       Version: 0.01
+       Manufacturer string: #1 (not seen)
+       Product string: #2 'USB Device'
+       Serial string: (none)
+    Configuration 1
+       Configuration descriptor
+          Length: 9 bytes
+          Type: 0x02
+          Total length: 59 bytes
+          Number of interfaces: 2
+          Configuration number: 1
+          Configuration string: (none)
+          Attributes: 0xA0
+          Max power: 100mA
+       Interface 0: Human Interface Device
+          Interface descriptor
+             Length: 9 bytes
+             Type: 0x04
+             Interface number: 0
+             Alternate setting: 0
+             Number of endpoints: 1
+             Class: 0x03: Human Interface Device
+             Subclass: 0x01: Boot Interface Subclass
+             Protocol: 0x01: Keyboard
+             Interface string: (none)
+          HID descriptor
+             Length: 9 bytes
+             Type: 0x21
+             HID Version: 1.00
+             Country code: 0x00: Not supported
+             Available descriptors
+                HID report descriptor, 77 bytes
+          Endpoint 1 IN (interrupt)
+             Endpoint descriptor
+                Length: 7 bytes
+                Type: 0x05
+                Endpoint address: 0x81
+                Attributes: 0x03
+                Max packet size: 8 bytes
+                Interval: 0x0A
+       Interface 1: Human Interface Device
+          Interface descriptor
+             Length: 9 bytes
+             Type: 0x04
+             Interface number: 1
+             Alternate setting: 0
+             Number of endpoints: 1
+             Class: 0x03: Human Interface Device
+             Subclass: 0x01: Boot Interface Subclass
+             Protocol: 0x02: Mouse
+             Interface string: (none)
+          HID descriptor
+             Length: 9 bytes
+             Type: 0x21
+             HID Version: 1.00
+             Country code: 0x00: Not supported
+             Available descriptors
+                HID report descriptor, 91 bytes
+          Endpoint 2 IN (interrupt)
+             Endpoint descriptor
+                Length: 7 bytes
+                Type: 0x05
+                Endpoint address: 0x82
+                Attributes: 0x03
+                Max packet size: 5 bytes
+                Interval: 0x0A
+ Device 15: USB2734
+    Device descriptor
+       Length: 18 bytes
+       Type: 0x01
+       USB Version: 2.10
+       Class: 0x09: Hub
+       Subclass: 0x00: Unused
+       Protocol: 0x02: TT per port
+       Max EP0 packet size: 64 bytes
+       Vendor ID: 0x0424: Microchip Technology, Inc. (formerly SMSC)
+       Product ID: 0x2734
+       Version: 1.36
+       Manufacturer string: #1 (not seen)
+       Product string: #2 'USB2734'
+       Serial string: (none)
+    Configuration 1
+       Configuration descriptor
+          Length: 9 bytes
+          Type: 0x02
+          Total length: 41 bytes
+          Number of interfaces: 1
+          Configuration number: 1
+          Configuration string: (none)
+          Attributes: 0xE0
+          Max power: 0mA
+       Interface 0: Hub
+          Interface descriptor
+             Length: 9 bytes
+             Type: 0x04
+             Interface number: 0
+             Alternate setting: 0
+             Number of endpoints: 1
+             Class: 0x09: Hub
+             Subclass: 0x00: Unused
+             Protocol: 0x01: Single TT
+             Interface string: (none)
+          Endpoint 1 IN (interrupt)
+             Endpoint descriptor
+                Length: 7 bytes
+                Type: 0x05
+                Endpoint address: 0x81
+                Attributes: 0x03
+                Max packet size: 1 bytes
+                Interval: 0x0C
+       Interface 0 alt 1: Hub
+          Interface descriptor
+             Length: 9 bytes
+             Type: 0x04
+             Interface number: 0
+             Alternate setting: 1
+             Number of endpoints: 1
+             Class: 0x09: Hub
+             Subclass: 0x00: Unused
+             Protocol: 0x02: TT per port
+             Interface string: (none)
+          Endpoint 1 IN (interrupt)
+             Endpoint descriptor
+                Length: 7 bytes
+                Type: 0x05
+                Endpoint address: 0x81
+                Attributes: 0x03
+                Max packet size: 1 bytes
+                Interval: 0x0C
+ Device 16: TX-384Khz Hifi Type-C Audio
+    Device descriptor
+       Length: 18 bytes
+       Type: 0x01
+       USB Version: 2.00
+       Class: 0xEF: Miscellaneous Device
+       Subclass: 0x02: ?
+       Protocol: 0x01: Interface Association
+       Max EP0 packet size: 64 bytes
+       Vendor ID: 0x0BDA: Realtek Semiconductor Corp.
+       Product ID: 0x4C07
+       Version: 0.01
+       Manufacturer string: #3 (not seen)
+       Product string: #1 'TX-384Khz Hifi Type-C Audio'
+       Serial string: (none)
+    Configuration 1
+       Configuration descriptor
+          Length: 9 bytes
+          Type: 0x02
+          Total length: 285 bytes
+          Number of interfaces: 3
+          Configuration number: 1
+          Configuration string: #4 (not seen)
+          Attributes: 0xA0
+          Max power: 100mA
+       Function 5: Audio
+          Interface association descriptor
+             Length: 8 bytes
+             Type: 0x0B
+             First interface: 0
+             Interface count: 2
+             Function class: 0x01: Audio
+             Function subclass: 0x00
+             Function protocol: 0x20
+             Function number: 5
+          Interface 0: Audio
+             Interface descriptor
+                Length: 9 bytes
+                Type: 0x04
+                Interface number: 0
+                Alternate setting: 0
+                Number of endpoints: 1
+                Class: 0x01: Audio
+                Subclass: 0x01: Control Device
+                Protocol: 0x20
+                Interface string: #5 'TX-384Khz Hifi Type-C Audio'
+             Class descriptor 0x24, 9 bytes
+             Class descriptor 0x24, 8 bytes
+             Class descriptor 0x24, 17 bytes
+             Class descriptor 0x24, 12 bytes
+             Class descriptor 0x24, 18 bytes
+             Class descriptor 0x24, 16 bytes
+             Endpoint 7 IN (interrupt)
+                Endpoint descriptor
+                   Length: 7 bytes
+                   Type: 0x05
+                   Endpoint address: 0x87
+                   Attributes: 0x03
+                   Max packet size: 16 bytes
+                   Interval: 0x08
+          Interface 1: Audio
+             Interface descriptor
+                Length: 9 bytes
+                Type: 0x04
+                Interface number: 1
+                Alternate setting: 0
+                Number of endpoints: 0
+                Class: 0x01: Audio
+                Subclass: 0x02: Streaming
+                Protocol: 0x20
+                Interface string: #5 'TX-384Khz Hifi Type-C Audio'
+          Interface 1 alt 1: Audio
+             Interface descriptor
+                Length: 9 bytes
+                Type: 0x04
+                Interface number: 1
+                Alternate setting: 1
+                Number of endpoints: 1
+                Class: 0x01: Audio
+                Subclass: 0x02: Streaming
+                Protocol: 0x20
+                Interface string: #5 'TX-384Khz Hifi Type-C Audio'
+             Class descriptor 0x24, 16 bytes
+             Class descriptor 0x24, 6 bytes
+             Endpoint 4 OUT (isochronous)
+                Endpoint descriptor
+                   Length: 7 bytes
+                   Type: 0x05
+                   Endpoint address: 0x04
+                   Attributes: 0x09
+                   Max packet size: 248 bytes
+                   Interval: 0x01
+                Class descriptor 0x25, 8 bytes
+          Interface 1 alt 2: Audio
+             Interface descriptor
+                Length: 9 bytes
+                Type: 0x04
+                Interface number: 1
+                Alternate setting: 2
+                Number of endpoints: 1
+                Class: 0x01: Audio
+                Subclass: 0x02: Streaming
+                Protocol: 0x20
+                Interface string: #5 'TX-384Khz Hifi Type-C Audio'
+             Class descriptor 0x24, 16 bytes
+             Class descriptor 0x24, 6 bytes
+             Endpoint 4 OUT (isochronous)
+                Endpoint descriptor
+                   Length: 7 bytes
+                   Type: 0x05
+                   Endpoint address: 0x04
+                   Attributes: 0x09
+                   Max packet size: 372 bytes
+                   Interval: 0x01
+                Class descriptor 0x25, 8 bytes
+          Interface 1 alt 3: Audio
+             Interface descriptor
+                Length: 9 bytes
+                Type: 0x04
+                Interface number: 1
+                Alternate setting: 3
+                Number of endpoints: 1
+                Class: 0x01: Audio
+                Subclass: 0x02: Streaming
+                Protocol: 0x20
+                Interface string: #5 'TX-384Khz Hifi Type-C Audio'
+             Class descriptor 0x24, 16 bytes
+             Class descriptor 0x24, 6 bytes
+             Endpoint 4 OUT (isochronous)
+                Endpoint descriptor
+                   Length: 7 bytes
+                   Type: 0x05
+                   Endpoint address: 0x04
+                   Attributes: 0x09
+                   Max packet size: 496 bytes
+                   Interval: 0x01
+                Class descriptor 0x25, 8 bytes
+       Interface 2: Human Interface Device
+          Interface descriptor
+             Length: 9 bytes
+             Type: 0x04
+             Interface number: 2
+             Alternate setting: 0
+             Number of endpoints: 1
+             Class: 0x03: Human Interface Device
+             Subclass: 0x00: No Subclass
+             Protocol: 0x00: None
+             Interface string: (none)
+          HID descriptor
+             Length: 9 bytes
+             Type: 0x21
+             HID Version: 1.11
+             Country code: 0x00: Not supported
+             Available descriptors
+                HID report descriptor, 57 bytes
+          Endpoint 8 IN (interrupt)
+             Endpoint descriptor
+                Length: 7 bytes
+                Type: 0x05
+                Endpoint address: 0x88
+                Attributes: 0x03
+                Max packet size: 16 bytes
+                Interval: 0x04
+ Device 17: Dell USB Keyboard Hub
+    Device descriptor
+       Length: 18 bytes
+       Type: 0x01
+       USB Version: 1.10
+       Class: 0x09: Hub
+       Subclass: 0x00: Unused
+       Protocol: 0x00: Full speed (or root) hub
+       Max EP0 packet size: 8 bytes
+       Vendor ID: 0x413C: Dell Computer Corp.
+       Product ID: 0x1003: Keyboard Hub
+       Version: 2.00
+       Manufacturer string: #1 (not seen)
+       Product string: #2 'Dell USB Keyboard Hub'
+       Serial string: (none)
+    Configuration 1
+       Configuration descriptor
+          Length: 9 bytes
+          Type: 0x02
+          Total length: 25 bytes
+          Number of interfaces: 1
+          Configuration number: 1
+          Configuration string: #2 'Dell USB Keyboard Hub'
+          Attributes: 0xA0
+          Max power: 100mA
+       Interface 0: Hub
+          Interface descriptor
+             Length: 9 bytes
+             Type: 0x04
+             Interface number: 0
+             Alternate setting: 0
+             Number of endpoints: 1
+             Class: 0x09: Hub
+             Subclass: 0x00: Unused
+             Protocol: 0x00: Full speed (or root) hub
+             Interface string: #2 'Dell USB Keyboard Hub'
+          Endpoint 1 IN (interrupt)
+             Endpoint descriptor
+                Length: 7 bytes
+                Type: 0x05
+                Endpoint address: 0x81
+                Attributes: 0x03
+                Max packet size: 1 bytes
+                Interval: 0x18
+ Device 18: HD Webcam C615
+    Device descriptor
+       Length: 18 bytes
+       Type: 0x01
+       USB Version: 2.00
+       Class: 0xEF: Miscellaneous Device
+       Subclass: 0x02: ?
+       Protocol: 0x01: Interface Association
+       Max EP0 packet size: 64 bytes
+       Vendor ID: 0x046D: Logitech, Inc.
+       Product ID: 0x082C: HD Webcam C615
+       Version: 0.11
+       Manufacturer string: (none)
+       Product string: #2 'HD Webcam C615'
+       Serial string: #1 '77859260'
+    Configuration 1
+       Configuration descriptor
+          Length: 9 bytes
+          Type: 0x02
+          Total length: 2212 bytes
+          Number of interfaces: 4
+          Configuration number: 1
+          Configuration string: (none)
+          Attributes: 0x80
+          Max power: 500mA
+       Function 0: Video
+          Interface association descriptor
+             Length: 8 bytes
+             Type: 0x0B
+             First interface: 2
+             Interface count: 2
+             Function class: 0x0E: Video
+             Function subclass: 0x03: Video Interface Collection
+             Function protocol: 0x00
+             Function number: 0
+          Interface 2: Video
+             Interface descriptor
+                Length: 9 bytes
+                Type: 0x04
+                Interface number: 2
+                Alternate setting: 0
+                Number of endpoints: 1
+                Class: 0x0E: Video
+                Subclass: 0x01: Video Control
+                Protocol: 0x00
+                Interface string: (none)
+             Class descriptor 0x24, 13 bytes
+             Class descriptor 0x24, 18 bytes
+             Class descriptor 0x24, 11 bytes
+             Class descriptor 0x24, 27 bytes
+             Class descriptor 0x24, 28 bytes
+             Class descriptor 0x24, 27 bytes (2 times)
+             Class descriptor 0x24, 9 bytes
+             Endpoint 7 IN (interrupt)
+                Endpoint descriptor
+                   Length: 7 bytes
+                   Type: 0x05
+                   Endpoint address: 0x87
+                   Attributes: 0x03
+                   Max packet size: 16 bytes
+                   Interval: 0x08
+                Class descriptor 0x25, 5 bytes
+          Interface 3: Video
+             Interface descriptor
+                Length: 9 bytes
+                Type: 0x04
+                Interface number: 3
+                Alternate setting: 0
+                Number of endpoints: 0
+                Class: 0x0E: Video
+                Subclass: 0x02: Video Streaming
+                Protocol: 0x00
+                Interface string: (none)
+             Class descriptor 0x24, 15 bytes
+             Class descriptor 0x24, 27 bytes
+             Class descriptor 0x24, 54 bytes (8 times)
+             Class descriptor 0x24, 50 bytes
+             Class descriptor 0x24, 42 bytes
+             Class descriptor 0x24, 50 bytes
+             Class descriptor 0x24, 42 bytes
+             Class descriptor 0x24, 38 bytes
+             Class descriptor 0x24, 34 bytes
+             Class descriptor 0x24, 30 bytes
+             Class descriptor 0x24, 6 bytes
+             Class descriptor 0x24, 11 bytes
+             Class descriptor 0x24, 54 bytes (15 times)
+             Class descriptor 0x24, 6 bytes
+          Interface 3 alt 1: Video
+             Interface descriptor
+                Length: 9 bytes
+                Type: 0x04
+                Interface number: 3
+                Alternate setting: 1
+                Number of endpoints: 1
+                Class: 0x0E: Video
+                Subclass: 0x02: Video Streaming
+                Protocol: 0x00
+                Interface string: (none)
+             Endpoint 1 IN (isochronous)
+                Endpoint descriptor
+                   Length: 7 bytes
+                   Type: 0x05
+                   Endpoint address: 0x81
+                   Attributes: 0x05
+                   Max packet size: 192 bytes
+                   Interval: 0x01
+          Interface 3 alt 2: Video
+             Interface descriptor
+                Length: 9 bytes
+                Type: 0x04
+                Interface number: 3
+                Alternate setting: 2
+                Number of endpoints: 1
+                Class: 0x0E: Video
+                Subclass: 0x02: Video Streaming
+                Protocol: 0x00
+                Interface string: (none)
+             Endpoint 1 IN (isochronous)
+                Endpoint descriptor
+                   Length: 7 bytes
+                   Type: 0x05
+                   Endpoint address: 0x81
+                   Attributes: 0x05
+                   Max packet size: 384 bytes
+                   Interval: 0x01
+          Interface 3 alt 3: Video
+             Interface descriptor
+                Length: 9 bytes
+                Type: 0x04
+                Interface number: 3
+                Alternate setting: 3
+                Number of endpoints: 1
+                Class: 0x0E: Video
+                Subclass: 0x02: Video Streaming
+                Protocol: 0x00
+                Interface string: (none)
+             Endpoint 1 IN (isochronous)
+                Endpoint descriptor
+                   Length: 7 bytes
+                   Type: 0x05
+                   Endpoint address: 0x81
+                   Attributes: 0x05
+                   Max packet size: 512 bytes
+                   Interval: 0x01
+          Interface 3 alt 4: Video
+             Interface descriptor
+                Length: 9 bytes
+                Type: 0x04
+                Interface number: 3
+                Alternate setting: 4
+                Number of endpoints: 1
+                Class: 0x0E: Video
+                Subclass: 0x02: Video Streaming
+                Protocol: 0x00
+                Interface string: (none)
+             Endpoint 1 IN (isochronous)
+                Endpoint descriptor
+                   Length: 7 bytes
+                   Type: 0x05
+                   Endpoint address: 0x81
+                   Attributes: 0x05
+                   Max packet size: 640 bytes
+                   Interval: 0x01
+          Interface 3 alt 5: Video
+             Interface descriptor
+                Length: 9 bytes
+                Type: 0x04
+                Interface number: 3
+                Alternate setting: 5
+                Number of endpoints: 1
+                Class: 0x0E: Video
+                Subclass: 0x02: Video Streaming
+                Protocol: 0x00
+                Interface string: (none)
+             Endpoint 1 IN (isochronous)
+                Endpoint descriptor
+                   Length: 7 bytes
+                   Type: 0x05
+                   Endpoint address: 0x81
+                   Attributes: 0x05
+                   Max packet size: 800 bytes
+                   Interval: 0x01
+          Interface 3 alt 6: Video
+             Interface descriptor
+                Length: 9 bytes
+                Type: 0x04
+                Interface number: 3
+                Alternate setting: 6
+                Number of endpoints: 1
+                Class: 0x0E: Video
+                Subclass: 0x02: Video Streaming
+                Protocol: 0x00
+                Interface string: (none)
+             Endpoint 1 IN (isochronous)
+                Endpoint descriptor
+                   Length: 7 bytes
+                   Type: 0x05
+                   Endpoint address: 0x81
+                   Attributes: 0x05
+                   Max packet size: 944 bytes
+                   Interval: 0x01
+          Interface 3 alt 7: Video
+             Interface descriptor
+                Length: 9 bytes
+                Type: 0x04
+                Interface number: 3
+                Alternate setting: 7
+                Number of endpoints: 1
+                Class: 0x0E: Video
+                Subclass: 0x02: Video Streaming
+                Protocol: 0x00
+                Interface string: (none)
+             Endpoint 1 IN (isochronous)
+                Endpoint descriptor
+                   Length: 7 bytes
+                   Type: 0x05
+                   Endpoint address: 0x81
+                   Attributes: 0x05
+                   Max packet size: 2688 bytes
+                   Interval: 0x01
+          Interface 3 alt 8: Video
+             Interface descriptor
+                Length: 9 bytes
+                Type: 0x04
+                Interface number: 3
+                Alternate setting: 8
+                Number of endpoints: 1
+                Class: 0x0E: Video
+                Subclass: 0x02: Video Streaming
+                Protocol: 0x00
+                Interface string: (none)
+             Endpoint 1 IN (isochronous)
+                Endpoint descriptor
+                   Length: 7 bytes
+                   Type: 0x05
+                   Endpoint address: 0x81
+                   Attributes: 0x05
+                   Max packet size: 2848 bytes
+                   Interval: 0x01
+          Interface 3 alt 9: Video
+             Interface descriptor
+                Length: 9 bytes
+                Type: 0x04
+                Interface number: 3
+                Alternate setting: 9
+                Number of endpoints: 1
+                Class: 0x0E: Video
+                Subclass: 0x02: Video Streaming
+                Protocol: 0x00
+                Interface string: (none)
+             Endpoint 1 IN (isochronous)
+                Endpoint descriptor
+                   Length: 7 bytes
+                   Type: 0x05
+                   Endpoint address: 0x81
+                   Attributes: 0x05
+                   Max packet size: 3040 bytes
+                   Interval: 0x01
+          Interface 3 alt 10: Video
+             Interface descriptor
+                Length: 9 bytes
+                Type: 0x04
+                Interface number: 3
+                Alternate setting: 10
+                Number of endpoints: 1
+                Class: 0x0E: Video
+                Subclass: 0x02: Video Streaming
+                Protocol: 0x00
+                Interface string: (none)
+             Endpoint 1 IN (isochronous)
+                Endpoint descriptor
+                   Length: 7 bytes
+                   Type: 0x05
+                   Endpoint address: 0x81
+                   Attributes: 0x05
+                   Max packet size: 5056 bytes
+                   Interval: 0x01
+          Interface 3 alt 11: Video
+             Interface descriptor
+                Length: 9 bytes
+                Type: 0x04
+                Interface number: 3
+                Alternate setting: 11
+                Number of endpoints: 1
+                Class: 0x0E: Video
+                Subclass: 0x02: Video Streaming
+                Protocol: 0x00
+                Interface string: (none)
+             Endpoint 1 IN (isochronous)
+                Endpoint descriptor
+                   Length: 7 bytes
+                   Type: 0x05
+                   Endpoint address: 0x81
+                   Attributes: 0x05
+                   Max packet size: 5116 bytes
+                   Interval: 0x01
+       Interface 0: Audio
+          Interface descriptor
+             Length: 9 bytes
+             Type: 0x04
+             Interface number: 0
+             Alternate setting: 0
+             Number of endpoints: 0
+             Class: 0x01: Audio
+             Subclass: 0x01: Control Device
+             Protocol: 0x00
+             Interface string: (none)
+          Class descriptor 0x24, 9 bytes
+          Class descriptor 0x24, 12 bytes
+          Class descriptor 0x24, 9 bytes
+          Class descriptor 0x24, 8 bytes
+       Interface 1: Audio
+          Interface descriptor
+             Length: 9 bytes
+             Type: 0x04
+             Interface number: 1
+             Alternate setting: 0
+             Number of endpoints: 0
+             Class: 0x01: Audio
+             Subclass: 0x02: Streaming
+             Protocol: 0x00
+             Interface string: (none)
+       Interface 1 alt 1: Audio
+          Interface descriptor
+             Length: 9 bytes
+             Type: 0x04
+             Interface number: 1
+             Alternate setting: 1
+             Number of endpoints: 1
+             Class: 0x01: Audio
+             Subclass: 0x02: Streaming
+             Protocol: 0x00
+             Interface string: (none)
+          Class descriptor 0x24, 7 bytes
+          Class descriptor 0x24, 11 bytes
+          Endpoint 6 IN (isochronous)
+             Endpoint descriptor
+                Length: 9 bytes
+                Type: 0x05
+                Endpoint address: 0x86
+                Attributes: 0x05
+                Max packet size: 36 bytes
+                Interval: 0x04
+             Class descriptor 0x25, 7 bytes
+       Interface 1 alt 2: Audio
+          Interface descriptor
+             Length: 9 bytes
+             Type: 0x04
+             Interface number: 1
+             Alternate setting: 2
+             Number of endpoints: 1
+             Class: 0x01: Audio
+             Subclass: 0x02: Streaming
+             Protocol: 0x00
+             Interface string: (none)
+          Class descriptor 0x24, 7 bytes
+          Class descriptor 0x24, 11 bytes
+          Endpoint 6 IN (isochronous)
+             Endpoint descriptor
+                Length: 9 bytes
+                Type: 0x05
+                Endpoint address: 0x86
+                Attributes: 0x05
+                Max packet size: 52 bytes
+                Interval: 0x04
+             Class descriptor 0x25, 7 bytes
+       Interface 1 alt 3: Audio
+          Interface descriptor
+             Length: 9 bytes
+             Type: 0x04
+             Interface number: 1
+             Alternate setting: 3
+             Number of endpoints: 1
+             Class: 0x01: Audio
+             Subclass: 0x02: Streaming
+             Protocol: 0x00
+             Interface string: (none)
+          Class descriptor 0x24, 7 bytes
+          Class descriptor 0x24, 11 bytes
+          Endpoint 6 IN (isochronous)
+             Endpoint descriptor
+                Length: 9 bytes
+                Type: 0x05
+                Endpoint address: 0x86
+                Attributes: 0x05
+                Max packet size: 68 bytes
+                Interval: 0x04
+             Class descriptor 0x25, 7 bytes
+       Interface 1 alt 4: Audio
+          Interface descriptor
+             Length: 9 bytes
+             Type: 0x04
+             Interface number: 1
+             Alternate setting: 4
+             Number of endpoints: 1
+             Class: 0x01: Audio
+             Subclass: 0x02: Streaming
+             Protocol: 0x00
+             Interface string: (none)
+          Class descriptor 0x24, 7 bytes
+          Class descriptor 0x24, 11 bytes
+          Endpoint 6 IN (isochronous)
+             Endpoint descriptor
+                Length: 9 bytes
+                Type: 0x05
+                Endpoint address: 0x86
+                Attributes: 0x05
+                Max packet size: 100 bytes
+                Interval: 0x04
+             Class descriptor 0x25, 7 bytes
+ Device 19: Microsoft Pro Intellimouse
+    Device descriptor
+       Length: 18 bytes
+       Type: 0x01
+       USB Version: 2.00
+       Class: 0x00: (Defined at Interface level)
+       Subclass: 0x00
+       Protocol: 0x00
+       Max EP0 packet size: 64 bytes
+       Vendor ID: 0x045E: Microsoft Corp.
+       Product ID: 0x082A: Pro Intellimouse
+       Version: 0.95
+       Manufacturer string: #1 (not seen)
+       Product string: #2 'Microsoft Pro Intellimouse'
+       Serial string: (none)
+    Configuration 1
+       Configuration descriptor
+          Length: 9 bytes
+          Type: 0x02
+          Total length: 59 bytes
+          Number of interfaces: 2
+          Configuration number: 1
+          Configuration string: #2 'Microsoft Pro Intellimouse'
+          Attributes: 0xA0
+          Max power: 400mA
+       Interface 0: Human Interface Device
+          Interface descriptor
+             Length: 9 bytes
+             Type: 0x04
+             Interface number: 0
+             Alternate setting: 0
+             Number of endpoints: 1
+             Class: 0x03: Human Interface Device
+             Subclass: 0x01: Boot Interface Subclass
+             Protocol: 0x02: Mouse
+             Interface string: #3 'HID MOUSE DEVICE'
+          HID descriptor
+             Length: 9 bytes
+             Type: 0x21
+             HID Version: 1.11
+             Country code: 0x00: Not supported
+             Available descriptors
+                HID report descriptor, 421 bytes
+          Endpoint 1 IN (interrupt)
+             Endpoint descriptor
+                Length: 7 bytes
+                Type: 0x05
+                Endpoint address: 0x81
+                Attributes: 0x03
+                Max packet size: 10 bytes
+                Interval: 0x01
+       Interface 1: Human Interface Device
+          Interface descriptor
+             Length: 9 bytes
+             Type: 0x04
+             Interface number: 1
+             Alternate setting: 0
+             Number of endpoints: 1
+             Class: 0x03: Human Interface Device
+             Subclass: 0x00: No Subclass
+             Protocol: 0x00: None
+             Interface string: #4 'HID KEYBOARD DEVICE'
+          HID descriptor
+             Length: 9 bytes
+             Type: 0x21
+             HID Version: 1.11
+             Country code: 0x00: Not supported
+             Available descriptors
+                HID report descriptor, 273 bytes
+          Endpoint 2 IN (interrupt)
+             Endpoint descriptor
+                Length: 7 bytes
+                Type: 0x05
+                Endpoint address: 0x82
+                Attributes: 0x03
+                Max packet size: 64 bytes
+                Interval: 0x10
+ Device 20: Hub Controller
+    Device descriptor
+       Length: 18 bytes
+       Type: 0x01
+       USB Version: 2.01
+       Class: 0x00: (Defined at Interface level)
+       Subclass: 0x00
+       Protocol: 0x00
+       Max EP0 packet size: 64 bytes
+       Vendor ID: 0x0424: Microchip Technology, Inc. (formerly SMSC)
+       Product ID: 0x274B
+       Version: 2.00
+       Manufacturer string: #1 (not seen)
+       Product string: #2 'Hub Controller'
+       Serial string: (none)
+    Configuration 1
+       Configuration descriptor
+          Length: 9 bytes
+          Type: 0x02
+          Total length: 41 bytes
+          Number of interfaces: 1
+          Configuration number: 1
+          Configuration string: (none)
+          Attributes: 0xC0
+          Max power: 0mA
+       Interface 0: Human Interface Device
+          Interface descriptor
+             Length: 9 bytes
+             Type: 0x04
+             Interface number: 0
+             Alternate setting: 0
+             Number of endpoints: 2
+             Class: 0x03: Human Interface Device
+             Subclass: 0x00: No Subclass
+             Protocol: 0x00: None
+             Interface string: #4 (not seen)
+          HID descriptor
+             Length: 9 bytes
+             Type: 0x21
+             HID Version: 1.10
+             Country code: 0x00: Not supported
+             Available descriptors
+                HID report descriptor, 28 bytes
+          Endpoint 1 IN (interrupt)
+             Endpoint descriptor
+                Length: 7 bytes
+                Type: 0x05
+                Endpoint address: 0x81
+                Attributes: 0x03
+                Max packet size: 64 bytes
+                Interval: 0x01
+          Endpoint 1 OUT (interrupt)
+             Endpoint descriptor
+                Length: 7 bytes
+                Type: 0x05
+                Endpoint address: 0x01
+                Attributes: 0x03
+                Max packet size: 64 bytes
+                Interval: 0x01
