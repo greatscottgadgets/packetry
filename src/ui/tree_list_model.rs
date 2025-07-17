@@ -804,7 +804,10 @@ where Item: 'static + Clone + Debug,
 
             if item_updated {
                 // The node's description may change.
-                let summary = cap.description(&item_node.item, false)?;
+                let summary = match cap.description(&item_node.item, false) {
+                    Ok(description) => description,
+                    Err(e) => format!("Error: {e}"),
+                };
                 #[cfg(any(test, feature="record-ui-test"))]
                 if let Ok(position) = u32::try_from(position) {
                     let mut on_item_update = self.on_item_update.borrow_mut();
