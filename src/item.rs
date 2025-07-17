@@ -1043,7 +1043,7 @@ mod tests {
     use std::path::PathBuf;
     use itertools::Itertools;
     use crate::capture::{CaptureReader, create_capture};
-    use crate::database::{CounterSet, DataReaderOps, CompactReaderOps};
+    use crate::database::CounterSet;
     use crate::decoder::Decoder;
     use crate::file::{GenericLoader, GenericPacket, LoaderItem, PcapLoader};
     use crate::util::dump::Dump;
@@ -1133,14 +1133,14 @@ mod tests {
                 reader = CaptureReader::restore(&mut db, &dump_path).unwrap();
                 let traf_out_file = File::create(traf_out_path.clone()).unwrap();
                 let mut traf_out_writer = BufWriter::new(traf_out_file);
-                let num_items = reader.item_index.len();
+                let num_items = reader.item_count();
                 for item_id in 0 .. num_items {
                     let item = reader.item(None, mode, item_id).unwrap();
                     write_item(&mut reader, &item, mode, &mut traf_out_writer);
                 }
                 let dev_out_file = File::create(dev_out_path.clone()).unwrap();
                 let mut dev_out_writer = BufWriter::new(dev_out_file);
-                let num_devices = reader.devices.len() - 1;
+                let num_devices = reader.device_count() - 1;
                 for device_id in 0 .. num_devices {
                     let item = reader.item(None, (), device_id).unwrap();
                     write_item(&mut reader, &item, (), &mut dev_out_writer);
