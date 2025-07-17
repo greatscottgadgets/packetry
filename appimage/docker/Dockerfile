@@ -20,6 +20,10 @@ ENV HOME="/home/$RUNNER"
 
 USER root
 
+# Point sources.list at archive.debian.org
+RUN sed -i s/deb.debian.org/archive.debian.org/g /etc/apt/sources.list
+RUN sed -i s/security.debian.org/archive.debian.org/g /etc/apt/sources.list
+
 # add image dependencies
 RUN apt update && apt upgrade -y && apt install -y \
     bison \
