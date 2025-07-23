@@ -2,7 +2,6 @@
 
 use gtk::{
     prelude::*,
-    glib::SignalHandlerId,
     DropDown,
     InfoBar,
     Label,
@@ -14,16 +13,18 @@ use gtk::{
 use anyhow::{bail, Error};
 
 use crate::backend::{BackendHandle, ProbeResult, scan};
-use crate::ui::{display_error, device_selection_changed};
 use crate::usb::Speed;
+
+pub struct ActiveDevice {
+    handle: Box<dyn BackendHandle>,
+    speeds: Vec<Speed>,
+}
 
 pub struct DeviceSelector {
     devices: Vec<ProbeResult>,
-    dev_strings: Vec<String>,
-    dev_speeds: Vec<Vec<&'static str>>,
     dev_dropdown: DropDown,
     speed_dropdown: DropDown,
-    change_handler: Option<SignalHandlerId>,
+    active: Option<Result<ActiveDevice, String>>,
 }
 
 impl DeviceSelector {
@@ -32,35 +33,48 @@ impl DeviceSelector {
     {
         dev_dropdown.set_model(Some(&StringList::new(&[])));
         speed_dropdown.set_model(Some(&StringList::new(&[])));
+
         Ok(DeviceSelector {
             devices: vec![],
-            dev_strings: vec![],
-            dev_speeds: vec![],
             dev_dropdown,
             speed_dropdown,
-            change_handler: None,
+            active: None,
         })
     }
 
-    pub fn current_device(&self) -> Option<&ProbeResult> {
-        if self.devices.is_empty() {
-            None
-        } else {
-            Some(&self.devices[self.dev_dropdown.selected() as usize])
-        }
+    pub fn connect_signals(&self, f: fn()) {
+        self.dev_dropdown.connect_selected_notify(move |_| f());
     }
 
     pub fn device_available(&self) -> bool {
-        match self.current_device() {
-            None => false,
-            Some(probe) => probe.result.is_ok()
+        matches!(&self.active, Some(Ok(_)))
+    }
+
+    pub fn selected_device(&self) -> Option<&ProbeResult> {
+        if self.devices.is_empty() {
+            None
+        } else {
+            let index = self.dev_dropdown.selected() as usize;
+            Some(&self.devices[index])
+        }
+    }
+
+    fn selected_device_mut(&mut self) -> Option<&mut ProbeResult> {
+        if self.devices.is_empty() {
+            None
+        } else {
+            let index = self.dev_dropdown.selected() as usize;
+            Some(&mut self.devices[index])
         }
     }
 
     pub fn device_unusable(&self) -> Option<&str> {
-        match self.current_device() {
-            Some(ProbeResult {result: Err(msg), ..}) => Some(msg),
-            _ => None
+        match &self.active {
+            Some(Err(msg)) => Some(msg),
+            _ => match &self.selected_device() {
+                Some(ProbeResult {result: Err(msg), ..}) => Some(msg),
+                _ => None
+            }
         }
     }
 
@@ -75,15 +89,12 @@ impl DeviceSelector {
     }
 
     pub fn scan(&mut self) -> Result<(), Error> {
-        if let Some(handler) = self.change_handler.take() {
-            self.dev_dropdown.disconnect(handler);
-        }
+        self.active = None;
         self.devices = scan()?;
         let count = self.devices.len();
-        self.dev_strings = Vec::with_capacity(count);
-        self.dev_speeds = Vec::with_capacity(count);
-        for probe in self.devices.iter() {
-            self.dev_strings.push(
+        let dev_strings = self.devices
+            .iter()
+            .map(|probe|
                 if count <= 1 {
                     probe.name.to_string()
                 } else {
@@ -97,52 +108,58 @@ impl DeviceSelector {
                             info.device_address())
                     }
                 }
-            );
-            if let Ok(device) = &probe.result {
-                self.dev_speeds.push(
-                    device
-                        .supported_speeds()
-                        .iter()
-                        .map(Speed::description)
-                        .collect()
-                );
-            } else {
-                self.dev_speeds.push(vec![]);
-            }
-        }
-        let no_speeds = vec![];
-        let speed_strings = self.dev_speeds.first().unwrap_or(&no_speeds);
-        self.replace_dropdown(&self.dev_dropdown, &self.dev_strings);
-        self.replace_dropdown(&self.speed_dropdown, speed_strings);
+            )
+            .collect::<Vec<String>>();
+        self.replace_dropdown(&self.dev_dropdown, &dev_strings);
         self.dev_dropdown.set_sensitive(!self.devices.is_empty());
-        self.speed_dropdown.set_sensitive(!speed_strings.is_empty());
-        self.change_handler = Some(
-            self.dev_dropdown.connect_selected_notify(
-                |_| display_error(device_selection_changed())));
+        self.speed_dropdown.set_sensitive(!self.devices.is_empty());
         Ok(())
     }
 
-    pub fn update_speeds(&self) {
-        let index = self.dev_dropdown.selected() as usize;
-        let speed_strings = &self.dev_speeds[index];
-        self.replace_dropdown(&self.speed_dropdown, speed_strings);
+    pub fn open_device(&mut self) -> Result<(), Error> {
+        let mut speed_strings: Vec<&str> = Vec::new();
+        self.active = if let Some(probe) = self.selected_device_mut() {
+            if let Ok(device) = &mut probe.result {
+                match device.open_as_generic() {
+                    Ok(handle) => {
+                        let speeds = handle.supported_speeds().to_vec();
+                        speed_strings.extend(
+                            speeds.iter().map(Speed::description)
+                        );
+                        Some(Ok(ActiveDevice { handle, speeds }))
+                    },
+                    Err(error) => {
+                        Some(Err(format!("{error}")))
+                    }
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+        self.replace_dropdown(&self.speed_dropdown, &speed_strings);
         self.speed_dropdown.set_sensitive(!speed_strings.is_empty());
+        Ok(())
     }
 
-    pub fn open(&self) -> Result<(Box<dyn BackendHandle>, Speed), Error> {
-        let device_id = self.dev_dropdown.selected();
-        let probe = &self.devices[device_id as usize];
-        match &probe.result {
-            Ok(device) => {
-                let speeds = device.supported_speeds();
-                let speed_id = self.speed_dropdown.selected() as usize;
-                let speed = speeds[speed_id];
-                let handle = device.open_as_generic()?;
-                Ok((handle, speed))
-            },
-            Err(reason) => {
-                bail!("Device not usable: {}", reason)
-            }
+    pub fn handle(&mut self) -> Option<&mut Box<dyn BackendHandle>> {
+        if let Some(Ok(ActiveDevice { handle, .. })) = &mut self.active {
+            Some(handle)
+        } else {
+            None
+        }
+    }
+
+    pub fn handle_and_speed(&self)
+        -> Result<(Box<dyn BackendHandle>, Speed), Error>
+    {
+        if let Some(Ok(ActiveDevice { handle, speeds })) = &self.active {
+            let speed_id = self.speed_dropdown.selected() as usize;
+            let speed = speeds[speed_id];
+            Ok((handle.duplicate(), speed))
+        } else {
+            bail!("No active device handle");
         }
     }
 

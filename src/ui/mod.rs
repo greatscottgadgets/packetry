@@ -31,7 +31,7 @@ use gtk::gio::{
     MenuItem,
     SimpleActionGroup
 };
-use gtk::glib::{Object, clone};
+use gtk::glib::{self, Object, clone};
 use gtk::{
     prelude::*,
     AboutDialog,
@@ -105,6 +105,7 @@ use crate::version::{version, version_info};
 pub mod device;
 pub mod item_widget;
 pub mod model;
+pub mod power;
 pub mod row_data;
 pub mod tree_list_model;
 pub mod window;
@@ -116,6 +117,7 @@ mod test_replay;
 use device::{DeviceSelector, DeviceWarning};
 use item_widget::ItemWidget;
 use model::{GenericModel, TrafficModel, DeviceModel};
+use power::PowerControl;
 use row_data::{
     GenericRowData,
     ToGenericRowData,
@@ -168,6 +170,7 @@ pub struct UserInterface {
     window: PacketryWindow,
     pub capture: CaptureReader,
     selector: DeviceSelector,
+    power: PowerControl,
     file_name: Option<String>,
     stop_state: StopState,
     traffic_windows: BTreeMap<TrafficViewMode, ScrolledWindow>,
@@ -208,6 +211,17 @@ pub fn with_ui<F>(f: F) -> Result<(), Error>
 pub fn activate(application: &Application) -> Result<(), Error> {
 
     let ui = PacketryWindow::setup(application)?;
+    ui.power.connect_signals(|| {
+        gtk::glib::idle_add_once(||
+            display_error(power_changed())
+        );
+    });
+
+    ui.selector.connect_signals(|| {
+        glib::idle_add_once(||
+            display_error(device_selection_changed())
+        );
+    });
 
     #[cfg(not(test))]
     ui.window.show();
@@ -801,6 +815,7 @@ pub fn stop_operation() -> Result<(), Error> {
             },
             StopState::Backend(stop_handle) => {
                 stop_handle.stop()?;
+                ui.power.stopped();
             }
         };
         Ok(())
@@ -828,18 +843,26 @@ pub fn rearm() -> Result<(), Error> {
 
 fn detect_hardware() -> Result<(), Error> {
     with_ui(|ui| {
+        ui.capture_button.set_sensitive(false);
+        ui.warning.update(None);
         ui.selector.scan()?;
-        ui.capture_button.set_sensitive(ui.selector.device_available());
-        ui.warning.update(ui.selector.device_unusable());
         Ok(())
     })
 }
 
 fn device_selection_changed() -> Result<(), Error> {
     with_ui(|ui| {
+        ui.selector.open_device()?;
         ui.capture_button.set_sensitive(ui.selector.device_available());
         ui.warning.update(ui.selector.device_unusable());
-        ui.selector.update_speeds();
+        ui.power.update_controls(ui.selector.handle());
+        Ok(())
+    })
+}
+
+fn power_changed() -> Result<(), Error> {
+    with_ui(|ui| {
+        ui.power.update_device(ui.selector.handle())?;
         Ok(())
     })
 }
@@ -848,7 +871,7 @@ pub fn start_capture() -> Result<(), Error> {
     let writer = reset_capture()?;
 
     with_ui(|ui| {
-        let (device, speed) = ui.selector.open()?;
+        let (device, speed) = ui.selector.handle_and_speed()?;
         let meta = CaptureMetadata {
             application: Some(format!("Packetry {}", version())),
             os: Some(std::env::consts::OS.to_string()),
@@ -863,6 +886,7 @@ pub fn start_capture() -> Result<(), Error> {
         writer.shared.metadata.swap(Arc::new(meta));
         let (stream_handle, stop_handle) =
             device.start(speed, Box::new(display_error))?;
+        ui.power.started();
         ui.open_button.set_sensitive(false);
         ui.scan_button.set_sensitive(false);
         ui.selector.set_sensitive(false);

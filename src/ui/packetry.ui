@@ -11,7 +11,7 @@
       <object class="GtkBox" id="vbox">
         <property name="orientation">vertical</property>
         <child>
-          <object class="GtkActionBar">
+          <object class="GtkActionBar" id="action_bar">
             <child type="start">
               <object class="GtkButton" id="open_button">
                 <property name="action-name">win.open</property>
@@ -70,8 +70,80 @@
             <child type="start">
               <object class="GtkDropDown" id="speed_dropdown"/>
             </child>
+            <child type="start">
+              <object class="GtkBox" id="power_controls">
+                <property name="spacing">5</property>
+                <child type="start">
+                  <object class="GtkLabel">
+                    <property name="label">Target
+Power</property>
+                    <property name="margin-end">2</property>
+                    <property name="margin-start">2</property>
+                  </object>
+                </child>
+                <child type="start">
+                  <object class="GtkSwitch" id="power_switch">
+                    <property name="valign">center</property>
+                  </object>
+                </child>
+                <child type="start">
+                  <object class="GtkMenuButton">
+                    <property name="popover">
+                      <object class="GtkPopover">
+                        <child>
+                          <object class="GtkBox">
+                            <property name="orientation">vertical</property>
+                            <child>
+                              <object class="GtkBox">
+                                <child>
+                                  <object class="GtkBox">
+                                    <child>
+                                      <object class="GtkLabel">
+                                        <property name="halign">start</property>
+                                        <property name="hexpand">True</property>
+                                        <property name="label">Power TARGET-A from: </property>
+                                      </object>
+                                    </child>
+                                    <child>
+                                      <object class="GtkDropDown" id="power_source_dropdown">
+                                        <property name="halign">end</property>
+                                        <property name="model">
+                                          <object class="GtkStringList" id="power_source_strings">
+                                            <property name="strings">TARGET-C
+AUX
+CONTROL</property>
+                                          </object>
+                                        </property>
+                                      </object>
+                                    </child>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkCheckButton" id="power_start_on">
+                                <property name="halign">start</property>
+                                <property name="label">Turn on when starting capture</property>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkCheckButton" id="power_stop_off">
+                                <property name="halign">start</property>
+                                <property name="label">Turn off when stopping capture</property>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                    </property>
+                  </object>
+                </child>
+              </object>
+            </child>
             <child type="end">
-              <object class="GtkMenuButton" id="menu_button"/>
+              <object class="GtkMenuButton" id="menu_button">
+                <property name="icon-name">open-menu</property>
+              </object>
             </child>
           </object>
         </child>

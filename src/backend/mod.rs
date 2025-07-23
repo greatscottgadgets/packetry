@@ -63,9 +63,6 @@ pub fn scan() -> Result<Vec<ProbeResult>, Error> {
 pub trait BackendDevice {
     /// Open this device to use it as a generic capture device.
     fn open_as_generic(&self) -> Result<Box<dyn BackendHandle>, Error>;
-
-    /// Which speeds this device supports.
-    fn supported_speeds(&self) -> &[Speed];
 }
 
 /// A timestamped packet.
@@ -83,11 +80,36 @@ pub struct BackendStop {
 pub type PacketResult = Result<TimestampedPacket, Error>;
 pub trait PacketIterator: Iterator<Item=PacketResult> + Send {}
 
+/// Configuration for power control.
+#[derive(Clone)]
+pub struct PowerConfig {
+    /// Which source to power the target from.
+    pub source_index: usize,
+    /// Whether the target is on now.
+    pub on_now: bool,
+    /// Turn on when capture starts.
+    pub start_on: bool,
+    /// Turn off when capture stops.
+    pub stop_off: bool,
+}
+
 /// A handle to an open capture device.
 pub trait BackendHandle: Send + Sync {
 
+    /// Which speeds this device supports.
+    fn supported_speeds(&self) -> &[Speed];
+
     /// Get metadata about the capture device.
     fn metadata(&self) -> &CaptureMetadata;
+
+    /// Which power sources this device supports.
+    fn power_sources(&self) -> Option<&[&str]>;
+
+    /// The last known power configuration of this device.
+    fn power_config(&self) -> Option<PowerConfig>;
+
+    /// Set power configuration.
+    fn set_power_config(&mut self, config: PowerConfig) -> Result<(), Error>;
 
     /// Begin capture.
     ///

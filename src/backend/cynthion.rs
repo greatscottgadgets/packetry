@@ -3,8 +3,9 @@
 use std::cmp::Ordering;
 use std::collections::VecDeque;
 use std::num::NonZeroU32;
+use std::ops::DerefMut;
 use std::time::Duration;
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc, Mutex};
 
 use anyhow::{Context as ErrorContext, Error, bail};
 use nusb::{
@@ -24,6 +25,7 @@ use super::{
     Speed,
     PacketIterator,
     PacketResult,
+    PowerConfig,
     TimestampedPacket,
     TransferQueue,
 };
@@ -43,15 +45,11 @@ bitfield! {
     struct State(u8);
     bool, enable, set_enable: 0;
     u8, from into Speed, speed, set_speed: 2, 1;
-}
-
-impl State {
-    fn new(enable: bool, speed: Speed) -> State {
-        let mut state = State(0);
-        state.set_enable(enable);
-        state.set_speed(speed);
-        state
-    }
+    bool, target_c_vbus_en, set_target_c_vbus_en: 3;
+    bool, control_vbus_en, set_control_vbus_en: 4;
+    bool, aux_vbus_en, set_aux_vbus_en: 5;
+    bool, target_a_discharge, set_target_a_discharge: 6;
+    bool, power_control_enable, set_power_control_enable: 7;
 }
 
 bitfield! {
@@ -79,18 +77,23 @@ impl TestConfig {
 
 /// A Cynthion device attached to the system.
 pub struct CynthionDevice {
-    device_info: DeviceInfo,
-    interface_number: u8,
-    alt_setting_number: u8,
-    speeds: Vec<Speed>,
-    metadata: CaptureMetadata,
+    pub device_info: DeviceInfo,
+}
+
+/// Fields of CynthionHandle to be stored in a mutex.
+struct CynthionInner {
+    interface: Interface,
+    state: State,
+    power: Option<PowerConfig>,
 }
 
 /// A handle to an open Cynthion device.
 #[derive(Clone)]
 pub struct CynthionHandle {
-    interface: Interface,
+    inner: Arc<Mutex<CynthionInner>>,
+    speeds: Vec<Speed>,
     metadata: CaptureMetadata,
+    power_sources: Option<&'static [&'static str]>,
 }
 
 /// Converts from received data bytes to timestamped packets.
@@ -111,15 +114,16 @@ fn clk_to_ns(clk_cycles: u64) -> u64 {
 
 /// Probe a Cynthion device.
 pub fn probe(device_info: DeviceInfo) -> Result<Box<dyn BackendDevice>, Error> {
-    Ok(Box::new(CynthionDevice::new(device_info)?))
+    Ok(Box::new(CynthionDevice {device_info }))
 }
 
 impl CynthionDevice {
-    /// Check whether a Cynthion device has an accessible analyzer interface.
-    pub fn new(device_info: DeviceInfo) -> Result<CynthionDevice, Error> {
+    /// Open this device.
+    pub fn open(&self) -> Result<CynthionHandle, Error> {
+        use Speed::*;
 
         // Check we can open the device.
-        let device = device_info
+        let device = self.device_info
             .open()
             .context("Failed to open device")?;
 
@@ -166,53 +170,94 @@ impl CynthionDevice {
                         .context("Failed to select alternate setting")?;
                 }
 
+                // Read the state register.
+                let mut state = State(read_byte(&interface, 0)?);
+
+                // Fetch the available speeds.
+                let mut speeds = Vec::new();
+                let speed_byte = read_byte(&interface, 2)?;
+                for speed in [Auto, High, Full, Low] {
+                    if speed_byte & speed.mask() != 0 {
+                        speeds.push(speed);
+                    }
+                }
+
+                // Fetch the minor protocol version.
+                let protocol_minor = read_byte(&interface, 4).unwrap_or(0);
+
                 let metadata = CaptureMetadata {
                     iface_desc: Some("Cynthion USB Analyzer".to_string()),
                     iface_hardware: Some({
-                        let bcd = device_info.device_version();
+                        let bcd = self.device_info.device_version();
                         let major = bcd >> 8;
                         let minor = bcd as u8;
                         format!("Cynthion r{major}.{minor}")
                     }),
                     iface_os: Some(
-                        format!("USB Analyzer v{protocol}")),
+                        format!("USB Analyzer v{protocol}.{protocol_minor}")),
                     iface_snaplen: Some(NonZeroU32::new(0xFFFF).unwrap()),
                     .. Default::default()
                 };
 
-                // Fetch the available speeds.
-                let handle = CynthionHandle { interface, metadata };
-                let speeds = handle
-                    .speeds()
-                    .context("Failed to fetch available speeds")?;
+                // Translate the power configuration.
+                let power = if (protocol, protocol_minor) < (1, 1) {
+                    // Analyzer does not support power control.
+                    state.set_power_control_enable(false);
+                    None
+                } else {
+                    // Analyzer supports power control.
+                    let (source_index, on_now) =
+                        if !state.power_control_enable() {
+                            // Power control has not yet been set up.
+                            // Set the initial configuration.
+                            state.set_power_control_enable(true);
+                            state.set_target_c_vbus_en(true);
+                            state.set_control_vbus_en(false);
+                            state.set_aux_vbus_en(false);
+                            state.set_target_a_discharge(false);
+                            (0, true)
+                        } else if state.target_c_vbus_en() {
+                            (0, true)
+                        } else if state.control_vbus_en() {
+                            (1, true)
+                        } else if state.aux_vbus_en() {
+                            (2, true)
+                        } else {
+                            (0, false)
+                        };
+                    Some(PowerConfig {
+                        source_index,
+                        on_now,
+                        start_on: false,
+                        stop_off: false,
+                    })
+                };
+
+                let power_sources: Option<&[&str]> = if power.is_none() {
+                    None
+                } else if self.device_info.device_version() >= 0x0006 {
+                    Some(&["TARGET-C", "CONTROL", "AUX"])
+                } else {
+                    Some(&["TARGET-C", "HOST"])
+                };
 
                 // Now we have a usable device.
-                return Ok(
-                    CynthionDevice {
-                        device_info,
-                        interface_number,
-                        alt_setting_number,
-                        speeds,
-                        metadata: handle.metadata,
-                    }
-                )
+                return Ok(CynthionHandle {
+                    inner: Arc::new(Mutex::new(
+                        CynthionInner {
+                            interface,
+                            state,
+                            power,
+                        }
+                    )),
+                    speeds,
+                    metadata,
+                    power_sources,
+                })
             }
         }
 
         bail!("No supported analyzer interface found");
-    }
-
-    /// Open this device.
-    pub fn open(&self) -> Result<CynthionHandle, Error> {
-        let device = self.device_info.open()?;
-        let interface = device.claim_interface(self.interface_number)?;
-        if self.alt_setting_number != 0 {
-            interface.set_alt_setting(self.alt_setting_number)?;
-        }
-        Ok(CynthionHandle {
-            interface,
-            metadata: self.metadata.clone()
-        })
     }
 }
 
@@ -220,15 +265,27 @@ impl BackendDevice for CynthionDevice {
     fn open_as_generic(&self) -> Result<Box<dyn BackendHandle>, Error> {
         Ok(Box::new(self.open()?))
     }
-
-    fn supported_speeds(&self) -> &[Speed] {
-        &self.speeds
-    }
 }
 
 impl BackendHandle for CynthionHandle {
+    fn supported_speeds(&self) -> &[Speed] {
+        &self.speeds
+    }
+
     fn metadata(&self) -> &CaptureMetadata {
         &self.metadata
+    }
+
+    fn power_sources(&self) -> Option<&'static [&'static str]> {
+        self.power_sources
+    }
+
+    fn power_config(&self) -> Option<PowerConfig> {
+        self.inner().power.clone()
+    }
+
+    fn set_power_config(&mut self, power: PowerConfig) -> Result<(), Error> {
+        self.inner().set_power_config(power)
     }
 
     fn begin_capture(
@@ -237,14 +294,16 @@ impl BackendHandle for CynthionHandle {
         data_tx: mpsc::Sender<Vec<u8>>
     ) -> Result<TransferQueue, Error>
     {
-        self.start_capture(speed)?;
+        let mut inner = self.inner();
 
-        Ok(TransferQueue::new(&self.interface, data_tx,
+        inner.start_capture(speed)?;
+
+        Ok(TransferQueue::new(&inner.interface, data_tx,
             ENDPOINT, NUM_TRANSFERS, READ_LEN))
     }
 
     fn end_capture(&mut self) -> Result<(), Error> {
-        self.stop_capture()
+        self.inner().stop_capture()
     }
 
     fn post_capture(&mut self) -> Result<(), Error> {
@@ -269,48 +328,47 @@ impl BackendHandle for CynthionHandle {
     }
 }
 
-impl CynthionHandle {
-
-    fn speeds(&self) -> Result<Vec<Speed>, Error> {
-        use Speed::*;
-        let control = Control {
-            control_type: ControlType::Vendor,
-            recipient: Recipient::Interface,
-            request: 2,
-            value: 0,
-            index: self.interface.interface_number() as u16,
-        };
-        let mut buf = [0; 64];
-        let timeout = Duration::from_secs(1);
-        let size = self.interface
-            .control_in_blocking(control, &mut buf, timeout)
-            .context("Failed retrieving supported speeds from device")?;
-        if size != 1 {
-            bail!("Expected 1-byte response to speed request, got {size}");
-        }
-        let mut speeds = Vec::new();
-        for speed in [Auto, High, Full, Low] {
-            if buf[0] & speed.mask() != 0 {
-                speeds.push(speed);
+impl CynthionInner {
+    fn start_capture (&mut self, speed: Speed) -> Result<(), Error> {
+        self.state.set_speed(speed);
+        self.state.set_enable(true);
+        if let Some(power) = &mut self.power {
+            if power.start_on {
+                let index = power.source_index;
+                self.state.set_target_c_vbus_en(index == 0);
+                self.state.set_control_vbus_en(index == 1);
+                self.state.set_aux_vbus_en(index == 2);
+                self.state.set_target_a_discharge(false);
+                power.on_now = true;
             }
         }
-        Ok(speeds)
-    }
-
-    fn start_capture (&mut self, speed: Speed) -> Result<(), Error> {
-        self.write_request(1, State::new(true, speed).0)
+        self.write_request(1, self.state.0)
     }
 
     fn stop_capture(&mut self) -> Result<(), Error> {
-        self.write_request(1, State::new(false, Speed::High).0)
+        self.state.set_enable(false);
+        if let Some(power) = &mut self.power {
+            if power.stop_off {
+                self.state.set_target_c_vbus_en(false);
+                self.state.set_control_vbus_en(false);
+                self.state.set_aux_vbus_en(false);
+                self.state.set_target_a_discharge(true);
+                power.on_now = false;
+            }
+        }
+        self.write_request(1, self.state.0)
     }
 
-    pub fn configure_test_device(&mut self, speed: Option<Speed>)
-        -> Result<(), Error>
-    {
-        let test_config = TestConfig::new(speed);
-        self.write_request(3, test_config.0)
-            .context("Failed to set test device configuration")
+    fn set_power_config(&mut self, power: PowerConfig) -> Result<(), Error> {
+        let index = power.source_index;
+        let on = power.on_now;
+        self.state.set_power_control_enable(true);
+        self.state.set_target_c_vbus_en(on && index == 0);
+        self.state.set_control_vbus_en(on && index == 1);
+        self.state.set_aux_vbus_en(on && index == 2);
+        self.state.set_target_a_discharge(!on);
+        self.power = Some(power);
+        self.write_request(1, self.state.0)
     }
 
     fn write_request(&mut self, request: u8, value: u8) -> Result<(), Error> {
@@ -329,6 +387,41 @@ impl CynthionHandle {
         Ok(())
     }
 }
+
+impl CynthionHandle {
+    fn inner(&self) -> impl DerefMut<Target=CynthionInner> + use<'_> {
+        self.inner.lock().unwrap()
+    }
+
+    pub fn configure_test_device(&mut self, speed: Option<Speed>)
+        -> Result<(), Error>
+    {
+        let test_config = TestConfig::new(speed);
+        self.inner()
+            .write_request(3, test_config.0)
+            .context("Failed to set test device configuration")
+    }
+}
+
+fn read_byte(interface: &Interface, request: u8) -> Result<u8, Error> {
+    let control = Control {
+        control_type: ControlType::Vendor,
+        recipient: Recipient::Interface,
+        request,
+        value: 0,
+        index: interface.interface_number() as u16,
+    };
+    let mut buf = [0; 64];
+    let timeout = Duration::from_secs(1);
+    let size = interface
+        .control_in_blocking(control, &mut buf, timeout)
+        .context("Failed retrieving supported speeds from device")?;
+    if size != 1 {
+        bail!("Expected 1-byte response, got {size}");
+    }
+    Ok(buf[0])
+}
+
 
 impl PacketIterator for CynthionStream {}
 

@@ -20,6 +20,7 @@ use super::{
     BackendHandle,
     PacketIterator,
     PacketResult,
+    PowerConfig,
     Speed,
     TimestampedPacket,
     TransferQueue,
@@ -63,44 +64,44 @@ pub struct Ice40UsbtraceStream {
 
 /// Probe an iCE40-usbtrace device.
 pub fn probe(device_info: DeviceInfo) -> Result<Box<dyn BackendDevice>, Error> {
-    // Check we can open the device.
-    let device = device_info
-        .open()
-        .context("Failed to open device")?;
-
-    // Read the active configuration.
-    let _config = device
-        .active_configuration()
-        .context("Failed to retrieve active configuration")?;
-
-    // Try to claim the interface.
-    let _interface = device
-        .claim_interface(INTERFACE)
-        .context("Failed to claim interface")?;
-
-    // Now we have a usable device.
     Ok(Box::new(Ice40UsbtraceDevice { device_info }))
 }
 
 impl BackendDevice for Ice40UsbtraceDevice {
     fn open_as_generic(&self) -> Result<Box<dyn BackendHandle>, Error> {
-        let device = self.device_info.open()?;
-        let interface = device.claim_interface(INTERFACE)?;
+        let device = self.device_info
+            .open()
+            .context("Failed to open device")?;
+        let interface = device
+            .claim_interface(INTERFACE)
+            .context("Failed to claim interface")?;
         let metadata = CaptureMetadata {
             iface_desc: Some("iCE40-usbtrace".to_string()),
             .. Default::default()
         };
         Ok(Box::new(Ice40UsbtraceHandle { interface, metadata }))
     }
-
-    fn supported_speeds(&self) -> &[Speed] {
-        &FS_ONLY
-    }
 }
 
 impl BackendHandle for Ice40UsbtraceHandle {
+    fn supported_speeds(&self) -> &[Speed] {
+        &FS_ONLY
+    }
+
     fn metadata(&self) -> &CaptureMetadata {
         &self.metadata
+    }
+
+    fn power_sources(&self) -> Option<&[&str]> {
+        None
+    }
+
+    fn power_config(&self) -> Option<PowerConfig> {
+        None
+    }
+
+    fn set_power_config(&mut self, _config: PowerConfig) -> Result<(), Error> {
+        Ok(())
     }
 
     fn begin_capture(
