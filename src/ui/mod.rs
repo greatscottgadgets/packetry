@@ -31,26 +31,23 @@ use gtk::gio::{
     MenuItem,
     SimpleActionGroup
 };
-use gtk::glib::{Object, SignalHandlerId, clone};
+use gtk::glib::{Object, clone};
 use gtk::{
     prelude::*,
     AboutDialog,
     Align,
     Application,
-    ApplicationWindow,
     Button,
     Dialog,
     DialogFlags,
-    DropDown,
-    InfoBar,
     Label,
     License,
     ListItem,
     Grid,
     ColumnView,
     ColumnViewColumn,
-    MenuButton,
     MessageType,
+    Paned,
     PopoverMenu,
     ProgressBar,
     ResponseType,
@@ -58,13 +55,8 @@ use gtk::{
     Separator,
     SignalListItemFactory,
     SingleSelection,
-    Stack,
-    StackSwitcher,
-    StringList,
     TextBuffer,
     TextView,
-    Orientation,
-    WrapMode,
 };
 
 #[cfg(not(test))]
@@ -74,10 +66,7 @@ use gtk::{
 };
 
 use crate::backend::{
-    BackendHandle,
     BackendStop,
-    ProbeResult,
-    scan
 };
 
 use crate::capture::{
@@ -113,15 +102,18 @@ use crate::usb::{Descriptor, PacketFields, Speed, validate_packet};
 use crate::util::{rcu::SingleWriterRcu, fmt_count, fmt_size};
 use crate::version::{version, version_info};
 
+pub mod device;
 pub mod item_widget;
 pub mod model;
 pub mod row_data;
 pub mod tree_list_model;
+pub mod window;
 #[cfg(any(test, feature="record-ui-test"))]
 pub mod record_ui;
 #[cfg(test)]
 mod test_replay;
 
+use device::{DeviceSelector, DeviceWarning};
 use item_widget::ItemWidget;
 use model::{GenericModel, TrafficModel, DeviceModel};
 use row_data::{
@@ -130,6 +122,7 @@ use row_data::{
     TrafficRowData,
     DeviceRowData,
 };
+use window::PacketryWindow;
 
 #[cfg(any(test, feature="record-ui-test"))]
 use {
@@ -149,8 +142,6 @@ static UPDATE_INTERVAL: Duration = Duration::from_millis(10);
 static UPDATE_LOCK: Mutex<()> = Mutex::new(());
 
 thread_local!(
-    static WINDOW: RefCell<Option<ApplicationWindow>> =
-        const { RefCell::new(None) };
     static UI: RefCell<Option<UserInterface>> =
         const { RefCell::new(None) };
 );
@@ -173,202 +164,8 @@ enum StopState {
     Backend(BackendStop),
 }
 
-struct DeviceSelector {
-    devices: Vec<ProbeResult>,
-    dev_strings: Vec<String>,
-    dev_speeds: Vec<Vec<&'static str>>,
-    dev_dropdown: DropDown,
-    speed_dropdown: DropDown,
-    change_handler: Option<SignalHandlerId>,
-    container: gtk::Box,
-}
-
-impl DeviceSelector {
-    fn new() -> Result<Self, Error> {
-        let selector = DeviceSelector {
-            devices: vec![],
-            dev_strings: vec![],
-            dev_speeds: vec![],
-            dev_dropdown: DropDown::from_strings(&[]),
-            speed_dropdown: DropDown::from_strings(&[]),
-            change_handler: None,
-            container: gtk::Box::builder()
-                .orientation(Orientation::Horizontal)
-                .build()
-        };
-        let device_label = Label::builder()
-            .label("Device: ")
-            .margin_start(2)
-            .margin_end(2)
-            .build();
-        let speed_label = Label::builder()
-            .label(" Speed: ")
-            .margin_start(2)
-            .margin_end(2)
-            .build();
-        selector.container.append(&device_label);
-        selector.container.append(&selector.dev_dropdown);
-        selector.container.append(&speed_label);
-        selector.container.append(&selector.speed_dropdown);
-        Ok(selector)
-    }
-
-    fn current_device(&self) -> Option<&ProbeResult> {
-        if self.devices.is_empty() {
-            None
-        } else {
-            Some(&self.devices[self.dev_dropdown.selected() as usize])
-        }
-    }
-
-    fn device_available(&self) -> bool {
-        match self.current_device() {
-            None => false,
-            Some(probe) => probe.result.is_ok()
-        }
-    }
-
-    fn device_unusable(&self) -> Option<&str> {
-        match self.current_device() {
-            Some(ProbeResult {result: Err(msg), ..}) => Some(msg),
-            _ => None
-        }
-    }
-
-    fn set_sensitive(&mut self, sensitive: bool) {
-        if sensitive {
-            self.dev_dropdown.set_sensitive(!self.devices.is_empty());
-            self.speed_dropdown.set_sensitive(self.device_available());
-        } else {
-            self.dev_dropdown.set_sensitive(false);
-            self.speed_dropdown.set_sensitive(false);
-        }
-    }
-
-    fn scan(&mut self) -> Result<(), Error> {
-        if let Some(handler) = self.change_handler.take() {
-            self.dev_dropdown.disconnect(handler);
-        }
-        self.devices = scan()?;
-        let count = self.devices.len();
-        self.dev_strings = Vec::with_capacity(count);
-        self.dev_speeds = Vec::with_capacity(count);
-        for probe in self.devices.iter() {
-            self.dev_strings.push(
-                if count <= 1 {
-                    probe.name.to_string()
-                } else {
-                    let info = &probe.info;
-                    if let Some(serial) = info.serial_number() {
-                        format!("{} #{}", probe.name, serial)
-                    } else {
-                        format!("{} (bus {}, device {})",
-                            probe.name,
-                            info.bus_number(),
-                            info.device_address())
-                    }
-                }
-            );
-            if let Ok(device) = &probe.result {
-                self.dev_speeds.push(
-                    device
-                        .supported_speeds()
-                        .iter()
-                        .map(Speed::description)
-                        .collect()
-                )
-            } else {
-                self.dev_speeds.push(vec![]);
-            }
-        }
-        let no_speeds = vec![];
-        let speed_strings = self.dev_speeds.first().unwrap_or(&no_speeds);
-        self.replace_dropdown(&self.dev_dropdown, &self.dev_strings);
-        self.replace_dropdown(&self.speed_dropdown, speed_strings);
-        self.dev_dropdown.set_sensitive(!self.devices.is_empty());
-        self.speed_dropdown.set_sensitive(!speed_strings.is_empty());
-        self.change_handler = Some(
-            self.dev_dropdown.connect_selected_notify(
-                |_| display_error(device_selection_changed())));
-        Ok(())
-    }
-
-    fn update_speeds(&self) {
-        let index = self.dev_dropdown.selected() as usize;
-        let speed_strings = &self.dev_speeds[index];
-        self.replace_dropdown(&self.speed_dropdown, speed_strings);
-        self.speed_dropdown.set_sensitive(!speed_strings.is_empty());
-    }
-
-    fn open(&self) -> Result<(Box<dyn BackendHandle>, Speed), Error> {
-        let device_id = self.dev_dropdown.selected();
-        let probe = &self.devices[device_id as usize];
-        match &probe.result {
-            Ok(device) => {
-                let speeds = device.supported_speeds();
-                let speed_id = self.speed_dropdown.selected() as usize;
-                let speed = speeds[speed_id];
-                let handle = device.open_as_generic()?;
-                Ok((handle, speed))
-            },
-            Err(reason) => {
-                bail!("Device not usable: {}", reason)
-            }
-        }
-    }
-
-    fn replace_dropdown<T: AsRef<str>>(
-        &self, dropdown: &DropDown, strings: &[T])
-    {
-        let strings = strings
-            .iter()
-            .map(T::as_ref)
-            .collect::<Vec<_>>();
-        if let Some(model) = dropdown.model() {
-            let num_items = model.n_items();
-            if let Ok(list) = model.downcast::<StringList>() {
-                list.splice(0, num_items, strings.as_slice());
-            }
-        }
-    }
-}
-
-struct DeviceWarning {
-    info_bar: InfoBar,
-    label: Label,
-}
-
-impl DeviceWarning {
-    fn new() -> DeviceWarning {
-        let info_bar = InfoBar::new();
-        info_bar.set_show_close_button(true);
-        info_bar.connect_response(|info_bar, response| {
-            if response == ResponseType::Close {
-                info_bar.set_revealed(false);
-            }
-        });
-        let label = Label::new(None);
-        label.set_wrap(true);
-        info_bar.add_child(&label);
-        DeviceWarning {
-            info_bar,
-            label,
-        }
-    }
-
-    fn update(&self, warning: Option<&str>) {
-        if let Some(reason) = warning {
-            self.info_bar.set_message_type(MessageType::Warning);
-            self.label.set_text(&format!(
-                "This device is not usable because: {reason}"));
-            self.info_bar.set_revealed(true);
-        } else {
-            self.info_bar.set_revealed(false);
-        }
-    }
-}
-
 pub struct UserInterface {
+    window: PacketryWindow,
     pub capture: CaptureReader,
     selector: DeviceSelector,
     file_name: Option<String>,
@@ -383,7 +180,7 @@ pub struct UserInterface {
     progress_bar: ProgressBar,
     separator: Separator,
     vbox: gtk::Box,
-    vertical_panes: gtk::Paned,
+    vertical_panes: Paned,
     open_button: Button,
     save_button: Button,
     scan_button: Button,
@@ -408,263 +205,15 @@ pub fn with_ui<F>(f: F) -> Result<(), Error>
     })
 }
 
-macro_rules! button_action {
-    ($name:literal, $button:ident, $body:expr) => {
-        ActionEntry::builder($name)
-            .activate(|_: &ApplicationWindow, _, _| {
-                let mut enabled = false;
-                display_error(with_ui(|ui| { enabled = ui.$button.get_sensitive(); Ok(()) }));
-                if enabled {
-                    display_error($body);
-                }
-            })
-            .build()
-    }
-}
-
 pub fn activate(application: &Application) -> Result<(), Error> {
-    use FileAction::*;
 
-    let window = gtk::ApplicationWindow::builder()
-        .default_width(320)
-        .default_height(480)
-        .application(application)
-        .title("Packetry")
-        .build();
-
-    window.add_action_entries([
-        button_action!("open", open_button, choose_capture_file(Load)),
-        button_action!("save", save_button, choose_capture_file(Save)),
-        button_action!("scan", scan_button, detect_hardware()),
-        button_action!("capture", capture_button, start_capture()),
-        button_action!("stop", stop_button, stop_operation()),
-    ]);
-
-    #[cfg(not(target_os="macos"))]
-    {
-        application.set_accels_for_action("win.open", &["<Ctrl>o"]);
-        application.set_accels_for_action("win.save", &["<Ctrl>s"]);
-        application.set_accels_for_action("win.scan", &["<Ctrl>r", "F5"]);
-        application.set_accels_for_action("win.capture", &["<Ctrl>b"]);
-        application.set_accels_for_action("win.stop", &["<Ctrl>e"]);
-    }
-
-    #[cfg(target_os="macos")]
-    {
-        application.set_accels_for_action("win.open", &["<Meta>o"]);
-        application.set_accels_for_action("win.save", &["<Meta>s"]);
-        application.set_accels_for_action("win.scan", &["<Meta>r", "F5"]);
-        application.set_accels_for_action("win.capture", &["<Meta>b"]);
-        application.set_accels_for_action("win.stop", &["<Meta>e"]);
-    }
-
-    let action_bar = gtk::ActionBar::new();
-
-    let open_button = gtk::Button::builder()
-        .icon_name("document-open")
-        .tooltip_text("Open")
-        .action_name("win.open")
-        .build();
-    let save_button = gtk::Button::builder()
-        .icon_name("document-save")
-        .tooltip_text("Save")
-        .action_name("win.save")
-        .build();
-    let scan_button = gtk::Button::builder()
-        .icon_name("view-refresh")
-        .tooltip_text("Scan for devices")
-        .action_name("win.scan")
-        .build();
-    let capture_button = gtk::Button::builder()
-        .icon_name("media-record")
-        .tooltip_text("Capture")
-        .action_name("win.capture")
-        .build();
-    let stop_button = gtk::Button::builder()
-        .icon_name("media-playback-stop")
-        .tooltip_text("Stop")
-        .action_name("win.stop")
-        .build();
-
-    open_button.set_sensitive(true);
-    save_button.set_sensitive(false);
-    scan_button.set_sensitive(true);
-
-    let selector = DeviceSelector::new()?;
-    capture_button.set_sensitive(selector.device_available());
-
-    let menu = Menu::new();
-    let meta_item = MenuItem::new(Some("Metadata..."), Some("actions.metadata"));
-    let about_item = MenuItem::new(Some("About..."), Some("actions.about"));
-    menu.append_item(&meta_item);
-    menu.append_item(&about_item);
-    let menu_button = MenuButton::builder()
-        .menu_model(&menu)
-        .build();
-    let action_group = SimpleActionGroup::new();
-    let action_metadata = ActionEntry::builder("metadata")
-        .activate(|_, _, _| display_error(show_metadata()))
-        .build();
-    let action_about = ActionEntry::builder("about")
-        .activate(|_, _, _| display_error(show_about()))
-        .build();
-    action_group.add_action_entries([action_metadata, action_about]);
-    window.insert_action_group("actions", Some(&action_group));
-    let metadata_action = action_group.lookup_action("metadata").unwrap();
-    metadata_action.set_property("enabled", false);
-
-    action_bar.pack_start(&open_button);
-    action_bar.pack_start(&save_button);
-    action_bar.pack_start(&gtk::Separator::new(Orientation::Vertical));
-    action_bar.pack_start(&scan_button);
-    action_bar.pack_start(&capture_button);
-    action_bar.pack_start(&stop_button);
-    action_bar.pack_start(&selector.container);
-    action_bar.pack_end(&menu_button);
-
-    let warning = DeviceWarning::new();
-    warning.update(selector.device_unusable());
+    let ui = PacketryWindow::setup(application)?;
 
     #[cfg(not(test))]
-    window.show();
-    WINDOW.with(|win_opt| win_opt.replace(Some(window.clone())));
-
-    let (_, capture) = create_capture()?;
-
-    let mut traffic_windows = BTreeMap::new();
-
-    let traffic_stack = Stack::builder()
-        .vexpand(true)
-        .build();
-
-    for mode in TRAFFIC_MODES {
-        let window = gtk::ScrolledWindow::builder()
-            .hscrollbar_policy(gtk::PolicyType::Automatic)
-            .min_content_height(480)
-            .min_content_width(640)
-            .build();
-        traffic_windows
-            .insert(mode, window.clone());
-        traffic_stack
-            .add_child(&window)
-            .set_title(mode.display_name());
-    }
-
-    let traffic_stack_switcher = StackSwitcher::builder()
-        .stack(&traffic_stack)
-        .build();
-
-    let traffic_box = gtk::Box::builder()
-        .orientation(Orientation::Vertical)
-        .vexpand(true)
-        .build();
-
-    traffic_box.append(&traffic_stack_switcher);
-    traffic_box.append(&traffic_stack);
-
-    let device_window = gtk::ScrolledWindow::builder()
-        .hscrollbar_policy(gtk::PolicyType::Automatic)
-        .min_content_height(480)
-        .min_content_width(240)
-        .build();
-
-    let detail_text = gtk::TextBuffer::new(None);
-    let detail_view = gtk::TextView::builder()
-        .buffer(&detail_text)
-        .editable(false)
-        .wrap_mode(WrapMode::Word)
-        .vexpand(true)
-        .left_margin(5)
-        .build();
-
-    let detail_window = gtk::ScrolledWindow::builder()
-        .hscrollbar_policy(gtk::PolicyType::Automatic)
-        .min_content_width(640)
-        .min_content_height(120)
-        .child(&detail_view)
-        .build();
-
-    let horizontal_panes = gtk::Paned::builder()
-        .orientation(Orientation::Horizontal)
-        .wide_handle(true)
-        .start_child(&traffic_box)
-        .end_child(&device_window)
-        .vexpand(true)
-        .build();
-
-    let vertical_panes = gtk::Paned::builder()
-        .orientation(Orientation::Vertical)
-        .wide_handle(true)
-        .start_child(&horizontal_panes)
-        .end_child(&detail_window)
-        .hexpand(true)
-        .build();
-
-    let separator = gtk::Separator::new(Orientation::Horizontal);
-
-    let progress_bar = gtk::ProgressBar::builder()
-        .show_text(true)
-        .text("")
-        .hexpand(true)
-        .build();
-
-    let status_label = gtk::Label::builder()
-        .label("Ready")
-        .single_line_mode(true)
-        .halign(Align::Start)
-        .hexpand(true)
-        .margin_top(2)
-        .margin_bottom(2)
-        .margin_start(3)
-        .margin_end(3)
-        .build();
-
-    let vbox = gtk::Box::builder()
-        .orientation(Orientation::Vertical)
-        .build();
-
-    vbox.append(&action_bar);
-    vbox.append(&gtk::Separator::new(Orientation::Horizontal));
-    vbox.append(&warning.info_bar);
-    vbox.append(&gtk::Separator::new(Orientation::Horizontal));
-    vbox.append(&vertical_panes);
-    vbox.append(&gtk::Separator::new(Orientation::Horizontal));
-    vbox.append(&status_label);
-    vbox.append(&gtk::Separator::new(Orientation::Horizontal));
-
-    window.set_child(Some(&vbox));
+    ui.window.show();
 
     UI.with(|cell| {
-        cell.borrow_mut().replace(
-            UserInterface {
-                #[cfg(any(test, feature="record-ui-test"))]
-                recording: Rc::new(RefCell::new(
-                    Recording::new(capture.clone()))),
-                capture,
-                selector,
-                file_name: None,
-                stop_state: StopState::Disabled,
-                traffic_windows,
-                device_window,
-                traffic_models: BTreeMap::new(),
-                device_model: None,
-                detail_text,
-                endpoint_count: 2,
-                show_progress: None,
-                progress_bar,
-                separator,
-                vbox,
-                vertical_panes,
-                scan_button,
-                open_button,
-                save_button,
-                capture_button,
-                stop_button,
-                status_label,
-                warning,
-                metadata_action,
-            }
-        )
+        cell.borrow_mut().replace(ui);
     });
 
     reset_capture()?;
@@ -1025,47 +574,45 @@ fn choose_file<F>(
     where F: Fn(gio::File) -> Result<(), Error> + 'static
 {
     use FileAction::*;
-    let chooser = WINDOW.with(|cell| {
-        let borrow = cell.borrow();
-        let window = borrow.as_ref();
-        match action {
+    with_ui(|ui| {
+        let chooser = match action {
             Load => gtk::FileChooserDialog::new(
                 Some(&format!("Open {description}")),
-                window,
+                Some(&ui.window),
                 gtk::FileChooserAction::Open,
                 &[("Open", gtk::ResponseType::Accept)]
             ),
             Save => gtk::FileChooserDialog::new(
                 Some(&format!("Save {description}")),
-                window,
+                Some(&ui.window),
                 gtk::FileChooserAction::Save,
                 &[("Save", gtk::ResponseType::Accept)]
             ),
-        }
-    });
-    let all = gtk::FileFilter::new();
-    let pcap = gtk::FileFilter::new();
-    let pcapng = gtk::FileFilter::new();
-    all.add_suffix("pcap");
-    all.add_suffix("pcapng");
-    pcap.add_suffix("pcap");
-    pcapng.add_suffix("pcapng");
-    all.set_name(Some("All captures (*.pcap, *.pcapng)"));
-    pcap.set_name(Some("pcap (*.pcap)"));
-    pcapng.set_name(Some("pcap-NG (*.pcapng)"));
-    chooser.add_filter(&all);
-    chooser.add_filter(&pcap);
-    chooser.add_filter(&pcapng);
-    chooser.connect_response(move |dialog, response| {
-        if response == gtk::ResponseType::Accept {
-            if let Some(file) = dialog.file() {
-                display_error(handler(file));
+        };
+        let all = gtk::FileFilter::new();
+        let pcap = gtk::FileFilter::new();
+        let pcapng = gtk::FileFilter::new();
+        all.add_suffix("pcap");
+        all.add_suffix("pcapng");
+        pcap.add_suffix("pcap");
+        pcapng.add_suffix("pcapng");
+        all.set_name(Some("All captures (*.pcap, *.pcapng)"));
+        pcap.set_name(Some("pcap (*.pcap)"));
+        pcapng.set_name(Some("pcap-NG (*.pcapng)"));
+        chooser.add_filter(&all);
+        chooser.add_filter(&pcap);
+        chooser.add_filter(&pcapng);
+        chooser.connect_response(move |dialog, response| {
+            if response == gtk::ResponseType::Accept {
+                if let Some(file) = dialog.file() {
+                    display_error(handler(file));
+                }
+                dialog.destroy();
             }
-            dialog.destroy();
-        }
-    });
-    chooser.show();
-    Ok(())
+        });
+        chooser.show();
+        Ok(())
+    })
 }
 
 fn choose_capture_file(action: FileAction) -> Result<(), Error> {
@@ -1634,12 +1181,9 @@ fn show_metadata() -> Result<(), Error> {
             .margin_bottom(5)
             .build();
         grid.attach(&comment_view, 0, current_row, 2, 1);
-        Ok(())
-    })?;
-    WINDOW.with(|win| {
         let dialog = Dialog::with_buttons(
             Some("Capture Metadata"),
-            win.borrow().as_ref(),
+            Some(&ui.window),
             DialogFlags::DESTROY_WITH_PARENT,
             &[
                 ("Close", ResponseType::Close),
@@ -1667,8 +1211,8 @@ fn show_metadata() -> Result<(), Error> {
             dialog.destroy();
         });
         dialog.present();
-    });
-    Ok(())
+        Ok(())
+    })
 }
 
 fn show_about() -> Result<(), Error> {
@@ -1707,18 +1251,18 @@ pub fn display_error(result: Result<(), Error>) {
             write!(message, "\n\nBacktrace:\n{backtrace}").unwrap();
         }
         gtk::glib::idle_add_once(move || {
-            WINDOW.with(|win_opt| {
-                match win_opt.borrow().as_ref() {
+            UI.with(|ui_opt| {
+                match ui_opt.borrow().as_ref() {
                     None => println!("{message}"),
-                    Some(window) => {
+                    Some(ui) => {
                         let dialog = MessageDialog::new(
-                            Some(window),
+                            Some(&ui.window),
                             DialogFlags::MODAL,
                             MessageType::Error,
                             ButtonsType::Close,
                             &message
                         );
-                        dialog.set_transient_for(Some(window));
+                        dialog.set_transient_for(Some(&ui.window));
                         dialog.set_modal(true);
                         dialog.connect_response(
                             move |dialog, _| dialog.destroy());

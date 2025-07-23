@@ -32,9 +32,12 @@ mod usb;
 mod util;
 mod version;
 
-use gtk::prelude::*;
+// The GTK version we require at runtime.
+const GTK_REQUIRED: (u32, u32, u32) = (4,12,0);
+
+use gtk::{prelude::*, ApplicationWindow, Label, Button, Orientation};
 use gtk::gio::ApplicationFlags;
-use gtk::glib::{self, OptionArg, OptionFlags};
+use gtk::glib::{self, clone, OptionArg, OptionFlags};
 
 use testing::test_cynthion;
 use ui::{
@@ -92,14 +95,52 @@ fn main() {
             "test-cynthion", glib::Char::from(0),
             OptionFlags::NONE, OptionArg::None,
             "Test an attached Cynthion USB analyzer", None);
-        application.connect_activate(|app| display_error(activate(app)));
-        application.connect_open(|app, files, _hint| {
-            app.activate();
-            if let Some(file) = files.first() {
-                display_error(open(file));
-            }
-        });
-        application.run();
-        display_error(stop_operation());
+        let (major_req, minor_req, micro_req) = GTK_REQUIRED;
+        if gtk::check_version(major_req, minor_req, micro_req).is_some() {
+            application.connect_activate(move |app| {
+                let major_sys = gtk::major_version();
+                let minor_sys = gtk::minor_version();
+                let micro_sys = gtk::micro_version();
+                let window = ApplicationWindow::builder()
+                    .title("Cannot launch Packetry")
+                    .application(app)
+                    .build();
+                let required = format!("{major_req}.{minor_req}.{micro_req}");
+                let available = format!("{major_sys}.{minor_sys}.{micro_sys}");
+                let message = format!(
+                    "Cannot launch Packetry.\n\
+                     The GTK version in the current environment is {available}.\n\
+                     This version of Packetry requires GTK {required}.\n\
+                     Please ensure the environment is correct, or update GTK.");
+                let label = Label::builder()
+                    .label(message)
+                    .hexpand(true)
+                    .vexpand(true)
+                    .build();
+                let button = Button::builder()
+                    .label("OK")
+                    .build();
+                button.connect_clicked(
+                    clone!(@strong app => move |_| app.quit()));
+                let vbox = gtk::Box::builder()
+                    .orientation(Orientation::Vertical)
+                    .build();
+                window.set_child(Some(&vbox));
+                vbox.append(&label);
+                vbox.append(&button);
+                window.show();
+            });
+            application.run();
+        } else {
+            application.connect_activate(|app| display_error(activate(app)));
+            application.connect_open(|app, files, _hint| {
+                app.activate();
+                if let Some(file) = files.first() {
+                    display_error(open(file));
+                }
+            });
+            application.run();
+            display_error(stop_operation());
+        }
     }
 }
