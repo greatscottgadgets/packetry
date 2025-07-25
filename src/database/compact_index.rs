@@ -2,7 +2,7 @@
 //!
 //! This is the basis of all indexes in the capture database.
 
-use std::cmp::max;
+use std::cmp::{max, min};
 use std::fmt::Debug;
 use std::iter::{Peekable, once};
 use std::marker::PhantomData;
@@ -430,7 +430,7 @@ where
         } else {
             let vec = self.get_range(&(position..(position + 2)))?;
             let start = vec[0];
-            let end = vec[1];
+            let end = min(vec[1], Value::from(target_length));
             start..end
         };
         Ok(range)
