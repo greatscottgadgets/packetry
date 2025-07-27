@@ -6,7 +6,7 @@ use std::ffi::OsStr;
 use std::io::{Read, Write};
 use std::ops::Range;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::mpsc::{Sender, Receiver, channel};
+use std::sync::mpsc::{Sender, Receiver, TryRecvError, channel};
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 
@@ -35,6 +35,7 @@ use gtk::{
     Align,
     Application,
     Button,
+    CheckButton,
     Dialog,
     DialogFlags,
     Label,
@@ -109,7 +110,7 @@ pub mod record_ui;
 #[cfg(test)]
 mod test_replay;
 
-use capture::{Capture, CaptureState};
+use capture::{Capture, FilterThread};
 use device::{DeviceSelector, DeviceWarning};
 use model::{GenericModel, TrafficModel, DeviceModel};
 use power::PowerControl;
@@ -159,6 +160,7 @@ pub struct UserInterface {
     window: PacketryWindow,
     capture: Capture,
     snapshot_rx: Option<Receiver<CaptureSnapshot>>,
+    filter_thread: Option<FilterThread>,
     selector: DeviceSelector,
     power: PowerControl,
     file_name: Option<String>,
@@ -179,6 +181,7 @@ pub struct UserInterface {
     scan_button: Button,
     capture_button: Button,
     stop_button: Button,
+    filter_check: CheckButton,
     status_label: Label,
     warning: DeviceWarning,
     metadata_action: Action,
@@ -213,14 +216,27 @@ pub fn activate(application: &Application) -> Result<(), Error> {
         );
     });
 
+    ui.filter_check.connect_toggled(|check| {
+        display_error(with_ui(|ui| {
+            ui.filter_thread = if check.is_active() {
+                let thread = ui.capture.start_filtering()?;
+                Some(thread)
+            } else {
+                ui.capture.stop_filtering()?;
+                None
+            };
+            ui.reset_views();
+            Ok(())
+        }));
+        display_error(update_view());
+    });
+
     #[cfg(not(test))]
     ui.window.show();
 
     UI.with(|cell| {
         cell.borrow_mut().replace(ui);
     });
-
-    reset_capture()?;
 
     gtk::glib::idle_add_once(|| display_error(detect_hardware()));
 
@@ -236,26 +252,43 @@ type ContextFn<Item> =
 
 pub fn reset_capture() -> Result<CaptureWriter, Error> {
     let (mut writer, reader) = create_capture()?;
-    let snapshot = writer.snapshot();
     with_ui(|ui| {
-        let capture = Capture {
+        ui.capture = Capture {
             reader,
-            state: CaptureState::Ongoing(snapshot),
+            snapshot: Some(writer.snapshot()),
+            filter: None,
+            filter_snapshot: None,
         };
+        ui.filter_thread = if ui.filter_check.is_active() {
+            let thread = ui.capture.start_filtering()?;
+            Some(thread)
+        } else {
+            None
+        };
+        ui.stop_button.set_sensitive(false);
+        ui.reset_views();
+        ui.endpoint_count = 2;
+        Ok(())
+    })?;
+    Ok(writer)
+}
+
+impl UserInterface {
+    fn reset_views(&mut self) {
         for mode in TRAFFIC_MODES {
             let (traffic_model, traffic_selection, traffic_view) = {
                 let view = TrafficView::create(
                     "Traffic",
-                    &capture,
+                    &self.capture,
                     mode,
                     traffic_context_menu,
                     #[cfg(any(test, feature="record-ui-test"))]
-                    (&ui.recording, mode.log_name())
+                    (&self.recording, mode.log_name())
                 );
                 (view.model, view.selection, view.widget)
             };
-            ui.traffic_windows[&mode].set_child(Some(&traffic_view));
-            ui.traffic_models.insert(mode, traffic_model.clone());
+            self.traffic_windows[&mode].set_child(Some(&traffic_view));
+            self.traffic_models.insert(mode, traffic_model.clone());
             traffic_selection.connect_selection_changed(
                 move |selection_model, _position, _n_items| {
                     display_error(with_ui(|ui| {
@@ -284,22 +317,17 @@ pub fn reset_capture() -> Result<CaptureWriter, Error> {
         let (device_model, _device_selection, device_view) = {
             let view = DeviceView::create(
                 "Devices",
-                &capture,
+                &self.capture,
                 (),
                 device_context_menu,
                 #[cfg(any(test, feature="record-ui-test"))]
-                (&ui.recording, "devices")
+                (&self.recording, "devices")
             );
             (view.model, view.selection, view.widget)
         };
-        ui.capture = capture;
-        ui.device_model = Some(device_model);
-        ui.endpoint_count = 2;
-        ui.device_window.set_child(Some(&device_view));
-        ui.stop_button.set_sensitive(false);
-        Ok(())
-    })?;
-    Ok(writer)
+        self.device_model = Some(device_model);
+        self.device_window.set_child(Some(&device_view));
+    }
 }
 
 pub fn update_view() -> Result<(), Error> {
@@ -307,11 +335,37 @@ pub fn update_view() -> Result<(), Error> {
     with_ui(|ui| {
         SNAPSHOT_REQ.store(true, Ordering::Relaxed);
         if let Some(snapshot_rx) = &mut ui.snapshot_rx {
-            if let Ok(snapshot) = snapshot_rx.try_recv() {
-                ui.capture.set_snapshot(snapshot);
+            match snapshot_rx.try_recv() {
+                Ok(snapshot) => {
+                    if snapshot.complete {
+                        ui.snapshot_rx = None
+                    }
+                    if let Some(thread) = &mut ui.filter_thread {
+                        thread.send_capture_snapshot(snapshot.clone())?;
+                    }
+                    ui.capture.set_snapshot(snapshot);
+                },
+                Err(e @ TryRecvError::Disconnected) => {
+                    bail!(e)
+                },
+                Err(TryRecvError::Empty) => {},
             }
         }
         let stats = ui.capture.stats();
+        if let Some(thread) = &mut ui.filter_thread {
+            match thread.filter_snapshot_rx.try_recv() {
+                Ok(filter_snapshot) => {
+                    if filter_snapshot.complete {
+                        ui.filter_thread.take().unwrap().join()?;
+                    }
+                    ui.capture.set_filter_snapshot(filter_snapshot);
+                },
+                Err(e @ TryRecvError::Disconnected) => {
+                    bail!(e)
+                },
+                Err(TryRecvError::Empty) => {},
+            };
+        }
         #[cfg(feature="record-ui-test")]
         ui.recording
             .borrow_mut()
@@ -366,9 +420,6 @@ pub fn update_view() -> Result<(), Error> {
                 UPDATE_INTERVAL,
                 || display_error(update_view())
             );
-        } else {
-            ui.capture.set_completed();
-            ui.snapshot_rx = None;
         }
         Ok(())
     })

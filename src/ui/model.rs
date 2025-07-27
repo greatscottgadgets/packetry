@@ -14,7 +14,7 @@ use anyhow::Error;
 use crate::item::{
     ItemSource, TrafficItem, TrafficViewMode, DeviceItem, DeviceViewMode};
 
-use crate::ui::capture::{Capture, CaptureState};
+use crate::ui::capture::Capture;
 use crate::ui::tree_list_model::{TreeListModel, ItemNodeRc};
 
 /// Trait implemented by each of our ListModel implementations.
@@ -57,6 +57,44 @@ pub trait GenericModel<Item, ViewMode> where Self: Sized {
     fn connectors(&self, view_mode: ViewMode, item: &Item) -> String;
 }
 
+macro_rules! dispatch {
+    ($capture: ident => $expr: expr) => {{
+        match (
+            &mut $capture.snapshot,
+            &mut $capture.filter,
+            &mut $capture.filter_snapshot,
+        ) {
+            (Some(cap_snapshot), Some(filter), Some(filter_snapshot)) => {
+                let mut capture_snap = $capture.reader.at(cap_snapshot);
+                let mut filter_snap = filter.at(filter_snapshot);
+                let mut filtered = filter_snap.apply(&mut capture_snap);
+                let $capture = &mut filtered;
+                $expr
+            },
+            (None, Some(filter), Some(filter_snapshot)) => {
+                let mut filter_snap = filter.at(filter_snapshot);
+                let mut filtered = filter_snap.apply(&mut $capture.reader);
+                let $capture = &mut filtered;
+                $expr
+            },
+            (None, Some(filter), None)  => {
+                let mut filtered = filter.apply(&mut $capture.reader);
+                let $capture = &mut filtered;
+                $expr
+            },
+            (Some(snapshot), None, None) => {
+                let mut snapshot_reader = $capture.reader.at(snapshot);
+                let $capture = &mut snapshot_reader;
+                $expr
+            },
+            (..) => {
+                let $capture = &mut $capture.reader;
+                $expr
+            },
+        }
+    }}
+}
+
 /// Define the outer type exposed to our Rust code.
 macro_rules! model {
     ($model: ident, $item: ident, $view_mode: ident, $has_times: literal) => {
@@ -76,22 +114,14 @@ macro_rules! model {
                 on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>
             ) -> Result<Self, Error> {
                 let model: $model = glib::Object::new::<$model>();
-                let tree = match &capture.state {
-                    CaptureState::Ongoing(snapshot) =>
-                        TreeListModel::new(
-                            &mut capture.reader.at(&snapshot),
-                            view_mode,
-                            #[cfg(any(test, feature="record-ui-test"))]
-                            on_item_update
-                        )?,
-                    CaptureState::Complete =>
-                        TreeListModel::new(
-                            &mut capture.reader,
-                            view_mode,
-                            #[cfg(any(test, feature="record-ui-test"))]
-                            on_item_update
-                        )?,
-                };
+                let tree = dispatch!(
+                    capture => TreeListModel::new(
+                        capture,
+                        view_mode,
+                        #[cfg(any(test, feature="record-ui-test"))]
+                        on_item_update
+                    )
+                )?;
                 model.imp().tree.replace(Some(tree));
                 model.imp().capture.replace(Some(capture));
                 Ok(model)
@@ -106,46 +136,27 @@ macro_rules! model {
             ) -> Result<(), Error> {
                 let tree_opt = self.imp().tree.borrow();
                 let tree = tree_opt.as_ref().unwrap();
-                match &capture.state {
-                    CaptureState::Ongoing(snapshot) =>
-                        tree.set_expanded(&mut capture.reader.at(&snapshot),
-                            self, node, position as u64, expanded),
-                    CaptureState::Complete =>
-                        tree.set_expanded(&mut capture.reader,
-                            self, node, position as u64, expanded),
-                }
+                dispatch!(capture => tree.set_expanded(capture,
+                    self, node, position as u64, expanded))
             }
 
             fn update(&self, ext_capture: &mut Capture) -> Result<bool, Error> {
                 {
                     let mut cap_opt = self.imp().capture.borrow_mut();
                     let int_capture = cap_opt.as_mut().unwrap();
-                    if let CaptureState::Ongoing(snapshot) = &ext_capture.state {
-                        int_capture.set_snapshot(snapshot.clone());
-                    } else {
-                        int_capture.set_completed();
-                    }
+                    int_capture.update_from(&ext_capture);
                 }
                 let tree_opt = self.imp().tree.borrow();
                 let tree = tree_opt.as_ref().unwrap();
-                let result = match &ext_capture.state {
-                    CaptureState::Ongoing(snapshot) =>
-                        tree.update(&mut ext_capture.reader.at(&snapshot), self),
-                    CaptureState::Complete =>
-                        tree.update(&mut ext_capture.reader, self)
-                };
-                result
+                dispatch!(ext_capture => tree.update(ext_capture, self))
             }
 
             fn description(&self, item: &$item, detail: bool) -> String {
                 let mut cap_opt = self.imp().capture.borrow_mut();
                 let capture = cap_opt.as_mut().unwrap();
-                let result = match &capture.state {
-                    CaptureState::Ongoing(snapshot) =>
-                        capture.reader.at(&snapshot).description(item, detail),
-                    CaptureState::Complete =>
-                        capture.reader.description(item, detail),
-                };
+                let result = dispatch!(
+                    capture => capture.description(item, detail)
+                );
                 match result {
                     Ok(string) => string,
                     Err(e) => format!("Error: {e:?}")
@@ -155,24 +166,16 @@ macro_rules! model {
             fn timestamp(&self, item: &$item) -> u64 {
                 let mut cap_opt = self.imp().capture.borrow_mut();
                 let capture = cap_opt.as_mut().unwrap();
-                let result = match &capture.state {
-                    CaptureState::Ongoing(snapshot) =>
-                        capture.reader.at(&snapshot).timestamp(item),
-                    CaptureState::Complete =>
-                        capture.reader.timestamp(item),
-                };
+                let result = dispatch!(capture => capture.timestamp(item));
                 result.unwrap_or(0)
             }
 
             fn connectors(&self, view_mode: $view_mode, item: &$item) -> String {
                 let mut cap_opt = self.imp().capture.borrow_mut();
                 let capture = cap_opt.as_mut().unwrap();
-                let result = match &capture.state {
-                    CaptureState::Ongoing(snapshot) =>
-                        capture.reader.at(&snapshot).connectors(view_mode, item),
-                    CaptureState::Complete =>
-                        capture.reader.connectors(view_mode, item),
-                };
+                let result = dispatch!(
+                    capture => capture.connectors(view_mode, item)
+                );
                 match result {
                     Ok(string) => string,
                     Err(e) => format!("Error: {e:?}")
@@ -193,7 +196,7 @@ mod imp {
 
     use std::cell::RefCell;
     use crate::item::{TrafficItem, TrafficViewMode, DeviceItem, DeviceViewMode};
-    use crate::ui::capture::{Capture, CaptureState};
+    use crate::ui::capture::Capture;
     use crate::ui::row_data::{TrafficRowData, DeviceRowData};
     use crate::ui::tree_list_model::TreeListModel;
 
@@ -235,12 +238,8 @@ mod imp {
                     let tree_opt = self.tree.borrow();
                     let mut cap_opt = self.capture.borrow_mut();
                     match (tree_opt.as_ref(), cap_opt.as_mut()) {
-                        (Some(tree), Some(capture)) => match &capture.state {
-                            CaptureState::Ongoing(snapshot) => tree.item(
-                                &mut capture.reader.at(&snapshot), position),
-                            CaptureState::Complete => tree.item(
-                                &mut capture.reader, position),
-                        },
+                        (Some(tree), Some(capture)) =>
+                            dispatch!(capture => tree.item(capture, position)),
                         _ => None
                     }
                 }

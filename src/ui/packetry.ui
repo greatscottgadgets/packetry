@@ -175,9 +175,20 @@ CONTROL</property>
                     <property name="orientation">vertical</property>
                     <property name="vexpand">True</property>
                     <child>
-                      <object class="GtkStackSwitcher" id="switcher">
-                        <property name="hexpand">True</property>
-                        <property name="stack">stack</property>
+                      <object class="GtkBox">
+                        <child>
+                          <object class="GtkStackSwitcher" id="switcher">
+                            <property name="hexpand">True</property>
+                            <property name="stack">stack</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkCheckButton" id="filter_check">
+                            <property name="label">Filter SOFs</property>
+                            <property name="margin-end">2</property>
+                            <property name="margin-start">2</property>
+                          </object>
+                        </child>
                       </object>
                     </child>
                     <child>
