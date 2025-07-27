@@ -27,7 +27,7 @@ use gtk::{
 use crate::capture::create_capture;
 use crate::item::TrafficViewMode;
 use crate::ui::{
-    capture::{Capture, CaptureState},
+    capture::Capture,
     power::PowerControl,
     DeviceSelector,
     DeviceWarning,
@@ -167,6 +167,8 @@ impl PacketryWindow {
             stop_off: window.imp().power_stop_off.clone(),
         };
 
+        let filter_check = window.imp().filter_check.clone();
+
         let mut traffic_windows = BTreeMap::new();
         traffic_windows.insert(Hierarchical, window.imp().hierarchical.clone());
         traffic_windows.insert(Transactions, window.imp().transactions.clone());
@@ -196,9 +198,12 @@ impl PacketryWindow {
                 Recording::new(reader.clone()))),
             capture: Capture {
                 reader,
-                state: CaptureState::Complete,
+                snapshot: None,
+                filter: None,
+                filter_snapshot: None,
             },
             snapshot_rx: None,
+            filter_thread: None,
             selector,
             power,
             file_name: None,
@@ -219,6 +224,7 @@ impl PacketryWindow {
             save_button,
             capture_button,
             stop_button,
+            filter_check,
             status_label,
             warning,
             metadata_action,
@@ -308,6 +314,8 @@ mod imp {
         pub power_start_on: TemplateChild<CheckButton>,
         #[template_child]
         pub power_stop_off: TemplateChild<CheckButton>,
+        #[template_child]
+        pub filter_check: TemplateChild<CheckButton>,
     }
 
     #[glib::object_subclass]
