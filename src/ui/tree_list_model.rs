@@ -379,6 +379,14 @@ where Item: 'static + Clone + Debug,
         on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>
     ) -> Result<Self, Error> {
         let (completion, item_count) = cap.item_children(None, view_mode)?;
+        let mut regions = BTreeMap::new();
+        let initial_region = Region {
+            source: TopLevelItems(),
+            offset: 0,
+            length: item_count,
+        };
+        regions.insert(0, initial_region);
+        let row_count = clamp(item_count, u32::MAX);
         Ok(TreeListModel {
             _marker: PhantomData,
             view_mode,
@@ -386,8 +394,8 @@ where Item: 'static + Clone + Debug,
                 children: Children::new(item_count),
                 complete: completion.is_complete(),
             })),
-            regions: RefCell::new(BTreeMap::new()),
-            published_row_count: Cell::new(0),
+            regions: RefCell::new(regions),
+            published_row_count: Cell::new(row_count),
             #[cfg(any(test, feature="record-ui-test"))]
             on_item_update,
         })
