@@ -311,52 +311,27 @@ pub fn update_view() -> Result<(), Error> {
                 ui.capture.set_snapshot(snapshot);
             }
         }
-        let (devices, endpoints, transactions, packets) =
-            match &mut ui.capture.state
-        {
-            CaptureState::Ongoing(snapshot) => {
-                let cap = ui.capture.reader.at(snapshot);
-                let devices = cap.device_count().saturating_sub(1);
-                let endpoints = cap.endpoint_count().saturating_sub(2);
-                let transactions = cap.transaction_count();
-                let packets = cap.packet_count();
-                (devices, endpoints, transactions, packets)
-            },
-            CaptureState::Complete => {
-                let cap = &mut ui.capture.reader;
-                let devices = cap.device_count().saturating_sub(1);
-                let endpoints = cap.endpoint_count().saturating_sub(2);
-                let transactions = cap.transaction_count();
-                let packets = cap.packet_count();
-                (devices, endpoints, transactions, packets)
-            },
-        };
+        let stats = ui.capture.stats();
         #[cfg(feature="record-ui-test")]
         ui.recording
             .borrow_mut()
-            .log_update(packets);
+            .log_update(stats.packets);
         let mut more_updates = false;
         if ui.show_progress == Some(Save) {
             more_updates = true;
         } else {
-            ui.status_label.set_text(&format!(
-                "{}: {} devices, {} endpoints, {} transactions, {} packets",
-                ui.file_name.as_deref().unwrap_or("Unsaved capture"),
-                fmt_count(devices),
-                fmt_count(endpoints),
-                fmt_count(transactions),
-                fmt_count(packets)
-            ));
+            let filename = ui.file_name.as_deref().unwrap_or("Unsaved capture");
+            ui.status_label.set_text(&format!("{filename}: {stats}"));
             for model in ui.traffic_models.values() {
                 let old_count = model.n_items();
                 more_updates |= model.update(&mut ui.capture)?;
                 let new_count = model.n_items();
                 // If any endpoints were added, we need to redraw the rows above
                 // to add the additional columns of the connecting lines.
-                if new_count > old_count && endpoints > ui.endpoint_count {
+                if new_count > old_count && stats.endpoints > ui.endpoint_count {
                     model.items_changed(0, old_count, old_count);
                 }
-                ui.endpoint_count = endpoints;
+                ui.endpoint_count = stats.endpoints;
             }
             if let Some(model) = &ui.device_model {
                 more_updates |= model.update(&mut ui.capture)?;
