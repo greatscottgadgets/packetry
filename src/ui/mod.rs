@@ -174,7 +174,9 @@ pub struct UserInterface {
     endpoint_count: u64,
     show_progress: Option<FileAction>,
     progress_bar: ProgressBar,
+    filter_progress_bar: ProgressBar,
     separator: Separator,
+    filter_separator: Separator,
     vbox: gtk::Box,
     vertical_panes: Paned,
     open_button: Button,
@@ -219,12 +221,20 @@ pub fn activate(application: &Application) -> Result<(), Error> {
 
     ui.filter_check.connect_toggled(|check| {
         display_error(with_ui(|ui| {
-            ui.filter_thread = if check.is_active() {
+            if check.is_active() {
                 let thread = ui.capture.start_filtering()?;
-                Some(thread)
+                ui.filter_thread = Some(thread);
+                ui.vbox.insert_child_after(
+                    &ui.filter_separator, Some(&ui.vertical_panes));
+                ui.vbox.insert_child_after(
+                    &ui.filter_progress_bar, Some(&ui.filter_separator));
             } else {
                 ui.capture.stop_filtering()?;
-                None
+                if let Some(thread) = ui.filter_thread.take() {
+                    thread.join()?;
+                    ui.vbox.remove(&ui.filter_separator);
+                    ui.vbox.remove(&ui.filter_progress_bar);
+                }
             };
             ui.reset_views();
             Ok(())
@@ -359,6 +369,28 @@ pub fn update_view() -> Result<(), Error> {
                 Ok(filter_snapshot) => {
                     if filter_snapshot.complete {
                         ui.filter_thread.take().unwrap().join()?;
+                        ui.vbox.remove(&ui.filter_separator);
+                        ui.vbox.remove(&ui.filter_progress_bar);
+                    } else {
+                        let total = stats.total_filterable();
+                        let current = filter_snapshot.stats.total_filterable();
+                        let fraction = if total == 0 {
+                            None
+                        } else {
+                            Some((current as f64) / (total as f64))
+                        };
+                        let text = format!(
+                            "Filtered {} / {} items",
+                            fmt_count(current),
+                            fmt_count(total)
+                        );
+                        ui.filter_progress_bar.set_text(Some(&text));
+                        match fraction {
+                            Some(fraction) =>
+                                ui.filter_progress_bar.set_fraction(fraction),
+                            None =>
+                                ui.filter_progress_bar.pulse()
+                        };
                     }
                     ui.capture.set_filter_snapshot(filter_snapshot);
                 },
