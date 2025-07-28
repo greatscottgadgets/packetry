@@ -1012,31 +1012,74 @@ impl CaptureReader {
 
 /// Operations supported by both `CaptureReader` and `CaptureSnapshotReader`.
 pub trait CaptureReaderOps {
+    /// Access data about the specified device.
     fn device_data(&self, device_id: DeviceId)
         -> Result<Arc<DeviceData>, Error>;
+
+    /// Access traffic for the specified endpoint.
     fn endpoint_traffic(&mut self, endpoint_id: EndpointId)
         -> Result<&mut impl EndpointReaderOps, Error>;
+
+    /// Fetch a specific packet byte.
     fn byte(&mut self, id: PacketByteId) -> Result<u8, Error>;
+
+    /// Fetch a range of packet bytes.
     fn bytes(&mut self, range: &Range<PacketByteId>) -> Result<Vec<u8>, Error>;
+
+    /// Get the number of packets in the capture.
     fn packet_count(&self) -> u64;
+
+    /// Get the position of the first byte of a packet in the packet data stream.
     fn packet_start(&mut self, id: PacketId) -> Result<PacketByteId, Error>;
-    fn packet_byte_range(&mut self, id: PacketId) -> Result<Range<PacketByteId>, Error>;
+
+    /// Get the position of a packet's bytes in the packet data stream.
+    fn packet_byte_range(&mut self, id: PacketId)
+        -> Result<Range<PacketByteId>, Error>;
+
+    /// Get the timestamp of a packet.
     fn packet_time(&mut self, id: PacketId) -> Result<Timestamp, Error>;
+
+    /// Get the number of transactions in the capture.
     fn transaction_count(&self) -> u64;
+
+    /// Find the packet ID of the first packet in a transaction.
     fn transaction_start(&mut self, id: TransactionId) -> Result<PacketId, Error>;
+
+    /// Find the range of packet IDs in a transaction.
     fn transaction_packet_range(&mut self, id: TransactionId)
         -> Result<Range<PacketId>, Error>;
+
+    /// Get the number of top-level items in a capture.
     fn item_count(&self) -> u64;
+
+    /// Fetch the transaction group associated with a top-level item.
     fn item_group(&mut self, id: TrafficItemId) -> Result<GroupId, Error>;
+
+    /// Get the number of transaction groups in the capture.
     fn group_count(&self) -> u64;
+
+    /// Fetch the index entry for a transaction group.
     fn group_entry(&mut self, id: GroupId) -> Result<GroupIndexEntry, Error>;
+
+    /// Get the number of devices in the capture.
     fn device_count(&self) -> u64;
+
+    /// Fetch a specific device.
     fn device(&mut self, id: DeviceId) -> Result<Device, Error>;
+
+    /// Get the number of endpoints in the capture.
     fn endpoint_count(&self) -> u64;
+
+    /// Fetch a specific endpoint.
     fn endpoint(&mut self, id: EndpointId) -> Result<Endpoint, Error>;
+
+    /// Fetch endpoint state data at the start of a transaction group.
     fn endpoint_state(&mut self, group_id: GroupId) -> Result<Vec<u8>, Error>;
+
+    /// Whether the capture is complete.
     fn complete(&self) -> bool;
 
+    /// Find the range of endpoint transaction IDs for a transaction group.
     fn group_range(&mut self, entry: &GroupIndexEntry)
         -> Result<Range<EndpointTransactionId>, Error>
     {
@@ -1046,6 +1089,7 @@ pub trait CaptureReaderOps {
         ep_traf.group_range(ep_group_id)
     }
 
+    /// Fetch the SETUP packet fields for a control transaction.
     fn transaction_fields(&mut self, transaction: &Transaction)
         -> Result<SetupFields, Error>
     {
@@ -1071,6 +1115,7 @@ pub trait CaptureReaderOps {
         }
     }
 
+    /// Fetch the payload bytes for a transaction.
     fn transaction_bytes(&mut self, transaction: &Transaction)
         -> Result<Vec<u8>, Error>
     {
@@ -1082,6 +1127,7 @@ pub trait CaptureReaderOps {
         self.bytes(&data_byte_range)
     }
 
+    /// Fetch the payload bytes for a transfer.
     fn transfer_bytes(
         &mut self,
         endpoint_id: EndpointId,
@@ -1108,6 +1154,7 @@ pub trait CaptureReaderOps {
         Ok(transfer_bytes)
     }
 
+    /// Fetch all the bytes of a packet.
     fn packet(&mut self, id: PacketId)
         -> Result<Vec<u8>, Error>
     {
@@ -1115,6 +1162,7 @@ pub trait CaptureReaderOps {
         self.bytes(&range)
     }
 
+    /// Fetch the PID of a packet.
     fn packet_pid(&mut self, id: PacketId)
         -> Result<PID, Error>
     {
@@ -1122,6 +1170,7 @@ pub trait CaptureReaderOps {
         Ok(PID::from(self.byte(byte_id)?))
     }
 
+    /// Fetch information about a transaction.
     fn transaction(&mut self, id: TransactionId)
         -> Result<Transaction, Error>
     {
@@ -1176,6 +1225,7 @@ pub trait CaptureReaderOps {
         })
     }
 
+    /// Fetch information about a transaction group.
     fn group(&mut self, group_id: GroupId) -> Result<Group, Error> {
         let entry = self.group_entry(group_id)?;
         let endpoint_id = entry.endpoint_id();
@@ -1237,6 +1287,7 @@ pub trait CaptureReaderOps {
         })
     }
 
+    /// Fetch information about a control transfer.
     fn control_transfer(&mut self,
                         device_id: DeviceId,
                         address: DeviceAddr,
@@ -1292,6 +1343,7 @@ pub trait CaptureReaderOps {
         })
     }
 
+    /// Check whether a transaction group is ongoing at the end of the capture.
     fn group_extended(
         &mut self,
         endpoint_id: EndpointId,
