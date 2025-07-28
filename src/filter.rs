@@ -1,7 +1,11 @@
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering::Relaxed},
+    mpsc::{Sender, Receiver, channel},
+};
+use std::thread::{JoinHandle, spawn};
 
-use anyhow::Error;
+use anyhow::{Context, Error};
 use delegate::delegate;
 
 use crate::capture::prelude::*;
@@ -24,6 +28,8 @@ use crate::item::{
 
 use crate::usb::PID;
 
+use crate::util::handle_thread_panic;
+
 pub struct FilterWriter {
     counters: CounterSet,
     packets: CompactWriter<u64, PacketId>,
@@ -35,6 +41,8 @@ pub struct FilterWriter {
     next_item_id: TrafficItemId,
     next_device_id: DeviceId,
     complete: Arc<AtomicBool>,
+    snapshot_req: Arc<AtomicBool>,
+    snapshot_tx: Sender<FilterSnapshot>,
 }
 
 #[derive(Clone)]
@@ -78,7 +86,19 @@ pub struct CaptureFilterSnapshotReader<'f, 'c, 's, C: CaptureReaderOps> {
     complete: bool,
 }
 
-pub fn create_filter() -> Result<(FilterWriter, FilterReader), Error> {
+pub struct FilterThread {
+    join_handle: JoinHandle<Result<(), Error>>,
+    capture_snapshot_tx: Option<Sender<CaptureSnapshot>>,
+    pub filter_snapshot_rx: Receiver<FilterSnapshot>,
+    pub filter_snapshot_req: Arc<AtomicBool>,
+}
+
+pub fn create_filter(
+    capture: &mut CaptureReader,
+    snapshot: Option<&CaptureSnapshot>,
+)
+    -> Result<(FilterReader, FilterThread, FilterSnapshot), Error>
+{
     let mut counters = CounterSet::new();
     let db = &mut counters;
     let (packet_writer, packet_reader) = compact_index(db)?;
@@ -86,27 +106,87 @@ pub fn create_filter() -> Result<(FilterWriter, FilterReader), Error> {
     let (item_writer, item_reader) = compact_index(db)?;
     let (device_writer, device_reader) = compact_index(db)?;
     let complete = Arc::new(AtomicBool::new(false));
-    Ok((
-        FilterWriter {
-            counters,
-            packets: packet_writer,
-            transactions: transaction_writer,
-            items: item_writer,
-            devices: device_writer,
-            next_packet_id: PacketId::from(0),
-            next_transaction_id: TransactionId::from(0),
-            next_item_id: TrafficItemId::from(0),
-            next_device_id: DeviceId::from(0),
-            complete: complete.clone(),
-        },
-        FilterReader {
-            packets: packet_reader,
-            transactions: transaction_reader,
-            items: item_reader,
-            devices: device_reader,
-            complete,
+    let filter_snapshot_req = Arc::new(AtomicBool::new(false));
+    let (filter_snapshot_tx, filter_snapshot_rx) = channel();
+    let mut filter_writer = FilterWriter {
+        counters,
+        packets: packet_writer,
+        transactions: transaction_writer,
+        items: item_writer,
+        devices: device_writer,
+        next_packet_id: PacketId::from(0),
+        next_transaction_id: TransactionId::from(0),
+        next_item_id: TrafficItemId::from(0),
+        next_device_id: DeviceId::from(0),
+        complete: complete.clone(),
+        snapshot_req: filter_snapshot_req.clone(),
+        snapshot_tx: filter_snapshot_tx,
+    };
+    let filter_reader = FilterReader {
+        packets: packet_reader,
+        transactions: transaction_reader,
+        items: item_reader,
+        devices: device_reader,
+        complete,
+    };
+    let filter_snapshot = filter_writer.snapshot();
+    let mut capture = capture.clone();
+    let filter_thread = if let Some(snapshot) = snapshot {
+        let snapshot = snapshot.clone();
+        let (capture_snapshot_tx, capture_snapshot_rx) = channel();
+        let join_handle = spawn(
+            move || {
+                filter_writer.catchup(&mut capture.at(&snapshot))?;
+                loop {
+                    if filter_writer.complete() {
+                        return Ok(())
+                    }
+                    let snapshot = capture_snapshot_rx.recv()?;
+                    filter_writer.catchup(&mut capture.at(&snapshot))?;
+                }
+            }
+        );
+        FilterThread {
+            join_handle,
+            capture_snapshot_tx: Some(capture_snapshot_tx),
+            filter_snapshot_req,
+            filter_snapshot_rx,
         }
-    ))
+    } else {
+        let join_handle = spawn(
+            move || {
+                filter_writer.catchup(&mut capture)?;
+                Ok(())
+            }
+        );
+        FilterThread {
+            join_handle,
+            capture_snapshot_tx: None,
+            filter_snapshot_req,
+            filter_snapshot_rx,
+        }
+    };
+    Ok((filter_reader, filter_thread, filter_snapshot))
+}
+
+impl FilterThread {
+    pub fn request_filter_snapshot(&self) {
+        self.filter_snapshot_req.store(true, Relaxed);
+    }
+
+    pub fn send_capture_snapshot(&mut self, snapshot: CaptureSnapshot)
+        -> Result<(), Error>
+    {
+        self.capture_snapshot_tx
+            .as_mut()
+            .context("Thread has no snapshot TX")?
+            .send(snapshot)?;
+        Ok(())
+    }
+
+    pub fn join(self) -> Result<(), Error> {
+        handle_thread_panic(self.join_handle.join())?
+    }
 }
 
 impl FilterReader {
@@ -166,10 +246,6 @@ impl FilterWriter {
         self.complete.load(Relaxed)
     }
 
-    pub fn set_complete(&self) {
-        self.complete.store(true, Relaxed);
-    }
-
     pub fn catchup<C: CaptureReaderOps>(
         &mut self,
         cap: &mut C,
@@ -180,6 +256,7 @@ impl FilterWriter {
                 self.packets.push(packet_id)?;
             }
             self.next_packet_id = packet_id + 1;
+            self.checkpoint()?;
         }
         for i in self.next_transaction_id.value .. cap.transaction_count() {
             let transaction_id = TransactionId::from(i);
@@ -188,6 +265,7 @@ impl FilterWriter {
                 self.transactions.push(transaction_id)?;
             }
             self.next_transaction_id = transaction_id + 1;
+            self.checkpoint()?;
         }
         for i in self.next_item_id.value..cap.item_count() {
             let item_id = TrafficItemId::from(i);
@@ -197,11 +275,28 @@ impl FilterWriter {
                 self.items.push(item_id)?;
             }
             self.next_item_id = item_id + 1;
+            self.checkpoint()?;
         }
         for i in self.next_device_id.value..cap.device_count() {
             let device_id = DeviceId::from(i);
             self.devices.push(device_id)?;
             self.next_device_id = device_id + 1;
+            self.checkpoint()?;
+        }
+
+        if cap.complete() {
+            self.complete.store(true, Relaxed);
+            let snapshot = self.snapshot();
+            self.snapshot_tx.send(snapshot)?;
+        }
+
+        Ok(())
+    }
+
+    fn checkpoint(&mut self) -> Result<(), Error> {
+        if self.snapshot_req.swap(false, Relaxed) {
+            let snapshot = self.snapshot();
+            self.snapshot_tx.send(snapshot)?;
         }
         Ok(())
     }

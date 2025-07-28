@@ -1,13 +1,10 @@
 //! Unified access to different forms of capture.
 
-use std::sync::mpsc::{Sender, Receiver, channel};
-use std::thread::{JoinHandle, spawn};
-
 use crate::capture::{CaptureReader, CaptureReaderOps, CaptureSnapshot};
-use crate::filter::{FilterReader, FilterSnapshot, create_filter};
-use crate::util::{fmt_count, handle_thread_panic};
+use crate::filter::{FilterReader, FilterSnapshot, FilterThread, create_filter};
+use crate::util::fmt_count;
 
-use anyhow::{Context, Error};
+use anyhow::Error;
 
 #[derive(Clone)]
 pub struct Capture {
@@ -48,76 +45,17 @@ impl Capture {
     }
 
     pub fn start_filtering(&mut self) -> Result<FilterThread, Error> {
-        let (mut filter_writer, filter_reader) = create_filter()?;
-        let filter_snapshot = filter_writer.snapshot();
+        let (filter_reader, filter_thread, filter_snapshot) =
+            create_filter(&mut self.reader, self.snapshot.as_ref())?;
         self.filter = Some(filter_reader);
         self.filter_snapshot = Some(filter_snapshot);
-        let mut reader = self.reader.clone();
-        if let Some(snapshot) = &self.snapshot {
-            let snapshot = snapshot.clone();
-            let (capture_snapshot_tx, capture_snapshot_rx) = channel();
-            let (filter_snapshot_tx, filter_snapshot_rx) = channel();
-            let join_handle = spawn(move || {
-                filter_writer.catchup(&mut reader.at(&snapshot))?;
-                loop {
-                    filter_snapshot_tx.send(filter_writer.snapshot())?;
-                    if filter_writer.complete() {
-                        return Ok(());
-                    }
-                    let capture_snapshot = capture_snapshot_rx.recv()?;
-                    filter_writer.catchup(&mut reader.at(&capture_snapshot))?;
-                    if capture_snapshot.complete {
-                        filter_writer.set_complete();
-                    }
-                }
-            });
-            Ok(FilterThread {
-                join_handle,
-                capture_snapshot_tx: Some(capture_snapshot_tx),
-                filter_snapshot_rx,
-            })
-        } else {
-            let (filter_snapshot_tx, filter_snapshot_rx) = channel();
-            let join_handle = spawn(move || {
-                filter_writer.catchup(&mut reader)?;
-                filter_writer.set_complete();
-                filter_snapshot_tx.send(filter_writer.snapshot())?;
-                Ok(())
-            });
-            Ok(FilterThread {
-                join_handle,
-                capture_snapshot_tx: None,
-                filter_snapshot_rx,
-            })
-        }
+        Ok(filter_thread)
     }
 
     pub fn stop_filtering(&mut self) -> Result<(), Error> {
         self.filter = None;
         self.filter_snapshot = None;
         Ok(())
-    }
-}
-
-pub struct FilterThread {
-    join_handle: JoinHandle<Result<(), Error>>,
-    capture_snapshot_tx: Option<Sender<CaptureSnapshot>>,
-    pub filter_snapshot_rx: Receiver<FilterSnapshot>,
-}
-
-impl FilterThread {
-    pub fn send_capture_snapshot(&mut self, snapshot: CaptureSnapshot)
-        -> Result<(), Error>
-    {
-        self.capture_snapshot_tx
-            .as_mut()
-            .context("Thread has no snapshot TX")?
-            .send(snapshot)?;
-        Ok(())
-    }
-
-    pub fn join(self) -> Result<(), Error> {
-        handle_thread_panic(self.join_handle.join())?
     }
 }
 

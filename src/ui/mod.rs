@@ -92,6 +92,7 @@ use crate::file::{
     PcapNgLoader,
     PcapNgSaver,
 };
+use crate::filter::FilterThread;
 use crate::usb::{Descriptor, PacketFields, Speed, validate_packet};
 use crate::util::{rcu::SingleWriterRcu, fmt_count, fmt_size};
 use crate::version::{version, version_info};
@@ -110,7 +111,7 @@ pub mod record_ui;
 #[cfg(test)]
 mod test_replay;
 
-use capture::{Capture, FilterThread};
+use capture::Capture;
 use device::{DeviceSelector, DeviceWarning};
 use model::{GenericModel, TrafficModel, DeviceModel};
 use power::PowerControl;
@@ -353,6 +354,7 @@ pub fn update_view() -> Result<(), Error> {
         }
         let stats = ui.capture.stats();
         if let Some(thread) = &mut ui.filter_thread {
+            thread.request_filter_snapshot();
             match thread.filter_snapshot_rx.try_recv() {
                 Ok(filter_snapshot) => {
                     if filter_snapshot.complete {
