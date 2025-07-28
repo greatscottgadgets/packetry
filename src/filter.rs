@@ -250,21 +250,10 @@ impl FilterWriter {
         &mut self,
         cap: &mut C,
     ) -> Result<(), Error> {
-        for i in self.next_packet_id.value .. cap.packet_count() {
-            let packet_id = PacketId::from(i);
-            if cap.packet_pid(packet_id)? != PID::SOF {
-                self.packets.push(packet_id)?;
-            }
-            self.next_packet_id = packet_id + 1;
-            self.checkpoint()?;
-        }
-        for i in self.next_transaction_id.value .. cap.transaction_count() {
-            let transaction_id = TransactionId::from(i);
-            let start_packet_id = cap.transaction_start(transaction_id)?;
-            if cap.packet_pid(start_packet_id)? != PID::SOF {
-                self.transactions.push(transaction_id)?;
-            }
-            self.next_transaction_id = transaction_id + 1;
+        for i in self.next_device_id.value..cap.device_count() {
+            let device_id = DeviceId::from(i);
+            self.devices.push(device_id)?;
+            self.next_device_id = device_id + 1;
             self.checkpoint()?;
         }
         for i in self.next_item_id.value..cap.item_count() {
@@ -277,10 +266,21 @@ impl FilterWriter {
             self.next_item_id = item_id + 1;
             self.checkpoint()?;
         }
-        for i in self.next_device_id.value..cap.device_count() {
-            let device_id = DeviceId::from(i);
-            self.devices.push(device_id)?;
-            self.next_device_id = device_id + 1;
+        for i in self.next_transaction_id.value .. cap.transaction_count() {
+            let transaction_id = TransactionId::from(i);
+            let start_packet_id = cap.transaction_start(transaction_id)?;
+            if cap.packet_pid(start_packet_id)? != PID::SOF {
+                self.transactions.push(transaction_id)?;
+            }
+            self.next_transaction_id = transaction_id + 1;
+            self.checkpoint()?;
+        }
+        for i in self.next_packet_id.value .. cap.packet_count() {
+            let packet_id = PacketId::from(i);
+            if cap.packet_pid(packet_id)? != PID::SOF {
+                self.packets.push(packet_id)?;
+            }
+            self.next_packet_id = packet_id + 1;
             self.checkpoint()?;
         }
 
