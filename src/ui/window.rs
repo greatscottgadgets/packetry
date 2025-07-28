@@ -179,8 +179,15 @@ impl PacketryWindow {
         let vertical_panes = window.imp().vertical_panes.clone();
 
         let separator = gtk::Separator::new(Orientation::Horizontal);
+        let filter_separator = gtk::Separator::new(Orientation::Horizontal);
 
         let progress_bar = gtk::ProgressBar::builder()
+            .show_text(true)
+            .text("")
+            .hexpand(true)
+            .build();
+
+        let filter_progress_bar = gtk::ProgressBar::builder()
             .show_text(true)
             .text("")
             .hexpand(true)
@@ -216,7 +223,9 @@ impl PacketryWindow {
             endpoint_count: 2,
             show_progress: None,
             progress_bar,
+            filter_progress_bar,
             separator,
+            filter_separator,
             vbox,
             vertical_panes,
             scan_button,

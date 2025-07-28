@@ -1,8 +1,7 @@
 //! Unified access to different forms of capture.
 
-use crate::capture::{CaptureReader, CaptureReaderOps, CaptureSnapshot};
+use crate::capture::{CaptureReader, CaptureSnapshot, CaptureStats};
 use crate::filter::{FilterReader, FilterSnapshot, FilterThread, create_filter};
-use crate::util::fmt_count;
 
 use anyhow::Error;
 
@@ -56,36 +55,5 @@ impl Capture {
         self.filter = None;
         self.filter_snapshot = None;
         Ok(())
-    }
-}
-
-pub struct CaptureStats {
-    pub devices: u64,
-    pub endpoints: u64,
-    pub transactions: u64,
-    pub packets: u64,
-}
-
-impl CaptureStats {
-    fn from<C: CaptureReaderOps>(cap: &mut C) -> CaptureStats {
-        CaptureStats {
-            devices: cap.device_count().saturating_sub(1),
-            endpoints: cap.endpoint_count().saturating_sub(2),
-            transactions: cap.transaction_count(),
-            packets: cap.packet_count(),
-        }
-    }
-}
-
-impl std::fmt::Display for CaptureStats {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>)
-        -> Result<(), std::fmt::Error>
-    {
-        write!(f, "{} devices, {} endpoints, {} transactions, {} packets",
-            fmt_count(self.devices),
-            fmt_count(self.endpoints),
-            fmt_count(self.transactions),
-            fmt_count(self.packets)
-        )
     }
 }

@@ -57,6 +57,7 @@ pub struct FilterReader {
 #[derive(Clone)]
 pub struct FilterSnapshot {
     counters: Snapshot,
+    pub stats: CaptureStats,
     pub complete: bool,
 }
 
@@ -239,6 +240,13 @@ impl FilterWriter {
         FilterSnapshot {
             counters: self.counters.snapshot(),
             complete: self.complete.load(Relaxed),
+            stats: CaptureStats {
+                packets: self.next_packet_id.value,
+                transactions: self.next_transaction_id.value,
+                items: self.next_item_id.value,
+                devices: self.next_device_id.value,
+                endpoints: 0,
+            }
         }
     }
 

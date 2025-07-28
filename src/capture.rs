@@ -1860,6 +1860,44 @@ impl CaptureReaderOps for CaptureSnapshotReader<'_, '_> {
     }
 }
 
+#[derive(Clone)]
+pub struct CaptureStats {
+    pub devices: u64,
+    pub endpoints: u64,
+    pub items: u64,
+    pub transactions: u64,
+    pub packets: u64,
+}
+
+impl CaptureStats {
+    pub fn from<C: CaptureReaderOps>(cap: &mut C) -> CaptureStats {
+        CaptureStats {
+            devices: cap.device_count().saturating_sub(1),
+            endpoints: cap.endpoint_count().saturating_sub(2),
+            items: cap.item_count(),
+            transactions: cap.transaction_count(),
+            packets: cap.packet_count(),
+        }
+    }
+
+    pub fn total_filterable(&self) -> u64 {
+        self.packets + self.transactions + self.items + self.devices
+    }
+}
+
+impl std::fmt::Display for CaptureStats {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>)
+        -> Result<(), std::fmt::Error>
+    {
+        write!(f, "{} devices, {} endpoints, {} transactions, {} packets",
+            fmt_count(self.devices),
+            fmt_count(self.endpoints),
+            fmt_count(self.transactions),
+            fmt_count(self.packets)
+        )
+    }
+}
+
 impl Dump for CaptureReader {
     fn dump(&self, dest: &Path) -> Result<(), Error> {
         let _ = std::fs::remove_dir_all(dest);
@@ -1997,6 +2035,7 @@ pub mod prelude {
         CaptureShared,
         CaptureSnapshot,
         CaptureSnapshotReader,
+        CaptureStats,
         CaptureWriter,
         CaptureMetadata,
         Device,
