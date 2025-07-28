@@ -365,40 +365,34 @@ pub fn update_view() -> Result<(), Error> {
         let stats = ui.capture.stats();
         if let Some(thread) = &mut ui.filter_thread {
             thread.request_filter_snapshot();
-            match thread.filter_snapshot_rx.try_recv() {
-                Ok(filter_snapshot) => {
-                    if filter_snapshot.complete {
-                        ui.filter_thread.take().unwrap().join()?;
-                        ui.vbox.remove(&ui.filter_separator);
-                        ui.vbox.remove(&ui.filter_progress_bar);
+            if let Some(filter_snapshot) = thread.receive_filter_snapshot() {
+                if filter_snapshot.complete {
+                    ui.filter_thread.take().unwrap().join()?;
+                    ui.vbox.remove(&ui.filter_separator);
+                    ui.vbox.remove(&ui.filter_progress_bar);
+                } else {
+                    let total = stats.total_filterable();
+                    let current = filter_snapshot.stats.total_filterable();
+                    let fraction = if total == 0 {
+                        None
                     } else {
-                        let total = stats.total_filterable();
-                        let current = filter_snapshot.stats.total_filterable();
-                        let fraction = if total == 0 {
-                            None
-                        } else {
-                            Some((current as f64) / (total as f64))
-                        };
-                        let text = format!(
-                            "Filtered {} / {} items",
-                            fmt_count(current),
-                            fmt_count(total)
-                        );
-                        ui.filter_progress_bar.set_text(Some(&text));
-                        match fraction {
-                            Some(fraction) =>
-                                ui.filter_progress_bar.set_fraction(fraction),
-                            None =>
-                                ui.filter_progress_bar.pulse()
-                        };
-                    }
-                    ui.capture.set_filter_snapshot(filter_snapshot);
-                },
-                Err(e @ TryRecvError::Disconnected) => {
-                    bail!(e)
-                },
-                Err(TryRecvError::Empty) => {},
-            };
+                        Some((current as f64) / (total as f64))
+                    };
+                    let text = format!(
+                        "Filtered {} / {} items",
+                        fmt_count(current),
+                        fmt_count(total)
+                    );
+                    ui.filter_progress_bar.set_text(Some(&text));
+                    match fraction {
+                        Some(fraction) =>
+                            ui.filter_progress_bar.set_fraction(fraction),
+                        None =>
+                            ui.filter_progress_bar.pulse()
+                    };
+                }
+                ui.capture.set_filter_snapshot(filter_snapshot);
+            }
         }
         #[cfg(feature="record-ui-test")]
         ui.recording

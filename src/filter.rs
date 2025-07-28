@@ -1,11 +1,11 @@
 use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering::Relaxed},
-    mpsc::{Sender, Receiver, channel},
+    mpsc::{Sender, Receiver, RecvError, channel},
 };
 use std::thread::{JoinHandle, spawn};
 
-use anyhow::{Context, Error};
+use anyhow::Error;
 use delegate::delegate;
 
 use crate::capture::prelude::*;
@@ -43,6 +43,7 @@ pub struct FilterWriter {
     complete: Arc<AtomicBool>,
     snapshot_req: Arc<AtomicBool>,
     snapshot_tx: Sender<FilterSnapshot>,
+    stop_req: Arc<AtomicBool>,
 }
 
 #[derive(Clone)]
@@ -92,6 +93,7 @@ pub struct FilterThread {
     capture_snapshot_tx: Option<Sender<CaptureSnapshot>>,
     pub filter_snapshot_rx: Receiver<FilterSnapshot>,
     pub filter_snapshot_req: Arc<AtomicBool>,
+    stop_req: Arc<AtomicBool>,
 }
 
 pub fn create_filter(
@@ -109,6 +111,7 @@ pub fn create_filter(
     let complete = Arc::new(AtomicBool::new(false));
     let filter_snapshot_req = Arc::new(AtomicBool::new(false));
     let (filter_snapshot_tx, filter_snapshot_rx) = channel();
+    let stop_req = Arc::new(AtomicBool::new(false));
     let mut filter_writer = FilterWriter {
         counters,
         packets: packet_writer,
@@ -122,6 +125,7 @@ pub fn create_filter(
         complete: complete.clone(),
         snapshot_req: filter_snapshot_req.clone(),
         snapshot_tx: filter_snapshot_tx,
+        stop_req: stop_req.clone(),
     };
     let filter_reader = FilterReader {
         packets: packet_reader,
@@ -132,40 +136,45 @@ pub fn create_filter(
     };
     let filter_snapshot = filter_writer.snapshot();
     let mut capture = capture.clone();
-    let filter_thread = if let Some(snapshot) = snapshot {
+    let (join_handle, capture_snapshot_tx) = if let Some(snapshot) = snapshot {
+        let (snapshot_tx, snapshot_rx) = channel();
         let snapshot = snapshot.clone();
-        let (capture_snapshot_tx, capture_snapshot_rx) = channel();
-        let join_handle = spawn(
+        let thread = spawn(
             move || {
                 filter_writer.catchup(&mut capture.at(&snapshot))?;
                 loop {
                     if filter_writer.complete() {
-                        return Ok(())
+                        break
                     }
-                    let snapshot = capture_snapshot_rx.recv()?;
-                    filter_writer.catchup(&mut capture.at(&snapshot))?;
+                    match snapshot_rx.recv() {
+                        Ok(snapshot) => {
+                            if filter_writer.stop_req.load(Relaxed) {
+                                break
+                            }
+                            filter_writer.catchup(&mut capture.at(&snapshot))?;
+                        },
+                        Err(RecvError) => break
+                    }
                 }
+                Ok(())
             }
         );
-        FilterThread {
-            join_handle,
-            capture_snapshot_tx: Some(capture_snapshot_tx),
-            filter_snapshot_req,
-            filter_snapshot_rx,
-        }
+        (thread, Some(snapshot_tx))
     } else {
-        let join_handle = spawn(
+        let thread = spawn(
             move || {
                 filter_writer.catchup(&mut capture)?;
                 Ok(())
             }
         );
-        FilterThread {
-            join_handle,
-            capture_snapshot_tx: None,
-            filter_snapshot_req,
-            filter_snapshot_rx,
-        }
+        (thread, None)
+    };
+    let filter_thread = FilterThread {
+        join_handle,
+        capture_snapshot_tx,
+        filter_snapshot_req,
+        filter_snapshot_rx,
+        stop_req,
     };
     Ok((filter_reader, filter_thread, filter_snapshot))
 }
@@ -175,18 +184,24 @@ impl FilterThread {
         self.filter_snapshot_req.store(true, Relaxed);
     }
 
+    pub fn receive_filter_snapshot(&mut self) -> Option<FilterSnapshot> {
+        self.filter_snapshot_rx.try_recv().ok()
+    }
+
     pub fn send_capture_snapshot(&mut self, snapshot: CaptureSnapshot)
         -> Result<(), Error>
     {
-        self.capture_snapshot_tx
-            .as_mut()
-            .context("Thread has no snapshot TX")?
-            .send(snapshot)?;
+        if let Some(snapshot_tx) = &self.capture_snapshot_tx {
+            snapshot_tx.send(snapshot)?;
+        }
         Ok(())
     }
 
-    pub fn join(self) -> Result<(), Error> {
-        handle_thread_panic(self.join_handle.join())?
+    pub fn join(mut self) -> Result<(), Error> {
+        self.stop_req.store(true, Relaxed);
+        self.capture_snapshot_tx.take();
+        handle_thread_panic(self.join_handle.join())??;
+        Ok(())
     }
 }
 
@@ -262,7 +277,9 @@ impl FilterWriter {
             let device_id = DeviceId::from(i);
             self.devices.push(device_id)?;
             self.next_device_id = device_id + 1;
-            self.checkpoint()?;
+            if self.checkpoint()? {
+                return Ok(())
+            }
         }
         for i in self.next_item_id.value..cap.item_count() {
             let item_id = TrafficItemId::from(i);
@@ -272,7 +289,9 @@ impl FilterWriter {
                 self.items.push(item_id)?;
             }
             self.next_item_id = item_id + 1;
-            self.checkpoint()?;
+            if self.checkpoint()? {
+                return Ok(())
+            }
         }
         for i in self.next_transaction_id.value .. cap.transaction_count() {
             let transaction_id = TransactionId::from(i);
@@ -281,7 +300,9 @@ impl FilterWriter {
                 self.transactions.push(transaction_id)?;
             }
             self.next_transaction_id = transaction_id + 1;
-            self.checkpoint()?;
+            if self.checkpoint()? {
+                return Ok(())
+            }
         }
         for i in self.next_packet_id.value .. cap.packet_count() {
             let packet_id = PacketId::from(i);
@@ -289,23 +310,30 @@ impl FilterWriter {
                 self.packets.push(packet_id)?;
             }
             self.next_packet_id = packet_id + 1;
-            self.checkpoint()?;
+            if self.checkpoint()? {
+                return Ok(())
+            }
         }
 
         if cap.complete() {
             self.complete.store(true, Relaxed);
-            let snapshot = self.snapshot();
-            self.snapshot_tx.send(snapshot)?;
+            self.send_snapshot()?;
         }
 
         Ok(())
     }
 
-    fn checkpoint(&mut self) -> Result<(), Error> {
+    fn checkpoint(&mut self) -> Result<bool, Error> {
         if self.snapshot_req.swap(false, Relaxed) {
-            let snapshot = self.snapshot();
-            self.snapshot_tx.send(snapshot)?;
+            self.send_snapshot()?;
         }
+        let stop_request = self.stop_req.load(Relaxed);
+        Ok(stop_request)
+    }
+
+    fn send_snapshot(&mut self) -> Result<(), Error> {
+        let snapshot = self.snapshot();
+        self.snapshot_tx.send(snapshot)?;
         Ok(())
     }
 }
