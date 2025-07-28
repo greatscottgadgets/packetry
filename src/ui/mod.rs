@@ -79,7 +79,6 @@ use crate::item::{
     TrafficViewMode::{self,*},
     DeviceItem,
     DeviceItemContent,
-    DeviceViewMode,
 };
 use crate::decoder::Decoder;
 use crate::file::{
@@ -114,8 +113,8 @@ use capture::{Capture, CaptureState};
 use device::{DeviceSelector, DeviceWarning};
 use model::{GenericModel, TrafficModel, DeviceModel};
 use power::PowerControl;
-use row_data::{GenericRowData, TrafficRowData, DeviceRowData};
-use view::create_view;
+use row_data::{GenericRowData, TrafficRowData};
+use view::{TrafficView, DeviceView};
 use window::PacketryWindow;
 
 #[cfg(any(test, feature="record-ui-test"))]
@@ -244,13 +243,8 @@ pub fn reset_capture() -> Result<CaptureWriter, Error> {
             state: CaptureState::Ongoing(snapshot),
         };
         for mode in TRAFFIC_MODES {
-            let (traffic_model, traffic_selection, traffic_view) =
-                create_view::<
-                    TrafficItem,
-                    TrafficModel,
-                    TrafficRowData,
-                    TrafficViewMode
-                >(
+            let (traffic_model, traffic_selection, traffic_view) = {
+                let view = TrafficView::create(
                     "Traffic",
                     &capture,
                     mode,
@@ -258,6 +252,8 @@ pub fn reset_capture() -> Result<CaptureWriter, Error> {
                     #[cfg(any(test, feature="record-ui-test"))]
                     (&ui.recording, mode.log_name())
                 );
+                (view.model, view.selection, view.widget)
+            };
             ui.traffic_windows[&mode].set_child(Some(&traffic_view));
             ui.traffic_models.insert(mode, traffic_model.clone());
             traffic_selection.connect_selection_changed(
@@ -285,13 +281,8 @@ pub fn reset_capture() -> Result<CaptureWriter, Error> {
                 }
             );
         }
-        let (device_model, _device_selection, device_view) =
-            create_view::<
-                DeviceItem,
-                DeviceModel,
-                DeviceRowData,
-                DeviceViewMode
-            >(
+        let (device_model, _device_selection, device_view) = {
+            let view = DeviceView::create(
                 "Devices",
                 &capture,
                 (),
@@ -299,6 +290,8 @@ pub fn reset_capture() -> Result<CaptureWriter, Error> {
                 #[cfg(any(test, feature="record-ui-test"))]
                 (&ui.recording, "devices")
             );
+            (view.model, view.selection, view.widget)
+        };
         ui.capture = capture;
         ui.device_model = Some(device_model);
         ui.endpoint_count = 2;
