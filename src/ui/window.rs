@@ -27,6 +27,7 @@ use gtk::{
 use crate::capture::create_capture;
 use crate::item::TrafficViewMode;
 use crate::ui::{
+    capture::{Capture, CaptureState},
     power::PowerControl,
     DeviceSelector,
     DeviceWarning,
@@ -186,14 +187,18 @@ impl PacketryWindow {
         let status_label = window.imp().status_label.clone();
         let vbox = window.imp().vbox.clone();
 
-        let (_, capture) = create_capture()?;
+        let (_, reader) = create_capture()?;
 
         let ui = UserInterface {
             window,
             #[cfg(any(test, feature="record-ui-test"))]
             recording: Rc::new(RefCell::new(
-                Recording::new(capture.clone()))),
-            capture,
+                Recording::new(reader.clone()))),
+            capture: Capture {
+                reader,
+                state: CaptureState::Complete,
+            },
+            snapshot_rx: None,
             selector,
             power,
             file_name: None,

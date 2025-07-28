@@ -20,7 +20,6 @@ use gtk::gio::prelude::ListModelExt;
 use derive_more::AddAssign;
 use itertools::Itertools;
 
-use crate::capture::CaptureReader;
 use crate::item::ItemSource;
 use super::model::GenericModel;
 use super::row_data::GenericRowData;
@@ -354,7 +353,6 @@ impl std::fmt::Display for ModelUpdate {
 
 pub struct TreeListModel<Item, Model, RowData, ViewMode> {
     _marker: PhantomData<(Model, RowData)>,
-    capture: RefCell<CaptureReader>,
     view_mode: ViewMode,
     root: RootNodeRc<Item>,
     regions: RefCell<BTreeMap<u64, Region<Item>>>,
@@ -367,24 +365,22 @@ pub struct TreeListModel<Item, Model, RowData, ViewMode> {
     on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>,
 }
 
-impl<Item, Model, RowData, ViewMode> TreeListModel<Item, Model, RowData, ViewMode>
+impl<Item, Model, RowData, ViewMode>
+TreeListModel<Item, Model, RowData, ViewMode>
 where Item: 'static + Clone + Debug,
       ViewMode: Copy,
       Model: GenericModel<Item, ViewMode> + ListModelExt,
       RowData: GenericRowData<Item> + IsA<Object> + Cast,
-      CaptureReader: ItemSource<Item, ViewMode>,
 {
-    pub fn new(mut capture: CaptureReader,
-               view_mode: ViewMode,
-               #[cfg(any(test, feature="record-ui-test"))]
-               on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>)
-        -> Result<Self, Error>
-    {
-        let (completion, item_count) =
-            capture.item_children(None, view_mode)?;
+    pub fn new<C: ItemSource<Item, ViewMode>>(
+        cap: &mut C,
+        view_mode: ViewMode,
+        #[cfg(any(test, feature="record-ui-test"))]
+        on_item_update: Rc<RefCell<dyn FnMut(u32, String)>>
+    ) -> Result<Self, Error> {
+        let (completion, item_count) = cap.item_children(None, view_mode)?;
         Ok(TreeListModel {
             _marker: PhantomData,
-            capture: RefCell::new(capture.clone()),
             view_mode,
             root: Rc::new(RefCell::new(RootNode {
                 children: Children::new(item_count),
@@ -418,13 +414,14 @@ where Item: 'static + Clone + Debug,
         }
     }
 
-    pub fn set_expanded(&self,
-                        model: &Model,
-                        node_ref: &ItemNodeRc<Item>,
-                        position: u64,
-                        expanded: bool)
-        -> Result<(), Error>
-    {
+    pub fn set_expanded<C: ItemSource<Item, ViewMode>>(
+        &self,
+        cap: &mut C,
+        model: &Model,
+        node_ref: &ItemNodeRc<Item>,
+        position: u64,
+        expanded: bool
+    ) -> Result<(), Error> {
         let mut node = node_ref.borrow_mut();
 
         if node.expanded() == expanded {
@@ -450,7 +447,7 @@ where Item: 'static + Clone + Debug,
             #[cfg(feature="debug-region-map")]
             println!("\nExpanding node at {}", position);
             // Update the region map for the added children.
-            self.expand(children_position, node_ref)?
+            self.expand(cap, children_position, node_ref)?
         } else {
             #[cfg(feature="debug-region-map")]
             println!("\nCollapsing node at {}", position);
@@ -460,10 +457,11 @@ where Item: 'static + Clone + Debug,
                 #[cfg(feature="debug-region-map")]
                 println!("\nRecursively collapsing child at {}",
                          child_position);
-                self.set_expanded(model, &child_ref, child_position, false)?;
+                self.set_expanded(
+                    cap, model, &child_ref, child_position, false)?;
             }
             // Update the region map for the removed children.
-            self.collapse(children_position, node_ref)?
+            self.collapse(cap, children_position, node_ref)?
         };
 
         // Merge adjacent regions with the same source.
@@ -496,9 +494,12 @@ where Item: 'static + Clone + Debug,
         Ok(())
     }
 
-    fn expand(&self, position: u64, node_ref: &ItemNodeRc<Item>)
-        -> Result<ModelUpdate, Error>
-    {
+    fn expand<C: ItemSource<Item, ViewMode>>(
+        &self,
+        cap: &mut C,
+        position: u64,
+        node_ref: &ItemNodeRc<Item>
+    ) -> Result<ModelUpdate, Error> {
         // Find the start of the parent region.
         let (&parent_start, _) = self.regions
             .borrow()
@@ -524,7 +525,8 @@ where Item: 'static + Clone + Debug,
             .into_iter();
 
         // Split the parent region and construct a new region between.
-        let update = self.split_parent(parent_start, &parent, node_ref,
+        let update = self.split_parent(
+            cap, parent_start, &parent, node_ref,
             vec![Region {
                 source: parent.source.clone(),
                 offset: parent.offset,
@@ -550,9 +552,12 @@ where Item: 'static + Clone + Debug,
         Ok(update)
     }
 
-    fn collapse(&self, position: u64, node_ref: &ItemNodeRc<Item>)
-        -> Result<ModelUpdate, Error>
-    {
+    fn collapse<C: ItemSource<Item, ViewMode>>(
+        &self,
+        _cap: &mut C,
+        position: u64,
+        node_ref: &ItemNodeRc<Item>
+    ) -> Result<ModelUpdate, Error> {
         // Clone the region starting at this position.
         let region = self.regions
             .borrow()
@@ -614,15 +619,18 @@ where Item: 'static + Clone + Debug,
         }
     }
 
-    fn split_parent(&self,
-                    parent_start: u64,
-                    parent: &Region<Item>,
-                    _node_ref: &ItemNodeRc<Item>,
-                    parts_before: Vec<Region<Item>>,
-                    new_region: Region<Item>,
-                    parts_after: Vec<Region<Item>>)
-        -> Result<ModelUpdate, Error>
-    {
+    #[allow(clippy::too_many_arguments)]
+    fn split_parent<C: ItemSource<Item, ViewMode>>(
+        &self,
+        _cap: &mut C,
+        parent_start: u64,
+        parent: &Region<Item>,
+        _node_ref: &ItemNodeRc<Item>,
+        parts_before: Vec<Region<Item>>,
+        new_region: Region<Item>,
+        parts_after: Vec<Region<Item>>,
+    ) -> Result<ModelUpdate, Error> {
+
         let length_before: u64 = parts_before
             .iter()
             .map(|region| region.length)
@@ -725,10 +733,14 @@ where Item: 'static + Clone + Debug,
         self.regions.replace(new_regions);
     }
 
-    pub fn update(&self, model: &Model) -> Result<bool, Error> {
+    pub fn update<C: ItemSource<Item, ViewMode>>(
+        &self,
+        cap: &mut C,
+        model: &Model,
+    ) -> Result<bool, Error> {
         #[cfg(feature="debug-region-map")]
         let rows_before = self.row_count();
-        self.update_node(&self.root, 0, model)?;
+        self.update_node(&self.root, 0, model, cap)?;
         #[cfg(feature="debug-region-map")] {
             let rows_after = self.row_count();
             let rows_added = rows_after - rows_before;
@@ -746,11 +758,13 @@ where Item: 'static + Clone + Debug,
         Ok(!self.root.borrow().complete)
     }
 
-    fn update_node<T>(&self,
-                   node_rc: &Rc<RefCell<T>>,
-                   mut position: u64,
-                   model: &Model)
-        -> Result<u64, Error>
+    fn update_node<T, C: ItemSource<Item, ViewMode>>(
+        &self,
+        node_rc: &Rc<RefCell<T>>,
+        mut position: u64,
+        model: &Model,
+        cap: &mut C,
+    ) -> Result<u64, Error>
         where T: Node<Item> + 'static,
               Rc<RefCell<T>>: NodeRcOps<Item>,
     {
@@ -765,7 +779,6 @@ where Item: 'static + Clone + Debug,
             .collect::<Vec<(u64, ItemNodeWeak<Item>)>>();
 
         // Check if this node had children added and/or was completed.
-        let mut cap = self.capture.borrow_mut();
         let (completion, new_direct_count) =
             cap.item_children(node.item(), self.view_mode)?;
         let completed = completion.is_complete();
@@ -791,7 +804,10 @@ where Item: 'static + Clone + Debug,
 
             if item_updated {
                 // The node's description may change.
-                let summary = cap.description(&item_node.item, false)?;
+                let summary = match cap.description(&item_node.item, false) {
+                    Ok(description) => description,
+                    Err(e) => format!("Error: {e}"),
+                };
                 #[cfg(any(test, feature="record-ui-test"))]
                 if let Ok(position) = u32::try_from(position) {
                     let mut on_item_update = self.on_item_update.borrow_mut();
@@ -811,8 +827,6 @@ where Item: 'static + Clone + Debug,
             position += 1;
         }
 
-        drop(cap);
-
         // If completed, remove from incomplete node list.
         if completed {
             node_rc.borrow_mut().set_completed();
@@ -829,8 +843,8 @@ where Item: 'static + Clone + Debug,
                         .children()
                         .rows_between(last_index, index);
                     // Recursively update this child.
-                    position = self.update_node::<ItemNode<Item>>(
-                        &child_rc, position, model)?;
+                    position = self.update_node::<ItemNode<Item>, C>(
+                        &child_rc, position, model, cap)?;
                     last_index = index + 1;
                 } else {
                     // Child no longer referenced, remove it.
@@ -901,7 +915,11 @@ where Item: 'static + Clone + Debug,
         Ok(position)
     }
 
-    fn fetch(&self, position: u64) -> Result<ItemNodeRc<Item>, Error> {
+    fn fetch<C: ItemSource<Item, ViewMode>>(
+        &self,
+        cap: &mut C,
+        position: u64
+    ) -> Result<ItemNodeRc<Item>, Error> {
         // Fetch the region this row is in.
         let (start, region) = self.regions
             .borrow()
@@ -940,8 +958,6 @@ where Item: 'static + Clone + Debug,
             return Ok(node_rc)
         }
 
-        // Otherwise, fetch it from the database.
-        let mut cap = self.capture.borrow_mut();
         let mut parent = parent_ref.borrow_mut();
         let item =
             cap.item(parent.item(), self.view_mode, relative_position)?;
@@ -961,27 +977,6 @@ where Item: 'static + Clone + Debug,
                 .add_incomplete(relative_position, &node_rc);
         }
         Ok(node_rc)
-    }
-
-    pub fn timestamp(&self, item: &Item) -> u64 {
-        let mut cap = self.capture.borrow_mut();
-        cap.timestamp(item).unwrap_or(0)
-    }
-
-    pub fn description(&self, item: &Item, detail: bool) -> String {
-        let mut cap = self.capture.borrow_mut();
-        match cap.description(item, detail) {
-            Ok(string) => string,
-            Err(e) => format!("Error: {e:?}")
-        }
-    }
-
-    pub fn connectors(&self, item: &Item) -> String {
-        let mut cap = self.capture.borrow_mut();
-        match cap.connectors(self.view_mode, item) {
-            Ok(string) => string,
-            Err(e) => format!("Error: {e:?}")
-        }
     }
 
     fn apply_update(&self, model: &Model, position: u64, update: ModelUpdate)
@@ -1007,14 +1002,20 @@ where Item: 'static + Clone + Debug,
         self.published_row_count.get()
     }
 
-    pub fn item(&self, position: u32) -> Option<Object> {
+    pub fn item<C: ItemSource<Item, ViewMode>>(
+        &self,
+        cap: &mut C,
+        position: u32,
+    ) -> Option<Object> {
         // First check that the position is valid (must be within the root
         // node's total child count).
         let position = position as u64;
         if position >= self.row_count() {
             return None
         }
-        let node_or_err_msg = self.fetch(position).map_err(|e| format!("{e:?}"));
+        let node_or_err_msg = self
+            .fetch(cap, position)
+            .map_err(|e| format!("{e:?}"));
         let row_data = RowData::new(node_or_err_msg);
         Some(row_data.upcast::<Object>())
     }
