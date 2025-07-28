@@ -1444,35 +1444,47 @@ impl EndpointReader {
 /// Operations supported by both `EndpointReader` and `EndpointSnapshotReader`.
 pub trait EndpointReaderOps {
 
+    /// Get the number of transactions on this endpoint.
     fn transaction_count(&self) -> u64;
 
+    /// Get the ID of a transaction on this endpoint.
     fn transaction_id(&mut self, ep_id: EndpointTransactionId)
         -> Result<TransactionId, Error>;
 
+    /// Get the IDs of a range of transactions on this endpoint.
     fn transaction_id_range(&mut self, ep_id_range: &Range<EndpointTransactionId>)
         -> Result<Vec<TransactionId>, Error>;
 
+    /// Find the first transaction of a transaction group on this endpoint.
     fn group_start(&mut self, ep_group_id: EndpointGroupId)
         -> Result<EndpointTransactionId, Error>;
 
+    /// Find the rane of transactions for a transaction group on this endpoint.
     fn group_range(&mut self, ep_group_id: EndpointGroupId)
         -> Result<Range<EndpointTransactionId>, Error>;
 
+    /// Find the transaction for a data event on this endpoint.
     fn data_transaction(&mut self, data_id: EndpointDataEvent)
         -> Result<EndpointTransactionId, Error>;
 
+    /// Find the data event for a transaction on this endpoint.
     fn data_for_transaction(&mut self, ep_id: EndpointTransactionId)
         -> Result<EndpointDataEvent, Error>;
 
+    /// Get the total number of data events on this endpoint.
     fn data_event_count(&self) -> u64;
 
+    /// Get the number of bytes transferred in a data event.
     fn data_event_byte_count(&mut self, data_id: EndpointDataEvent)
         -> Result<EndpointByteCount, Error>;
 
+    /// Get the number of ended transaction groups on this endpoint.
     fn end_count(&self) -> u64;
 
+    /// Get the total number of bytes transferred on this endpoint.
     fn total_data(&self) -> u64;
 
+    /// Get the range of data events associated with a range of transactions.
     fn transfer_data_range(&mut self, range: &Range<EndpointTransactionId>)
         -> Result<Range<EndpointDataEvent>, Error>
     {
@@ -1481,6 +1493,7 @@ pub trait EndpointReaderOps {
         Ok(first_data_id..last_data_id)
     }
 
+    /// Get the length of data associated with a range of data events.
     fn transfer_data_length(&mut self, range: &Range<EndpointDataEvent>)
         -> Result<u64, Error>
     {
