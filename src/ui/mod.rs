@@ -228,6 +228,8 @@ pub fn activate(application: &Application) -> Result<(), Error> {
                     &ui.filter_separator, Some(&ui.vertical_panes));
                 ui.vbox.insert_child_after(
                     &ui.filter_progress_bar, Some(&ui.filter_separator));
+                ui.filter_progress_bar.set_text(Some("Filtering..."));
+                ui.filter_progress_bar.pulse();
             } else {
                 ui.capture.stop_filtering()?;
                 if let Some(thread) = ui.filter_thread.take() {
