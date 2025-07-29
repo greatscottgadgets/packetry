@@ -104,7 +104,7 @@ impl DeviceSelector {
                     } else {
                         format!("{} (bus {}, device {})",
                             probe.name,
-                            info.bus_number(),
+                            info.bus_id(),
                             info.device_address())
                     }
                 }
