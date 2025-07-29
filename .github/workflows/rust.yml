@@ -100,18 +100,20 @@ jobs:
         if: matrix.os == 'macos-latest'
 
       - name: Install cargo-all-features
-        run: cargo install cargo-all-features
+        uses: taiki-e/cache-cargo-install-action@v2
+        with:
+          tool: cargo-all-features@1.10.0
 
       - name: Install cargo-wix (Windows)
         uses: taiki-e/cache-cargo-install-action@v2
         with:
-          tool: cargo-wix
+          tool: cargo-wix@0.3.9
         if: matrix.os == 'windows-latest'
 
       - name: Install cargo-license (Windows)
         uses: taiki-e/cache-cargo-install-action@v2
         with:
-          tool: cargo-license
+          tool: cargo-license@0.6.1
         if: matrix.os == 'windows-latest'
 
       - name: Restore vcpkg cache (Windows)
