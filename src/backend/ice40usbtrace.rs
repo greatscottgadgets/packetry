@@ -4,12 +4,19 @@ use std::collections::VecDeque;
 use std::sync::mpsc;
 use std::time::Duration;
 
-use anyhow::{Context, Error, anyhow};
+use anyhow::{Context, Error, anyhow, bail};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use nusb::{
     self,
-    transfer::{Control, ControlType, Recipient, TransferError},
-    DeviceInfo, Interface,
+    transfer::{
+        Bulk, In,
+        ControlOut,
+        ControlType,
+        Buffer,
+        Recipient,
+        TransferError
+    },
+    DeviceInfo, Interface, MaybeFuture,
 };
 
 use crate::capture::CaptureMetadata;
@@ -57,7 +64,8 @@ pub struct Ice40UsbtraceHandle {
 
 /// Converts from received data bytes to timestamped packets.
 pub struct Ice40UsbtraceStream {
-    receiver: mpsc::Receiver<Vec<u8>>,
+    data_rx: mpsc::Receiver<Buffer>,
+    reuse_tx: mpsc::Sender<Buffer>,
     buffer: VecDeque<u8>,
     ts: u64,
 }
@@ -71,9 +79,11 @@ impl BackendDevice for Ice40UsbtraceDevice {
     fn open_as_generic(&self) -> Result<Box<dyn BackendHandle>, Error> {
         let device = self.device_info
             .open()
+            .wait()
             .context("Failed to open device")?;
         let interface = device
             .claim_interface(INTERFACE)
+            .wait()
             .context("Failed to claim interface")?;
         let metadata = CaptureMetadata {
             iface_desc: Some("iCE40-usbtrace".to_string()),
@@ -107,10 +117,16 @@ impl BackendHandle for Ice40UsbtraceHandle {
     fn begin_capture(
         &mut self,
         speed: Speed,
-        data_tx: mpsc::Sender<Vec<u8>>
+        data_tx: mpsc::Sender<Buffer>,
     ) -> Result<TransferQueue, Error> {
         // iCE40-usbtrace only supports full-speed captures
         assert_eq!(speed, Speed::Full);
+
+        // Claim endpoint.
+        let endpoint = match self.interface.endpoint::<Bulk, In>(ENDPOINT) {
+            Ok(endpoint) => endpoint,
+            Err(_) => bail!("Failed to claim endpoint {ENDPOINT}"),
+        };
 
         // Stop the device if it was left running before and ignore any errors
         self.write_request(Command::CaptureStop)?;
@@ -120,8 +136,7 @@ impl BackendHandle for Ice40UsbtraceHandle {
         self.write_request(Command::CaptureStart)?;
 
         // Set up transfer queue.
-        Ok(TransferQueue::new(&self.interface, data_tx,
-            ENDPOINT, NUM_TRANSFERS, READ_LEN))
+        Ok(TransferQueue::new(endpoint, data_tx, NUM_TRANSFERS, READ_LEN))
     }
 
     fn end_capture(&mut self) -> Result<(), Error> {
@@ -132,11 +147,15 @@ impl BackendHandle for Ice40UsbtraceHandle {
         self.write_request(Command::BufferFlush)
     }
 
-    fn timestamped_packets(&self, data_rx: mpsc::Receiver<Vec<u8>>)
-        -> Box<dyn PacketIterator> {
+    fn timestamped_packets(
+        &self,
+        data_rx: mpsc::Receiver<Buffer>,
+        reuse_tx: mpsc::Sender<Buffer>,
+    ) -> Box<dyn PacketIterator> {
         Box::new(
             Ice40UsbtraceStream {
-                receiver: data_rx,
+                data_rx,
+                reuse_tx,
                 buffer: VecDeque::new(),
                 ts: 0,
             }
@@ -151,16 +170,16 @@ impl BackendHandle for Ice40UsbtraceHandle {
 impl Ice40UsbtraceHandle {
     fn write_request(&mut self, request: Command) -> Result<(), Error> {
         use Command::*;
-        let control = Control {
+        let control = ControlOut {
             control_type: ControlType::Vendor,
             recipient: Recipient::Interface,
             request: request.into(),
             value: 0,
             index: 0,
+            data: &[],
         };
-        let data = &[];
         let timeout = Duration::from_secs(1);
-        match self.interface.control_out_blocking(control, data, timeout) {
+        match self.interface.control_out(control, timeout).wait() {
             Ok(_) => Ok(()),
             Err(err) => match (request, err) {
                 (CaptureStop | BufferFlush, TransferError::Stall) => {
@@ -193,9 +212,13 @@ impl Iterator for Ice40UsbtraceStream {
                 // Parsed something we ignored, try again.
                 Ignored => continue,
                 // Need more data; block until we get it.
-                NeedMoreData => match self.receiver.recv().ok() {
+                NeedMoreData => match self.data_rx.recv().ok() {
                     // Received more data; add it to the buffer and retry.
-                    Some(bytes) => self.buffer.extend(bytes.iter()),
+                    Some(buffer) => {
+                        self.buffer.extend(buffer.iter());
+                        // Buffer can now be reused.
+                        let _ = self.reuse_tx.send(buffer);
+                    },
                     // Capture has ended, there are no more packets.
                     None => return None,
                 },
