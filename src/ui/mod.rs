@@ -65,25 +65,10 @@ use gtk::{
 
 use crate::backend::{
     BackendStop,
+    TimestampedEvent,
 };
 
-use crate::capture::{
-    create_capture,
-    CaptureReader,
-    CaptureReaderOps,
-    CaptureSnapshot,
-    CaptureWriter,
-    CaptureMetadata,
-    EndpointId,
-    EndpointDataEvent,
-    EndpointReaderOps,
-    Group,
-    GroupContent,
-};
-use crate::database::{
-    DataReaderOps,
-    CompactReaderOps,
-};
+use crate::capture::prelude::*;
 use crate::item::{
     ItemSource,
     TrafficItem,
@@ -501,7 +486,7 @@ pub fn reset_capture() -> Result<CaptureWriter, Error> {
             );
         ui.capture = capture;
         ui.device_model = Some(device_model);
-        ui.endpoint_count = 2;
+        ui.endpoint_count = NUM_SPECIAL_ENDPOINTS;
         ui.device_window.set_child(Some(&device_view));
         ui.stop_button.set_sensitive(false);
         Ok(())
@@ -522,19 +507,27 @@ pub fn update_view() -> Result<(), Error> {
             match &mut ui.capture.state
         {
             CaptureState::Ongoing(snapshot) => {
-                let mut cap = ui.capture.reader.at(snapshot);
-                let devices = cap.devices().len().saturating_sub(1);
-                let endpoints = cap.endpoints().len().saturating_sub(2);
-                let transactions = cap.transaction_index().len();
-                let packets = cap.packet_index().len();
+                let cap = ui.capture.reader.at(snapshot);
+                let devices = cap
+                    .device_count()
+                    .saturating_sub(NUM_SPECIAL_DEVICES);
+                let endpoints = cap
+                    .endpoint_count()
+                    .saturating_sub(NUM_SPECIAL_ENDPOINTS);
+                let transactions = cap.transaction_count();
+                let packets = cap.packet_count();
                 (devices, endpoints, transactions, packets)
             },
             CaptureState::Complete => {
                 let cap = &mut ui.capture.reader;
-                let devices = cap.devices().len().saturating_sub(1);
-                let endpoints = cap.endpoints().len().saturating_sub(2);
-                let transactions = cap.transaction_index().len();
-                let packets = cap.packet_index().len();
+                let devices = cap
+                    .device_count()
+                    .saturating_sub(NUM_SPECIAL_DEVICES);
+                let endpoints = cap
+                    .endpoint_count()
+                    .saturating_sub(NUM_SPECIAL_ENDPOINTS);
+                let transactions = cap.transaction_count();
+                let packets = cap.packet_count();
                 (devices, endpoints, transactions, packets)
             },
         };
@@ -696,8 +689,8 @@ fn start_file(action: FileAction, file: gio::File) -> Result<(), Error> {
         ui.show_progress = Some(action);
         ui.file_name = Some(basename.to_string_lossy().to_string());
         ui.snapshot_rx = Some(snapshot_rx);
-        let mut capture = ui.capture.reader.clone();
-        let packet_count = capture.packet_index().len();
+        let capture = ui.capture.reader.clone();
+        let packet_count = capture.packet_count();
         CURRENT.store(0, Ordering::Relaxed);
         TOTAL.store(match action {
             Load => 0,
@@ -760,6 +753,10 @@ where
                     snapshot_tx.send(decoder.capture.snapshot())?;
                 }
             },
+            Event(event) => {
+                decoder.handle_event(event.event_type, event.timestamp_ns)?;
+                CURRENT.store(event.total_bytes_read, Ordering::Relaxed);
+            },
             Metadata(meta) => decoder.handle_metadata(meta),
             LoadError(e) => return Err(e),
             Ignore => continue,
@@ -805,13 +802,21 @@ where
     Saver: GenericSaver<Dest>,
     Dest: Write
 {
-    let packet_count = capture.packet_index.len();
+    let packet_count = capture.packet_count();
     let meta = capture.shared.metadata.load_full();
     let mut saver = Saver::new(dest, meta)?;
     if packet_count > 0 {
-        for (result, i) in capture.timestamped_packets()?.zip(0..packet_count) {
-            let (timestamp_ns, packet) = result?;
-            saver.add_packet(&packet, timestamp_ns)?;
+        for (result, i) in capture
+            .timestamped_packets_and_events()?
+            .zip(0..packet_count)
+        {
+            use PacketOrEvent::*;
+            match result? {
+                (timestamp, Packet(packet)) =>
+                    saver.add_packet(&packet, timestamp)?,
+                (timestamp, Event(event_type)) =>
+                    saver.add_event(event_type, timestamp)?,
+            };
             CURRENT.store(i + 1, Ordering::Relaxed);
             if STOP.load(Ordering::Relaxed) {
                 break;
@@ -930,9 +935,17 @@ pub fn start_capture() -> Result<(), Error> {
         let read_packets = move || {
             let mut decoder = Decoder::new(writer)?;
             for result in stream_handle {
-                let packet = result
+                let event = result
                     .context("Error processing raw capture data")?;
-                decoder.handle_raw_packet(&packet.bytes, packet.timestamp_ns)?;
+                use TimestampedEvent::*;
+                match event {
+                    Packet { timestamp_ns, bytes } =>
+                        decoder.handle_raw_packet(&bytes, timestamp_ns)
+                            .context("Error decoding packet")?,
+                    Event { timestamp_ns, event_type } =>
+                        decoder.handle_event(event_type, timestamp_ns)
+                            .context("Error handling event")?,
+                }
                 if SNAPSHOT_REQ.swap(false, Ordering::AcqRel) {
                     snapshot_tx.send(decoder.capture.snapshot())?;
                 }
@@ -986,15 +999,15 @@ fn traffic_context_menu(
 ) -> Result<Option<PopoverMenu>, Error> {
     use TrafficItem::*;
     Ok(match item {
-        TransactionGroup(group_id) => {
-            let group = capture.group(*group_id)?;
+        TransactionGroup(_, endpoint_id, ep_group_id) |
+        TransactionGroupEnd(_, endpoint_id, ep_group_id) => {
+            let group = capture.group(*endpoint_id, *ep_group_id)?;
             match group {
                 Group {
                     endpoint_id,
                     content:
                         GroupContent::Data(data_range) |
                         GroupContent::Ambiguous(data_range, _),
-                    is_start: true,
                     ..
                 } => Some(
                     context_popover(
@@ -1006,7 +1019,6 @@ fn traffic_context_menu(
                 ),
                 Group {
                     content: GroupContent::Request(transfer),
-                    is_start: true,
                     ..
                 } => Some(
                     context_popover(
@@ -1024,7 +1036,7 @@ fn traffic_context_menu(
         Transaction(_, transaction_id) => {
             let transaction = capture.transaction(*transaction_id)?;
             if let Some(range) = transaction.payload_byte_range {
-                let payload = capture.packet_data.get_range(&range)?;
+                let payload = capture.bytes(&range)?;
                 Some(context_popover(
                     "save-transaction-payload",
                     "Save transaction payload to file...",
@@ -1059,6 +1071,7 @@ fn traffic_context_menu(
                 None
             }
         },
+        _ => None,
     })
 }
 
@@ -1107,8 +1120,8 @@ fn save_data_transfer_payload(
         let mut length = 0;
         for data_id in data_range {
             let ep_traf = cap.endpoint_traffic(endpoint_id)?;
-            let ep_transaction_id = ep_traf.data_transactions().get(data_id)?;
-            let transaction_id = ep_traf.transaction_ids().get(ep_transaction_id)?;
+            let ep_transaction_id = ep_traf.data_transaction(data_id)?;
+            let transaction_id = ep_traf.transaction_id(ep_transaction_id)?;
             let transaction = cap.transaction(transaction_id)?;
             let transaction_bytes = cap.transaction_bytes(&transaction)?;
             dest.write_all(&transaction_bytes)?;
