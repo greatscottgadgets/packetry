@@ -1171,12 +1171,18 @@ mod tests {
     use super::*;
     use std::fs::File;
     use std::io::{BufReader, BufWriter, BufRead, Write};
-    use std::path::PathBuf;
+    use std::path::{PathBuf, Path};
     use itertools::Itertools;
     use crate::capture::{CaptureReader, create_capture};
     use crate::database::CounterSet;
     use crate::decoder::Decoder;
-    use crate::file::{GenericLoader, GenericPacket, LoaderItem, PcapLoader};
+    use crate::file::{
+        GenericLoader,
+        GenericPacket,
+        LoaderItem,
+        PcapLoader,
+        PcapNgLoader,
+    };
     use crate::util::dump::Dump;
 
     fn summarize_item<Item, ViewMode>(
@@ -1225,6 +1231,30 @@ mod tests {
         writer.write_all(b"\n").unwrap();
     }
 
+    fn load<Loader: GenericLoader<File>>(path: &Path) -> CaptureReader {
+        let mut loader = Loader::new(File::open(path).unwrap()).unwrap();
+        let (writer, reader) = create_capture().unwrap();
+        let mut decoder = Decoder::new(writer).unwrap();
+        loop {
+            use LoaderItem::*;
+            match loader.next() {
+                Packet(packet) => decoder
+                    .handle_raw_packet(
+                        packet.bytes(), packet.timestamp_ns())
+                    .unwrap(),
+                Event(event) => decoder
+                    .handle_event(event.event_type, event.timestamp_ns)
+                    .unwrap(),
+                Metadata(meta) => decoder.handle_metadata(meta),
+                LoadError(e) => panic!("{e}"),
+                Ignore => continue,
+                End => break,
+            }
+        }
+        decoder.finish().unwrap();
+        reader
+    }
+
     #[test]
     fn test_captures() {
         let test_dir = PathBuf::from("./tests/");
@@ -1234,34 +1264,19 @@ mod tests {
         let mode = TrafficViewMode::Hierarchical;
         for test_name in BufReader::new(list_file).lines() {
             let test_path = test_dir.join(test_name.unwrap());
-            let cap_path = test_path.join("capture.pcap");
             let traf_ref_path = test_path.join("reference.txt");
             let traf_out_path = test_path.join("output.txt");
             let dev_ref_path = test_path.join("devices-reference.txt");
             let dev_out_path = test_path.join("devices-output.txt");
             let dump_path = test_path.join("dump");
+            let pcap_path = test_path.join("capture.pcap");
+            let pcapng_path = test_path.join("capture.pcapng");
             {
-                let file = File::open(cap_path).unwrap();
-                let mut loader = PcapLoader::new(file).unwrap();
-                let (writer, mut reader) = create_capture().unwrap();
-                let mut decoder = Decoder::new(writer).unwrap();
-                loop {
-                    use LoaderItem::*;
-                    match loader.next() {
-                        Packet(packet) => decoder
-                            .handle_raw_packet(
-                                packet.bytes(), packet.timestamp_ns())
-                            .unwrap(),
-                        Event(event) => decoder
-                            .handle_event(event.event_type, event.timestamp_ns)
-                            .unwrap(),
-                        Metadata(meta) => decoder.handle_metadata(meta),
-                        LoadError(e) => panic!("{e}"),
-                        Ignore => continue,
-                        End => break,
-                    }
-                }
-                decoder.finish().unwrap();
+                let mut reader = if pcapng_path.exists() {
+                    load::<PcapNgLoader<File>>(&pcapng_path)
+                } else {
+                    load::<PcapLoader<File>>(&pcap_path)
+                };
                 reader.dump(&dump_path).unwrap();
                 let mut db = CounterSet::new();
                 reader = CaptureReader::restore(&mut db, &dump_path).unwrap();
