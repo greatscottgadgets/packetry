@@ -9,6 +9,10 @@ on:
 
 name: CI
 
+permissions:
+  actions: read
+  contents: read
+
 jobs:
   clippy:
     name: Clippy
@@ -59,7 +63,6 @@ jobs:
     env:
       VCPKG_COMMIT: ef7dbf94b9198bc58f45951adcf1f041fcbc5ea0 # 2025.06.13 release
       VCPKG_INSTALLED_DIR: ${{ github.workspace }}/vcpkg/installed
-      VCPKG_BINARY_SOURCES: clear;files,${{ github.workspace }}/.vcpkg_cache,readwrite
 
     steps:
       - name: Get runner version
@@ -117,11 +120,10 @@ jobs:
         if: matrix.os == 'windows-latest'
 
       - name: Restore vcpkg cache (Windows)
-        uses: actions/cache/restore@v4
         id: vcpkg-cache
+        uses: TAServers/vcpkg-cache@v3
         with:
-          path: "${{ github.workspace }}/.vcpkg_cache"
-          key: vcpkg-${{ env.VCPKG_COMMIT }}-${{ hashFiles('vcpkg.json')}}
+          token: ${{ secrets.GITHUB_TOKEN }}
         if: matrix.os == 'windows-latest'
 
       - name: Install dependencies (Windows)
@@ -129,13 +131,10 @@ jobs:
         with:
           vcpkgGitCommitId: ${{ env.VCPKG_COMMIT }}
           runVcpkgInstall: true
-        if: matrix.os == 'windows-latest'
-
-      - name: Save vcpkg cache (Windows)
-        uses: actions/cache/save@v4
-        with:
-          path: "${{ github.workspace }}/.vcpkg_cache"
-          key: ${{ steps.vcpkg-cache.outputs.cache-primary-key }}
+          doNotCache: true
+        env:
+          VCPKG_FEATURE_FLAGS: "binarycaching"
+          VCPKG_BINARY_SOURCES: "clear;files,${{ steps.vcpkg-cache.outputs.path }},readwrite"
         if: matrix.os == 'windows-latest'
 
       - name: Set PKG_CONFIG (Windows)
