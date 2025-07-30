@@ -22,7 +22,6 @@ use crate::capture::{
     PacketId,
     INVALID_EP_ID,
 };
-use crate::database::{DataReaderOps, CompactReaderOps};
 use crate::usb::{self, prelude::*, validate_packet};
 use crate::util::{Bytes, RangeLength, fmt_count, fmt_size, titlecase};
 
@@ -178,7 +177,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
             None => Ok(match view_mode {
                 Hierarchical => {
                     let item_id = TrafficItemId::from(index);
-                    let group_id = self.item_index().get(item_id)?;
+                    let group_id = self.item_group(item_id)?;
                     TransactionGroup(group_id)
                 },
                 Transactions =>
@@ -206,16 +205,17 @@ ItemSource<TrafficItem, TrafficViewMode> for T
         Ok(match parent {
             TransactionGroup(group_id) =>
                 Transaction(Some(*group_id), {
-                    let entry = self.group_index().get(*group_id)?;
+                    let entry = self.group_entry(*group_id)?;
                     let endpoint_id = entry.endpoint_id();
                     let ep_group_id = entry.group_id();
                     let ep_traf = self.endpoint_traffic(endpoint_id)?;
-                    let offset = ep_traf.group_index().get(ep_group_id)?;
-                    ep_traf.transaction_ids().get(offset + index)?
+                    let offset = ep_traf.group_start(ep_group_id)?;
+                    ep_traf.transaction_id(offset + index)?
                 }),
             Transaction(group_id_opt, transaction_id) =>
-                Packet(*group_id_opt, Some(*transaction_id), {
-                    self.transaction_index().get(*transaction_id)? + index}),
+                Packet(*group_id_opt, Some(*transaction_id),
+                    self.transaction_start(*transaction_id)? + index
+                ),
             Packet(..) => bail!("Packets have no child items")
         })
     }
@@ -236,31 +236,29 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                     Ongoing
                 };
                 (completion, match view_mode {
-                    Hierarchical => self.item_index().len(),
-                    Transactions => self.transaction_index().len(),
-                    Packets => self.packet_index().len(),
+                    Hierarchical => self.item_count(),
+                    Transactions => self.transaction_count(),
+                    Packets => self.packet_count(),
                 })
             },
             Some(TransactionGroup(group_id)) => {
-                let entry = self.group_index().get(*group_id)?;
+                let entry = self.group_entry(*group_id)?;
                 if !entry.is_start() {
                     return Ok((Complete, 0));
                 }
                 let transaction_count = self.group_range(&entry)?.len();
                 let ep_traf = self.endpoint_traffic(entry.endpoint_id())?;
-                if entry.group_id().value >= ep_traf.end_index().len() {
+                if entry.group_id().value >= ep_traf.end_count() {
                     (Ongoing, transaction_count)
                 } else {
                     (Complete, transaction_count)
                 }
             },
             Some(Transaction(_, transaction_id)) => {
-                let total_packets = self.packet_index().len();
                 let packet_count = self
-                    .transaction_index()
-                    .target_range(*transaction_id, total_packets)?
+                    .transaction_packet_range(*transaction_id)?
                     .len();
-                if transaction_id.value < self.transaction_index().len() - 1 {
+                if transaction_id.value < self.transaction_count() - 1 {
                     (Complete, packet_count)
                 } else {
                     (Ongoing, packet_count)
@@ -400,10 +398,8 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                 s
             },
             Transaction(group_id_opt, transaction_id) => {
-                let num_packets = self.packet_index().len();
-                let packet_id_range = self
-                    .transaction_index()
-                    .target_range(*transaction_id, num_packets)?;
+                let packet_id_range =
+                    self.transaction_packet_range(*transaction_id)?;
                 let start_packet_id = packet_id_range.start;
                 let start_packet = self.packet(start_packet_id)?;
                 let packet_count = packet_id_range.len();
@@ -421,6 +417,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                     writeln!(s)?;
                 }
                 if let Ok(pid) = validate_packet(&start_packet) {
+                    let num_packets = self.packet_count();
                     if pid == SPLIT && start_packet_id.value + 1 == num_packets {
                         // We can't know the endpoint yet.
                         let split = SplitFields::from_packet(&start_packet);
@@ -437,8 +434,8 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                     }
                     let endpoint_id = match group_id_opt {
                         Some(group_id) => {
-                            let entry = self.group_index().get(*group_id)?;
-                            entry.endpoint_id()
+                            self.group_entry(*group_id)?
+                                .endpoint_id()
                         },
                         None => match self.packet_endpoint(
                             pid, &start_packet)
@@ -447,7 +444,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                             Err(_) => INVALID_EP_ID
                         }
                     };
-                    let endpoint = self.endpoints().get(endpoint_id)?;
+                    let endpoint = self.endpoint(endpoint_id)?;
                     let transaction = self.transaction(*transaction_id)?;
                     s += &transaction.description(self, &endpoint, detail)?
                 } else {
@@ -467,9 +464,9 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                         self.endpoint_traffic(group.endpoint_id)?;
                     let start_ep_transaction_id = group.range.start;
                     let start_transaction_id =
-                        ep_traf.transaction_ids().get(start_ep_transaction_id)?;
+                        ep_traf.transaction_id(start_ep_transaction_id)?;
                     let start_packet_id =
-                        self.transaction_index().get(start_transaction_id)?;
+                        self.transaction_start(start_transaction_id)?;
                     if group.count == 1 {
                         writeln!(s, "Transaction group with 1 transaction")?;
                     } else {
@@ -564,10 +561,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
         }
         let last_packet = match item {
             Packet(_, Some(transaction_id), packet_id) => {
-                let num_packets = self.packet_index().len();
-                let range = self
-                    .transaction_index()
-                    .target_range(*transaction_id, num_packets)?;
+                let range = self.transaction_packet_range(*transaction_id)?;
                 *packet_id == range.end - 1
             }, _ => false
         };
@@ -579,7 +573,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                 (Packet(..), true )      => "└──",
             }));
         }
-        let endpoint_count = self.endpoints().len() as usize;
+        let endpoint_count = self.endpoint_count() as usize;
         let max_string_length = endpoint_count + "    └──".len();
         let mut connectors = String::with_capacity(max_string_length);
         let group_id = match item {
@@ -588,7 +582,7 @@ ItemSource<TrafficItem, TrafficViewMode> for T
             Packet(Some(i), ..) => *i,
             _ => unreachable!()
         };
-        let entry = self.group_index().get(group_id)?;
+        let entry = self.group_entry(group_id)?;
         let endpoint_id = entry.endpoint_id();
         let endpoint_state = self.endpoint_state(group_id)?;
         let extended = self.group_extended(endpoint_id, group_id)?;
@@ -596,12 +590,9 @@ ItemSource<TrafficItem, TrafficViewMode> for T
         let last_transaction = match item {
             Transaction(_, transaction_id) |
             Packet(_, Some(transaction_id), _) => {
-                let ep_transactions = ep_traf.transaction_ids().len();
-                let range = ep_traf
-                    .group_index()
-                    .target_range(entry.group_id(), ep_transactions)?;
+                let range = ep_traf.group_range(entry.group_id())?;
                 let last_transaction_id =
-                    ep_traf.transaction_ids().get(range.end - 1)?;
+                    ep_traf.transaction_id(range.end - 1)?;
                 *transaction_id == last_transaction_id
             }, _ => false
         };
@@ -671,16 +662,16 @@ ItemSource<TrafficItem, TrafficViewMode> for T
         use TrafficItem::*;
         let packet_id = match item {
             TransactionGroup(group_id) => {
-                let entry = self.group_index().get(*group_id)?;
+                let entry = self.group_entry(*group_id)?;
                 let ep_traf = self.endpoint_traffic(entry.endpoint_id())?;
                 let ep_transaction_id =
-                    ep_traf.group_index().get(entry.group_id())?;
+                    ep_traf.group_start(entry.group_id())?;
                 let transaction_id =
-                    ep_traf.transaction_ids().get(ep_transaction_id)?;
-                self.transaction_index().get(transaction_id)?
+                    ep_traf.transaction_id(ep_transaction_id)?;
+                self.transaction_start(transaction_id)?
             },
             Transaction(.., transaction_id) =>
-                self.transaction_index().get(*transaction_id)?,
+                self.transaction_start(*transaction_id)?,
             Packet(.., packet_id) => *packet_id,
         };
         self.packet_time(packet_id)
@@ -886,7 +877,7 @@ impl<T: CaptureReaderOps> ItemSource<DeviceItem, DeviceViewMode> for T {
                 } else {
                     Ongoing
                 };
-                let children = self.devices().len().saturating_sub(1) as usize;
+                let children = self.device_count().saturating_sub(1) as usize;
                 (completion, children)
             },
             Some(item) => {
@@ -957,7 +948,7 @@ impl<T: CaptureReaderOps> ItemSource<DeviceItem, DeviceViewMode> for T {
         let data = self.device_data(item.device_id)?;
         Ok(match &item.content {
             Device(_) => {
-                let device = self.devices().get(item.device_id)?;
+                let device = self.device(item.device_id)?;
                 format!("Device {}: {}", device.address, data.description())
             },
             DeviceDescriptor(desc) => {
@@ -1052,7 +1043,7 @@ mod tests {
     use std::path::PathBuf;
     use itertools::Itertools;
     use crate::capture::{CaptureReader, create_capture};
-    use crate::database::{CounterSet, DataReaderOps, CompactReaderOps};
+    use crate::database::CounterSet;
     use crate::decoder::Decoder;
     use crate::file::{GenericLoader, GenericPacket, LoaderItem, PcapLoader};
     use crate::util::dump::Dump;
@@ -1142,14 +1133,14 @@ mod tests {
                 reader = CaptureReader::restore(&mut db, &dump_path).unwrap();
                 let traf_out_file = File::create(traf_out_path.clone()).unwrap();
                 let mut traf_out_writer = BufWriter::new(traf_out_file);
-                let num_items = reader.item_index.len();
+                let num_items = reader.item_count();
                 for item_id in 0 .. num_items {
                     let item = reader.item(None, mode, item_id).unwrap();
                     write_item(&mut reader, &item, mode, &mut traf_out_writer);
                 }
                 let dev_out_file = File::create(dev_out_path.clone()).unwrap();
                 let mut dev_out_writer = BufWriter::new(dev_out_file);
-                let num_devices = reader.devices.len() - 1;
+                let num_devices = reader.device_count() - 1;
                 for device_id in 0 .. num_devices {
                     let item = reader.item(None, (), device_id).unwrap();
                     write_item(&mut reader, &item, (), &mut dev_out_writer);

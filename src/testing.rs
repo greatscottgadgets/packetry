@@ -12,7 +12,6 @@ use crate::capture::{
     EndpointReaderOps,
     PacketId,
 };
-use crate::database::CompactReaderOps;
 use crate::decoder::Decoder;
 use crate::file::{GenericSaver, PcapSaver};
 
@@ -111,7 +110,7 @@ fn test(save_capture: bool,
         let file = File::create(path)?;
         let meta = reader.shared.metadata.load_full();
         let mut saver = PcapSaver::new(file, meta)?;
-        for i in 0..reader.packet_index.len() {
+        for i in 0..reader.packet_count() {
             let packet_id = PacketId::from(i);
             let packet = reader.packet(packet_id)?;
             let timestamp_ns = reader.packet_time(packet_id)?;
@@ -145,23 +144,18 @@ fn test(save_capture: bool,
         let endpoint_id = EndpointId::from(1);
         let ep_group_id = EndpointGroupId::from(0);
         let ep_traf = reader.endpoint_traffic(endpoint_id)?;
-        let ep_transactions = ep_traf.transaction_ids().len();
-        let ep_transaction_ids = ep_traf
-            .group_index()
-            .target_range(ep_group_id, ep_transactions)?;
+        let ep_transaction_ids = ep_traf.group_range(ep_group_id)?;
         let mut sof_count = 0;
         let mut last = None;
         let mut gaps = Vec::new();
         for transaction_id in ep_traf
-            .transaction_ids()
-            .get_range(&ep_transaction_ids)?
+            .transaction_id_range(&ep_transaction_ids)?
         {
-            let range = reader.transaction_index
-                .target_range(transaction_id, reader.packet_index.len())?;
+            let range = reader.transaction_packet_range(transaction_id)?;
             for id in range.start.value..range.end.value {
                 let packet_id = PacketId::from(id);
                 let timestamp = Duration::from_nanos(
-                    reader.packet_times.get(packet_id)?);
+                    reader.packet_time(packet_id)?);
                 if let Some(prev) = last.replace(timestamp) {
                     let interval = timestamp - prev;
                     if !(interval > min_interval && interval < max_interval) {
@@ -248,10 +242,7 @@ fn bytes_on_endpoint(reader: &mut CaptureReader) -> Result<Vec<u8>, Error> {
     // We're looking for the first and only transfer on the endpoint.
     let ep_group_id = EndpointGroupId::from(0);
     let ep_traf = reader.endpoint_traffic(endpoint_id)?;
-    let ep_transactions = ep_traf.transaction_ids().len();
-    let ep_transaction_ids = ep_traf
-        .group_index()
-        .target_range(ep_group_id, ep_transactions)?;
+    let ep_transaction_ids = ep_traf.group_range(ep_group_id)?;
     let data_range = ep_traf.transfer_data_range(&ep_transaction_ids)?;
     let data_length = ep_traf
         .transfer_data_length(&data_range)?
