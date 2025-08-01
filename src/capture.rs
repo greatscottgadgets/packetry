@@ -35,7 +35,7 @@ use crate::util::{
     rcu::SingleWriterRcu,
     vec_map::{Key, VecMap},
     Bytes,
-    RangeLength,
+    RangeExt,
     fmt_count,
     fmt_size,
 };
