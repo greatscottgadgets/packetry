@@ -25,7 +25,7 @@ use crate::capture::{
     INVALID_EP_ID,
 };
 use crate::usb::{self, prelude::*, validate_packet};
-use crate::util::{Bytes, RangeLength, fmt_count, fmt_size, titlecase};
+use crate::util::{Bytes, RangeExt, fmt_count, fmt_size, titlecase};
 
 macro_rules! item_source_methods {
     () => {

@@ -14,6 +14,7 @@ use crate::capture::{
 };
 use crate::decoder::Decoder;
 use crate::file::{GenericSaver, PcapSaver};
+use crate::util::RangeExt;
 
 use anyhow::{Context, Error, bail, ensure};
 use futures_lite::future::block_on;
@@ -151,9 +152,8 @@ fn test(save_capture: bool,
         for transaction_id in ep_traf
             .transaction_id_range(&ep_transaction_ids)?
         {
-            let range = reader.transaction_packet_range(transaction_id)?;
-            for id in range.start.value..range.end.value {
-                let packet_id = PacketId::from(id);
+            let packet_range = reader.transaction_packet_range(transaction_id)?;
+            for packet_id in packet_range.iter() {
                 let timestamp = Duration::from_nanos(
                     reader.packet_time(packet_id)?);
                 if let Some(prev) = last.replace(timestamp) {
