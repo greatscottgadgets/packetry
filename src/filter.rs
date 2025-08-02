@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+use std::ops::Range;
 use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering::Relaxed},
@@ -5,7 +7,7 @@ use std::sync::{
 };
 use std::thread::{JoinHandle, spawn};
 
-use anyhow::Error;
+use anyhow::{Error, bail};
 use delegate::delegate;
 
 use crate::capture::prelude::*;
@@ -28,10 +30,185 @@ use crate::item::{
 
 use crate::usb::PID;
 
-use crate::util::handle_thread_panic;
+use crate::util::{RangeExt, handle_thread_panic};
+use crate::util::vec_map::VecMap;
 
-pub struct FilterWriter {
+#[derive(Copy, Clone, Debug)]
+#[allow(clippy::enum_variant_names)]
+pub enum Decision {
+    RejectWithChildren,
+    AcceptWithChildren,
+    FilterChildren,
+}
+
+use Decision::*;
+
+impl Decision {
+    fn accepts_parent(&self) -> bool {
+        matches!(self, AcceptWithChildren | FilterChildren)
+    }
+}
+
+/// Trait to be implemented by filters.
+pub trait FilterOps: Send {
+
+    /// Decide whether to accept a device.
+    fn inspect_device<C: CaptureReaderOps>(
+        &mut self,
+        _cap: &mut C,
+        _id: DeviceId
+    ) -> Result<Decision, Error> {
+        Ok(AcceptWithChildren)
+    }
+
+    /// Decide whether to accept an endpoint.
+    fn inspect_endpoint<C: CaptureReaderOps>(
+        &mut self,
+        _cap: &mut C,
+        _id: EndpointId
+    ) -> Result<Decision, Error> {
+        Ok(AcceptWithChildren)
+    }
+
+    /// Decide whether to accept a top level traffic item.
+    fn inspect_item<C: CaptureReaderOps>(
+        &mut self,
+        _cap: &mut C,
+        _id: TrafficItemId
+    ) -> Result<Option<Decision>, Error> {
+        Ok(Some(AcceptWithChildren))
+    }
+
+    /// Decide whether to accept an incomplete transaction.
+    fn inspect_transaction<C: CaptureReaderOps>(
+        &mut self,
+        _cap: &mut C,
+        _id: TransactionId
+    )  -> Result<Option<Decision>, Error> {
+        Ok(Some(AcceptWithChildren))
+    }
+
+    /// Decide whether to accept a completed transaction.
+    fn decide_transaction<C: CaptureReaderOps>(
+        &mut self,
+        _cap: &mut C,
+        _id: TransactionId,
+        _packet_range: &Range<PacketId>,
+    )  -> Result<Decision, Error> {
+        Ok(AcceptWithChildren)
+    }
+
+    /// Decide whether to accept a packet.
+    fn decide_packet<C: CaptureReaderOps>(
+        &mut self,
+        _cap: &mut C,
+        _id: PacketId
+    ) -> Result<bool, Error> {
+        Ok(true)
+    }
+}
+
+/// A filter that removes all SOF packets.
+pub struct SOFFilter;
+
+impl FilterOps for SOFFilter {
+    fn inspect_device<C: CaptureReaderOps> (
+        &mut self,
+        _cap: &mut C,
+        id: DeviceId
+    ) -> Result<Decision, Error> {
+        if id == DEFAULT_DEV_ID {
+            Ok(FilterChildren)
+        } else {
+            Ok(AcceptWithChildren)
+        }
+    }
+
+    fn inspect_endpoint<C: CaptureReaderOps> (
+        &mut self,
+        _cap: &mut C,
+        id: EndpointId
+    ) -> Result<Decision, Error> {
+        if id == FRAMING_EP_ID {
+            Ok(RejectWithChildren)
+        } else {
+            Ok(AcceptWithChildren)
+        }
+    }
+}
+
+/// A filter that removes all NAKed transactions.
+pub struct NAKFilter;
+
+impl FilterOps for NAKFilter {
+    fn inspect_item<C: CaptureReaderOps> (
+        &mut self,
+        cap: &mut C,
+        item_id: TrafficItemId
+    ) -> Result<Option<Decision>, Error> {
+        use GroupContent::*;
+
+        // Get the transaction group associated with this item.
+        let group_id = cap.item_group(item_id)?;
+
+        Ok(match cap.group(group_id) {
+            Ok(group) => Some(match group.content {
+                // These groups are entirely NAKed transactions.
+                Polling(_) => RejectWithChildren,
+                // These groups may contain NAKed transactions.
+                Request(_) | IncompleteRequest | Ambiguous(..) => FilterChildren,
+                // Other groups may not contain NAKed transactions.
+                _ => AcceptWithChildren
+            }),
+            Err(_) => {
+                // Assume we don't have enough packets/transcations
+                // to identify the group content yet.
+                None
+            }
+        })
+    }
+
+    fn inspect_transaction<C: CaptureReaderOps> (
+        &mut self,
+        _cap: &mut C,
+        _transaction_id: TransactionId,
+    ) -> Result<Option<Decision>, Error> {
+        // Defer decision until we have the whole transaction.
+        Ok(None)
+    }
+
+    fn decide_transaction<C: CaptureReaderOps>(
+        &mut self,
+        cap: &mut C,
+        _transaction_id: TransactionId,
+        packet_range: &Range<PacketId>,
+    ) -> Result<Decision, Error> {
+        // Fetch the PID of the last packet.
+        let end_packet_id = packet_range.end - 1;
+        let last_pid = cap.packet_pid(end_packet_id)?;
+
+        // Reject if the PID of the last packet is a NAK.
+        Ok(
+            if last_pid == PID::NAK {
+                RejectWithChildren
+            } else {
+                AcceptWithChildren
+            }
+        )
+    }
+}
+
+pub struct FilterWriter<Filter> {
+    filter: Filter,
     counters: CounterSet,
+    endpoint_index: VecMap<EndpointKey, EndpointId>,
+    device_decisions: VecMap<DeviceId, Decision>,
+    endpoint_decisions: VecMap<EndpointId, Decision>,
+    endpoint_items: VecMap<EndpointId, TrafficItemId>,
+    transaction_items: HashMap<TransactionId, TrafficItemId>,
+    item_endpoints: HashMap<TrafficItemId, EndpointId>,
+    item_decisions: HashMap<TrafficItemId, Decision>,
+    transaction_decision: Option<Decision>,
     packets: CompactWriter<u64, PacketId>,
     transactions: CompactWriter<u64, TransactionId>,
     items: CompactWriter<u64, TrafficItemId>,
@@ -39,6 +216,7 @@ pub struct FilterWriter {
     next_packet_id: PacketId,
     next_transaction_id: TransactionId,
     next_item_id: TrafficItemId,
+    next_endpoint_id: EndpointId,
     next_device_id: DeviceId,
     complete: Arc<AtomicBool>,
     snapshot_req: Arc<AtomicBool>,
@@ -96,7 +274,8 @@ pub struct FilterThread {
     stop_req: Arc<AtomicBool>,
 }
 
-pub fn create_filter(
+pub fn create_filter<Filter: FilterOps + 'static>(
+    filter: Filter,
     capture: &mut CaptureReader,
     snapshot: Option<&CaptureSnapshot>,
 )
@@ -113,14 +292,24 @@ pub fn create_filter(
     let (filter_snapshot_tx, filter_snapshot_rx) = channel();
     let stop_req = Arc::new(AtomicBool::new(false));
     let mut filter_writer = FilterWriter {
+        filter,
         counters,
         packets: packet_writer,
         transactions: transaction_writer,
         items: item_writer,
         devices: device_writer,
+        device_decisions: VecMap::new(),
+        endpoint_index: VecMap::new(),
+        endpoint_decisions: VecMap::new(),
+        endpoint_items: VecMap::new(),
+        transaction_items: HashMap::new(),
+        item_endpoints: HashMap::new(),
+        item_decisions: HashMap::new(),
+        transaction_decision: None,
         next_packet_id: PacketId::from(0),
         next_transaction_id: TransactionId::from(0),
         next_item_id: TrafficItemId::from(0),
+        next_endpoint_id: EndpointId::from(0),
         next_device_id: DeviceId::from(0),
         complete: complete.clone(),
         snapshot_req: filter_snapshot_req.clone(),
@@ -250,7 +439,13 @@ impl<'f, 's> FilterSnapshotReader<'f, 's> {
     }
 }
 
-impl FilterWriter {
+impl<Filter: FilterOps> EndpointLookup for FilterWriter<Filter> {
+    fn endpoint_lookup(&self, key: EndpointKey) -> Option<EndpointId> {
+        self.endpoint_index.get(key).copied()
+    }
+}
+
+impl<Filter: FilterOps> FilterWriter<Filter> {
     pub fn snapshot(&mut self) -> FilterSnapshot {
         FilterSnapshot {
             counters: self.counters.snapshot(),
@@ -260,7 +455,7 @@ impl FilterWriter {
                 transactions: self.next_transaction_id.value,
                 items: self.next_item_id.value,
                 devices: self.next_device_id.value,
-                endpoints: 0,
+                endpoints: self.next_endpoint_id.value,
             }
         }
     }
@@ -273,43 +468,233 @@ impl FilterWriter {
         &mut self,
         cap: &mut C,
     ) -> Result<(), Error> {
-        for i in self.next_device_id.value..cap.device_count() {
-            let device_id = DeviceId::from(i);
-            self.devices.push(device_id)?;
+
+        let devices_end = DeviceId::from(cap.device_count());
+        let endpoints_end = EndpointId::from(cap.endpoint_count());
+        let items_end = TrafficItemId::from(cap.item_count());
+
+        // Process new devices.
+        for device_id in (self.next_device_id .. devices_end).iter() {
+            let decision = self.filter.inspect_device(cap, device_id)?;
+
+            if decision.accepts_parent() {
+                // Include this device in the filter output.
+                self.devices.push(device_id)?;
+            };
+
+            // This device is now processed.
+            self.device_decisions.push(decision);
             self.next_device_id = device_id + 1;
+
             if self.checkpoint()? {
                 return Ok(())
             }
         }
-        for i in self.next_item_id.value..cap.item_count() {
-            let item_id = TrafficItemId::from(i);
+
+        // Process new endpoints.
+        for endpoint_id in (self.next_endpoint_id .. endpoints_end).iter() {
+
+            // Identify the associated device.
+            let endpoint = cap.endpoint(endpoint_id)?;
+            let device_id = endpoint.device_id();
+
+            // Add this endpoint to our lookup table.
+            // TODO: change this at the right time when the address is reused.
+            self.endpoint_index.set(endpoint.key(), endpoint_id);
+
+            // Make a decision about this endpoint.
+            let decision = match self.device_decisions[device_id] {
+                FilterChildren =>
+                    self.filter.inspect_endpoint(cap, endpoint_id)?,
+                other_device_decision => other_device_decision,
+            };
+
+            // This endpoint is now processed.
+            self.endpoint_decisions.push(decision);
+            self.next_endpoint_id = endpoint_id + 1;
+
+            if self.checkpoint()? {
+                return Ok(())
+            }
+        }
+
+        // Process traffic items.
+        for item_id in (self.next_item_id .. items_end).iter() {
+
+            // Identify the associated endpoint.
             let group_id = cap.item_group(item_id)?;
             let entry = cap.group_entry(group_id)?;
-            if entry.endpoint_id() != FRAMING_EP_ID {
-                self.items.push(item_id)?;
+            let endpoint_id = entry.endpoint_id();
+
+            // Link the endpoint with this item.
+            self.item_endpoints.insert(item_id, endpoint_id);
+
+            // Identify the transaction that starts this item.
+            let ep_group_id = entry.group_id();
+            let ep_traf = cap.endpoint_traffic(endpoint_id)?;
+            let ep_transaction_id = ep_traf.group_start(ep_group_id)?;
+            let transaction_id = ep_traf.transaction_id(ep_transaction_id)?;
+
+            // Link this item to that transaction.
+            self.transaction_items.insert(transaction_id, item_id);
+
+            // Make a decision about this item.
+            let item_decision = match self.endpoint_decisions[endpoint_id] {
+                FilterChildren if entry.is_start() =>
+                    self.filter.inspect_item(cap, item_id)?,
+                FilterChildren =>
+                    self.item_decisions.get(&item_id).copied(),
+                other_endpoint_decision => Some(other_endpoint_decision)
+            };
+
+            // Apply the decision.
+            if let Some(decision) = item_decision {
+
+                // Optionally include this item in the filter output.
+                if decision.accepts_parent() {
+                    self.items.push(item_id)?;
+                };
+
+                // Store the decision.
+                self.item_decisions.insert(item_id, decision);
             }
+
+            // Advance to the next item.
             self.next_item_id = item_id + 1;
+
             if self.checkpoint()? {
                 return Ok(())
             }
         }
-        for i in self.next_transaction_id.value .. cap.transaction_count() {
-            let transaction_id = TransactionId::from(i);
-            let start_packet_id = cap.transaction_start(transaction_id)?;
-            if cap.packet_pid(start_packet_id)? != PID::SOF {
-                self.transactions.push(transaction_id)?;
+
+        // Process new packets and transactions.
+        loop {
+            // Identify the range of packets in this transaction, and which
+            // are new since the last filter catchup.
+            let transaction_id = self.next_transaction_id;
+            let packet_range = cap.transaction_packet_range(transaction_id)?;
+            let new_packets = self.next_packet_id..packet_range.end;
+
+            // Do we have all the packets of this transaction now?
+            let ended = packet_range.end.value < cap.packet_count();
+
+            // Try to make a decision about this transaction.
+            let decision = match &self.transaction_decision {
+                Some(decision) => Some(*decision),
+                None => {
+                    // Find the item associated with this transaction.
+                    let item_id = match
+                        self.transaction_items.get(&transaction_id)
+                    {
+                        // This transaction starts the next item.
+                        Some(item_id) => {
+                            // Get the endpoint ID associated with this item.
+                            let endpoint_id = self.item_endpoints[item_id];
+                            // This is now the current item on that endpoint.
+                            self.endpoint_items.set(endpoint_id, *item_id);
+                            *item_id
+                        },
+                        // This transaction continues an existing item.
+                        None => {
+                            // We're going to need to identify its endpoint.
+                            let packet_id = packet_range.start;
+                            let packet = cap.packet(packet_id)?;
+                            let endpoint_id = match
+                                packet.first().map(PID::from)
+                            {
+                                Some(pid) => self
+                                    .packet_endpoint(pid, &packet)
+                                    .or_else(|key|
+                                        bail!("No endpoint for: {key:?}"))?,
+                                None => INVALID_EP_ID,
+                            };
+                            self.endpoint_items[endpoint_id]
+                        }
+                    };
+
+                    // Apply item decision to transaction.
+                    let decision = match self.item_decisions[&item_id] {
+                        FilterChildren if ended => Some(
+                            self.filter.decide_transaction(
+                                cap, transaction_id, &packet_range)?
+                            ),
+                        FilterChildren =>
+                            self.filter.inspect_transaction(
+                                cap, transaction_id)?,
+                        other => Some(other)
+                    };
+
+                    // Include the transaction now if decided.
+                    if let Some(decision) = decision {
+                        if decision.accepts_parent() {
+                            self.transactions.push(transaction_id)?;
+                        }
+                    }
+
+                    self.transaction_decision = decision;
+
+                    decision
+                }
+            };
+
+            // Apply decision about this transaction.
+            match decision {
+                Some(RejectWithChildren) => {
+                    // Skip over these packets.
+                },
+                Some(AcceptWithChildren) => {
+                    // Accept these packets.
+                    for packet_id in new_packets.iter() {
+                        self.packets.push(packet_id)?;
+                    }
+                },
+                Some(FilterChildren) => {
+                    // Filter these packets.
+                    for packet_id in new_packets.iter() {
+                        if self.filter.decide_packet(cap, packet_id)? {
+                            self.packets.push(packet_id)?;
+                        }
+                    }
+                },
+                None if ended => {
+                    // Transaction decision was deferred and must now be made.
+                    match self.filter.decide_transaction(
+                        cap, transaction_id, &packet_range)?
+                    {
+                        RejectWithChildren => {}
+                        AcceptWithChildren => {
+                            // Accept this transaction and its packets.
+                            self.transactions.push(transaction_id)?;
+                            for packet_id in packet_range.iter() {
+                                self.packets.push(packet_id)?;
+                            }
+                        },
+                        FilterChildren => {
+                            // Accept this transaction and filter its packets.
+                            self.transactions.push(transaction_id)?;
+                            for packet_id in packet_range.iter() {
+                                if self.filter.decide_packet(cap, packet_id)? {
+                                    self.packets.push(packet_id)?;
+                                }
+                            }
+                        }
+                    }
+                },
+                None => {
+                    // Decision was deferred. Do nothing for now.
+                }
+            };
+            // These packets are now processed.
+            self.next_packet_id = packet_range.end;
+            if ended {
+                // This transaction is now processed, move onto the next.
+                self.next_transaction_id += 1;
+                self.transaction_decision = None
+            } else {
+                // This transaction is still ongoing.
+                break
             }
-            self.next_transaction_id = transaction_id + 1;
-            if self.checkpoint()? {
-                return Ok(())
-            }
-        }
-        for i in self.next_packet_id.value .. cap.packet_count() {
-            let packet_id = PacketId::from(i);
-            if cap.packet_pid(packet_id)? != PID::SOF {
-                self.packets.push(packet_id)?;
-            }
-            self.next_packet_id = packet_id + 1;
+
             if self.checkpoint()? {
                 return Ok(())
             }

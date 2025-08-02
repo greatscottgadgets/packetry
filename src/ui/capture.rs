@@ -1,7 +1,13 @@
 //! Unified access to different forms of capture.
 
 use crate::capture::{CaptureReader, CaptureSnapshot, CaptureStats};
-use crate::filter::{FilterReader, FilterSnapshot, FilterThread, create_filter};
+use crate::filter::{
+    FilterReader,
+    FilterSnapshot,
+    FilterThread,
+    SOFFilter,
+    create_filter
+};
 
 use anyhow::Error;
 
@@ -44,8 +50,9 @@ impl Capture {
     }
 
     pub fn start_filtering(&mut self) -> Result<FilterThread, Error> {
+        let filter = SOFFilter {};
         let (filter_reader, filter_thread, filter_snapshot) =
-            create_filter(&mut self.reader, self.snapshot.as_ref())?;
+            create_filter(filter, &mut self.reader, self.snapshot.as_ref())?;
         self.filter = Some(filter_reader);
         self.filter_snapshot = Some(filter_snapshot);
         Ok(filter_thread)

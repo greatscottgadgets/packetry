@@ -290,6 +290,14 @@ impl Endpoint {
     fn address(&self) -> EndpointAddr {
         EndpointAddr::from_parts(self.number(), self.direction())
     }
+
+    pub fn key(&self) -> EndpointKey {
+        EndpointKey {
+            dev_addr: self.device_address(),
+            ep_num: self.number(),
+            direction: self.direction(),
+        }
+    }
 }
 
 impl std::fmt::Display for Endpoint {
@@ -359,7 +367,7 @@ impl std::fmt::Display for EndpointType {
 
 type EndpointDetails = (usb::EndpointType, Option<usize>);
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct EndpointKey {
     pub dev_addr: DeviceAddr,
     pub direction: Direction,
