@@ -123,18 +123,29 @@ impl std::fmt::Display for Bytes<'_> {
     }
 }
 
-pub trait RangeLength {
+pub trait RangeExt<T> {
    fn len(&self) -> u64;
+
+   fn iter(&self) -> impl Iterator<Item=T>;
 }
 
-impl<T> RangeLength for Range<Id<T>> {
+impl<T> RangeExt<Id<T>> for Range<Id<T>> {
    fn len(&self) -> u64 {
       self.end.value - self.start.value
    }
+
+   fn iter(&self) -> impl Iterator<Item=Id<T>> {
+      let range = self.start.value .. self.end.value;
+      range.map(Id::<T>::from)
+   }
 }
 
-impl RangeLength for Range<u64> {
+impl RangeExt<u64> for Range<u64> {
    fn len(&self) -> u64 {
       self.end - self.start
+   }
+
+   fn iter(&self) -> impl Iterator<Item=u64> {
+      self.clone()
    }
 }

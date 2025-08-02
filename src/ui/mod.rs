@@ -6,7 +6,7 @@ use std::ffi::OsStr;
 use std::io::{Read, Write};
 use std::ops::Range;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::mpsc::{Sender, Receiver, channel};
+use std::sync::mpsc::{Sender, Receiver, TryRecvError, channel};
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 
@@ -24,34 +24,29 @@ use gtk::gio::{
     Cancellable,
     FileCreateFlags,
     FileQueryInfoFlags,
-    ListModel,
     Menu,
     MenuItem,
     SimpleActionGroup
 };
-use gtk::glib::{self, Object, clone};
 use gtk::{
     prelude::*,
+    glib,
     AboutDialog,
     Align,
     Application,
     Button,
+    CheckButton,
     Dialog,
     DialogFlags,
     Label,
     License,
-    ListItem,
     Grid,
-    ColumnView,
-    ColumnViewColumn,
     Paned,
     PopoverMenu,
     ProgressBar,
     ResponseType,
     ScrolledWindow,
     Separator,
-    SignalListItemFactory,
-    SingleSelection,
     TextBuffer,
     TextView,
 };
@@ -80,17 +75,11 @@ use crate::capture::{
     Group,
     GroupContent,
 };
-use crate::database::{
-    DataReaderOps,
-    CompactReaderOps,
-};
 use crate::item::{
-    ItemSource,
     TrafficItem,
     TrafficViewMode::{self,*},
     DeviceItem,
     DeviceItemContent,
-    DeviceViewMode,
 };
 use crate::decoder::Decoder;
 use crate::file::{
@@ -103,6 +92,7 @@ use crate::file::{
     PcapNgLoader,
     PcapNgSaver,
 };
+use crate::filter::FilterThread;
 use crate::usb::{Descriptor, PacketFields, Speed, validate_packet};
 use crate::util::{rcu::SingleWriterRcu, fmt_count, fmt_size};
 use crate::version::{version, version_info};
@@ -114,23 +104,19 @@ pub mod model;
 pub mod power;
 pub mod row_data;
 pub mod tree_list_model;
+pub mod view;
 pub mod window;
 #[cfg(any(test, feature="record-ui-test"))]
 pub mod record_ui;
 #[cfg(test)]
 mod test_replay;
 
-use capture::{Capture, CaptureState};
+use capture::Capture;
 use device::{DeviceSelector, DeviceWarning};
-use item_widget::ItemWidget;
 use model::{GenericModel, TrafficModel, DeviceModel};
 use power::PowerControl;
-use row_data::{
-    GenericRowData,
-    ToGenericRowData,
-    TrafficRowData,
-    DeviceRowData,
-};
+use row_data::{GenericRowData, TrafficRowData};
+use view::{TrafficView, DeviceView};
 use window::PacketryWindow;
 
 #[cfg(any(test, feature="record-ui-test"))]
@@ -175,6 +161,7 @@ pub struct UserInterface {
     window: PacketryWindow,
     capture: Capture,
     snapshot_rx: Option<Receiver<CaptureSnapshot>>,
+    filter_thread: Option<FilterThread>,
     selector: DeviceSelector,
     power: PowerControl,
     file_name: Option<String>,
@@ -187,7 +174,9 @@ pub struct UserInterface {
     endpoint_count: u64,
     show_progress: Option<FileAction>,
     progress_bar: ProgressBar,
+    filter_progress_bar: ProgressBar,
     separator: Separator,
+    filter_separator: Separator,
     vbox: gtk::Box,
     vertical_panes: Paned,
     open_button: Button,
@@ -195,6 +184,7 @@ pub struct UserInterface {
     scan_button: Button,
     capture_button: Button,
     stop_button: Button,
+    filter_check: CheckButton,
     status_label: Label,
     warning: DeviceWarning,
     metadata_action: Action,
@@ -229,14 +219,37 @@ pub fn activate(application: &Application) -> Result<(), Error> {
         );
     });
 
+    ui.filter_check.connect_toggled(|check| {
+        display_error(with_ui(|ui| {
+            if check.is_active() {
+                let thread = ui.capture.start_filtering()?;
+                ui.filter_thread = Some(thread);
+                ui.vbox.insert_child_after(
+                    &ui.filter_separator, Some(&ui.vertical_panes));
+                ui.vbox.insert_child_after(
+                    &ui.filter_progress_bar, Some(&ui.filter_separator));
+                ui.filter_progress_bar.set_text(Some("Filtering..."));
+                ui.filter_progress_bar.pulse();
+            } else {
+                ui.capture.stop_filtering()?;
+                if let Some(thread) = ui.filter_thread.take() {
+                    thread.join()?;
+                    ui.vbox.remove(&ui.filter_separator);
+                    ui.vbox.remove(&ui.filter_progress_bar);
+                }
+            };
+            ui.reset_views();
+            Ok(())
+        }));
+        display_error(update_view());
+    });
+
     #[cfg(not(test))]
     ui.window.show();
 
     UI.with(|cell| {
         cell.borrow_mut().replace(ui);
     });
-
-    reset_capture()?;
 
     gtk::glib::idle_add_once(|| display_error(detect_hardware()));
 
@@ -250,216 +263,45 @@ pub fn open(file: &gio::File) -> Result<(), Error> {
 type ContextFn<Item> =
     fn(&mut CaptureReader, &Item) -> Result<Option<PopoverMenu>, Error>;
 
-fn create_view<Item, Model, RowData, ViewMode>(
-        title: &str,
-        capture: &Capture,
-        view_mode: ViewMode,
-        context_menu_fn: ContextFn<Item>,
-        #[cfg(any(test, feature="record-ui-test"))]
-        recording_args: (&Rc<RefCell<Recording>>, &'static str))
-    -> (Model, SingleSelection, ColumnView)
-    where
-        Item: Clone + 'static,
-        ViewMode: Copy + 'static,
-        Model: GenericModel<Item, ViewMode> + IsA<ListModel> + IsA<Object>,
-        RowData: GenericRowData<Item> + IsA<Object>,
-        CaptureReader: ItemSource<Item, ViewMode>,
-        Object: ToGenericRowData<Item>
-{
-    #[cfg(any(test, feature="record-ui-test"))]
-    let (name, expand_rec, update_rec, changed_rec) = {
-        let (recording, name) = recording_args;
-        (name, recording.clone(), recording.clone(), recording.clone())
-    };
-    let model = Model::new(
-        capture.clone(),
-        view_mode,
-        #[cfg(any(test, feature="record-ui-test"))]
-        Rc::new(
-            RefCell::new(
-                move |position, summary|
-                    update_rec
-                        .borrow_mut()
-                        .log_item_updated(name, position, summary)
-            )
-        )).expect("Failed to create model");
-    let selection_model = SingleSelection::new(Some(model.clone()));
-    let factory = SignalListItemFactory::new();
-    factory.connect_setup(move |_, list_item| {
-        let widget = ItemWidget::new();
-        list_item.set_child(Some(&widget));
-    });
-    let bind = clone!(@strong model => move |list_item: &ListItem| {
-        let row = list_item
-            .item()
-            .context("ListItem has no item")?
-            .downcast::<RowData>()
-            .or_else(|_| bail!("Item is not RowData"))?;
-
-        let item_widget = list_item
-            .child()
-            .context("ListItem has no child widget")?
-            .downcast::<ItemWidget>()
-            .or_else(|_| bail!("Child widget is not an ItemWidget"))?;
-
-        let expander = item_widget.expander();
-        match row.node() {
-            Ok(node_ref) => {
-                let node = node_ref.borrow();
-                let item = node.item.clone();
-                let summary = model.description(&item, false);
-                let connectors = model.connectors(view_mode, &item);
-                item_widget.set_text(summary);
-                item_widget.set_connectors(connectors);
-                expander.set_visible(node.expandable());
-                expander.set_expanded(node.expanded());
-                #[cfg(any(test,
-                          feature="record-ui-test"))]
-                let recording = expand_rec.clone();
-                let handler = expander.connect_expanded_notify(
-                    clone!(@strong model, @strong node_ref, @strong list_item =>
-                        move |expander| {
-                            let position = list_item.position();
-                            let expanded = expander.is_expanded();
-                            #[cfg(any(test,
-                                      feature="record-ui-test"))]
-                            recording.borrow_mut().log_item_expanded(
-                                name, position, expanded);
-                            display_error(with_ui(|ui| {
-                                model.set_expanded(
-                                    &mut ui.capture,
-                                    &node_ref, position, expanded)
-                            }))
-                        }
-                    )
-                );
-                item_widget.set_handler(handler);
-                item_widget.set_context_menu_fn(move || {
-                    let mut popover = None;
-                    display_error(
-                        with_ui(|ui| {
-                            popover = context_menu_fn(
-                                &mut ui.capture.reader, &item)?;
-                            Ok(())
-                        }).context("Failed to generate context menu")
-                    );
-                    popover
-                });
-                node.attach_widget(&item_widget);
-            },
-            Err(msg) => {
-                item_widget.set_connectors("".to_string());
-                item_widget.set_text(format!("Error: {msg}"));
-                expander.set_visible(false);
-            }
-        };
-        Ok(())
-    });
-    let unbind = move |list_item: &ListItem| {
-        let row = list_item
-            .item()
-            .context("ListItem has no item")?
-            .downcast::<RowData>()
-            .or_else(|_| bail!("Item is not RowData"))?;
-
-        let item_widget = list_item
-            .child()
-            .context("ListItem has no child widget")?
-            .downcast::<ItemWidget>()
-            .or_else(|_| bail!("Child widget is not an ItemWidget"))?;
-
-        if let Ok(node_ref) = row.node() {
-            node_ref.borrow().remove_widget(&item_widget);
-        }
-
-        let expander = item_widget.expander();
-        if let Some(handler) = item_widget.take_handler() {
-            expander.disconnect(handler);
-        }
-
-        Ok(())
-    };
-    factory.connect_bind(move |_, item| display_error(bind(item)));
-    factory.connect_unbind(move |_, item| display_error(unbind(item)));
-
-    let view = ColumnView::new(Some(selection_model.clone()));
-    let column = ColumnViewColumn::new(Some(title), Some(factory));
-    view.append_column(&column);
-    view.add_css_class("data-table");
-
-    if Model::HAS_TIMES {
-        let model = model.clone();
-        let factory = SignalListItemFactory::new();
-        factory.connect_setup(move |_, list_item| {
-            let label = Label::new(None);
-            list_item.set_child(Some(&label));
-        });
-        let bind = move |list_item: &ListItem| {
-            let row = list_item
-                .item()
-                .context("ListItem has no item")?
-                .downcast::<RowData>()
-                .or_else(|_| bail!("Item is not RowData"))?;
-            let label = list_item
-                .child()
-                .context("ListItem has no child widget")?
-                .downcast::<Label>()
-                .or_else(|_| bail!("Child widget is not a Label"))?;
-            match row.node() {
-                Ok(node_ref) => {
-                    let node = node_ref.borrow();
-                    let timestamp = model.timestamp(&node.item);
-                    label.set_markup(&format!("<tt><small>{}.{:09}</small></tt>",
-                                           timestamp / 1_000_000_000,
-                                           timestamp % 1_000_000_000));
-                },
-                Err(msg) => {
-                    label.set_text(&format!("Error: {msg}"));
-                }
-            }
-            Ok(())
-        };
-
-        factory.connect_bind(move |_, item| display_error(bind(item)));
-
-        let timestamp_column =
-            ColumnViewColumn::new(Some("Time"), Some(factory));
-        view.insert_column(0, &timestamp_column);
-    }
-
-    #[cfg(any(test, feature="record-ui-test"))]
-    model.connect_items_changed(move |model, position, removed, added|
-        changed_rec.borrow_mut().log_items_changed(
-            name, model, position, removed, added));
-
-    (model, selection_model, view)
-}
-
 pub fn reset_capture() -> Result<CaptureWriter, Error> {
     let (mut writer, reader) = create_capture()?;
-    let snapshot = writer.snapshot();
     with_ui(|ui| {
-        let capture = Capture {
+        ui.capture = Capture {
             reader,
-            state: CaptureState::Ongoing(snapshot),
+            snapshot: Some(writer.snapshot()),
+            filter: None,
+            filter_snapshot: None,
         };
+        ui.filter_thread = if ui.filter_check.is_active() {
+            let thread = ui.capture.start_filtering()?;
+            Some(thread)
+        } else {
+            None
+        };
+        ui.stop_button.set_sensitive(false);
+        ui.reset_views();
+        ui.endpoint_count = 2;
+        Ok(())
+    })?;
+    Ok(writer)
+}
+
+impl UserInterface {
+    fn reset_views(&mut self) {
         for mode in TRAFFIC_MODES {
-            let (traffic_model, traffic_selection, traffic_view) =
-                create_view::<
-                    TrafficItem,
-                    TrafficModel,
-                    TrafficRowData,
-                    TrafficViewMode
-                >(
+            let (traffic_model, traffic_selection, traffic_view) = {
+                let view = TrafficView::create(
                     "Traffic",
-                    &capture,
+                    &self.capture,
                     mode,
                     traffic_context_menu,
                     #[cfg(any(test, feature="record-ui-test"))]
-                    (&ui.recording, mode.log_name())
+                    (&self.recording, mode.log_name())
                 );
-            ui.traffic_windows[&mode].set_child(Some(&traffic_view));
-            ui.traffic_models.insert(mode, traffic_model.clone());
+                (view.model, view.selection, view.widget)
+            };
+            self.traffic_windows[&mode].set_child(Some(&traffic_view));
+            self.traffic_models.insert(mode, traffic_model.clone());
             traffic_selection.connect_selection_changed(
                 move |selection_model, _position, _n_items| {
                     display_error(with_ui(|ui| {
@@ -485,28 +327,20 @@ pub fn reset_capture() -> Result<CaptureWriter, Error> {
                 }
             );
         }
-        let (device_model, _device_selection, device_view) =
-            create_view::<
-                DeviceItem,
-                DeviceModel,
-                DeviceRowData,
-                DeviceViewMode
-            >(
+        let (device_model, _device_selection, device_view) = {
+            let view = DeviceView::create(
                 "Devices",
-                &capture,
+                &self.capture,
                 (),
                 device_context_menu,
                 #[cfg(any(test, feature="record-ui-test"))]
-                (&ui.recording, "devices")
+                (&self.recording, "devices")
             );
-        ui.capture = capture;
-        ui.device_model = Some(device_model);
-        ui.endpoint_count = 2;
-        ui.device_window.set_child(Some(&device_view));
-        ui.stop_button.set_sensitive(false);
-        Ok(())
-    })?;
-    Ok(writer)
+            (view.model, view.selection, view.widget)
+        };
+        self.device_model = Some(device_model);
+        self.device_window.set_child(Some(&device_view));
+    }
 }
 
 pub fn update_view() -> Result<(), Error> {
@@ -514,56 +348,74 @@ pub fn update_view() -> Result<(), Error> {
     with_ui(|ui| {
         SNAPSHOT_REQ.store(true, Ordering::Relaxed);
         if let Some(snapshot_rx) = &mut ui.snapshot_rx {
-            if let Ok(snapshot) = snapshot_rx.try_recv() {
-                ui.capture.set_snapshot(snapshot);
+            match snapshot_rx.try_recv() {
+                Ok(snapshot) => {
+                    if snapshot.complete {
+                        ui.snapshot_rx = None
+                    }
+                    if let Some(thread) = &mut ui.filter_thread {
+                        thread.send_capture_snapshot(snapshot.clone())?;
+                    }
+                    ui.capture.set_snapshot(snapshot);
+                },
+                Err(e @ TryRecvError::Disconnected) => {
+                    bail!(e)
+                },
+                Err(TryRecvError::Empty) => {},
             }
         }
-        let (devices, endpoints, transactions, packets) =
-            match &mut ui.capture.state
-        {
-            CaptureState::Ongoing(snapshot) => {
-                let mut cap = ui.capture.reader.at(snapshot);
-                let devices = cap.devices().len().saturating_sub(1);
-                let endpoints = cap.endpoints().len().saturating_sub(2);
-                let transactions = cap.transaction_index().len();
-                let packets = cap.packet_index().len();
-                (devices, endpoints, transactions, packets)
-            },
-            CaptureState::Complete => {
-                let cap = &mut ui.capture.reader;
-                let devices = cap.devices().len().saturating_sub(1);
-                let endpoints = cap.endpoints().len().saturating_sub(2);
-                let transactions = cap.transaction_index().len();
-                let packets = cap.packet_index().len();
-                (devices, endpoints, transactions, packets)
-            },
-        };
+        let stats = ui.capture.stats();
+        if let Some(thread) = &mut ui.filter_thread {
+            thread.request_filter_snapshot();
+            if let Some(filter_snapshot) = thread.receive_filter_snapshot() {
+                if filter_snapshot.complete {
+                    ui.filter_thread.take().unwrap().join()?;
+                    ui.vbox.remove(&ui.filter_separator);
+                    ui.vbox.remove(&ui.filter_progress_bar);
+                } else {
+                    let total = stats.total_filterable();
+                    let current = filter_snapshot.stats.total_filterable();
+                    let fraction = if total == 0 {
+                        None
+                    } else {
+                        Some((current as f64) / (total as f64))
+                    };
+                    let text = format!(
+                        "Filtered {} / {} items",
+                        fmt_count(current),
+                        fmt_count(total)
+                    );
+                    ui.filter_progress_bar.set_text(Some(&text));
+                    match fraction {
+                        Some(fraction) =>
+                            ui.filter_progress_bar.set_fraction(fraction),
+                        None =>
+                            ui.filter_progress_bar.pulse()
+                    };
+                }
+                ui.capture.set_filter_snapshot(filter_snapshot);
+            }
+        }
         #[cfg(feature="record-ui-test")]
         ui.recording
             .borrow_mut()
-            .log_update(packets);
+            .log_update(stats.packets);
         let mut more_updates = false;
         if ui.show_progress == Some(Save) {
             more_updates = true;
         } else {
-            ui.status_label.set_text(&format!(
-                "{}: {} devices, {} endpoints, {} transactions, {} packets",
-                ui.file_name.as_deref().unwrap_or("Unsaved capture"),
-                fmt_count(devices),
-                fmt_count(endpoints),
-                fmt_count(transactions),
-                fmt_count(packets)
-            ));
+            let filename = ui.file_name.as_deref().unwrap_or("Unsaved capture");
+            ui.status_label.set_text(&format!("{filename}: {stats}"));
             for model in ui.traffic_models.values() {
                 let old_count = model.n_items();
                 more_updates |= model.update(&mut ui.capture)?;
                 let new_count = model.n_items();
                 // If any endpoints were added, we need to redraw the rows above
                 // to add the additional columns of the connecting lines.
-                if new_count > old_count && endpoints > ui.endpoint_count {
+                if new_count > old_count && stats.endpoints > ui.endpoint_count {
                     model.items_changed(0, old_count, old_count);
                 }
-                ui.endpoint_count = endpoints;
+                ui.endpoint_count = stats.endpoints;
             }
             if let Some(model) = &ui.device_model {
                 more_updates |= model.update(&mut ui.capture)?;
@@ -598,9 +450,6 @@ pub fn update_view() -> Result<(), Error> {
                 UPDATE_INTERVAL,
                 || display_error(update_view())
             );
-        } else {
-            ui.capture.set_completed();
-            ui.snapshot_rx = None;
         }
         Ok(())
     })
@@ -696,8 +545,8 @@ fn start_file(action: FileAction, file: gio::File) -> Result<(), Error> {
         ui.show_progress = Some(action);
         ui.file_name = Some(basename.to_string_lossy().to_string());
         ui.snapshot_rx = Some(snapshot_rx);
-        let mut capture = ui.capture.reader.clone();
-        let packet_count = capture.packet_index().len();
+        let capture = ui.capture.reader.clone();
+        let packet_count = capture.packet_count();
         CURRENT.store(0, Ordering::Relaxed);
         TOTAL.store(match action {
             Load => 0,
@@ -805,7 +654,7 @@ where
     Saver: GenericSaver<Dest>,
     Dest: Write
 {
-    let packet_count = capture.packet_index.len();
+    let packet_count = capture.packet_count();
     let meta = capture.shared.metadata.load_full();
     let mut saver = Saver::new(dest, meta)?;
     if packet_count > 0 {
@@ -1024,7 +873,7 @@ fn traffic_context_menu(
         Transaction(_, transaction_id) => {
             let transaction = capture.transaction(*transaction_id)?;
             if let Some(range) = transaction.payload_byte_range {
-                let payload = capture.packet_data.get_range(&range)?;
+                let payload = capture.bytes(&range)?;
                 Some(context_popover(
                     "save-transaction-payload",
                     "Save transaction payload to file...",
@@ -1107,8 +956,8 @@ fn save_data_transfer_payload(
         let mut length = 0;
         for data_id in data_range {
             let ep_traf = cap.endpoint_traffic(endpoint_id)?;
-            let ep_transaction_id = ep_traf.data_transactions().get(data_id)?;
-            let transaction_id = ep_traf.transaction_ids().get(ep_transaction_id)?;
+            let ep_transaction_id = ep_traf.data_transaction(data_id)?;
+            let transaction_id = ep_traf.transaction_id(ep_transaction_id)?;
             let transaction = cap.transaction(transaction_id)?;
             let transaction_bytes = cap.transaction_bytes(&transaction)?;
             dest.write_all(&transaction_bytes)?;

@@ -3,6 +3,7 @@
 //! Used to enforce type safety of indices used in the capture database.
 
 use std::fmt::{Debug, Display};
+use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::mem::size_of;
 use std::ops::{Add, AddAssign, Sub, SubAssign};
@@ -12,6 +13,12 @@ use std::ops::Range;
 pub struct Id<T> {
    _marker: PhantomData<T>,
    pub value: u64
+}
+
+impl<T> Hash for Id<T> {
+   fn hash<H: Hasher>(&self, state: &mut H) {
+      self.value.hash(state)
+   }
 }
 
 impl<T> Eq for Id<T> {}
