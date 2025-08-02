@@ -1455,8 +1455,7 @@ pub trait EndpointReaderOps {
     fn transaction_id_range(
         &mut self,
         ep_id_range: &Range<EndpointTransactionId>
-    )
-        -> Result<Vec<TransactionId>, Error>;
+    ) -> Result<Vec<TransactionId>, Error>;
 
     /// Find the first transaction of a transaction group on this endpoint.
     fn group_start(&mut self, ep_group_id: EndpointGroupId)
