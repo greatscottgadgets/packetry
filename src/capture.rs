@@ -335,6 +335,7 @@ pub const INVALID_EP_NUM: EndpointNum = EndpointNum(0x10);
 pub const FRAMING_EP_NUM: EndpointNum = EndpointNum(0x11);
 pub const INVALID_EP_ID: EndpointId = EndpointId::constant(0);
 pub const FRAMING_EP_ID: EndpointId = EndpointId::constant(1);
+pub const DEFAULT_DEV_ID: DeviceId = DeviceId::constant(0);
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum EndpointType {
@@ -2069,5 +2070,6 @@ pub mod prelude {
         FRAMING_EP_NUM,
         INVALID_EP_ID,
         FRAMING_EP_ID,
+        DEFAULT_DEV_ID,
     };
 }
