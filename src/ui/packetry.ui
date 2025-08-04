@@ -183,10 +183,31 @@ CONTROL</property>
                           </object>
                         </child>
                         <child>
-                          <object class="GtkCheckButton" id="filter_check">
-                            <property name="label">Filter SOFs</property>
-                            <property name="margin-end">2</property>
-                            <property name="margin-start">2</property>
+                          <object class="GtkMenuButton">
+                            <property name="label">Filters</property>
+                            <property name="popover">
+                              <object class="GtkPopover">
+                                <child>
+                                  <object class="GtkBox">
+                                    <property name="orientation">vertical</property>
+                                    <child>
+                                      <object class="GtkCheckButton" id="filter_sof">
+                                        <property name="label">Hide SOF packets</property>
+                                        <property name="margin-end">2</property>
+                                        <property name="margin-start">2</property>
+                                      </object>
+                                    </child>
+                                    <child>
+                                      <object class="GtkCheckButton" id="filter_nak">
+                                        <property name="label">Hide NAKed transactions</property>
+                                        <property name="margin-end">2</property>
+                                        <property name="margin-start">2</property>
+                                      </object>
+                                    </child>
+                                  </object>
+                                </child>
+                              </object>
+                            </property>
                           </object>
                         </child>
                       </object>

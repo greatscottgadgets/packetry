@@ -2,10 +2,10 @@
 
 use crate::capture::{CaptureReader, CaptureSnapshot, CaptureStats};
 use crate::filter::{
+    FilterOps,
     FilterReader,
     FilterSnapshot,
     FilterThread,
-    SOFFilter,
     create_filter
 };
 
@@ -49,8 +49,9 @@ impl Capture {
         }
     }
 
-    pub fn start_filtering(&mut self) -> Result<FilterThread, Error> {
-        let filter = SOFFilter {};
+    pub fn start_filtering<F: FilterOps + 'static>(&mut self, filter: F)
+        -> Result<FilterThread, Error>
+    {
         let (filter_reader, filter_thread, filter_snapshot) =
             create_filter(filter, &mut self.reader, self.snapshot.as_ref())?;
         self.filter = Some(filter_reader);

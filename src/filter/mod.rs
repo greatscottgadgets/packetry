@@ -33,21 +33,12 @@ use crate::usb::PID;
 use crate::util::{RangeExt, handle_thread_panic};
 use crate::util::vec_map::VecMap;
 
-#[derive(Copy, Clone, Debug)]
-#[allow(clippy::enum_variant_names)]
-pub enum Decision {
-    RejectWithChildren,
-    AcceptWithChildren,
-    FilterChildren,
-}
+pub mod and;
+pub mod decision;
+pub mod nak;
+pub mod sof;
 
-use Decision::*;
-
-impl Decision {
-    fn accepts_parent(&self) -> bool {
-        matches!(self, AcceptWithChildren | FilterChildren)
-    }
-}
+pub use decision::Decision::{self, *};
 
 /// Trait to be implemented by filters.
 pub trait FilterOps: Send {
@@ -105,96 +96,6 @@ pub trait FilterOps: Send {
         _id: PacketId
     ) -> Result<bool, Error> {
         Ok(true)
-    }
-}
-
-/// A filter that removes all SOF packets.
-pub struct SOFFilter;
-
-impl FilterOps for SOFFilter {
-    fn inspect_device<C: CaptureReaderOps> (
-        &mut self,
-        _cap: &mut C,
-        id: DeviceId
-    ) -> Result<Decision, Error> {
-        if id == DEFAULT_DEV_ID {
-            Ok(FilterChildren)
-        } else {
-            Ok(AcceptWithChildren)
-        }
-    }
-
-    fn inspect_endpoint<C: CaptureReaderOps> (
-        &mut self,
-        _cap: &mut C,
-        id: EndpointId
-    ) -> Result<Decision, Error> {
-        if id == FRAMING_EP_ID {
-            Ok(RejectWithChildren)
-        } else {
-            Ok(AcceptWithChildren)
-        }
-    }
-}
-
-/// A filter that removes all NAKed transactions.
-pub struct NAKFilter;
-
-impl FilterOps for NAKFilter {
-    fn inspect_item<C: CaptureReaderOps> (
-        &mut self,
-        cap: &mut C,
-        item_id: TrafficItemId
-    ) -> Result<Option<Decision>, Error> {
-        use GroupContent::*;
-
-        // Get the transaction group associated with this item.
-        let group_id = cap.item_group(item_id)?;
-
-        Ok(match cap.group(group_id) {
-            Ok(group) => Some(match group.content {
-                // These groups are entirely NAKed transactions.
-                Polling(_) => RejectWithChildren,
-                // These groups may contain NAKed transactions.
-                Request(_) | IncompleteRequest | Ambiguous(..) => FilterChildren,
-                // Other groups may not contain NAKed transactions.
-                _ => AcceptWithChildren
-            }),
-            Err(_) => {
-                // Assume we don't have enough packets/transcations
-                // to identify the group content yet.
-                None
-            }
-        })
-    }
-
-    fn inspect_transaction<C: CaptureReaderOps> (
-        &mut self,
-        _cap: &mut C,
-        _transaction_id: TransactionId,
-    ) -> Result<Option<Decision>, Error> {
-        // Defer decision until we have the whole transaction.
-        Ok(None)
-    }
-
-    fn decide_transaction<C: CaptureReaderOps>(
-        &mut self,
-        cap: &mut C,
-        _transaction_id: TransactionId,
-        packet_range: &Range<PacketId>,
-    ) -> Result<Decision, Error> {
-        // Fetch the PID of the last packet.
-        let end_packet_id = packet_range.end - 1;
-        let last_pid = cap.packet_pid(end_packet_id)?;
-
-        // Reject if the PID of the last packet is a NAK.
-        Ok(
-            if last_pid == PID::NAK {
-                RejectWithChildren
-            } else {
-                AcceptWithChildren
-            }
-        )
     }
 }
 

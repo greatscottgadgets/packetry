@@ -167,7 +167,8 @@ impl PacketryWindow {
             stop_off: window.imp().power_stop_off.clone(),
         };
 
-        let filter_check = window.imp().filter_check.clone();
+        let filter_sof = window.imp().filter_sof.clone();
+        let filter_nak = window.imp().filter_nak.clone();
 
         let mut traffic_windows = BTreeMap::new();
         traffic_windows.insert(Hierarchical, window.imp().hierarchical.clone());
@@ -233,7 +234,8 @@ impl PacketryWindow {
             save_button,
             capture_button,
             stop_button,
-            filter_check,
+            filter_sof,
+            filter_nak,
             status_label,
             warning,
             metadata_action,
@@ -324,7 +326,9 @@ mod imp {
         #[template_child]
         pub power_stop_off: TemplateChild<CheckButton>,
         #[template_child]
-        pub filter_check: TemplateChild<CheckButton>,
+        pub filter_sof: TemplateChild<CheckButton>,
+        #[template_child]
+        pub filter_nak: TemplateChild<CheckButton>,
     }
 
     #[glib::object_subclass]

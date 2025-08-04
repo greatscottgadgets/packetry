@@ -92,7 +92,12 @@ use crate::file::{
     PcapNgLoader,
     PcapNgSaver,
 };
-use crate::filter::FilterThread;
+use crate::filter::{
+    and::ANDFilter,
+    nak::NAKFilter,
+    sof::SOFFilter,
+    FilterThread,
+};
 use crate::usb::{Descriptor, PacketFields, Speed, validate_packet};
 use crate::util::{rcu::SingleWriterRcu, fmt_count, fmt_size};
 use crate::version::{version, version_info};
@@ -184,7 +189,8 @@ pub struct UserInterface {
     scan_button: Button,
     capture_button: Button,
     stop_button: Button,
-    filter_check: CheckButton,
+    filter_sof: CheckButton,
+    filter_nak: CheckButton,
     status_label: Label,
     warning: DeviceWarning,
     metadata_action: Action,
@@ -219,30 +225,8 @@ pub fn activate(application: &Application) -> Result<(), Error> {
         );
     });
 
-    ui.filter_check.connect_toggled(|check| {
-        display_error(with_ui(|ui| {
-            if check.is_active() {
-                let thread = ui.capture.start_filtering()?;
-                ui.filter_thread = Some(thread);
-                ui.vbox.insert_child_after(
-                    &ui.filter_separator, Some(&ui.vertical_panes));
-                ui.vbox.insert_child_after(
-                    &ui.filter_progress_bar, Some(&ui.filter_separator));
-                ui.filter_progress_bar.set_text(Some("Filtering..."));
-                ui.filter_progress_bar.pulse();
-            } else {
-                ui.capture.stop_filtering()?;
-                if let Some(thread) = ui.filter_thread.take() {
-                    thread.join()?;
-                    ui.vbox.remove(&ui.filter_separator);
-                    ui.vbox.remove(&ui.filter_progress_bar);
-                }
-            };
-            ui.reset_views();
-            Ok(())
-        }));
-        display_error(update_view());
-    });
+    ui.filter_sof.connect_toggled(|_| filtering_changed());
+    ui.filter_nak.connect_toggled(|_| filtering_changed());
 
     #[cfg(not(test))]
     ui.window.show();
@@ -272,17 +256,12 @@ pub fn reset_capture() -> Result<CaptureWriter, Error> {
             filter: None,
             filter_snapshot: None,
         };
-        ui.filter_thread = if ui.filter_check.is_active() {
-            let thread = ui.capture.start_filtering()?;
-            Some(thread)
-        } else {
-            None
-        };
         ui.stop_button.set_sensitive(false);
         ui.reset_views();
         ui.endpoint_count = 2;
         Ok(())
     })?;
+    filtering_changed();
     Ok(writer)
 }
 
@@ -746,6 +725,43 @@ fn power_changed() -> Result<(), Error> {
         ui.power.update_device(ui.selector.handle())?;
         Ok(())
     })
+}
+
+fn filtering_changed() {
+    display_error(with_ui(|ui| {
+        let sof = ui.filter_sof.is_active();
+        let nak = ui.filter_nak.is_active();
+        let thread = match (sof, nak) {
+            (true, true) =>
+                Some(ui.capture.start_filtering(
+                    ANDFilter {a: SOFFilter {}, b: NAKFilter})?),
+            (true, false) =>
+                Some(ui.capture.start_filtering(SOFFilter {})?),
+            (false, true) =>
+                Some(ui.capture.start_filtering(NAKFilter {})?),
+            (false, false) =>
+                None
+        };
+        if let Some(thread) = thread {
+            ui.filter_thread = Some(thread);
+            ui.vbox.insert_child_after(
+                &ui.filter_separator, Some(&ui.vertical_panes));
+            ui.vbox.insert_child_after(
+                &ui.filter_progress_bar, Some(&ui.filter_separator));
+            ui.filter_progress_bar.set_text(Some("Filtering..."));
+            ui.filter_progress_bar.pulse();
+        } else {
+            ui.capture.stop_filtering()?;
+            if let Some(thread) = ui.filter_thread.take() {
+                thread.join()?;
+                ui.vbox.remove(&ui.filter_separator);
+                ui.vbox.remove(&ui.filter_progress_bar);
+            }
+        };
+        ui.reset_views();
+        Ok(())
+    }));
+    display_error(update_view());
 }
 
 pub fn start_capture() -> Result<(), Error> {
