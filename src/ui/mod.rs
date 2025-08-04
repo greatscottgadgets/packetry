@@ -80,10 +80,6 @@ use crate::capture::{
     Group,
     GroupContent,
 };
-use crate::database::{
-    DataReaderOps,
-    CompactReaderOps,
-};
 use crate::item::{
     ItemSource,
     TrafficItem,
@@ -522,19 +518,19 @@ pub fn update_view() -> Result<(), Error> {
             match &mut ui.capture.state
         {
             CaptureState::Ongoing(snapshot) => {
-                let mut cap = ui.capture.reader.at(snapshot);
-                let devices = cap.devices().len().saturating_sub(1);
-                let endpoints = cap.endpoints().len().saturating_sub(2);
-                let transactions = cap.transaction_index().len();
-                let packets = cap.packet_index().len();
+                let cap = ui.capture.reader.at(snapshot);
+                let devices = cap.device_count().saturating_sub(1);
+                let endpoints = cap.endpoint_count().saturating_sub(2);
+                let transactions = cap.transaction_count();
+                let packets = cap.packet_count();
                 (devices, endpoints, transactions, packets)
             },
             CaptureState::Complete => {
                 let cap = &mut ui.capture.reader;
-                let devices = cap.devices().len().saturating_sub(1);
-                let endpoints = cap.endpoints().len().saturating_sub(2);
-                let transactions = cap.transaction_index().len();
-                let packets = cap.packet_index().len();
+                let devices = cap.device_count().saturating_sub(1);
+                let endpoints = cap.endpoint_count().saturating_sub(2);
+                let transactions = cap.transaction_count();
+                let packets = cap.packet_count();
                 (devices, endpoints, transactions, packets)
             },
         };
@@ -696,8 +692,8 @@ fn start_file(action: FileAction, file: gio::File) -> Result<(), Error> {
         ui.show_progress = Some(action);
         ui.file_name = Some(basename.to_string_lossy().to_string());
         ui.snapshot_rx = Some(snapshot_rx);
-        let mut capture = ui.capture.reader.clone();
-        let packet_count = capture.packet_index().len();
+        let capture = ui.capture.reader.clone();
+        let packet_count = capture.packet_count();
         CURRENT.store(0, Ordering::Relaxed);
         TOTAL.store(match action {
             Load => 0,
@@ -805,7 +801,7 @@ where
     Saver: GenericSaver<Dest>,
     Dest: Write
 {
-    let packet_count = capture.packet_index.len();
+    let packet_count = capture.packet_count();
     let meta = capture.shared.metadata.load_full();
     let mut saver = Saver::new(dest, meta)?;
     if packet_count > 0 {
@@ -1024,7 +1020,7 @@ fn traffic_context_menu(
         Transaction(_, transaction_id) => {
             let transaction = capture.transaction(*transaction_id)?;
             if let Some(range) = transaction.payload_byte_range {
-                let payload = capture.packet_data.get_range(&range)?;
+                let payload = capture.bytes(&range)?;
                 Some(context_popover(
                     "save-transaction-payload",
                     "Save transaction payload to file...",
@@ -1107,8 +1103,8 @@ fn save_data_transfer_payload(
         let mut length = 0;
         for data_id in data_range {
             let ep_traf = cap.endpoint_traffic(endpoint_id)?;
-            let ep_transaction_id = ep_traf.data_transactions().get(data_id)?;
-            let transaction_id = ep_traf.transaction_ids().get(ep_transaction_id)?;
+            let ep_transaction_id = ep_traf.data_transaction(data_id)?;
+            let transaction_id = ep_traf.transaction_id(ep_transaction_id)?;
             let transaction = cap.transaction(transaction_id)?;
             let transaction_bytes = cap.transaction_bytes(&transaction)?;
             dest.write_all(&transaction_bytes)?;
