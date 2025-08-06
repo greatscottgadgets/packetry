@@ -17,7 +17,7 @@ use crate::file::{GenericSaver, PcapSaver};
 
 use anyhow::{Context, Error, bail, ensure};
 use futures_lite::future::block_on;
-use nusb::transfer::RequestBuffer;
+use nusb::{MaybeFuture, transfer::{Interrupt, In}};
 
 use std::fs::File;
 use std::path::PathBuf;
@@ -60,6 +60,7 @@ fn test(save_capture: bool,
     // Open analyzer device.
     println!("Opening analyzer device");
     let mut candidates = nusb::list_devices()
+        .wait()
         .context("Failed to list USB devices")?
         .filter(|info| (info.vendor_id(), info.product_id()) == VID_PID)
         .collect::<Vec<_>>();
@@ -212,24 +213,32 @@ fn read_test_device(
 
     // Open test device on AUX port.
     let test_device = nusb::list_devices()
+        .wait()
         .context("Failed to list USB devices")?
         .find(|dev| dev.vendor_id() == 0x1209 && dev.product_id() == 0x000A)
         .context("Test device not found")?
         .open()
+        .wait()
         .context("Failed to open test device")?;
-    let test_interface = test_device.claim_interface(0)
+    let test_interface = test_device
+        .claim_interface(0)
+        .wait()
         .context("Failed to claim interface 0 on test device")?;
-
+    let mut test_endpoint = match test_interface
+        .endpoint::<Interrupt, In>(ep_addr)
+    {
+        Ok(endpoint) => endpoint,
+        Err(_) => bail!("Failed to claim endpoint {ep_addr}")
+    };
     // Read some data from the test device.
     println!("Starting read from test device");
-    let buf = RequestBuffer::new(length);
-    let transfer = test_interface.interrupt_in(ep_addr, buf);
-    let completion = block_on(transfer);
+    let request = test_endpoint.allocate(length);
+    test_endpoint.submit(request);
+    let completion = block_on(test_endpoint.next_complete());
     completion.status.context("Transfer from test device failed")?;
-    println!("Read {} bytes from test device", completion.data.len());
-    ensure!(completion.data.len() == length,
-            "Did not complete reading data");
-    Ok(completion.data)
+    println!("Read {} bytes from test device", completion.buffer.len());
+    ensure!(completion.buffer.len() == length, "Did not complete reading data");
+    Ok(completion.buffer.into_vec())
 }
 
 fn bytes_on_endpoint(reader: &mut CaptureReader) -> Result<Vec<u8>, Error> {

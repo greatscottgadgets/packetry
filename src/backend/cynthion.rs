@@ -11,12 +11,16 @@ use anyhow::{Context as ErrorContext, Error, bail};
 use nusb::{
     self,
     transfer::{
-        Control,
+        Bulk, In,
+        ControlIn,
+        ControlOut,
         ControlType,
+        Buffer,
         Recipient,
     },
     DeviceInfo,
-    Interface
+    Interface,
+    MaybeFuture,
 };
 
 use super::{
@@ -98,7 +102,8 @@ pub struct CynthionHandle {
 
 /// Converts from received data bytes to timestamped packets.
 pub struct CynthionStream {
-    receiver: mpsc::Receiver<Vec<u8>>,
+    data_rx: mpsc::Receiver<Buffer>,
+    reuse_tx: mpsc::Sender<Buffer>,
     buffer: VecDeque<u8>,
     padding_due: bool,
     total_clk_cycles: u64,
@@ -125,6 +130,7 @@ impl CynthionDevice {
         // Check we can open the device.
         let device = self.device_info
             .open()
+            .wait()
             .context("Failed to open device")?;
 
         // Read the active configuration.
@@ -161,12 +167,14 @@ impl CynthionDevice {
                 // Try to claim the interface.
                 let interface = device
                     .claim_interface(interface_number)
+                    .wait()
                     .context("Failed to claim interface")?;
 
                 // Select the required alternate, if not the default.
                 if alt_setting_number != 0 {
                     interface
                         .set_alt_setting(alt_setting_number)
+                        .wait()
                         .context("Failed to select alternate setting")?;
                 }
 
@@ -291,15 +299,19 @@ impl BackendHandle for CynthionHandle {
     fn begin_capture(
         &mut self,
         speed: Speed,
-        data_tx: mpsc::Sender<Vec<u8>>
+        data_tx: mpsc::Sender<Buffer>,
     ) -> Result<TransferQueue, Error>
     {
         let mut inner = self.inner();
 
+        let endpoint = match inner.interface.endpoint::<Bulk, In>(ENDPOINT) {
+            Ok(endpoint) => endpoint,
+            Err(_) => bail!("Failed to claim endpoint {ENDPOINT}")
+        };
+
         inner.start_capture(speed)?;
 
-        Ok(TransferQueue::new(&inner.interface, data_tx,
-            ENDPOINT, NUM_TRANSFERS, READ_LEN))
+        Ok(TransferQueue::new(endpoint, data_tx, NUM_TRANSFERS, READ_LEN))
     }
 
     fn end_capture(&mut self) -> Result<(), Error> {
@@ -310,12 +322,15 @@ impl BackendHandle for CynthionHandle {
         Ok(())
     }
 
-    fn timestamped_packets(&self, data_rx: mpsc::Receiver<Vec<u8>>)
-        -> Box<dyn PacketIterator>
-    {
+    fn timestamped_packets(
+        &self,
+        data_rx: mpsc::Receiver<Buffer>,
+        reuse_tx: mpsc::Sender<Buffer>,
+    ) -> Box<dyn PacketIterator> {
         Box::new(
             CynthionStream {
-                receiver: data_rx,
+                data_rx,
+                reuse_tx,
                 buffer: VecDeque::new(),
                 padding_due: false,
                 total_clk_cycles: 0,
@@ -372,17 +387,18 @@ impl CynthionInner {
     }
 
     fn write_request(&mut self, request: u8, value: u8) -> Result<(), Error> {
-        let control = Control {
+        let control = ControlOut {
             control_type: ControlType::Vendor,
             recipient: Recipient::Interface,
             request,
             value: u16::from(value),
             index: self.interface.interface_number() as u16,
+            data: &[],
         };
-        let data = &[];
         let timeout = Duration::from_secs(1);
         self.interface
-            .control_out_blocking(control, data, timeout)
+            .control_out(control, timeout)
+            .wait()
             .context("Write request failed")?;
         Ok(())
     }
@@ -404,18 +420,20 @@ impl CynthionHandle {
 }
 
 fn read_byte(interface: &Interface, request: u8) -> Result<u8, Error> {
-    let control = Control {
+    let control = ControlIn {
         control_type: ControlType::Vendor,
         recipient: Recipient::Interface,
         request,
         value: 0,
         index: interface.interface_number() as u16,
+        length: 64,
     };
-    let mut buf = [0; 64];
     let timeout = Duration::from_secs(1);
-    let size = interface
-        .control_in_blocking(control, &mut buf, timeout)
+    let buf = interface
+        .control_in(control, timeout)
+        .wait()
         .context("Failed retrieving supported speeds from device")?;
+    let size = buf.len();
     if size != 1 {
         bail!("Expected 1-byte response, got {size}");
     }
@@ -434,9 +452,13 @@ impl Iterator for CynthionStream {
                 // Yes; return the packet.
                 Some(packet) => return Some(Ok(packet)),
                 // No; wait for more data from the capture thread.
-                None => match self.receiver.recv().ok() {
+                None => match self.data_rx.recv().ok() {
                     // Received more data; add it to the buffer and retry.
-                    Some(bytes) => self.buffer.extend(bytes.iter()),
+                    Some(buffer) => {
+                        self.buffer.extend(buffer.iter());
+                        // Buffer can now be reused.
+                        let _ = self.reuse_tx.send(buffer);
+                    },
                     // Capture has ended, there are no more packets.
                     None => return None
                 }
