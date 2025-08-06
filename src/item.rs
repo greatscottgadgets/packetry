@@ -8,7 +8,9 @@ use std::fmt::Write;
 use anyhow::{Context, Error, bail};
 
 use crate::capture::{
+    CaptureReader,
     CaptureReaderOps,
+    CaptureSnapshotReader,
     DeviceId,
     DeviceVersion,
     EndpointLookup,
@@ -23,47 +25,58 @@ use crate::capture::{
     INVALID_EP_ID,
 };
 use crate::usb::{self, prelude::*, validate_packet};
-use crate::util::{Bytes, RangeLength, fmt_count, fmt_size, titlecase};
+use crate::util::{Bytes, RangeExt, fmt_count, fmt_size, titlecase};
+
+macro_rules! item_source_methods {
+    () => {
+        /// Fetch an item from the source by index, relative to either the root
+        /// of the item tree or to a parent item.
+        fn item(
+            &mut self,
+            parent: Option<&Item>,
+            view_mode: ViewMode,
+            index: u64,
+        ) -> Result<Item, Error>;
+
+        /// Count how many children this item has, and whether it is complete.
+        fn item_children(
+            &mut self,
+            parent: Option<&Item>,
+            view_mode: ViewMode,
+        ) -> Result<(CompletionStatus, u64), Error>;
+
+        /// Fetch a child item by index, relative to a parent item.
+        #[allow(dead_code)]
+        fn child_item(&mut self, parent: &Item, index: u64) -> Result<Item, Error>;
+
+        /// Check whether a newer version of this item is available.
+        fn item_update(&mut self, item: &Item) -> Result<Option<Item>, Error>;
+
+        /// Generate a description for this item, either one line or with detail.
+        fn description(
+            &mut self,
+            item: &Item,
+            detail: bool,
+        ) -> Result<String, Error>;
+
+        /// Generate connecting lines for this item.
+        fn connectors(
+            &mut self,
+            view_mode: ViewMode,
+            item: &Item,
+        ) -> Result<String, Error>;
+
+        /// Get the timestamp of this item.
+        fn timestamp(&mut self, item: &Item) -> Result<Timestamp, Error>;
+    }
+}
 
 pub trait ItemSource<Item, ViewMode> {
-    /// Fetch an item from the source by index, relative to either the root
-    /// of the item tree or to a parent item.
-    fn item(
-        &mut self,
-        parent: Option<&Item>,
-        view_mode: ViewMode,
-        index: u64,
-    ) -> Result<Item, Error>;
+    item_source_methods!();
+}
 
-    /// Count how many children this item has, and whether it is complete.
-    fn item_children(
-        &mut self,
-        parent: Option<&Item>,
-        view_mode: ViewMode,
-    ) -> Result<(CompletionStatus, u64), Error>;
-
-    /// Fetch a child item by index, relative to a parent item.
-    fn child_item(&mut self, parent: &Item, index: u64) -> Result<Item, Error>;
-
-    /// Check whether a newer version of this item is available.
-    fn item_update(&mut self, item: &Item) -> Result<Option<Item>, Error>;
-
-    /// Generate a description for this item, either one line or with detail.
-    fn description(
-        &mut self,
-        item: &Item,
-        detail: bool,
-    ) -> Result<String, Error>;
-
-    /// Generate connecting lines for this item.
-    fn connectors(
-        &mut self,
-        view_mode: ViewMode,
-        item: &Item,
-    ) -> Result<String, Error>;
-
-    /// Get the timestamp of this item.
-    fn timestamp(&mut self, item: &Item) -> Result<Timestamp, Error>;
+pub trait UnfilteredItemSource<Item, ViewMode> {
+    item_source_methods!();
 }
 
 #[derive(Copy, Clone)]
@@ -163,7 +176,7 @@ impl TrafficViewMode {
 pub type DeviceViewMode = ();
 
 impl<T: CaptureReaderOps + EndpointLookup>
-ItemSource<TrafficItem, TrafficViewMode> for T
+UnfilteredItemSource<TrafficItem, TrafficViewMode> for T
 {
     fn item(
         &mut self,
@@ -678,7 +691,9 @@ ItemSource<TrafficItem, TrafficViewMode> for T
     }
 }
 
-impl<T: CaptureReaderOps> ItemSource<DeviceItem, DeviceViewMode> for T {
+impl<T: CaptureReaderOps>
+UnfilteredItemSource<DeviceItem, DeviceViewMode> for T
+{
     fn item(
         &mut self,
         parent: Option<&DeviceItem>,
@@ -1035,14 +1050,82 @@ impl<T: CaptureReaderOps> ItemSource<DeviceItem, DeviceViewMode> for T {
     }
 }
 
+macro_rules! filtered_wrapper {
+    ($capture: ty, $item: ident, $view_mode: ident) => {
+        impl ItemSource<$item, $view_mode> for $capture {
+            fn item(
+                &mut self,
+                parent: Option<&$item>,
+                view_mode: $view_mode,
+                index: u64
+            ) -> Result<$item, Error> {
+                <Self as UnfilteredItemSource<$item, $view_mode>>::
+                    item(self, parent, view_mode, index)
+            }
+
+            fn item_children(
+                &mut self,
+                parent: Option<&$item>,
+                view_mode: $view_mode
+            ) -> Result<(CompletionStatus, u64), Error> {
+                <Self as UnfilteredItemSource<$item, $view_mode>>::
+                    item_children(self, parent, view_mode)
+            }
+
+            fn child_item(&mut self, parent: &$item, index: u64)
+                -> Result<$item, Error>
+            {
+                <Self as UnfilteredItemSource<$item, $view_mode>>::
+                    child_item(self, parent, index)
+            }
+
+            fn item_update(&mut self, item: &$item)
+                -> Result<Option<$item>, Error>
+            {
+                <Self as UnfilteredItemSource<$item, $view_mode>>::
+                    item_update(self, item)
+            }
+
+            fn description(&mut self, item: &$item, detail: bool)
+                -> Result<String, Error>
+            {
+                <Self as UnfilteredItemSource<$item, $view_mode>>::
+                    description(self, item, detail)
+            }
+
+            fn connectors(
+                &mut self,
+                view_mode: $view_mode,
+                item: &$item)
+            -> Result<String, Error>
+            {
+                <Self as UnfilteredItemSource<$item, $view_mode>>::
+                    connectors(self, view_mode, item)
+            }
+
+            fn timestamp(&mut self, item: &$item)
+                -> Result<Timestamp, Error>
+            {
+                <Self as UnfilteredItemSource<$item, $view_mode>>::
+                    timestamp(self, item)
+            }
+        }
+    }
+}
+
+filtered_wrapper!(CaptureReader, TrafficItem, TrafficViewMode);
+filtered_wrapper!(CaptureReader, DeviceItem, DeviceViewMode);
+filtered_wrapper!(CaptureSnapshotReader<'_, '_>, TrafficItem, TrafficViewMode);
+filtered_wrapper!(CaptureSnapshotReader<'_, '_>, DeviceItem, DeviceViewMode);
+
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{ItemSource, TrafficViewMode};
     use std::fs::File;
     use std::io::{BufReader, BufWriter, BufRead, Write};
     use std::path::PathBuf;
     use itertools::Itertools;
-    use crate::capture::{CaptureReader, create_capture};
+    use crate::capture::{CaptureReader, CaptureReaderOps, create_capture};
     use crate::database::CounterSet;
     use crate::decoder::Decoder;
     use crate::file::{GenericLoader, GenericPacket, LoaderItem, PcapLoader};

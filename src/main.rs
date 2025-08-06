@@ -25,6 +25,7 @@ mod capture;
 mod database;
 mod decoder;
 mod file;
+mod filter;
 mod item;
 mod testing;
 mod ui;
