@@ -15,6 +15,7 @@ use crate::database::CounterSet;
 use crate::util::id::Id;
 use crate::util::vec_map::{Key, VecMap};
 
+#[allow(dead_code)]
 pub trait Dump : Sized {
     /// Dump the contents of this data structure to the specified path.
     fn dump(&self, dest: &Path) -> Result<(), Error>;
@@ -24,6 +25,7 @@ pub trait Dump : Sized {
 }
 
 /// Standalone function to restore any type that supports Dump.
+#[allow(dead_code)]
 pub fn restore<T>(db: &mut CounterSet, src: &Path) -> Result<T, Error> where T: Dump {
     T::restore(db, src)
 }

@@ -377,7 +377,7 @@ macro_rules! option {
 }
 
 fn iface_options(meta: &CaptureMetadata)
-    -> Vec<InterfaceDescriptionOption>
+    -> Vec<InterfaceDescriptionOption<'_>>
 {
     use InterfaceDescriptionOption::*;
     // Always store nanosecond resolution.
@@ -390,7 +390,7 @@ fn iface_options(meta: &CaptureMetadata)
 }
 
 fn stats_options(meta: &CaptureMetadata)
-    -> Vec<InterfaceStatisticsOption>
+    -> Vec<InterfaceStatisticsOption<'_>>
 {
     use InterfaceStatisticsOption::*;
     let mut opt = Vec::new();
