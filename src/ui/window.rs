@@ -27,7 +27,7 @@ use gtk::{
 use crate::capture::create_capture;
 use crate::item::TrafficViewMode;
 use crate::ui::{
-    capture::{Capture, CaptureState},
+    capture::Capture,
     power::PowerControl,
     DeviceSelector,
     DeviceWarning,
@@ -167,6 +167,9 @@ impl PacketryWindow {
             stop_off: window.imp().power_stop_off.clone(),
         };
 
+        let filter_sof = window.imp().filter_sof.clone();
+        let filter_nak = window.imp().filter_nak.clone();
+
         let mut traffic_windows = BTreeMap::new();
         traffic_windows.insert(Hierarchical, window.imp().hierarchical.clone());
         traffic_windows.insert(Transactions, window.imp().transactions.clone());
@@ -177,8 +180,15 @@ impl PacketryWindow {
         let vertical_panes = window.imp().vertical_panes.clone();
 
         let separator = gtk::Separator::new(Orientation::Horizontal);
+        let filter_separator = gtk::Separator::new(Orientation::Horizontal);
 
         let progress_bar = gtk::ProgressBar::builder()
+            .show_text(true)
+            .text("")
+            .hexpand(true)
+            .build();
+
+        let filter_progress_bar = gtk::ProgressBar::builder()
             .show_text(true)
             .text("")
             .hexpand(true)
@@ -196,9 +206,12 @@ impl PacketryWindow {
                 Recording::new(reader.clone()))),
             capture: Capture {
                 reader,
-                state: CaptureState::Complete,
+                snapshot: None,
+                filter: None,
+                filter_snapshot: None,
             },
             snapshot_rx: None,
+            filter_thread: None,
             selector,
             power,
             file_name: None,
@@ -211,7 +224,9 @@ impl PacketryWindow {
             endpoint_count: 2,
             show_progress: None,
             progress_bar,
+            filter_progress_bar,
             separator,
+            filter_separator,
             vbox,
             vertical_panes,
             scan_button,
@@ -219,6 +234,8 @@ impl PacketryWindow {
             save_button,
             capture_button,
             stop_button,
+            filter_sof,
+            filter_nak,
             status_label,
             warning,
             metadata_action,
@@ -308,6 +325,10 @@ mod imp {
         pub power_start_on: TemplateChild<CheckButton>,
         #[template_child]
         pub power_stop_off: TemplateChild<CheckButton>,
+        #[template_child]
+        pub filter_sof: TemplateChild<CheckButton>,
+        #[template_child]
+        pub filter_nak: TemplateChild<CheckButton>,
     }
 
     #[glib::object_subclass]

@@ -35,7 +35,7 @@ use crate::util::{
     rcu::SingleWriterRcu,
     vec_map::{Key, VecMap},
     Bytes,
-    RangeLength,
+    RangeExt,
     fmt_count,
     fmt_size,
 };
@@ -290,6 +290,14 @@ impl Endpoint {
     fn address(&self) -> EndpointAddr {
         EndpointAddr::from_parts(self.number(), self.direction())
     }
+
+    pub fn key(&self) -> EndpointKey {
+        EndpointKey {
+            dev_addr: self.device_address(),
+            ep_num: self.number(),
+            direction: self.direction(),
+        }
+    }
 }
 
 impl std::fmt::Display for Endpoint {
@@ -335,6 +343,7 @@ pub const INVALID_EP_NUM: EndpointNum = EndpointNum(0x10);
 pub const FRAMING_EP_NUM: EndpointNum = EndpointNum(0x11);
 pub const INVALID_EP_ID: EndpointId = EndpointId::constant(0);
 pub const FRAMING_EP_ID: EndpointId = EndpointId::constant(1);
+pub const DEFAULT_DEV_ID: DeviceId = DeviceId::constant(0);
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum EndpointType {
@@ -358,7 +367,7 @@ impl std::fmt::Display for EndpointType {
 
 type EndpointDetails = (usb::EndpointType, Option<usize>);
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct EndpointKey {
     pub dev_addr: DeviceAddr,
     pub direction: Direction,
@@ -907,7 +916,7 @@ pub struct CaptureSnapshot {
     db: Snapshot,
     device_data: Arc<VecMap<DeviceId, Arc<DeviceData>>>,
     endpoint_index: Arc<VecMap<EndpointKey, EndpointId>>,
-    complete: bool,
+    pub complete: bool,
 }
 
 /// Handle for access to a capture at a snapshot.
@@ -1860,6 +1869,44 @@ impl CaptureReaderOps for CaptureSnapshotReader<'_, '_> {
     }
 }
 
+#[derive(Clone)]
+pub struct CaptureStats {
+    pub devices: u64,
+    pub endpoints: u64,
+    pub items: u64,
+    pub transactions: u64,
+    pub packets: u64,
+}
+
+impl CaptureStats {
+    pub fn from<C: CaptureReaderOps>(cap: &mut C) -> CaptureStats {
+        CaptureStats {
+            devices: cap.device_count().saturating_sub(1),
+            endpoints: cap.endpoint_count().saturating_sub(2),
+            items: cap.item_count(),
+            transactions: cap.transaction_count(),
+            packets: cap.packet_count(),
+        }
+    }
+
+    pub fn total_filterable(&self) -> u64 {
+        self.packets + self.transactions + self.items + self.devices
+    }
+}
+
+impl std::fmt::Display for CaptureStats {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>)
+        -> Result<(), std::fmt::Error>
+    {
+        write!(f, "{} devices, {} endpoints, {} transactions, {} packets",
+            fmt_count(self.devices),
+            fmt_count(self.endpoints),
+            fmt_count(self.transactions),
+            fmt_count(self.packets)
+        )
+    }
+}
+
 impl Dump for CaptureReader {
     fn dump(&self, dest: &Path) -> Result<(), Error> {
         let _ = std::fs::remove_dir_all(dest);
@@ -1993,22 +2040,34 @@ pub mod prelude {
         create_capture,
         create_endpoint,
         CaptureReader,
+        CaptureReaderOps,
+        CaptureShared,
+        CaptureSnapshot,
+        CaptureSnapshotReader,
+        CaptureStats,
         CaptureWriter,
         CaptureMetadata,
         Device,
         DeviceId,
         DeviceData,
         Endpoint,
+        EndpointByteCount,
+        EndpointDataEvent,
         EndpointId,
         EndpointKey,
         EndpointLookup,
         EndpointType,
         EndpointState,
         EndpointReader,
+        EndpointReaderOps,
+        EndpointShared,
+        EndpointSnapshotReader,
         EndpointWriter,
         EndpointTransactionId,
         EndpointGroupId,
+        PacketByteId,
         PacketId,
+        Timestamp,
         TrafficItemId,
         TransactionId,
         GroupId,
@@ -2019,5 +2078,6 @@ pub mod prelude {
         FRAMING_EP_NUM,
         INVALID_EP_ID,
         FRAMING_EP_ID,
+        DEFAULT_DEV_ID,
     };
 }

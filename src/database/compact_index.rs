@@ -18,7 +18,14 @@ use crate::database::{
         data_stream, DataReader, DataWriter, DataIterator, DataReaderOps},
     index_stream::{index_stream, IndexReader, IndexWriter, IndexIterator},
 };
-use crate::util::{dump::{Dump, restore}, id::Id, fmt_count, fmt_size};
+
+use crate::util::{
+    dump::{Dump, restore},
+    id::Id,
+    RangeExt,
+    fmt_count,
+    fmt_size
+};
 
 type Offset = Id<u8>;
 type SegmentId = Id<u8>;
@@ -366,7 +373,7 @@ where
         in
             multizip((
                 // The ID of each segment.
-                (seg_range.start.value..seg_range.end.value).map(SegmentId::from),
+                seg_range.iter(),
                 // The starting position of each segment.
                 segment_starts.iter(),
                 // The base value of each segment.
