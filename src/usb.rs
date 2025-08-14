@@ -1141,6 +1141,7 @@ pub struct Interface {
 }
 
 pub struct Configuration {
+    #[allow(dead_code)]
     pub bytes: Vec<u8>,
     pub descriptor: ConfigDescriptor,
     pub functions: BTreeMap<u8, Function>,

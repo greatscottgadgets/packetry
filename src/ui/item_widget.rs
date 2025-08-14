@@ -72,7 +72,7 @@ impl ItemWidget {
     }
 
     /// Fetch the Expander from the widget.
-    pub fn expander(&self) -> RefMut<Expander> {
+    pub fn expander(&self) -> RefMut<'_, Expander> {
         self.imp().expander.borrow_mut()
     }
 
