@@ -163,6 +163,14 @@ jobs:
       - name: Check all feature combinations are buildable
         run: cargo check-all-features
 
+      - name: Build fuzzer
+        run: cargo +nightly rustc --features fuzzer --example fuzzer -- -C passes='sancov-module' -C llvm-args='-sanitizer-coverage-level=3' -C llvm-args='-sanitizer-coverage-inline-8bit-counters' -Z sanitizer=address
+        if: runner.os != 'Windows'
+
+      - name: Run fuzzer
+        run: target/debug/examples/fuzzer -seed=31337 -runs=10000
+        if: runner.os != 'Windows'
+
       - name: Compile glib schemas (Windows)
         run: |
           & "$env:VCPKG_INSTALLED_DIR/x64-windows/tools/glib/glib-compile-schemas.exe" "$env:VCPKG_INSTALLED_DIR/x64-windows/share/glib-2.0/schemas"
