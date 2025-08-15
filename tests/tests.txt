@@ -1,3 +1,4 @@
+address-reuse
 analyzer-test-bad-cable
 bad-crcs
 bad-descriptor-length
