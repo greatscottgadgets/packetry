@@ -273,6 +273,7 @@ impl TransactionState {
 
 enum TransactionSideEffect {
     NoEffect,
+    NewDevice(DeviceAddr),
     PendingData(Vec<u8>),
     IndexData(usize, Option<EndpointTransactionId>)
 }
@@ -375,8 +376,18 @@ impl EndpointData {
                         (In,  true,  IN,    OUT) |
                         (Out, true,  OUT,   IN ) => {
                             if success && complete {
-                                dev_data.decode_request(
-                                    fields, &self.payload)?;
+                                let req_type = fields.type_fields.request_type();
+                                let req = StandardRequest::from(fields.request);
+                                if matches!((req_type, req), (
+                                    RequestType::Standard,
+                                    StandardRequest::SetAddress,
+                                )) {
+                                    let dev_addr = DeviceAddr(fields.value as u8);
+                                    effect = NewDevice(dev_addr)
+                                } else {
+                                    dev_data.decode_request(
+                                        fields, &self.payload)?;
+                                }
                                 // Status stage complete.
                                 Done
                             } else {
@@ -870,6 +881,9 @@ impl Decoder {
         let ep_data = &mut self.endpoint_data[endpoint_id];
         match effect {
             NoEffect => {},
+            NewDevice(dev_addr) => {
+                self.add_device(dev_addr)?;
+            },
             PendingData(data) => {
                 let ep_transaction_id = transaction.ep_transaction_id
                     .context("Pending data but no endpoint transaction ID set")?;

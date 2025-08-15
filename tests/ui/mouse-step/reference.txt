@@ -331,6 +331,8 @@ At traffic-transactions row 13:
 + IN transaction on 0.0 with no data, ACK
 At traffic-packets row 33:
 + ACK packet
+At devices row 0:
++ Device 4: Unknown
 Updating after 35 packets decoded
 At traffic-hierarchical row 25:
 + Incomplete control transfer on device 4
@@ -384,8 +386,6 @@ At traffic-transactions row 14:
 + SETUP transaction on 4.0
 At traffic-packets row 34:
 + SETUP packet on 4.0, CRC 05
-At devices row 0:
-+ Device 4: Unknown
 Updating after 36 packets decoded
 At traffic-transactions row 14:
 - SETUP transaction on 4.0
