@@ -571,11 +571,15 @@ impl Decoder {
     {
         Ok(match self.capture.packet_endpoint(pid, packet) {
             Ok(id) => id,
-            Err(key) => {
+            Err((dev_addr, ep_addr)) => {
                 let id = self.add_endpoint(
-                    key.dev_addr, key.ep_num, key.direction)?;
-                self.capture.shared.endpoint_index
-                    .update(|map| map.set(key, id));
+                    dev_addr, ep_addr.number(), ep_addr.direction())?;
+                self.capture.shared.endpoint_index.update(|map| {
+                    if map.get(dev_addr).is_none() {
+                        map.set(dev_addr, VecMap::new())
+                    }
+                    map[dev_addr].set(ep_addr, id);
+                });
                 id
             }
         })
@@ -717,6 +721,9 @@ impl Decoder {
         self.device_index.set(address, device_id);
         self.capture.shared.device_data.update(|device_data| {
             device_data.set(device_id, Arc::new(DeviceData::default()));
+        });
+        self.capture.shared.endpoint_index.update(|endpoint_index| {
+            endpoint_index.set(address, VecMap::new());
         });
         Ok(device_id)
     }
