@@ -273,6 +273,7 @@ impl TransactionState {
 
 enum TransactionSideEffect {
     NoEffect,
+    NewDevice(DeviceAddr),
     PendingData(Vec<u8>),
     IndexData(usize, Option<EndpointTransactionId>)
 }
@@ -375,8 +376,18 @@ impl EndpointData {
                         (In,  true,  IN,    OUT) |
                         (Out, true,  OUT,   IN ) => {
                             if success && complete {
-                                dev_data.decode_request(
-                                    fields, &self.payload)?;
+                                let req_type = fields.type_fields.request_type();
+                                let req = StandardRequest::from(fields.request);
+                                if matches!((req_type, req), (
+                                    RequestType::Standard,
+                                    StandardRequest::SetAddress,
+                                )) {
+                                    let dev_addr = DeviceAddr(fields.value as u8);
+                                    effect = NewDevice(dev_addr)
+                                } else {
+                                    dev_data.decode_request(
+                                        fields, &self.payload)?;
+                                }
                                 // Status stage complete.
                                 Done
                             } else {
@@ -571,11 +582,15 @@ impl Decoder {
     {
         Ok(match self.capture.packet_endpoint(pid, packet) {
             Ok(id) => id,
-            Err(key) => {
+            Err((dev_addr, ep_addr)) => {
                 let id = self.add_endpoint(
-                    key.dev_addr, key.ep_num, key.direction)?;
-                self.capture.shared.endpoint_index
-                    .update(|map| map.set(key, id));
+                    dev_addr, ep_addr.number(), ep_addr.direction())?;
+                self.capture.shared.endpoint_index.update(|map| {
+                    if map.get(dev_addr).is_none() {
+                        map.set(dev_addr, VecMap::new())
+                    }
+                    map[dev_addr].set(ep_addr, id);
+                });
                 id
             }
         })
@@ -717,6 +732,9 @@ impl Decoder {
         self.device_index.set(address, device_id);
         self.capture.shared.device_data.update(|device_data| {
             device_data.set(device_id, Arc::new(DeviceData::default()));
+        });
+        self.capture.shared.endpoint_index.update(|endpoint_index| {
+            endpoint_index.set(address, VecMap::new());
         });
         Ok(device_id)
     }
@@ -863,6 +881,9 @@ impl Decoder {
         let ep_data = &mut self.endpoint_data[endpoint_id];
         match effect {
             NoEffect => {},
+            NewDevice(dev_addr) => {
+                self.add_device(dev_addr)?;
+            },
             PendingData(data) => {
                 let ep_transaction_id = transaction.ep_transaction_id
                     .context("Pending data but no endpoint transaction ID set")?;
