@@ -793,6 +793,11 @@ impl Decoder {
         };
 
         if let Some(endpoint_id) = start_early {
+            // If there was already an early-started group, end it.
+            let ep_data = &mut self.endpoint_data[endpoint_id];
+            if let Some(ep_group_id) = ep_data.early_start {
+                ep_data.ended = Some(ep_group_id);
+            }
             let ep_group_id =
                 self.add_group(endpoint_id, transaction)?;
             let ep_data = &mut self.endpoint_data[endpoint_id];
