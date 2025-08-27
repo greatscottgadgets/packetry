@@ -1,0 +1,11 @@
+--2025-08-27 20:05:08--  https://raw.githubusercontent.com/rust-mobile/ndk/refs/heads/master/LICENSE-MIT
+Resolving raw.githubusercontent.com (raw.githubusercontent.com)... 185.199.108.133, 185.199.111.133, 185.199.110.133, ...
+Connecting to raw.githubusercontent.com (raw.githubusercontent.com)|185.199.108.133|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 1036 (1.0K) [text/plain]
+Saving to: ‘LICENSE-MIT’
+
+     0K .                                                     100% 1.53M=0.001s
+
+2025-08-27 20:05:08 (1.53 MB/s) - ‘LICENSE-MIT’ saved [1036/1036]
+
