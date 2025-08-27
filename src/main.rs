@@ -44,6 +44,7 @@ use ui::{
     activate,
     display_error,
     open,
+    save_settings,
     stop_operation
 };
 use version::{version, version_info};
@@ -142,5 +143,6 @@ fn main() {
             application.run();
             display_error(stop_operation());
         }
+        save_settings();
     }
 }

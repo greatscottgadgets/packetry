@@ -29,6 +29,7 @@ use crate::item::TrafficViewMode;
 use crate::ui::{
     capture::{Capture, CaptureState},
     power::PowerControl,
+    settings::Settings,
     DeviceSelector,
     DeviceWarning,
     FileAction,
@@ -191,6 +192,7 @@ impl PacketryWindow {
 
         let ui = UserInterface {
             window,
+            settings: Settings::load(),
             #[cfg(any(test, feature="record-ui-test"))]
             recording: Rc::new(RefCell::new(
                 Recording::new(reader.clone()))),
