@@ -5,6 +5,7 @@ use std::collections::BTreeMap;
 use std::ffi::OsStr;
 use std::io::{Read, Write};
 use std::ops::Range;
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{Sender, Receiver, channel};
 use std::sync::Arc;
@@ -658,15 +659,26 @@ fn choose_capture_file(action: FileAction) -> Result<(), Error> {
 fn start_file(action: FileAction, file: gio::File) -> Result<(), Error> {
     use FileAction::*;
     use FileFormat::*;
-    let basename = match file.basename() {
+    let (format, file, name) = match file.basename() {
         None => bail!("Could not determine format without file name"),
-        Some(name) => name,
-    };
-    let format = match basename.extension().and_then(OsStr::to_str) {
-        Some("pcap") => Pcap,
-        Some("pcapng") => PcapNg,
-        _ => bail!("Could not determine format from file name '{}'",
-                   basename.display())
+        Some(name) => match name.extension().and_then(OsStr::to_str) {
+            Some(ext) => match ext.to_lowercase().as_str() {
+                "pcap" => (Pcap, file, name),
+                "pcapng" => (PcapNg, file, name),
+                ext => bail!(
+                    "Could not determine format from extension '{ext}'")
+            },
+            None => match action {
+                Load => bail!(
+                    "Could not determine format from file name '{}'",
+                    name.display()
+                ),
+                Save => {
+                    let (file, name) = add_extension(file, name, "pcapng");
+                    (PcapNg, file, name)
+                }
+            }
+        }
     };
     let writer = if action == Load {
         Some(reset_capture()?)
@@ -690,7 +702,7 @@ fn start_file(action: FileAction, file: gio::File) -> Result<(), Error> {
         ui.vbox.insert_child_after(&ui.separator, Some(&ui.vertical_panes));
         ui.vbox.insert_child_after(&ui.progress_bar, Some(&ui.separator));
         ui.show_progress = Some(action);
-        ui.file_name = Some(basename.to_string_lossy().to_string());
+        ui.file_name = Some(name.to_string_lossy().to_string());
         ui.snapshot_rx = Some(snapshot_rx);
         let capture = ui.capture.reader.clone();
         let packet_count = capture.packet_count();
@@ -831,6 +843,29 @@ fn save_file(file: gio::File,
         Pcap => save::<_, PcapSaver<_>>(capture, dest),
         PcapNg => save::<_, PcapNgSaver<_>>(capture, dest),
     }
+}
+
+fn add_extension_if_missing(file: gio::File, extension: &str) -> gio::File {
+    match file.basename() {
+        Some(name) if name.extension().is_none() => {
+            let (file, _name) = add_extension(file, name, extension);
+            file
+        },
+        _ => file
+    }
+}
+
+fn add_extension(
+    file: gio::File,
+    name: PathBuf,
+    extension: &str
+) -> (gio::File, PathBuf) {
+    let name = name.with_extension(extension);
+    let file = match file.parent() {
+        Some(parent) => parent.child(&name),
+        None => gio::File::for_path(&name),
+    };
+    (file, name)
 }
 
 pub fn stop_operation() -> Result<(), Error> {
@@ -1097,6 +1132,7 @@ fn save_data_transfer_payload(
 ) -> Result<(), Error> {
     with_ui(|ui| {
         let cap = &mut ui.capture.reader;
+        let file = add_extension_if_missing(file, "bin");
         let mut dest = file
             .replace(None, false, FileCreateFlags::NONE, Cancellable::NONE)?
             .into_write();
@@ -1135,6 +1171,7 @@ fn save_data(
     description: &'static str,
     data: Vec<u8>,
 ) -> Result<(), Error> {
+    let file = add_extension_if_missing(file, "bin");
     let mut dest = file
         .replace(None, false, FileCreateFlags::NONE, Cancellable::NONE)?
         .into_write();
