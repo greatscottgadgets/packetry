@@ -170,12 +170,7 @@ impl DeviceSelector {
             .iter()
             .map(T::as_ref)
             .collect::<Vec<_>>();
-        if let Some(model) = dropdown.model() {
-            let num_items = model.n_items();
-            if let Ok(list) = model.downcast::<StringList>() {
-                list.splice(0, num_items, strings.as_slice());
-            }
-        }
+        dropdown.set_model(Some(&StringList::new(&strings)));
     }
 }
 
