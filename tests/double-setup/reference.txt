@@ -1,0 +1,12 @@
+  ○─ Polling 1 times for unidentified transfer on endpoint 43.4 OUT
+  ├─── SETUP transaction on 43.4
+  │    └── SETUP packet on 43.4, CRC 1F
+○─┼─ 1 invalid groups
+└─┼─── 1 malformed packet
+  │    └── Malformed 0-byte packet
+  ○─ Polling 1 times for unidentified transfer on endpoint 43.4 OUT
+  └─── SETUP transaction on 43.4
+       └── SETUP packet on 43.4, CRC 1F
+  ○─ Polling 1 times for unidentified transfer on endpoint 43.4 OUT
+  └─── SETUP transaction on 43.4
+       └── SETUP packet on 43.4, CRC 1F

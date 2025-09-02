@@ -34,7 +34,7 @@ use crate::util::{
     dump::{Dump, restore},
     id::Id,
     rcu::SingleWriterRcu,
-    vec_map::{Key, VecMap},
+    vec_map::VecMap,
     Bytes,
     RangeLength,
     fmt_count,
@@ -77,7 +77,7 @@ pub struct CaptureMetadata {
 pub struct CaptureShared {
     pub metadata: ArcSwap<CaptureMetadata>,
     pub device_data: ArcSwap<VecMap<DeviceId, Arc<DeviceData>>>,
-    pub endpoint_index: ArcSwap<VecMap<EndpointKey, EndpointId>>,
+    pub endpoint_index: ArcSwap<VecMap<DeviceAddr, VecMap<EndpointAddr, EndpointId>>>,
     pub endpoint_readers: ArcSwap<VecMap<EndpointId, Arc<EndpointReader>>>,
     pub complete: AtomicBool,
 }
@@ -377,29 +377,6 @@ impl std::fmt::Display for EndpointType {
 }
 
 type EndpointDetails = (usb::EndpointType, Option<usize>);
-
-#[derive(Copy, Clone)]
-pub struct EndpointKey {
-    pub dev_addr: DeviceAddr,
-    pub direction: Direction,
-    pub ep_num: EndpointNum,
-}
-
-impl Key for EndpointKey {
-    fn id(self) -> usize {
-        self.dev_addr.0 as usize * 32 +
-            self.direction as usize * 16 +
-                self.ep_num.0 as usize
-    }
-
-    fn key(id: usize) -> EndpointKey {
-        EndpointKey {
-            dev_addr: DeviceAddr((id / 32) as u8),
-            direction: Direction::from(((id / 16) % 2) as u8),
-            ep_num: EndpointNum((id % 16) as u8),
-        }
-    }
-}
 
 #[derive(Default)]
 pub struct DeviceData {
@@ -956,7 +933,7 @@ impl CaptureWriter {
 pub struct CaptureSnapshot {
     db: Snapshot,
     device_data: Arc<VecMap<DeviceId, Arc<DeviceData>>>,
-    endpoint_index: Arc<VecMap<EndpointKey, EndpointId>>,
+    endpoint_index: Arc<VecMap<DeviceAddr, VecMap<EndpointAddr, EndpointId>>>,
     complete: bool,
 }
 
@@ -964,7 +941,7 @@ pub struct CaptureSnapshot {
 pub struct CaptureSnapshotReader<'r, 's> {
     endpoint_snapshots: VecMap<EndpointId, EndpointSnapshotReader<'r, 's>>,
     device_data: &'s Arc<VecMap<DeviceId, Arc<DeviceData>>>,
-    endpoint_index: &'s Arc<VecMap<EndpointKey, EndpointId>>,
+    endpoint_index: &'s Arc<VecMap<DeviceAddr, VecMap<EndpointAddr, EndpointId>>>,
     packet_data: DataSnapshot<'r, 's, u8, PACKET_DATA_BLOCK_SIZE>,
     packet_index: CompactSnapshot<'r, 's, PacketId, PacketByteId>,
     packet_times: CompactSnapshot<'r, 's, PacketId, Timestamp>,
@@ -1447,10 +1424,14 @@ pub trait CaptureReaderOps {
 
 pub trait EndpointLookup {
 
-    fn endpoint_lookup(&self, key: EndpointKey) -> Option<EndpointId>;
+    fn endpoint_lookup(
+        &self,
+        dev_addr: DeviceAddr,
+        ep_addr: EndpointAddr,
+    ) -> Option<EndpointId>;
 
     fn packet_endpoint(&self, pid: PID, packet: &[u8])
-        -> Result<EndpointId, EndpointKey>
+        -> Result<EndpointId, (DeviceAddr, EndpointAddr)>
     {
         match PacketFields::from_packet(packet) {
             PacketFields::SOF(_) => Ok(FRAMING_EP_ID),
@@ -1465,14 +1446,10 @@ pub trait EndpointLookup {
                     (_, PID::PING)  => Direction::Out,
                     _ => panic!("PID {pid} does not indicate a direction")
                 };
-                let key = EndpointKey {
-                    dev_addr,
-                    ep_num,
-                    direction
-                };
-                match self.endpoint_lookup(key) {
+                let ep_addr = EndpointAddr::from_parts(ep_num, direction);
+                match self.endpoint_lookup(dev_addr, ep_addr) {
                     Some(id) => Ok(id),
-                    None => Err(key),
+                    None => Err((dev_addr, ep_addr)),
                 }
             },
             _ => Ok(INVALID_EP_ID),
@@ -1481,20 +1458,43 @@ pub trait EndpointLookup {
 }
 
 impl EndpointLookup for CaptureWriter {
-    fn endpoint_lookup(&self, key: EndpointKey) -> Option<EndpointId> {
-        self.shared.endpoint_index.load().get(key).copied()
+    fn endpoint_lookup(
+        &self,
+        dev_addr: DeviceAddr,
+        ep_addr: EndpointAddr
+    ) -> Option<EndpointId> {
+        self.shared.endpoint_index
+            .load()
+            .get(dev_addr)
+            .and_then(|ep_index| ep_index.get(ep_addr))
+            .copied()
     }
 }
 
 impl EndpointLookup for CaptureReader {
-    fn endpoint_lookup(&self, key: EndpointKey) -> Option<EndpointId> {
-        self.shared.endpoint_index.load().get(key).copied()
+    fn endpoint_lookup(
+        &self,
+        dev_addr: DeviceAddr,
+        ep_addr: EndpointAddr
+    ) -> Option<EndpointId> {
+        self.shared.endpoint_index
+            .load()
+            .get(dev_addr)
+            .and_then(|ep_index| ep_index.get(ep_addr))
+            .copied()
     }
 }
 
 impl EndpointLookup for CaptureSnapshotReader<'_, '_> {
-    fn endpoint_lookup(&self, key: EndpointKey) -> Option<EndpointId> {
-        self.endpoint_index.get(key).copied()
+    fn endpoint_lookup(
+        &self,
+        dev_addr: DeviceAddr,
+        ep_addr: EndpointAddr
+    ) -> Option<EndpointId> {
+        self.endpoint_index
+            .get(dev_addr)
+            .and_then(|ep_index| ep_index.get(ep_addr))
+            .copied()
     }
 }
 
@@ -2133,7 +2133,6 @@ pub mod prelude {
         Endpoint,
         EndpointDataEvent,
         EndpointId,
-        EndpointKey,
         EndpointLookup,
         EndpointType,
         EndpointState,

@@ -1,0 +1,1020 @@
+  ○─── Getting device descriptor #0 for device 0, reading 18 of 64 requested bytes
+  ├───── SETUP transaction on 0.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 40, 00]
+  │      ├── SETUP packet on 0.0, CRC 02
+  │      ├── DATA0 packet with CRC 94DD and 8 data bytes: [80, 06, 00, 01, 00, 00, 40, 00]
+  │      └── ACK packet
+  ├───── IN transaction on 0.0, NAK
+  │      ├── IN packet on 0.0, CRC 02
+  │      └── NAK packet (22 times)
+  ├───── IN transaction on 0.0 with 18 data bytes, ACK: [12, 01, 00, 02, 00, 00, 00, 40, AC, 05, A8, 12, 04, 08, 01, 02, 03, 04]
+  │      ├── IN packet on 0.0, CRC 02
+  │      ├── DATA1 packet with CRC 4E2C and 18 data bytes: [12, 01, 00, 02, 00, 00, 00, 40, AC, 05, A8, 12, 04, 08, 01, 02, 03, 04]
+  │      └── ACK packet
+  └───── OUT transaction on 0.0 with no data, ACK
+         ├── OUT packet on 0.0, CRC 02
+         ├── DATA1 packet with CRC 0000 and no data
+         └── ACK packet
+ ○──── 94 SOF groups
+ ├────── 779 SOF packets
+ │       ├── SOF packet with frame number 509, CRC 01
+ │       ├── SOF packet with frame number 559, CRC 18
+ │       ├── SOF packet with frame number 560, CRC 05 (8 times)
+ │       ├── SOF packet with frame number 561, CRC 1A (8 times)
+ │       ├── SOF packet with frame number 562, CRC 12 (8 times)
+ │       ├── SOF packet with frame number 563, CRC 0D (8 times)
+ │       ├── SOF packet with frame number 564, CRC 02 (8 times)
+ │       ├── SOF packet with frame number 565, CRC 1D (8 times)
+ │       ├── SOF packet with frame number 566, CRC 15 (8 times)
+ │       ├── SOF packet with frame number 567, CRC 0A (8 times)
+ │       ├── SOF packet with frame number 568, CRC 0B (8 times)
+ │       ├── SOF packet with frame number 569, CRC 14 (8 times)
+ │       ├── SOF packet with frame number 570, CRC 1C (8 times)
+ │       ├── SOF packet with frame number 571, CRC 03 (8 times)
+ │       ├── SOF packet with frame number 572, CRC 0C (8 times)
+ │       ├── SOF packet with frame number 573, CRC 13 (8 times)
+ │       ├── SOF packet with frame number 574, CRC 1B (8 times)
+ │       ├── SOF packet with frame number 575, CRC 04 (8 times)
+ │       ├── SOF packet with frame number 576, CRC 03 (8 times)
+ │       ├── SOF packet with frame number 577, CRC 1C (8 times)
+ │       ├── SOF packet with frame number 578, CRC 14 (8 times)
+ │       ├── SOF packet with frame number 579, CRC 0B (8 times)
+ │       ├── SOF packet with frame number 580, CRC 04 (8 times)
+ │       ├── SOF packet with frame number 581, CRC 1B (8 times)
+ │       ├── SOF packet with frame number 582, CRC 13 (8 times)
+ │       ├── SOF packet with frame number 583, CRC 0C (8 times)
+ │       ├── SOF packet with frame number 584, CRC 0D (8 times)
+ │       ├── SOF packet with frame number 585, CRC 12 (8 times)
+ │       ├── SOF packet with frame number 586, CRC 1A (8 times)
+ │       ├── SOF packet with frame number 587, CRC 05 (8 times)
+ │       ├── SOF packet with frame number 588, CRC 0A (8 times)
+ │       ├── SOF packet with frame number 589, CRC 15 (8 times)
+ │       ├── SOF packet with frame number 590, CRC 1D (8 times)
+ │       ├── SOF packet with frame number 591, CRC 02 (8 times)
+ │       ├── SOF packet with frame number 592, CRC 1F (8 times)
+ │       ├── SOF packet with frame number 593, CRC 00 (8 times)
+ │       ├── SOF packet with frame number 594, CRC 08 (8 times)
+ │       ├── SOF packet with frame number 595, CRC 17 (8 times)
+ │       ├── SOF packet with frame number 596, CRC 18 (8 times)
+ │       ├── SOF packet with frame number 597, CRC 07 (8 times)
+ │       ├── SOF packet with frame number 598, CRC 0F (8 times)
+ │       ├── SOF packet with frame number 599, CRC 10 (8 times)
+ │       ├── SOF packet with frame number 600, CRC 11 (8 times)
+ │       ├── SOF packet with frame number 601, CRC 0E (8 times)
+ │       ├── SOF packet with frame number 602, CRC 06 (8 times)
+ │       ├── SOF packet with frame number 603, CRC 19 (8 times)
+ │       ├── SOF packet with frame number 604, CRC 16 (8 times)
+ │       ├── SOF packet with frame number 605, CRC 09 (8 times)
+ │       ├── SOF packet with frame number 606, CRC 01 (8 times)
+ │       ├── SOF packet with frame number 607, CRC 1E (8 times)
+ │       ├── SOF packet with frame number 608, CRC 12 (8 times)
+ │       ├── SOF packet with frame number 609, CRC 0D (8 times)
+ │       ├── SOF packet with frame number 610, CRC 05 (8 times)
+ │       ├── SOF packet with frame number 611, CRC 1A (8 times)
+ │       ├── SOF packet with frame number 612, CRC 15 (8 times)
+ │       ├── SOF packet with frame number 613, CRC 0A (8 times)
+ │       ├── SOF packet with frame number 614, CRC 02 (8 times)
+ │       ├── SOF packet with frame number 615, CRC 1D (8 times)
+ │       ├── SOF packet with frame number 616, CRC 1C (8 times)
+ │       ├── SOF packet with frame number 617, CRC 03 (8 times)
+ │       ├── SOF packet with frame number 618, CRC 0B (8 times)
+ │       ├── SOF packet with frame number 619, CRC 14 (8 times)
+ │       ├── SOF packet with frame number 620, CRC 1B (8 times)
+ │       ├── SOF packet with frame number 621, CRC 04 (8 times)
+ │       ├── SOF packet with frame number 622, CRC 0C (8 times)
+ │       ├── SOF packet with frame number 623, CRC 13 (8 times)
+ │       ├── SOF packet with frame number 624, CRC 0E (8 times)
+ │       ├── SOF packet with frame number 625, CRC 11 (8 times)
+ │       ├── SOF packet with frame number 626, CRC 19 (8 times)
+ │       ├── SOF packet with frame number 627, CRC 06 (8 times)
+ │       ├── SOF packet with frame number 628, CRC 09 (8 times)
+ │       ├── SOF packet with frame number 629, CRC 16 (8 times)
+ │       ├── SOF packet with frame number 630, CRC 1E (8 times)
+ │       ├── SOF packet with frame number 631, CRC 01 (8 times)
+ │       ├── SOF packet with frame number 632, CRC 00 (8 times)
+ │       ├── SOF packet with frame number 633, CRC 1F (8 times)
+ │       ├── SOF packet with frame number 634, CRC 17 (8 times)
+ │       ├── SOF packet with frame number 635, CRC 08 (8 times)
+ │       ├── SOF packet with frame number 636, CRC 07 (8 times)
+ │       ├── SOF packet with frame number 637, CRC 18 (8 times)
+ │       ├── SOF packet with frame number 638, CRC 10 (8 times)
+ │       ├── SOF packet with frame number 639, CRC 0F (8 times)
+ │       ├── SOF packet with frame number 640, CRC 1E (8 times)
+ │       ├── SOF packet with frame number 641, CRC 01 (8 times)
+ │       ├── SOF packet with frame number 642, CRC 09 (8 times)
+ │       ├── SOF packet with frame number 643, CRC 16 (8 times)
+ │       ├── SOF packet with frame number 644, CRC 19 (8 times)
+ │       ├── SOF packet with frame number 645, CRC 06 (8 times)
+ │       ├── SOF packet with frame number 646, CRC 0E (8 times)
+ │       ├── SOF packet with frame number 647, CRC 11 (8 times)
+ │       ├── SOF packet with frame number 648, CRC 10 (8 times)
+ │       ├── SOF packet with frame number 649, CRC 0F (8 times)
+ │       ├── SOF packet with frame number 650, CRC 07 (8 times)
+ │       ├── SOF packet with frame number 651, CRC 18 (8 times)
+ │       ├── SOF packet with frame number 652, CRC 17 (8 times)
+ │       ├── SOF packet with frame number 653, CRC 08 (8 times)
+ │       ├── SOF packet with frame number 654, CRC 00 (8 times)
+ │       ├── SOF packet with frame number 655, CRC 1F (8 times)
+ │       ├── SOF packet with frame number 656, CRC 02 (8 times)
+ │       └── SOF packet with frame number 657, CRC 1D
+ ├────── 1 SOF packets
+ │       └── SOF packet with frame number 657, CRC 1D
+ ├────── 239 SOF packets
+ │       ├── SOF packet with frame number 657, CRC 1D (6 times)
+ │       ├── SOF packet with frame number 658, CRC 15 (8 times)
+ │       ├── SOF packet with frame number 659, CRC 0A (8 times)
+ │       ├── SOF packet with frame number 660, CRC 05 (8 times)
+ │       ├── SOF packet with frame number 661, CRC 1A (8 times)
+ │       ├── SOF packet with frame number 662, CRC 12 (8 times)
+ │       ├── SOF packet with frame number 663, CRC 0D (8 times)
+ │       ├── SOF packet with frame number 664, CRC 0C (8 times)
+ │       ├── SOF packet with frame number 665, CRC 13 (8 times)
+ │       ├── SOF packet with frame number 666, CRC 1B (8 times)
+ │       ├── SOF packet with frame number 667, CRC 04 (8 times)
+ │       ├── SOF packet with frame number 668, CRC 0B (8 times)
+ │       ├── SOF packet with frame number 669, CRC 14 (8 times)
+ │       ├── SOF packet with frame number 670, CRC 1C (8 times)
+ │       ├── SOF packet with frame number 671, CRC 03 (8 times)
+ │       ├── SOF packet with frame number 672, CRC 0F (8 times)
+ │       ├── SOF packet with frame number 673, CRC 10 (8 times)
+ │       ├── SOF packet with frame number 674, CRC 18 (8 times)
+ │       ├── SOF packet with frame number 675, CRC 07 (8 times)
+ │       ├── SOF packet with frame number 676, CRC 08 (8 times)
+ │       ├── SOF packet with frame number 677, CRC 17 (8 times)
+ │       ├── SOF packet with frame number 678, CRC 1F (8 times)
+ │       ├── SOF packet with frame number 679, CRC 00 (8 times)
+ │       ├── SOF packet with frame number 680, CRC 01 (8 times)
+ │       ├── SOF packet with frame number 681, CRC 1E (8 times)
+ │       ├── SOF packet with frame number 682, CRC 16 (8 times)
+ │       ├── SOF packet with frame number 683, CRC 09 (8 times)
+ │       ├── SOF packet with frame number 684, CRC 06 (8 times)
+ │       ├── SOF packet with frame number 685, CRC 19 (8 times)
+ │       ├── SOF packet with frame number 686, CRC 11 (8 times)
+ │       └── SOF packet with frame number 687, CRC 0E
+ ├────── 1 SOF packets
+ │       └── SOF packet with frame number 687, CRC 0E (7 times)
+ ├────── 1 SOF packets
+ │       └── SOF packet with frame number 688, CRC 13 (2 times)
+ ├────── 384 SOF packets
+ │       ├── SOF packet with frame number 688, CRC 13 (6 times)
+ │       ├── SOF packet with frame number 689, CRC 0C (8 times)
+ │       ├── SOF packet with frame number 690, CRC 04 (8 times)
+ │       ├── SOF packet with frame number 691, CRC 1B (8 times)
+ │       ├── SOF packet with frame number 692, CRC 14 (8 times)
+ │       ├── SOF packet with frame number 693, CRC 0B (8 times)
+ │       ├── SOF packet with frame number 694, CRC 03 (8 times)
+ │       ├── SOF packet with frame number 695, CRC 1C (8 times)
+ │       ├── SOF packet with frame number 696, CRC 1D (8 times)
+ │       ├── SOF packet with frame number 697, CRC 02 (8 times)
+ │       ├── SOF packet with frame number 698, CRC 0A (8 times)
+ │       ├── SOF packet with frame number 699, CRC 15 (8 times)
+ │       ├── SOF packet with frame number 700, CRC 1A (8 times)
+ │       ├── SOF packet with frame number 701, CRC 05 (8 times)
+ │       ├── SOF packet with frame number 702, CRC 0D (8 times)
+ │       ├── SOF packet with frame number 703, CRC 12 (8 times)
+ │       ├── SOF packet with frame number 704, CRC 15 (8 times)
+ │       ├── SOF packet with frame number 705, CRC 0A (8 times)
+ │       ├── SOF packet with frame number 706, CRC 02 (8 times)
+ │       ├── SOF packet with frame number 707, CRC 1D (8 times)
+ │       ├── SOF packet with frame number 708, CRC 12 (8 times)
+ │       ├── SOF packet with frame number 709, CRC 0D (8 times)
+ │       ├── SOF packet with frame number 710, CRC 05 (8 times)
+ │       ├── SOF packet with frame number 711, CRC 1A (8 times)
+ │       ├── SOF packet with frame number 712, CRC 1B (8 times)
+ │       ├── SOF packet with frame number 713, CRC 04 (8 times)
+ │       ├── SOF packet with frame number 714, CRC 0C (8 times)
+ │       ├── SOF packet with frame number 715, CRC 13 (8 times)
+ │       ├── SOF packet with frame number 716, CRC 1C (8 times)
+ │       ├── SOF packet with frame number 717, CRC 03 (8 times)
+ │       ├── SOF packet with frame number 718, CRC 0B (8 times)
+ │       ├── SOF packet with frame number 719, CRC 14 (8 times)
+ │       ├── SOF packet with frame number 720, CRC 09 (8 times)
+ │       ├── SOF packet with frame number 721, CRC 16 (8 times)
+ │       ├── SOF packet with frame number 722, CRC 1E (8 times)
+ │       ├── SOF packet with frame number 723, CRC 01 (8 times)
+ │       ├── SOF packet with frame number 724, CRC 0E (8 times)
+ │       ├── SOF packet with frame number 725, CRC 11 (8 times)
+ │       ├── SOF packet with frame number 726, CRC 19 (8 times)
+ │       ├── SOF packet with frame number 727, CRC 06 (8 times)
+ │       ├── SOF packet with frame number 728, CRC 07 (8 times)
+ │       ├── SOF packet with frame number 729, CRC 18 (8 times)
+ │       ├── SOF packet with frame number 730, CRC 10 (8 times)
+ │       ├── SOF packet with frame number 731, CRC 0F (8 times)
+ │       ├── SOF packet with frame number 732, CRC 00 (8 times)
+ │       ├── SOF packet with frame number 733, CRC 1F (8 times)
+ │       ├── SOF packet with frame number 734, CRC 17 (8 times)
+ │       ├── SOF packet with frame number 735, CRC 08 (8 times)
+ │       ├── SOF packet with frame number 736, CRC 04
+ │       └── SOF packet with frame number 736, CRC 04
+ ├────── 1 SOF packets
+ │       └── SOF packet with frame number 736, CRC 04 (6 times)
+ ├────── 1 SOF packets
+ │       └── SOF packet with frame number 737, CRC 1B (8 times)
+ ├────── 1 SOF packets
+ │       └── SOF packet with frame number 738, CRC 13 (8 times)
+ ├────── 1 SOF packets
+ │       └── SOF packet with frame number 739, CRC 0C (8 times)
+ ├────── 1 SOF packets
+ │       └── SOF packet with frame number 740, CRC 03 (8 times)
+ ├────── 1 SOF packets
+ │       └── SOF packet with frame number 741, CRC 1C (8 times)
+ ├────── 1 SOF packets
+ │       └── SOF packet with frame number 742, CRC 14 (3 times)
+ ├────── 2 SOF packets
+ │       ├── SOF packet with frame number 742, CRC 14
+ │       └── SOF packet with frame number 742, CRC 14
+ ├────── 10 SOF packets
+ │       ├── SOF packet with frame number 742, CRC 14 (3 times)
+ │       ├── SOF packet with frame number 743, CRC 0B (6 times)
+ │       └── SOF packet with frame number 743, CRC 0B
+ ├────── 383 SOF packets
+ │       ├── SOF packet with frame number 743, CRC 0B
+ │       ├── SOF packet with frame number 744, CRC 0A (8 times)
+ │       ├── SOF packet with frame number 745, CRC 15 (8 times)
+ │       ├── SOF packet with frame number 746, CRC 1D (8 times)
+ │       ├── SOF packet with frame number 747, CRC 02 (8 times)
+ │       ├── SOF packet with frame number 748, CRC 0D (8 times)
+ │       ├── SOF packet with frame number 749, CRC 12 (8 times)
+ │       ├── SOF packet with frame number 750, CRC 1A (8 times)
+ │       ├── SOF packet with frame number 751, CRC 05 (8 times)
+ │       ├── SOF packet with frame number 752, CRC 18 (8 times)
+ │       ├── SOF packet with frame number 753, CRC 07 (8 times)
+ │       ├── SOF packet with frame number 754, CRC 0F (8 times)
+ │       ├── SOF packet with frame number 755, CRC 10 (8 times)
+ │       ├── SOF packet with frame number 756, CRC 1F (8 times)
+ │       ├── SOF packet with frame number 757, CRC 00 (8 times)
+ │       ├── SOF packet with frame number 758, CRC 08 (8 times)
+ │       ├── SOF packet with frame number 759, CRC 17 (8 times)
+ │       ├── SOF packet with frame number 760, CRC 16 (8 times)
+ │       ├── SOF packet with frame number 761, CRC 09 (8 times)
+ │       ├── SOF packet with frame number 762, CRC 01 (8 times)
+ │       ├── SOF packet with frame number 763, CRC 1E (8 times)
+ │       ├── SOF packet with frame number 764, CRC 11 (8 times)
+ │       ├── SOF packet with frame number 765, CRC 0E (8 times)
+ │       ├── SOF packet with frame number 766, CRC 06 (8 times)
+ │       ├── SOF packet with frame number 767, CRC 19 (8 times)
+ │       ├── SOF packet with frame number 768, CRC 0D (8 times)
+ │       ├── SOF packet with frame number 769, CRC 12 (8 times)
+ │       ├── SOF packet with frame number 770, CRC 1A (8 times)
+ │       ├── SOF packet with frame number 771, CRC 05 (8 times)
+ │       ├── SOF packet with frame number 772, CRC 0A (8 times)
+ │       ├── SOF packet with frame number 773, CRC 15 (8 times)
+ │       ├── SOF packet with frame number 774, CRC 1D (8 times)
+ │       ├── SOF packet with frame number 775, CRC 02 (8 times)
+ │       ├── SOF packet with frame number 776, CRC 03 (2 times)
+ │       ├── SOF packet with frame number 165, CRC 1D (5 times)
+ │       ├── SOF packet with frame number 166, CRC 15 (8 times)
+ │       ├── SOF packet with frame number 167, CRC 0A (8 times)
+ │       ├── SOF packet with frame number 168, CRC 0B (8 times)
+ │       ├── SOF packet with frame number 169, CRC 14 (8 times)
+ │       ├── SOF packet with frame number 170, CRC 1C (8 times)
+ │       ├── SOF packet with frame number 171, CRC 03 (8 times)
+ │       ├── SOF packet with frame number 172, CRC 0C (8 times)
+ │       ├── SOF packet with frame number 173, CRC 13 (8 times)
+ │       ├── SOF packet with frame number 174, CRC 1B (8 times)
+ │       ├── SOF packet with frame number 175, CRC 04 (8 times)
+ │       ├── SOF packet with frame number 176, CRC 19 (8 times)
+ │       ├── SOF packet with frame number 177, CRC 06 (8 times)
+ │       ├── SOF packet with frame number 178, CRC 0E (8 times)
+ │       ├── SOF packet with frame number 179, CRC 11 (8 times)
+ │       ├── SOF packet with frame number 180, CRC 1E (6 times)
+ │       └── SOF packet with frame number 180, CRC 1E
+ ├────── 24 SOF packets
+ │       ├── SOF packet with frame number 180, CRC 1E
+ │       ├── SOF packet with frame number 181, CRC 01 (8 times)
+ │       ├── SOF packet with frame number 182, CRC 09 (8 times)
+ │       ├── SOF packet with frame number 183, CRC 16 (6 times)
+ │       └── SOF packet with frame number 183, CRC 16
+ ├────── 1 SOF packets
+ │       └── SOF packet with frame number 183, CRC 16
+ ├────── 2 SOF packets
+ │       ├── SOF packet with frame number 184, CRC 17
+ │       └── SOF packet with frame number 184, CRC 17
+ ├────── 1 SOF packets
+ │       └── SOF packet with frame number 184, CRC 17 (6 times)
+ ├────── 1 SOF packets
+ │       └── SOF packet with frame number 185, CRC 08 (8 times)
+ ├────── 11 SOF packets
+ │       ├── SOF packet with frame number 186, CRC 00 (8 times)
+ │       ├── SOF packet with frame number 187, CRC 1F (2 times)
+ │       └── SOF packet with frame number 187, CRC 1F
+ ├────── 1 SOF packets
+ │       └── SOF packet with frame number 187, CRC 1F (5 times)
+ ├────── 1 SOF packets
+ │       └── SOF packet with frame number 188, CRC 10 (2 times)
+ ├────── 2 SOF packets
+ │       ├── SOF packet with frame number 188, CRC 10
+ │       └── SOF packet with frame number 188, CRC 10
+ ├────── 1 SOF packets
+ │       └── SOF packet with frame number 188, CRC 10 (3 times)
+ │○─── Setting address to 1 for device 0
+ │├───── SETUP transaction on 0.0 with 8 data bytes, ACK: [00, 05, 01, 00, 00, 00, 00, 00]
+ ││      ├── SETUP packet on 0.0, CRC 02
+ ││      ├── DATA0 packet with CRC 25EB and 8 data bytes: [00, 05, 01, 00, 00, 00, 00, 00]
+ ││      └── ACK packet
+ │├───── IN transaction on 0.0, NAK
+ ││      ├── IN packet on 0.0, CRC 02
+ ││      └── NAK packet (49 times)
+ │└───── IN transaction on 0.0 with no data, ACK
+ │       ├── IN packet on 0.0, CRC 02
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │ ○── Getting device descriptor #0 for device 1, reading 18 bytes
+ │ ├──── SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 12, 00]
+ │ │     ├── SETUP packet on 1.0, CRC 1D
+ │ │     ├── DATA0 packet with CRC F4E0 and 8 data bytes: [80, 06, 00, 01, 00, 00, 12, 00]
+ │ │     └── ACK packet
+ │ ├──── IN transaction on 1.0, NAK
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     └── NAK packet (32 times)
+ │ ├──── IN transaction on 1.0 with 18 data bytes, ACK: [12, 01, 00, 02, 00, 00, 00, 40, AC, 05, A8, 12, 04, 08, 01, 02, 03, 04]
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     ├── DATA1 packet with CRC 4E2C and 18 data bytes: [12, 01, 00, 02, 00, 00, 00, 40, AC, 05, A8, 12, 04, 08, 01, 02, 03, 04]
+ │ │     └── ACK packet
+ │ └──── OUT transaction on 1.0 with no data, ACK
+ │       ├── OUT packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │ ○── Getting configuration descriptor #0 for device 1, reading 9 bytes
+ │ ├──── SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 00, 02, 00, 00, 09, 00]
+ │ │     ├── SETUP packet on 1.0, CRC 1D
+ │ │     ├── DATA0 packet with CRC 04AE and 8 data bytes: [80, 06, 00, 02, 00, 00, 09, 00]
+ │ │     └── ACK packet
+ │ ├──── IN transaction on 1.0, NAK
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     └── NAK packet (16 times)
+ │ ├──── IN transaction on 1.0 with 9 data bytes, ACK: [09, 02, 27, 00, 01, 01, 05, C0, FA]
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     ├── DATA1 packet with CRC FAB5 and 9 data bytes: [09, 02, 27, 00, 01, 01, 05, C0, FA]
+ │ │     └── ACK packet
+ │ └──── OUT transaction on 1.0 with no data, ACK
+ │       ├── OUT packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │ ○── Getting configuration descriptor #0 for device 1, reading 39 bytes
+ │ ├──── SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 00, 02, 00, 00, 27, 00]
+ │ │     ├── SETUP packet on 1.0, CRC 1D
+ │ │     ├── DATA0 packet with CRC A4B3 and 8 data bytes: [80, 06, 00, 02, 00, 00, 27, 00]
+ │ │     └── ACK packet
+ │ ├──── IN transaction on 1.0, NAK
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     └── NAK packet (12 times)
+ │ ├──── IN transaction on 1.0 with 39 data bytes, ACK: [09, 02, 27, 00, 01, 01, 05, C0, FA, 09, 04, 00, 00, 03, 06, 01, 01, 16, 07, 05, 02, 02, 00, 02, 00, 07, 05, 81, 02, 00, 02, 00, 07, 05, 83, 03, 40, 00, 0A]
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     ├── DATA1 packet with CRC 0F68 and 39 data bytes: [09, 02, 27, 00, 01, 01, 05, C0, FA, 09, 04, 00, 00, 03, 06, 01, 01, 16, 07, 05, 02, 02, 00, 02, 00, 07, 05, 81, 02, 00, 02, 00, 07, 05, 83, 03, 40, 00, 0A]
+ │ │     └── ACK packet
+ │ └──── OUT transaction on 1.0 with no data, ACK
+ │       ├── OUT packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │ ○── Getting configuration descriptor #1 for device 1, reading 9 bytes
+ │ ├──── SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 01, 02, 00, 00, 09, 00]
+ │ │     ├── SETUP packet on 1.0, CRC 1D
+ │ │     ├── DATA0 packet with CRC D5AF and 8 data bytes: [80, 06, 01, 02, 00, 00, 09, 00]
+ │ │     └── ACK packet
+ │ ├──── IN transaction on 1.0, NAK
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     └── NAK packet (14 times)
+ │ ├──── IN transaction on 1.0 with 9 data bytes, ACK: [09, 02, 95, 00, 03, 02, 06, C0, FA]
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     ├── DATA1 packet with CRC 75AE and 9 data bytes: [09, 02, 95, 00, 03, 02, 06, C0, FA]
+ │ │     └── ACK packet
+ │ └──── OUT transaction on 1.0 with no data, ACK
+ │       ├── OUT packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │ ○── Getting configuration descriptor #1 for device 1, reading 149 bytes
+ │ ├──── SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 01, 02, 00, 00, 95, 00]
+ │ │     ├── SETUP packet on 1.0, CRC 1D
+ │ │     ├── DATA0 packet with CRC D5C6 and 8 data bytes: [80, 06, 01, 02, 00, 00, 95, 00]
+ │ │     └── ACK packet
+ │ ├──── IN transaction on 1.0, NAK
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     └── NAK packet (10 times)
+ │ ├──── IN transaction on 1.0 with 64 data bytes, ACK: [09, 02, 95, 00, 03, 02, 06, C0, FA, 09, 04, 00, 00, 00, 01, 01, 00, 00, 09, 24, 01, 00, 01, 1E, 00, 01, 01, 0C, 24, 02, 01, 01, 02, 02, 02, 03, 00, 00, 00, 09, 24, 03, 02, 01, 01, 01, 01, 00, 09, 04, 01, 00, 00, 01, 02, 00, 00, 09, 04, 01, 01, 01, 01, 02]
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     ├── DATA1 packet with CRC 01AB and 64 data bytes: [09, 02, 95, 00, 03, 02, 06, C0, FA, 09, 04, 00, 00, 00, 01, 01, 00, 00, 09, 24, 01, 00, 01, 1E, 00, 01, 01, 0C, 24, 02, 01, 01, 02, 02, 02, 03, 00, 00, 00, 09, 24, 03, 02, 01, 01, 01, 01, 00, 09, 04, 01, 00, 00, 01, 02, 00, 00, 09, 04, 01, 01, 01, 01, 02]
+ │ │     └── ACK packet
+ │ ├──── IN transaction on 1.0 with 64 data bytes, ACK: [00, 00, 07, 24, 01, 02, 01, 01, 00, 23, 24, 02, 01, 02, 02, 10, 09, 40, 1F, 00, 11, 2B, 00, E0, 2E, 00, 80, 3E, 00, 22, 56, 00, C0, 5D, 00, 00, 7D, 00, 44, AC, 00, 80, BB, 00, 09, 05, 81, 01, C0, 00, 04, 00, 00, 07, 25, 01, 01, 00, 00, 00, 09, 04, 02, 00]
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     ├── DATA0 packet with CRC 8F38 and 64 data bytes: [00, 00, 07, 24, 01, 02, 01, 01, 00, 23, 24, 02, 01, 02, 02, 10, 09, 40, 1F, 00, 11, 2B, 00, E0, 2E, 00, 80, 3E, 00, 22, 56, 00, C0, 5D, 00, 00, 7D, 00, 44, AC, 00, 80, BB, 00, 09, 05, 81, 01, C0, 00, 04, 00, 00, 07, 25, 01, 01, 00, 00, 00, 09, 04, 02, 00]
+ │ │     └── ACK packet
+ │ ├──── IN transaction on 1.0, NAK
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     └── NAK packet
+ │ ├──── IN transaction on 1.0 with 21 data bytes, ACK: [01, 03, 00, 00, 00, 09, 21, 11, 01, 00, 01, 22, D0, 00, 07, 05, 83, 03, 40, 00, 01]
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     ├── DATA1 packet with CRC 5A4E and 21 data bytes: [01, 03, 00, 00, 00, 09, 21, 11, 01, 00, 01, 22, D0, 00, 07, 05, 83, 03, 40, 00, 01]
+ │ │     └── ACK packet
+ │ └──── OUT transaction on 1.0 with no data, ACK
+ │       ├── OUT packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │ ○── Getting configuration descriptor #2 for device 1, reading 9 bytes
+ │ ├──── SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 02, 02, 00, 00, 09, 00]
+ │ │     ├── SETUP packet on 1.0, CRC 1D
+ │ │     ├── DATA0 packet with CRC E6AF and 8 data bytes: [80, 06, 02, 02, 00, 00, 09, 00]
+ │ │     └── ACK packet
+ │ ├──── IN transaction on 1.0, NAK
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     └── NAK packet (12 times)
+ │ ├──── IN transaction on 1.0 with 9 data bytes, ACK: [09, 02, 3E, 00, 02, 03, 07, C0, FA]
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     ├── DATA1 packet with CRC 43D9 and 9 data bytes: [09, 02, 3E, 00, 02, 03, 07, C0, FA]
+ │ │     └── ACK packet
+ │ └──── OUT transaction on 1.0 with no data, ACK
+ │       ├── OUT packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │ ○── Getting configuration descriptor #2 for device 1, reading 62 bytes
+ │ ├──── SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 02, 02, 00, 00, 3E, 00]
+ │ │     ├── SETUP packet on 1.0, CRC 1D
+ │ │     ├── DATA0 packet with CRC D6B9 and 8 data bytes: [80, 06, 02, 02, 00, 00, 3E, 00]
+ │ │     └── ACK packet
+ │ ├──── IN transaction on 1.0, NAK
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     └── NAK packet (11 times)
+ │ ├──── IN transaction on 1.0 with 62 data bytes, ACK: [09, 02, 3E, 00, 02, 03, 07, C0, FA, 09, 04, 00, 00, 03, 06, 01, 01, 16, 07, 05, 02, 02, 00, 02, 00, 07, 05, 81, 02, 00, 02, 00, 07, 05, 83, 03, 40, 00, 0A, 09, 04, 01, 00, 02, FF, FE, 02, 0D, 07, 05, 04, 02, 00, 02, 00, 07, 05, 85, 02, 00, 02, 00]
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     ├── DATA1 packet with CRC 2BE8 and 62 data bytes: [09, 02, 3E, 00, 02, 03, 07, C0, FA, 09, 04, 00, 00, 03, 06, 01, 01, 16, 07, 05, 02, 02, 00, 02, 00, 07, 05, 81, 02, 00, 02, 00, 07, 05, 83, 03, 40, 00, 0A, 09, 04, 01, 00, 02, FF, FE, 02, 0D, 07, 05, 04, 02, 00, 02, 00, 07, 05, 85, 02, 00, 02, 00]
+ │ │     └── ACK packet
+ │ └──── OUT transaction on 1.0 with no data, ACK
+ │       ├── OUT packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │ ○── Getting configuration descriptor #3 for device 1, reading 9 bytes
+ │ ├──── SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 03, 02, 00, 00, 09, 00]
+ │ │     ├── SETUP packet on 1.0, CRC 1D
+ │ │     ├── DATA0 packet with CRC 37AE and 8 data bytes: [80, 06, 03, 02, 00, 00, 09, 00]
+ │ │     └── ACK packet
+ │ ├──── IN transaction on 1.0, NAK
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     └── NAK packet (10 times)
+ │ ├──── IN transaction on 1.0 with 9 data bytes, ACK: [09, 02, 75, 00, 03, 04, 08, C0, FA]
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     ├── DATA1 packet with CRC F02E and 9 data bytes: [09, 02, 75, 00, 03, 04, 08, C0, FA]
+ │ │     └── ACK packet
+ │ └──── OUT transaction on 1.0 with no data, ACK
+ │       ├── OUT packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │ ○── Getting configuration descriptor #3 for device 1, reading 117 bytes
+ │ ├──── SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 03, 02, 00, 00, 75, 00]
+ │ │     ├── SETUP packet on 1.0, CRC 1D
+ │ │     ├── DATA0 packet with CRC F78E and 8 data bytes: [80, 06, 03, 02, 00, 00, 75, 00]
+ │ │     └── ACK packet
+ │ ├──── IN transaction on 1.0, NAK
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     └── NAK packet (11 times)
+ │ ├──── IN transaction on 1.0 with 64 data bytes, ACK: [09, 02, 75, 00, 03, 04, 08, C0, FA, 09, 04, 00, 00, 03, 06, 01, 01, 16, 07, 05, 02, 02, 00, 02, 00, 07, 05, 81, 02, 00, 02, 00, 07, 05, 83, 03, 40, 00, 0A, 09, 04, 01, 00, 02, FF, FE, 02, 0D, 07, 05, 04, 02, 00, 02, 00, 07, 05, 85, 02, 00, 02, 00, 09, 04]
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     ├── DATA1 packet with CRC 426E and 64 data bytes: [09, 02, 75, 00, 03, 04, 08, C0, FA, 09, 04, 00, 00, 03, 06, 01, 01, 16, 07, 05, 02, 02, 00, 02, 00, 07, 05, 81, 02, 00, 02, 00, 07, 05, 83, 03, 40, 00, 0A, 09, 04, 01, 00, 02, FF, FE, 02, 0D, 07, 05, 04, 02, 00, 02, 00, 07, 05, 85, 02, 00, 02, 00, 09, 04]
+ │ │     └── ACK packet
+ │ ├──── IN transaction on 1.0, NAK
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     └── NAK packet (2 times)
+ │ ├──── IN transaction on 1.0 with 53 data bytes, ACK: [02, 00, 00, FF, FD, 01, 00, 09, 04, 02, 01, 02, FF, FD, 01, 00, 07, 05, 86, 02, 00, 02, 00, 07, 05, 05, 02, 00, 02, 00, 09, 04, 02, 02, 02, FF, FD, 01, 00, 07, 05, 86, 02, 00, 02, 00, 07, 05, 05, 02, 00, 02, 00]
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     ├── DATA0 packet with CRC 8317 and 53 data bytes: [02, 00, 00, FF, FD, 01, 00, 09, 04, 02, 01, 02, FF, FD, 01, 00, 07, 05, 86, 02, 00, 02, 00, 07, 05, 05, 02, 00, 02, 00, 09, 04, 02, 02, 02, FF, FD, 01, 00, 07, 05, 86, 02, 00, 02, 00, 07, 05, 05, 02, 00, 02, 00]
+ │ │     └── ACK packet
+ │ └──── OUT transaction on 1.0 with no data, ACK
+ │       ├── OUT packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │ ○── Getting string descriptor #0 for device 1, reading 4 of 255 requested bytes
+ │ ├──── SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 00, 03, 00, 00, FF, 00]
+ │ │     ├── SETUP packet on 1.0, CRC 1D
+ │ │     ├── DATA0 packet with CRC 64D4 and 8 data bytes: [80, 06, 00, 03, 00, 00, FF, 00]
+ │ │     └── ACK packet
+ │ ├──── IN transaction on 1.0, NAK
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     └── NAK packet (10 times)
+ │ ├──── IN transaction on 1.0 with 4 data bytes, ACK: [04, 03, 09, 04]
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     ├── DATA1 packet with CRC 7809 and 4 data bytes: [04, 03, 09, 04]
+ │ │     └── ACK packet
+ │ └──── OUT transaction on 1.0 with no data, ACK
+ │       ├── OUT packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │ ○── Getting string descriptor #2, language 0x0409 (English/US) for device 1, reading 14 of 255 requested bytes: 'iPhone'
+ │ ├──── SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, FF, 00]
+ │ │     ├── SETUP packet on 1.0, CRC 1D
+ │ │     ├── DATA0 packet with CRC DB97 and 8 data bytes: [80, 06, 02, 03, 09, 04, FF, 00]
+ │ │     └── ACK packet
+ │ ├──── IN transaction on 1.0, NAK
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     └── NAK packet (10 times)
+ │ ├──── IN transaction on 1.0 with 14 data bytes, ACK: [0E, 03, 69, 00, 50, 00, 68, 00, 6F, 00, 6E, 00, 65, 00]
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     ├── DATA1 packet with CRC 47F8 and 14 data bytes: [0E, 03, 69, 00, 50, 00, 68, 00, 6F, 00, 6E, 00, 65, 00]
+ │ │     └── ACK packet
+ │ └──── OUT transaction on 1.0 with no data, ACK
+ │       ├── OUT packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │ ○── Getting string descriptor #1, language 0x0409 (English/US) for device 1, reading 22 of 255 requested bytes: 'Apple Inc.'
+ │ ├──── SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 01, 03, 09, 04, FF, 00]
+ │ │     ├── SETUP packet on 1.0, CRC 1D
+ │ │     ├── DATA0 packet with CRC E897 and 8 data bytes: [80, 06, 01, 03, 09, 04, FF, 00]
+ │ │     └── ACK packet
+ │ ├──── IN transaction on 1.0, NAK
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     └── NAK packet (7 times)
+ │ ├──── IN transaction on 1.0 with 22 data bytes, ACK: [16, 03, 41, 00, 70, 00, 70, 00, 6C, 00, 65, 00, 20, 00, 49, 00, 6E, 00, 63, 00, 2E, 00]
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     ├── DATA1 packet with CRC 7B42 and 22 data bytes: [16, 03, 41, 00, 70, 00, 70, 00, 6C, 00, 65, 00, 20, 00, 49, 00, 6E, 00, 63, 00, 2E, 00]
+ │ │     └── ACK packet
+ │ └──── OUT transaction on 1.0 with no data, ACK
+ │       ├── OUT packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │ ○── Getting string descriptor #3, language 0x0409 (English/US) for device 1, reading 82 of 255 requested bytes: '1a1f1cb19115f42ad80786d64e77f4e7e18772cc'
+ │ ├──── SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 03, 03, 09, 04, FF, 00]
+ │ │     ├── SETUP packet on 1.0, CRC 1D
+ │ │     ├── DATA0 packet with CRC 0A96 and 8 data bytes: [80, 06, 03, 03, 09, 04, FF, 00]
+ │ │     └── ACK packet
+ │ ├──── IN transaction on 1.0, NAK
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     └── NAK packet (9 times)
+ │ ├──── IN transaction on 1.0 with 64 data bytes, ACK: [52, 03, 31, 00, 61, 00, 31, 00, 66, 00, 31, 00, 63, 00, 62, 00, 31, 00, 39, 00, 31, 00, 31, 00, 35, 00, 66, 00, 34, 00, 32, 00, 61, 00, 64, 00, 38, 00, 30, 00, 37, 00, 38, 00, 36, 00, 64, 00, 36, 00, 34, 00, 65, 00, 37, 00, 37, 00, 66, 00, 34, 00, 65, 00]
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     ├── DATA1 packet with CRC 30B9 and 64 data bytes: [52, 03, 31, 00, 61, 00, 31, 00, 66, 00, 31, 00, 63, 00, 62, 00, 31, 00, 39, 00, 31, 00, 31, 00, 35, 00, 66, 00, 34, 00, 32, 00, 61, 00, 64, 00, 38, 00, 30, 00, 37, 00, 38, 00, 36, 00, 64, 00, 36, 00, 34, 00, 65, 00, 37, 00, 37, 00, 66, 00, 34, 00, 65, 00]
+ │ │     └── ACK packet
+ │ ├──── IN transaction on 1.0, NAK
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     └── NAK packet
+ │ ├──── IN transaction on 1.0 with 18 data bytes, ACK: [37, 00, 65, 00, 31, 00, 38, 00, 37, 00, 37, 00, 32, 00, 63, 00, 63, 00]
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     ├── DATA0 packet with CRC 058B and 18 data bytes: [37, 00, 65, 00, 31, 00, 38, 00, 37, 00, 37, 00, 32, 00, 63, 00, 63, 00]
+ │ │     └── ACK packet
+ │ └──── OUT transaction on 1.0 with no data, ACK
+ │       ├── OUT packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │ ○── Setting configuration 1 for device 1
+ │ ├──── SETUP transaction on 1.0 with 8 data bytes, ACK: [00, 09, 01, 00, 00, 00, 00, 00]
+ │ │     ├── SETUP packet on 1.0, CRC 1D
+ │ │     ├── DATA0 packet with CRC 2527 and 8 data bytes: [00, 09, 01, 00, 00, 00, 00, 00]
+ │ │     └── ACK packet
+ │ ├──── IN transaction on 1.0, NAK
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     └── NAK packet (2639 times)
+ │ └──── IN transaction on 1.0 with no data, ACK
+ │       ├── IN packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │ ○── Getting string descriptor #5, language 0x0409 (English/US) for device 1, reading 8 of 255 requested bytes: 'PTP'
+ │ ├──── SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 05, 03, 09, 04, FF, 00]
+ │ │     ├── SETUP packet on 1.0, CRC 1D
+ │ │     ├── DATA0 packet with CRC 6C96 and 8 data bytes: [80, 06, 05, 03, 09, 04, FF, 00]
+ │ │     └── ACK packet
+ │ ├──── IN transaction on 1.0, NAK
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     └── NAK packet (15 times)
+ │ ├──── IN transaction on 1.0 with 8 data bytes, ACK: [08, 03, 50, 00, 54, 00, 50, 00]
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     ├── DATA1 packet with CRC 32AD and 8 data bytes: [08, 03, 50, 00, 54, 00, 50, 00]
+ │ │     └── ACK packet
+ │ └──── OUT transaction on 1.0 with no data, ACK
+ │       ├── OUT packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │ ○── Getting string descriptor #22, language 0x0409 (English/US) for device 1, reading 8 of 255 requested bytes: 'PTP'
+ │ ├──── SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 16, 03, 09, 04, FF, 00]
+ │ │     ├── SETUP packet on 1.0, CRC 1D
+ │ │     ├── DATA0 packet with CRC CF94 and 8 data bytes: [80, 06, 16, 03, 09, 04, FF, 00]
+ │ │     └── ACK packet
+ │ ├──── IN transaction on 1.0, NAK
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     └── NAK packet (11 times)
+ │ ├──── IN transaction on 1.0 with 8 data bytes, ACK: [08, 03, 50, 00, 54, 00, 50, 00]
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     ├── DATA1 packet with CRC 32AD and 8 data bytes: [08, 03, 50, 00, 54, 00, 50, 00]
+ │ │     └── ACK packet
+ │ └──── OUT transaction on 1.0 with no data, ACK
+ │       ├── OUT packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │ ○── Vendor request #81, index 0, value 0 for device 1
+ │ ├──── SETUP transaction on 1.0 with 8 data bytes, ACK: [40, 51, 00, 00, 00, 00, 00, 00]
+ │ │     ├── SETUP packet on 1.0, CRC 1D
+ │ │     ├── DATA0 packet with CRC 01FB and 8 data bytes: [40, 51, 00, 00, 00, 00, 00, 00]
+ │ │     └── ACK packet
+ │ ├──── IN transaction on 1.0, NAK
+ │ │     ├── IN packet on 1.0, CRC 1D
+ │ │     └── NAK packet (33 times)
+ │ └──── IN transaction on 1.0 with no data, ACK
+ │       ├── IN packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │○─── Setting address to 1 for device 0
+ │├───── SETUP transaction on 0.0 with 8 data bytes, ACK: [00, 05, 01, 00, 00, 00, 00, 00]
+ ││      ├── SETUP packet on 0.0, CRC 02
+ ││      ├── DATA0 packet with CRC 25EB and 8 data bytes: [00, 05, 01, 00, 00, 00, 00, 00]
+ ││      └── ACK packet
+ │├───── IN transaction on 0.0, NAK
+ ││      ├── IN packet on 0.0, CRC 02
+ ││      └── NAK packet (15 times)
+ │└───── IN transaction on 0.0 with no data, ACK
+ │       ├── IN packet on 0.0, CRC 02
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │  ○─ Getting device descriptor #0 for device 1, reading 18 bytes
+ │  ├─── SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 00, 01, 00, 00, 12, 00]
+ │  │    ├── SETUP packet on 1.0, CRC 1D
+ │  │    ├── DATA0 packet with CRC F4E0 and 8 data bytes: [80, 06, 00, 01, 00, 00, 12, 00]
+ │  │    └── ACK packet
+ │  ├─── IN transaction on 1.0, NAK
+ │  │    ├── IN packet on 1.0, CRC 1D
+ │  │    └── NAK packet (12 times)
+ │  ├─── IN transaction on 1.0 with 18 data bytes, ACK: [12, 01, 10, 02, 00, 00, 00, 40, A3, 2C, 02, 10, 04, 05, 01, 02, 03, 01]
+ │  │    ├── IN packet on 1.0, CRC 1D
+ │  │    ├── DATA1 packet with CRC 26A6 and 18 data bytes: [12, 01, 10, 02, 00, 00, 00, 40, A3, 2C, 02, 10, 04, 05, 01, 02, 03, 01]
+ │  │    └── ACK packet
+ │  ├─── OUT transaction on 1.0 with no data, NAK
+ │  │    ├── OUT packet on 1.0, CRC 1D
+ │  │    ├── DATA1 packet with CRC 0000 and no data
+ │  │    └── NAK packet
+ │  ├─── PING transaction on 1.0, NAK
+ │  │    ├── PING packet on 1.0, CRC 1D
+ │  │    └── NAK packet (3 times)
+ │  ├─── PING transaction on 1.0, ACK
+ │  │    ├── PING packet on 1.0, CRC 1D
+ │  │    └── ACK packet
+ │  └─── OUT transaction on 1.0 with no data, ACK
+ │       ├── OUT packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │  ○─ Getting string descriptor #2, language 0x0409 (English/US) for device 1, reading 2 bytes
+ │  ├─── SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, 02, 00]
+ │  │    ├── SETUP packet on 1.0, CRC 1D
+ │  │    ├── DATA0 packet with CRC 4BD7 and 8 data bytes: [80, 06, 02, 03, 09, 04, 02, 00]
+ │  │    └── ACK packet
+ │  ├─── IN transaction on 1.0, NAK
+ │  │    ├── IN packet on 1.0, CRC 1D
+ │  │    └── NAK packet (8 times)
+ │  ├─── IN transaction on 1.0 with 2 data bytes, ACK: [18, 03]
+ │  │    ├── IN packet on 1.0, CRC 1D
+ │  │    ├── DATA1 packet with CRC 4EB4 and 2 data bytes: [18, 03]
+ │  │    └── ACK packet
+ │  ├─── OUT transaction on 1.0 with no data, NAK
+ │  │    ├── OUT packet on 1.0, CRC 1D
+ │  │    ├── DATA1 packet with CRC 0000 and no data
+ │  │    └── NAK packet
+ │  ├─── PING transaction on 1.0, NAK
+ │  │    ├── PING packet on 1.0, CRC 1D
+ │  │    └── NAK packet (3 times)
+ │  ├─── PING transaction on 1.0, ACK
+ │  │    ├── PING packet on 1.0, CRC 1D
+ │  │    └── ACK packet
+ │  └─── OUT transaction on 1.0 with no data, ACK
+ │       ├── OUT packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │  ○─ Getting string descriptor #2, language 0x0409 (English/US) for device 1, reading 24 bytes: 'DJI_GOGGLES'
+ │  ├─── SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 02, 03, 09, 04, 18, 00]
+ │  │    ├── SETUP packet on 1.0, CRC 1D
+ │  │    ├── DATA0 packet with CRC 2BDC and 8 data bytes: [80, 06, 02, 03, 09, 04, 18, 00]
+ │  │    └── ACK packet
+ │  ├─── IN transaction on 1.0, NAK
+ │  │    ├── IN packet on 1.0, CRC 1D
+ │  │    └── NAK packet (8 times)
+ │  ├─── IN transaction on 1.0 with 24 data bytes, ACK: [18, 03, 44, 00, 4A, 00, 49, 00, 5F, 00, 47, 00, 4F, 00, 47, 00, 47, 00, 4C, 00, 45, 00, 53, 00]
+ │  │    ├── IN packet on 1.0, CRC 1D
+ │  │    ├── DATA1 packet with CRC F750 and 24 data bytes: [18, 03, 44, 00, 4A, 00, 49, 00, 5F, 00, 47, 00, 4F, 00, 47, 00, 47, 00, 4C, 00, 45, 00, 53, 00]
+ │  │    └── ACK packet
+ │  ├─── OUT transaction on 1.0 with no data, NAK
+ │  │    ├── OUT packet on 1.0, CRC 1D
+ │  │    ├── DATA1 packet with CRC 0000 and no data
+ │  │    └── NAK packet
+ │  ├─── PING transaction on 1.0, NAK
+ │  │    ├── PING packet on 1.0, CRC 1D
+ │  │    └── NAK packet (3 times)
+ │  ├─── PING transaction on 1.0, ACK
+ │  │    ├── PING packet on 1.0, CRC 1D
+ │  │    └── ACK packet
+ │  └─── OUT transaction on 1.0 with no data, ACK
+ │       ├── OUT packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │  ○─ Getting string descriptor #1, language 0x0409 (English/US) for device 1, reading 2 bytes
+ │  ├─── SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 01, 03, 09, 04, 02, 00]
+ │  │    ├── SETUP packet on 1.0, CRC 1D
+ │  │    ├── DATA0 packet with CRC 78D7 and 8 data bytes: [80, 06, 01, 03, 09, 04, 02, 00]
+ │  │    └── ACK packet
+ │  ├─── IN transaction on 1.0, NAK
+ │  │    ├── IN packet on 1.0, CRC 1D
+ │  │    └── NAK packet (9 times)
+ │  ├─── IN transaction on 1.0 with 2 data bytes, ACK: '&\x03'
+ │  │    ├── IN packet on 1.0, CRC 1D
+ │  │    ├── DATA1 packet with CRC 2EA4 and 2 data bytes: '&\x03'
+ │  │    └── ACK packet
+ │  ├─── OUT transaction on 1.0 with no data, NAK
+ │  │    ├── OUT packet on 1.0, CRC 1D
+ │  │    ├── DATA1 packet with CRC 0000 and no data
+ │  │    └── NAK packet
+ │  ├─── PING transaction on 1.0, NAK
+ │  │    ├── PING packet on 1.0, CRC 1D
+ │  │    └── NAK packet (4 times)
+ │  ├─── PING transaction on 1.0, ACK
+ │  │    ├── PING packet on 1.0, CRC 1D
+ │  │    └── ACK packet
+ │  └─── OUT transaction on 1.0 with no data, ACK
+ │       ├── OUT packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │  ○─ Getting string descriptor #1, language 0x0409 (English/US) for device 1, reading 38 bytes: 'Dajiang Innovation'
+ │  ├─── SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 01, 03, 09, 04, 26, 00]
+ │  │    ├── SETUP packet on 1.0, CRC 1D
+ │  │    ├── DATA0 packet with CRC 78CC and 8 data bytes: [80, 06, 01, 03, 09, 04, 26, 00]
+ │  │    └── ACK packet
+ │  ├─── IN transaction on 1.0, NAK
+ │  │    ├── IN packet on 1.0, CRC 1D
+ │  │    └── NAK packet (8 times)
+ │  ├─── IN transaction on 1.0 with 38 data bytes, ACK: [26, 03, 44, 00, 61, 00, 6A, 00, 69, 00, 61, 00, 6E, 00, 67, 00, 20, 00, 49, 00, 6E, 00, 6E, 00, 6F, 00, 76, 00, 61, 00, 74, 00, 69, 00, 6F, 00, 6E, 00]
+ │  │    ├── IN packet on 1.0, CRC 1D
+ │  │    ├── DATA1 packet with CRC C3F5 and 38 data bytes: [26, 03, 44, 00, 61, 00, 6A, 00, 69, 00, 61, 00, 6E, 00, 67, 00, 20, 00, 49, 00, 6E, 00, 6E, 00, 6F, 00, 76, 00, 61, 00, 74, 00, 69, 00, 6F, 00, 6E, 00]
+ │  │    └── ACK packet
+ │  ├─── OUT transaction on 1.0 with no data, NAK
+ │  │    ├── OUT packet on 1.0, CRC 1D
+ │  │    ├── DATA1 packet with CRC 0000 and no data
+ │  │    └── NAK packet
+ │  ├─── PING transaction on 1.0, NAK
+ │  │    ├── PING packet on 1.0, CRC 1D
+ │  │    └── NAK packet (3 times)
+ │  ├─── PING transaction on 1.0, ACK
+ │  │    ├── PING packet on 1.0, CRC 1D
+ │  │    └── ACK packet
+ │  └─── OUT transaction on 1.0 with no data, ACK
+ │       ├── OUT packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │  ○─ Getting string descriptor #3, language 0x0409 (English/US) for device 1, reading 2 bytes
+ │  ├─── SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 03, 03, 09, 04, 02, 00]
+ │  │    ├── SETUP packet on 1.0, CRC 1D
+ │  │    ├── DATA0 packet with CRC 9AD6 and 8 data bytes: [80, 06, 03, 03, 09, 04, 02, 00]
+ │  │    └── ACK packet
+ │  ├─── IN transaction on 1.0, NAK
+ │  │    ├── IN packet on 1.0, CRC 1D
+ │  │    └── NAK packet (4 times)
+ │  ├─── IN transaction on 1.0 with 2 data bytes, ACK: '&\x03'
+ │  │    ├── IN packet on 1.0, CRC 1D
+ │  │    ├── DATA1 packet with CRC 2EA4 and 2 data bytes: '&\x03'
+ │  │    └── ACK packet
+ │  ├─── OUT transaction on 1.0 with no data, NAK
+ │  │    ├── OUT packet on 1.0, CRC 1D
+ │  │    ├── DATA1 packet with CRC 0000 and no data
+ │  │    └── NAK packet
+ │  ├─── PING transaction on 1.0, NAK
+ │  │    ├── PING packet on 1.0, CRC 1D
+ │  │    └── NAK packet (3 times)
+ │  ├─── PING transaction on 1.0, ACK
+ │  │    ├── PING packet on 1.0, CRC 1D
+ │  │    └── ACK packet
+ │  └─── OUT transaction on 1.0 with no data, ACK
+ │       ├── OUT packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │  ○─ Getting string descriptor #3, language 0x0409 (English/US) for device 1, reading 38 bytes: '061b08303258434150'
+ │  ├─── SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 03, 03, 09, 04, 26, 00]
+ │  │    ├── SETUP packet on 1.0, CRC 1D
+ │  │    ├── DATA0 packet with CRC 9ACD and 8 data bytes: [80, 06, 03, 03, 09, 04, 26, 00]
+ │  │    └── ACK packet
+ │  ├─── IN transaction on 1.0, NAK
+ │  │    ├── IN packet on 1.0, CRC 1D
+ │  │    └── NAK packet (27 times)
+ │  ├─── IN transaction on 1.0 with 38 data bytes, ACK: [26, 03, 30, 00, 36, 00, 31, 00, 62, 00, 30, 00, 38, 00, 33, 00, 30, 00, 33, 00, 32, 00, 35, 00, 38, 00, 34, 00, 33, 00, 34, 00, 31, 00, 35, 00, 30, 00]
+ │  │    ├── IN packet on 1.0, CRC 1D
+ │  │    ├── DATA1 packet with CRC 214C and 38 data bytes: [26, 03, 30, 00, 36, 00, 31, 00, 62, 00, 30, 00, 38, 00, 33, 00, 30, 00, 33, 00, 32, 00, 35, 00, 38, 00, 34, 00, 33, 00, 34, 00, 31, 00, 35, 00, 30, 00]
+ │  │    └── ACK packet
+ │  ├─── OUT transaction on 1.0 with no data, NAK
+ │  │    ├── OUT packet on 1.0, CRC 1D
+ │  │    ├── DATA1 packet with CRC 0000 and no data
+ │  │    └── NAK packet
+ │  ├─── PING transaction on 1.0, NAK
+ │  │    ├── PING packet on 1.0, CRC 1D
+ │  │    └── NAK packet (3 times)
+ │  ├─── PING transaction on 1.0, ACK
+ │  │    ├── PING packet on 1.0, CRC 1D
+ │  │    └── ACK packet
+ │  └─── OUT transaction on 1.0 with no data, ACK
+ │       ├── OUT packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │  ○─ Getting BOS descriptor #0 for device 1, reading 5 bytes
+ │  ├─── SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 00, 0F, 00, 00, 05, 00]
+ │  │    ├── SETUP packet on 1.0, CRC 1D
+ │  │    ├── DATA0 packet with CRC C586 and 8 data bytes: [80, 06, 00, 0F, 00, 00, 05, 00]
+ │  │    └── ACK packet
+ │  ├─── IN transaction on 1.0, NAK
+ │  │    ├── IN packet on 1.0, CRC 1D
+ │  │    └── NAK packet (9 times)
+ │  ├─── IN transaction on 1.0 with 5 data bytes, ACK: [05, 0F, 16, 00, 02]
+ │  │    ├── IN packet on 1.0, CRC 1D
+ │  │    ├── DATA1 packet with CRC EE74 and 5 data bytes: [05, 0F, 16, 00, 02]
+ │  │    └── ACK packet
+ │  ├─── OUT transaction on 1.0 with no data, NAK
+ │  │    ├── OUT packet on 1.0, CRC 1D
+ │  │    ├── DATA1 packet with CRC 0000 and no data
+ │  │    └── NAK packet
+ │  ├─── PING transaction on 1.0, NAK
+ │  │    ├── PING packet on 1.0, CRC 1D
+ │  │    └── NAK packet (3 times)
+ │  ├─── PING transaction on 1.0, ACK
+ │  │    ├── PING packet on 1.0, CRC 1D
+ │  │    └── ACK packet
+ │  └─── OUT transaction on 1.0 with no data, ACK
+ │       ├── OUT packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │  ○─ Getting BOS descriptor #0 for device 1, reading 22 bytes
+ │  ├─── SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 00, 0F, 00, 00, 16, 00]
+ │  │    ├── SETUP packet on 1.0, CRC 1D
+ │  │    ├── DATA0 packet with CRC F58B and 8 data bytes: [80, 06, 00, 0F, 00, 00, 16, 00]
+ │  │    └── ACK packet
+ │  ├─── IN transaction on 1.0, NAK
+ │  │    ├── IN packet on 1.0, CRC 1D
+ │  │    └── NAK packet (5 times)
+ │  ├─── IN transaction on 1.0 with 22 data bytes, ACK: [05, 0F, 16, 00, 02, 07, 10, 02, 0E, 01, 00, 00, 0A, 10, 03, 00, 0F, 00, 01, 0A, FF, 01]
+ │  │    ├── IN packet on 1.0, CRC 1D
+ │  │    ├── DATA1 packet with CRC 0E19 and 22 data bytes: [05, 0F, 16, 00, 02, 07, 10, 02, 0E, 01, 00, 00, 0A, 10, 03, 00, 0F, 00, 01, 0A, FF, 01]
+ │  │    └── ACK packet
+ │  ├─── OUT transaction on 1.0 with no data, NAK
+ │  │    ├── OUT packet on 1.0, CRC 1D
+ │  │    ├── DATA1 packet with CRC 0000 and no data
+ │  │    └── NAK packet
+ │  ├─── PING transaction on 1.0, NAK
+ │  │    ├── PING packet on 1.0, CRC 1D
+ │  │    └── NAK packet (2 times)
+ │  ├─── PING transaction on 1.0, ACK
+ │  │    ├── PING packet on 1.0, CRC 1D
+ │  │    └── ACK packet
+ │  └─── OUT transaction on 1.0 with no data, ACK
+ │       ├── OUT packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │  ○─ Getting configuration descriptor #0 for device 1, reading 9 bytes
+ │  ├─── SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 00, 02, 00, 00, 09, 00]
+ │  │    ├── SETUP packet on 1.0, CRC 1D
+ │  │    ├── DATA0 packet with CRC 04AE and 8 data bytes: [80, 06, 00, 02, 00, 00, 09, 00]
+ │  │    └── ACK packet
+ │  ├─── IN transaction on 1.0, NAK
+ │  │    ├── IN packet on 1.0, CRC 1D
+ │  │    └── NAK packet (16 times)
+ │  ├─── IN transaction on 1.0 with 9 data bytes, ACK: [09, 02, 40, 00, 02, 01, 04, 80, 01]
+ │  │    ├── IN packet on 1.0, CRC 1D
+ │  │    ├── DATA1 packet with CRC BFC6 and 9 data bytes: [09, 02, 40, 00, 02, 01, 04, 80, 01]
+ │  │    └── ACK packet
+ │  ├─── OUT transaction on 1.0 with no data, NAK
+ │  │    ├── OUT packet on 1.0, CRC 1D
+ │  │    ├── DATA1 packet with CRC 0000 and no data
+ │  │    └── NAK packet
+ │  ├─── PING transaction on 1.0, NAK
+ │  │    ├── PING packet on 1.0, CRC 1D
+ │  │    └── NAK packet (7 times)
+ │  ├─── PING transaction on 1.0, ACK
+ │  │    ├── PING packet on 1.0, CRC 1D
+ │  │    └── ACK packet
+ │  └─── OUT transaction on 1.0 with no data, ACK
+ │       ├── OUT packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │  ○─ Getting configuration descriptor #0 for device 1, reading 64 bytes
+ │  ├─── SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 00, 02, 00, 00, 40, 00]
+ │  │    ├── SETUP packet on 1.0, CRC 1D
+ │  │    ├── DATA0 packet with CRC 9499 and 8 data bytes: [80, 06, 00, 02, 00, 00, 40, 00]
+ │  │    └── ACK packet
+ │  ├─── IN transaction on 1.0, NAK
+ │  │    ├── IN packet on 1.0, CRC 1D
+ │  │    └── NAK packet (6 times)
+ │  ├─── IN transaction on 1.0 with 64 data bytes, ACK: [09, 02, 40, 00, 02, 01, 04, 80, 01, 09, 04, 00, 00, 02, FF, F0, 00, 05, 07, 05, 81, 02, 00, 02, 00, 07, 05, 01, 02, 00, 02, 00, 09, 04, 01, 00, 00, FF, F0, 01, 06, 09, 04, 01, 01, 02, FF, F0, 01, 06, 07, 05, 82, 02, 00, 02, 00, 07, 05, 02, 02, 00, 02, 00]
+ │  │    ├── IN packet on 1.0, CRC 1D
+ │  │    ├── DATA1 packet with CRC 2372 and 64 data bytes: [09, 02, 40, 00, 02, 01, 04, 80, 01, 09, 04, 00, 00, 02, FF, F0, 00, 05, 07, 05, 81, 02, 00, 02, 00, 07, 05, 01, 02, 00, 02, 00, 09, 04, 01, 00, 00, FF, F0, 01, 06, 09, 04, 01, 01, 02, FF, F0, 01, 06, 07, 05, 82, 02, 00, 02, 00, 07, 05, 02, 02, 00, 02, 00]
+ │  │    └── ACK packet
+ │  ├─── OUT transaction on 1.0 with no data, NAK
+ │  │    ├── OUT packet on 1.0, CRC 1D
+ │  │    ├── DATA1 packet with CRC 0000 and no data
+ │  │    └── NAK packet
+ │  ├─── PING transaction on 1.0, ACK
+ │  │    ├── PING packet on 1.0, CRC 1D
+ │  │    └── ACK packet
+ │  └─── OUT transaction on 1.0 with no data, ACK
+ │       ├── OUT packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │  ○─ Setting configuration 1 for device 1
+ │  ├─── SETUP transaction on 1.0 with 8 data bytes, ACK: [00, 09, 01, 00, 00, 00, 00, 00]
+ │  │    ├── SETUP packet on 1.0, CRC 1D
+ │  │    ├── DATA0 packet with CRC 2527 and 8 data bytes: [00, 09, 01, 00, 00, 00, 00, 00]
+ │  │    └── ACK packet
+ │  ├─── IN transaction on 1.0, NAK
+ │  │    ├── IN packet on 1.0, CRC 1D
+ │  │    └── NAK packet (50 times)
+ │  └─── IN transaction on 1.0 with no data, ACK
+ │       ├── IN packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │  ○─ Getting string descriptor #5, language 0x0409 (English/US) for device 1, reading 2 bytes
+ │  ├─── SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 05, 03, 09, 04, 02, 00]
+ │  │    ├── SETUP packet on 1.0, CRC 1D
+ │  │    ├── DATA0 packet with CRC FCD6 and 8 data bytes: [80, 06, 05, 03, 09, 04, 02, 00]
+ │  │    └── ACK packet
+ │  ├─── IN transaction on 1.0, NAK
+ │  │    ├── IN packet on 1.0, CRC 1D
+ │  │    └── NAK packet (6 times)
+ │  ├─── IN transaction on 1.0 with 2 data bytes, ACK: [1C, 03]
+ │  │    ├── IN packet on 1.0, CRC 1D
+ │  │    ├── DATA1 packet with CRC 8EB6 and 2 data bytes: [1C, 03]
+ │  │    └── ACK packet
+ │  ├─── OUT transaction on 1.0 with no data, NAK
+ │  │    ├── OUT packet on 1.0, CRC 1D
+ │  │    ├── DATA1 packet with CRC 0000 and no data
+ │  │    └── NAK packet
+ │  ├─── PING transaction on 1.0, NAK
+ │  │    ├── PING packet on 1.0, CRC 1D
+ │  │    └── NAK packet (3 times)
+ │  ├─── PING transaction on 1.0, ACK
+ │  │    ├── PING packet on 1.0, CRC 1D
+ │  │    └── ACK packet
+ │  └─── OUT transaction on 1.0 with no data, ACK
+ │       ├── OUT packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │  ○─ Getting string descriptor #5, language 0x0409 (English/US) for device 1, reading 28 bytes: 'iAP Interface'
+ │  ├─── SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 05, 03, 09, 04, 1C, 00]
+ │  │    ├── SETUP packet on 1.0, CRC 1D
+ │  │    ├── DATA0 packet with CRC 5CDF and 8 data bytes: [80, 06, 05, 03, 09, 04, 1C, 00]
+ │  │    └── ACK packet
+ │  ├─── IN transaction on 1.0, NAK
+ │  │    ├── IN packet on 1.0, CRC 1D
+ │  │    └── NAK packet (6 times)
+ │  ├─── IN transaction on 1.0 with 28 data bytes, ACK: [1C, 03, 69, 00, 41, 00, 50, 00, 20, 00, 49, 00, 6E, 00, 74, 00, 65, 00, 72, 00, 66, 00, 61, 00, 63, 00, 65, 00]
+ │  │    ├── IN packet on 1.0, CRC 1D
+ │  │    ├── DATA1 packet with CRC F71E and 28 data bytes: [1C, 03, 69, 00, 41, 00, 50, 00, 20, 00, 49, 00, 6E, 00, 74, 00, 65, 00, 72, 00, 66, 00, 61, 00, 63, 00, 65, 00]
+ │  │    └── ACK packet
+ │  ├─── OUT transaction on 1.0 with no data, NAK
+ │  │    ├── OUT packet on 1.0, CRC 1D
+ │  │    ├── DATA1 packet with CRC 0000 and no data
+ │  │    └── NAK packet
+ │  ├─── PING transaction on 1.0, NAK
+ │  │    ├── PING packet on 1.0, CRC 1D
+ │  │    └── NAK packet (2 times)
+ │  ├─── PING transaction on 1.0, ACK
+ │  │    ├── PING packet on 1.0, CRC 1D
+ │  │    └── ACK packet
+ │  └─── OUT transaction on 1.0 with no data, ACK
+ │       ├── OUT packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │  ○─ Getting string descriptor #6, language 0x0409 (English/US) for device 1, reading 2 bytes
+ │  ├─── SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 06, 03, 09, 04, 02, 00]
+ │  │    ├── SETUP packet on 1.0, CRC 1D
+ │  │    ├── DATA0 packet with CRC CFD6 and 8 data bytes: [80, 06, 06, 03, 09, 04, 02, 00]
+ │  │    └── ACK packet
+ │  ├─── IN transaction on 1.0, NAK
+ │  │    ├── IN packet on 1.0, CRC 1D
+ │  │    └── NAK packet (4 times)
+ │  ├─── IN transaction on 1.0 with 2 data bytes, ACK: '$\x03'
+ │  │    ├── IN packet on 1.0, CRC 1D
+ │  │    ├── DATA1 packet with CRC 4EA5 and 2 data bytes: '$\x03'
+ │  │    └── ACK packet
+ │  ├─── OUT transaction on 1.0 with no data, NAK
+ │  │    ├── OUT packet on 1.0, CRC 1D
+ │  │    ├── DATA1 packet with CRC 0000 and no data
+ │  │    └── NAK packet
+ │  ├─── PING transaction on 1.0, NAK
+ │  │    ├── PING packet on 1.0, CRC 1D
+ │  │    └── NAK packet (3 times)
+ │  ├─── PING transaction on 1.0, ACK
+ │  │    ├── PING packet on 1.0, CRC 1D
+ │  │    └── ACK packet
+ │  └─── OUT transaction on 1.0 with no data, ACK
+ │       ├── OUT packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
+ │  ○─ Getting string descriptor #6, language 0x0409 (English/US) for device 1, reading 36 bytes: 'com.dji.logiclink'
+ │  ├─── SETUP transaction on 1.0 with 8 data bytes, ACK: [80, 06, 06, 03, 09, 04, 24, 00]
+ │  │    ├── SETUP packet on 1.0, CRC 1D
+ │  │    ├── DATA0 packet with CRC AFCC and 8 data bytes: [80, 06, 06, 03, 09, 04, 24, 00]
+ │  │    └── ACK packet
+ │  ├─── IN transaction on 1.0, NAK
+ │  │    ├── IN packet on 1.0, CRC 1D
+ │  │    └── NAK packet (5 times)
+ │  ├─── IN transaction on 1.0 with 36 data bytes, ACK: [24, 03, 63, 00, 6F, 00, 6D, 00, 2E, 00, 64, 00, 6A, 00, 69, 00, 2E, 00, 6C, 00, 6F, 00, 67, 00, 69, 00, 63, 00, 6C, 00, 69, 00, 6E, 00, 6B, 00]
+ │  │    ├── IN packet on 1.0, CRC 1D
+ │  │    ├── DATA1 packet with CRC 4AD7 and 36 data bytes: [24, 03, 63, 00, 6F, 00, 6D, 00, 2E, 00, 64, 00, 6A, 00, 69, 00, 2E, 00, 6C, 00, 6F, 00, 67, 00, 69, 00, 63, 00, 6C, 00, 69, 00, 6E, 00, 6B, 00]
+ │  │    └── ACK packet
+ │  ├─── OUT transaction on 1.0 with no data, NAK
+ │  │    ├── OUT packet on 1.0, CRC 1D
+ │  │    ├── DATA1 packet with CRC 0000 and no data
+ │  │    └── NAK packet
+ │  ├─── PING transaction on 1.0, NAK
+ │  │    ├── PING packet on 1.0, CRC 1D
+ │  │    └── NAK packet (2 times)
+ │  ├─── PING transaction on 1.0, ACK
+ │  │    ├── PING packet on 1.0, CRC 1D
+ │  │    └── ACK packet
+ │  └─── OUT transaction on 1.0 with no data, ACK
+ │       ├── OUT packet on 1.0, CRC 1D
+ │       ├── DATA1 packet with CRC 0000 and no data
+ │       └── ACK packet
