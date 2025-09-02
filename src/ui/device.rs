@@ -18,6 +18,8 @@ use gtk::{
 };
 
 use anyhow::{bail, Error};
+use indexmap::IndexMap;
+use nusb::DeviceId;
 
 use crate::backend::{BackendHandle, ProbeResult, scan};
 use crate::usb::Speed;
@@ -287,7 +289,7 @@ impl DeviceList {
         let mut devices = self.imp().devices.borrow_mut();
         *devices = probe_results
             .into_iter()
-            .map(Device::new)
+            .map(|probe| (probe.info.id(), Device::new(probe)))
             .collect();
         drop(devices);
         let new_count = self.n_items();
@@ -298,7 +300,7 @@ impl DeviceList {
 
 #[derive(Default)]
 pub struct DeviceListInner {
-    devices: RefCell<Vec<Device>>,
+    devices: RefCell<IndexMap<DeviceId, Device>>,
 }
 
 #[glib::object_subclass]
@@ -322,7 +324,8 @@ impl ListModelImpl for DeviceListInner {
     fn item(&self, position: u32) -> Option<glib::Object> {
         self.devices
             .borrow()
-            .get(position as usize)
+            .get_index(position as usize)
+            .map(|(_id, device)| device)
             .map(Device::upcast_ref)
             .cloned()
     }
