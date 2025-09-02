@@ -41,21 +41,25 @@ pub struct ProbeResult {
     pub result: Result<Box<dyn BackendDevice>, String>,
 }
 
+/// Probe a USB device.
+pub fn probe(info: DeviceInfo) -> Option<ProbeResult> {
+    SUPPORTED_DEVICES
+        .get(&(info.vendor_id(), info.product_id()))
+        .map(|(name, probe)| (name, probe(info.clone())))
+        .map(|(name, result)|
+            ProbeResult {
+                name,
+                info,
+                result: result.map_err(|e| format!("{e}"))
+            }
+        )
+}
+
 /// Scan for supported devices.
 pub fn scan() -> Result<Vec<ProbeResult>, Error> {
     Ok(nusb::list_devices()
         .wait()?
-        .filter_map(|info|
-            SUPPORTED_DEVICES
-                .get(&(info.vendor_id(), info.product_id()))
-                .map(|(name, probe)| (name, probe(info.clone())))
-                .map(|(name, result)|
-                    ProbeResult {
-                        name,
-                        info,
-                        result: result.map_err(|e| format!("{e}"))
-                    }
-                ))
+        .filter_map(probe)
         .collect()
     )
 }

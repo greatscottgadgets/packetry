@@ -18,10 +18,11 @@ use gtk::{
 };
 
 use anyhow::{bail, Error};
+use futures_lite::StreamExt;
 use indexmap::IndexMap;
-use nusb::DeviceId;
+use nusb::{DeviceId, hotplug::{HotplugEvent, HotplugWatch}};
 
-use crate::backend::{BackendHandle, ProbeResult, scan};
+use crate::backend::{BackendHandle, ProbeResult, scan, probe};
 use crate::usb::Speed;
 
 pub struct ActiveDevice {
@@ -40,19 +41,25 @@ impl DeviceSelector {
     pub fn new(dev_dropdown: DropDown, speed_dropdown: DropDown)
         -> Result<Self, Error>
     {
-        let devices = DeviceList::new();
+        let devices = DeviceList::new()?;
+
+        dev_dropdown.set_expression(Some(devices.description_expression()));
 
         dev_dropdown.set_model(Some(&devices));
         speed_dropdown.set_model(Some(&StringList::new(&[])));
 
         let selector = DeviceSelector {
-            devices,
-            dev_dropdown,
+            devices: devices.clone(),
+            dev_dropdown: dev_dropdown.clone(),
             speed_dropdown,
             active: None,
         };
 
-        selector.update_descriptions();
+        devices.connect_items_changed(
+            move |devices, _position, _removed, _added| {
+                dev_dropdown.set_expression(Some(devices.description_expression()));
+            }
+        );
 
         Ok(selector)
     }
@@ -96,15 +103,6 @@ impl DeviceSelector {
             self.dev_dropdown.set_sensitive(false);
             self.speed_dropdown.set_sensitive(false);
         }
-    }
-
-    pub fn scan(&mut self) -> Result<(), Error> {
-        self.active = None;
-        self.devices.update()?;
-        self.update_descriptions();
-        self.dev_dropdown.set_sensitive(!self.devices.is_empty());
-        self.speed_dropdown.set_sensitive(!self.devices.is_empty());
-        Ok(())
     }
 
     pub fn open_device(&mut self) -> Result<(), Error> {
@@ -167,38 +165,6 @@ impl DeviceSelector {
             .collect::<Vec<_>>();
         dropdown.set_model(Some(&StringList::new(&strings)));
     }
-
-    fn update_descriptions(&self) {
-        self.dev_dropdown.set_expression(
-            Some(
-                ClosureExpression::new::<String>(
-                    Vec::<Expression>::new(),
-                    if self.devices.n_items() == 1 {
-                        // Only one device in list. Display its name only.
-                        glib::closure!(|object: glib::Object| {
-                            let device = object.downcast::<Device>().unwrap();
-                            let probe = device.probe_result();
-                            probe.name
-                        })
-                    } else {
-                        // Multiple devices in list. Show identifying details.
-                        glib::closure!(|object: glib::Object| {
-                            let device = object.downcast::<Device>().unwrap();
-                            let probe = device.probe_result();
-                            if let Some(serial) = probe.info.serial_number() {
-                                format!("{} #{}", probe.name, serial)
-                            } else {
-                                format!("{} (bus {}, device {})",
-                                    probe.name,
-                                    probe.info.bus_id(),
-                                    probe.info.device_address())
-                            }
-                        })
-                    }
-                )
-            )
-        );
-    }
 }
 
 pub struct DeviceWarning {
@@ -227,6 +193,45 @@ impl DeviceWarning {
             self.info_bar.set_revealed(true);
         } else {
             self.info_bar.set_revealed(false);
+        }
+    }
+}
+
+thread_local!(
+    /// Singleton list model.
+    static DEVICES: RefCell<Option<DeviceList>> = const { RefCell::new(None) };
+);
+
+/// Task to maintain list model.
+async fn maintain_device_list(mut watch: HotplugWatch) {
+    let list = DEVICES.with(|cell| cell.borrow().as_ref().unwrap().clone());
+    loop {
+        match watch.next().await {
+            Some(HotplugEvent::Connected(info)) => {
+                if let Some(probe_result) = probe(info) {
+                    let (index, prev) = list.imp().devices
+                        .borrow_mut()
+                        .insert_full(
+                            probe_result.info.id(),
+                            Device::new(probe_result)
+                        );
+                    let removed = if prev.is_some() { 1 } else { 0 };
+                    let added = 1;
+                    list.items_changed(index as u32, removed, added);
+                }
+            },
+            Some(HotplugEvent::Disconnected(id)) => {
+                let mut devices = list.imp().devices.borrow_mut();
+                if let Some((index, ..)) = devices
+                    .shift_remove_full(&id)
+                {
+                    let removed = 1;
+                    let added = 0;
+                    drop(devices);
+                    list.items_changed(index as u32, removed, added);
+                }
+            },
+            None => return
         }
     }
 }
@@ -275,26 +280,56 @@ glib::wrapper! {
 }
 
 impl DeviceList {
-    fn new() -> Self {
-        glib::Object::new::<DeviceList>()
+    fn new() -> Result<Self, Error> {
+        DEVICES.with(|cell| {
+            let mut opt = cell.borrow_mut();
+            if opt.is_none() {
+                let list = glib::Object::new::<DeviceList>();
+                glib::spawn_future_local(
+                    maintain_device_list(
+                        nusb::watch_devices()?
+                    )
+                );
+                *list.imp().devices.borrow_mut() = scan()?
+                    .into_iter()
+                    .map(|probe| (probe.info.id(), Device::new(probe)))
+                    .collect();
+                *opt = Some(list)
+            }
+            Ok(opt.as_ref().unwrap().clone())
+        })
     }
 
     fn is_empty(&self) -> bool {
         self.imp().n_items() == 0
     }
 
-    fn update(&self) -> Result<(), Error> {
-        let old_count = self.n_items();
-        let probe_results = scan()?;
-        let mut devices = self.imp().devices.borrow_mut();
-        *devices = probe_results
-            .into_iter()
-            .map(|probe| (probe.info.id(), Device::new(probe)))
-            .collect();
-        drop(devices);
-        let new_count = self.n_items();
-        self.items_changed(0, old_count, new_count);
-        Ok(())
+    fn description_expression(&self) -> ClosureExpression {
+        ClosureExpression::new::<String>(
+            Vec::<Expression>::new(),
+            if self.n_items() == 1 {
+                // Only one device in list. Display its name only.
+                glib::closure!(|object: glib::Object| {
+                    let device = object.downcast::<Device>().unwrap();
+                    let probe = device.probe_result();
+                    probe.name
+                })
+            } else {
+                // Multiple devices in list. Show identifying details.
+                glib::closure!(|object: glib::Object| {
+                    let device = object.downcast::<Device>().unwrap();
+                    let probe = device.probe_result();
+                    if let Some(serial) = probe.info.serial_number() {
+                        format!("{} #{}", probe.name, serial)
+                    } else {
+                        format!("{} (bus {}, device {})",
+                            probe.name,
+                            probe.info.bus_id(),
+                            probe.info.device_address())
+                    }
+                })
+            }
+        )
     }
 }
 

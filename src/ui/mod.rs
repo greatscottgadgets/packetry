@@ -188,7 +188,6 @@ pub struct UserInterface {
     vertical_panes: Paned,
     open_button: Button,
     save_button: Button,
-    scan_button: Button,
     capture_button: Button,
     stop_button: Button,
     status_label: Label,
@@ -233,8 +232,6 @@ pub fn activate(application: &Application) -> Result<(), Error> {
     });
 
     reset_capture()?;
-
-    gtk::glib::idle_add_once(|| display_error(detect_hardware()));
 
     Ok(())
 }
@@ -682,7 +679,6 @@ fn start_file(action: FileAction, file: gio::File) -> Result<(), Error> {
             &ui.capture.reader);
         ui.open_button.set_sensitive(false);
         ui.save_button.set_sensitive(false);
-        ui.scan_button.set_sensitive(false);
         ui.selector.set_sensitive(false);
         ui.capture_button.set_sensitive(false);
         ui.stop_button.set_sensitive(true);
@@ -855,7 +851,6 @@ pub fn rearm() -> Result<(), Error> {
         STOP.store(false, Ordering::Relaxed);
         ui.stop_state = StopState::Disabled;
         ui.stop_button.set_sensitive(false);
-        ui.scan_button.set_sensitive(true);
         ui.save_button.set_sensitive(true);
         ui.open_button.set_sensitive(true);
         ui.selector.set_sensitive(true);
@@ -865,15 +860,6 @@ pub fn rearm() -> Result<(), Error> {
             ui.vbox.remove(&ui.progress_bar);
         }
         ui.metadata_action.set_property("enabled", true);
-        Ok(())
-    })
-}
-
-fn detect_hardware() -> Result<(), Error> {
-    with_ui(|ui| {
-        ui.capture_button.set_sensitive(false);
-        ui.warning.update(None);
-        ui.selector.scan()?;
         Ok(())
     })
 }
@@ -918,7 +904,6 @@ pub fn start_capture() -> Result<(), Error> {
         ui.snapshot_rx = Some(snapshot_rx);
         ui.power.started();
         ui.open_button.set_sensitive(false);
-        ui.scan_button.set_sensitive(false);
         ui.selector.set_sensitive(false);
         ui.capture_button.set_sensitive(false);
         ui.stop_button.set_sensitive(true);
