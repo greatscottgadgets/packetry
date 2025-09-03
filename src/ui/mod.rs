@@ -642,6 +642,31 @@ fn choose_file<F>(
         chooser.connect_response(move |dialog, response| {
             if response == gtk::ResponseType::Accept {
                 if let Some(file) = dialog.file() {
+                    if let Some(name) = file.basename() {
+                        if action == Save && name.extension().is_none() {
+                            // Automatically add the ".pcapng" extension.
+                            let (file, _) = add_extension(file, name, "pcapng");
+                            // Check whether the new filename already exists.
+                            if file.query_exists(Cancellable::NONE) {
+                                // The file already exists.
+                                // Set the new filename in the dialog.
+                                let _ = dialog.set_file(&file);
+                                // Re-emit the response signal, so that the
+                                // dialog will show its usual warning message
+                                // about an existing file.
+                                dialog.response(response);
+                                // Return without closing the dialog.
+                                return
+                            } else {
+                                // The file doesn't exist. Proceed normally, but
+                                // with the amended destination file.
+                                display_error(handler(file));
+                                // Return after closing the dialog.
+                                dialog.destroy();
+                                return
+                            }
+                        }
+                    }
                     display_error(handler(file));
                 }
                 dialog.destroy();
@@ -668,16 +693,10 @@ fn start_file(action: FileAction, file: gio::File) -> Result<(), Error> {
                 ext => bail!(
                     "Could not determine format from extension '{ext}'")
             },
-            None => match action {
-                Load => bail!(
-                    "Could not determine format from file name '{}'",
-                    name.display()
-                ),
-                Save => {
-                    let (file, name) = add_extension(file, name, "pcapng");
-                    (PcapNg, file, name)
-                }
-            }
+            None => bail!(
+                "Could not determine format from file name '{}'",
+                name.display()
+            ),
         }
     };
     let writer = if action == Load {
