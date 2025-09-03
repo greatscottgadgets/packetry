@@ -595,7 +595,9 @@ impl Decoder {
             // An LS keepalive suspends the current transaction, if any.
             self.suspended_transaction = self.transaction_state.take();
         } else {
-            // Any other event causes all existing transaction groups to end.
+            // Any other event causes the current transaction and all
+            // existing transaction groups to end.
+            self.transaction_end(false, false)?;
             let endpoint_count = self.capture.endpoints.len();
             for i in 0..endpoint_count {
                 let endpoint_id = EndpointId::from(i);
