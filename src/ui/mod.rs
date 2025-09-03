@@ -98,6 +98,7 @@ pub mod item_widget;
 pub mod model;
 pub mod power;
 pub mod row_data;
+pub mod settings;
 pub mod tree_list_model;
 pub mod window;
 #[cfg(any(test, feature="record-ui-test"))]
@@ -116,6 +117,7 @@ use row_data::{
     TrafficRowData,
     DeviceRowData,
 };
+use settings::Settings;
 use window::PacketryWindow;
 
 #[cfg(any(test, feature="record-ui-test"))]
@@ -158,6 +160,7 @@ enum StopState {
 
 pub struct UserInterface {
     window: PacketryWindow,
+    settings: Settings,
     capture: Capture,
     snapshot_rx: Option<Receiver<CaptureSnapshot>>,
     selector: DeviceSelector,
@@ -622,6 +625,12 @@ fn choose_file<F>(
                 &[("Save", gtk::ResponseType::Accept)]
             ),
         };
+        let _ = chooser.set_current_folder(
+            ui.settings.last_used_directory
+                .as_ref()
+                .map(gio::File::for_path)
+                .as_ref()
+        );
         let all = gtk::FileFilter::new();
         let pcap = gtk::FileFilter::new();
         let pcapng = gtk::FileFilter::new();
@@ -636,6 +645,12 @@ fn choose_file<F>(
         chooser.add_filter(&pcap);
         chooser.add_filter(&pcapng);
         chooser.connect_response(move |dialog, response| {
+            let _ = with_ui(|ui| {
+                ui.settings.last_used_directory = dialog
+                    .current_folder()
+                    .and_then(|file| file.path());
+                Ok(())
+            });
             if response == gtk::ResponseType::Accept {
                 if let Some(file) = dialog.file() {
                     display_error(handler(file));
@@ -1305,6 +1320,13 @@ fn show_about() -> Result<(), Error> {
         .build();
     about.present();
     Ok(())
+}
+
+pub fn save_settings() {
+    let _ = with_ui(|ui| {
+        ui.settings.save();
+        Ok(())
+    });
 }
 
 pub fn display_error(result: Result<(), Error>) {
