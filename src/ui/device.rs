@@ -45,7 +45,6 @@ impl DeviceSelector {
 
         dev_dropdown.set_expression(Some(devices.description_expression()));
 
-        dev_dropdown.set_model(Some(&devices));
         speed_dropdown.set_model(Some(&StringList::new(&[])));
 
         let selector = DeviceSelector {
@@ -66,6 +65,7 @@ impl DeviceSelector {
 
     pub fn connect_signals(&self, f: fn()) {
         self.dev_dropdown.connect_selected_item_notify(move |_| f());
+        self.dev_dropdown.set_model(Some(&self.devices));
     }
 
     pub fn device_available(&self) -> bool {
