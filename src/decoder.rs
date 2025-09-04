@@ -9,6 +9,7 @@ use anyhow::{Context, Error, bail};
 use merge::Merge;
 
 use crate::capture::prelude::*;
+use crate::event::{EventType, LineState};
 use crate::usb::{self, prelude::*, validate_packet};
 use crate::util::{
     rcu::SingleWriterRcu,
@@ -496,6 +497,18 @@ impl EndpointData {
     }
 }
 
+#[derive(Copy, Clone, PartialEq)]
+enum EventState {
+    Idle,
+    LsKeepaliveGroup,
+    AwaitDeviceChirp,
+    PartialDeviceChirp,
+    ValidDeviceChirp,
+    AwaitHostChirp,
+    PartialHostChirp,
+    ValidHostChirp,
+}
+
 pub struct Decoder {
     pub capture: CaptureWriter,
     device_index: VecMap<DeviceAddr, DeviceId>,
@@ -503,6 +516,9 @@ pub struct Decoder {
     last_endpoint_state: Vec<u8>,
     last_item_endpoint: Option<EndpointId>,
     transaction_state: Option<TransactionState>,
+    suspended_transaction: Option<TransactionState>,
+    event_state: EventState,
+    ls_keepalive_item: Option<TrafficItemId>,
 }
 
 impl Decoder {
@@ -515,6 +531,9 @@ impl Decoder {
             last_endpoint_state: Vec::new(),
             last_item_endpoint: None,
             transaction_state: None,
+            suspended_transaction: None,
+            event_state: EventState::Idle,
+            ls_keepalive_item: None,
         };
 
         // Add the default device.
@@ -525,9 +544,9 @@ impl Decoder {
         device_data.set(default_id, Arc::new(DeviceData::default()));
         decoder.device_index.set(default_addr, default_id);
 
-        // Add the special endpoints for invalid and framing packets.
+        // Add the special endpoints.
         let mut endpoint_readers = VecMap::new();
-        for ep_number in [INVALID_EP_NUM, FRAMING_EP_NUM] {
+        for ep_number in [EVENT_EP_NUM, INVALID_EP_NUM, FRAMING_EP_NUM] {
             let (writer, reader) =
                 create_endpoint(&mut decoder.capture.counters)?;
             let mut endpoint = Endpoint::default();
@@ -560,10 +579,43 @@ impl Decoder {
     pub fn handle_raw_packet(&mut self, packet: &[u8], timestamp_ns: u64)
         -> Result<(), Error>
     {
+        // Any packet resets our event state.
+        self.event_state = EventState::Idle;
         let data_range = self.capture.packet_data.append(packet)?;
         let packet_id = self.capture.packet_index.push(data_range.start)?;
         self.capture.packet_times.push(timestamp_ns)?;
         self.transaction_update(packet_id, packet)?;
+        Ok(())
+    }
+
+    pub fn handle_event(&mut self, event_type: EventType, timestamp_ns: u64)
+        -> Result<(), Error>
+    {
+        if event_type == EventType::LsKeepalive {
+            // An LS keepalive suspends the current transaction, if any.
+            self.suspended_transaction = self.transaction_state.take();
+        } else {
+            // Any other event causes the current transaction and all
+            // existing transaction groups to end.
+            self.transaction_end(false, false)?;
+            let endpoint_count = self.capture.endpoints.len();
+            for i in 0..endpoint_count {
+                let endpoint_id = EndpointId::from(i);
+                let ep_data = &mut self.endpoint_data[endpoint_id];
+                if let Some(group) = ep_data.active.take() {
+                    let ep_group_id = group.id;
+                    ep_data.ended = Some(ep_group_id);
+                }
+            }
+            self.ls_keepalive_item = None;
+        }
+
+        let packet_data_end = self.capture.packet_data.len().into();
+        let packet_id = self.capture.packet_index.push(packet_data_end)?;
+        self.capture.packet_times.push(timestamp_ns)?;
+        self.capture.event_index.push(packet_id)?;
+        self.capture.event_codes.push(&event_type.code())?;
+        self.event_update(packet_id, event_type)?;
         Ok(())
     }
 
@@ -575,6 +627,97 @@ impl Decoder {
         self.transaction_end(false, false)?;
         self.capture.shared.complete.store(true, Release);
         Ok(self.capture)
+    }
+
+    fn event_update(&mut self, packet_id: PacketId, event_type: EventType)
+        -> Result<(), Error>
+    {
+        use EventState::*;
+        use EventType::*;
+        use LineState::*;
+        self.event_state = match (self.event_state, event_type) {
+            // If we saw an LS keepalive previously, append it to the existing subgroup.
+            (LsKeepaliveGroup, LsKeepalive) => LsKeepaliveGroup,
+            // Otherwise if we see a first LS keepalive, start a new group or subgroup.
+            (_, LsKeepalive) => {
+                if self.ls_keepalive_item.is_some() {
+                    self.event_subgroup_start(packet_id)?;
+                } else {
+                    self.ls_keepalive_item = Some(self.event_group_start(packet_id)?);
+                }
+                LsKeepaliveGroup
+            }
+            // If we see a bus reset, treat it as a single event and await a device chirp.
+            (_, BusReset) => {
+                self.event_single(packet_id)?;
+                AwaitDeviceChirp
+            },
+            // A Chirp K starts the device chirp when we're waiting for it.
+            (AwaitDeviceChirp, LineStateChange(ChirpK)) => {
+                // This starts a new top-level group for HS negotiation.
+                self.event_group_start(packet_id)?;
+                PartialDeviceChirp
+            },
+            // SE0 before the device chirp is valid returns us to awaiting one.
+            (PartialDeviceChirp, LineStateChange(SE0)) => AwaitDeviceChirp,
+            // Update state when the device chirp is validated.
+            (PartialDeviceChirp, DeviceChirpValid) => ValidDeviceChirp,
+            // SE0 ends a complete device chirp and we await the host chirp.
+            (ValidDeviceChirp, LineStateChange(SE0)) => AwaitHostChirp,
+            // A Chirp K starts the host chirp when we're waiting for it.
+            (AwaitHostChirp, LineStateChange(ChirpK)) => {
+                // This starts a new subgroup for the host chirp.
+                self.event_subgroup_start(packet_id)?;
+                PartialHostChirp
+            },
+            // Update state when the host chirp is validated.
+            (PartialHostChirp, HostChirpValid) => ValidHostChirp,
+            // Maintain host chirp states during Chirp J/K/SE0 transitions.
+            (PartialHostChirp, LineStateChange(SE0|ChirpJ|ChirpK)) => PartialHostChirp,
+            (ValidHostChirp,   LineStateChange(SE0|ChirpJ|ChirpK)) => ValidHostChirp,
+            // Any other event is , and returns us to the idle state.
+            _ => {
+                self.event_single(packet_id)?;
+                Idle
+            }
+        };
+        Ok(())
+    }
+
+    fn event_single(&mut self, packet_id: PacketId) -> Result<TrafficItemId, Error> {
+        self.event_add_group(packet_id, false)
+    }
+
+    fn event_group_start(&mut self, packet_id: PacketId) -> Result<TrafficItemId, Error> {
+        self.event_add_group(packet_id, true)
+    }
+
+    fn event_subgroup_start(&mut self, packet_id: PacketId) -> Result<(), Error> {
+        let transaction_id = self.event_add_subgroup(packet_id)?;
+        let writer = &mut self.capture.endpoint_writers[EVENT_EP_ID];
+        writer.transaction_ids.push(transaction_id)?;
+        Ok(())
+    }
+
+    fn event_add_group(&mut self, packet_id: PacketId, start: bool)
+        -> Result<TrafficItemId, Error>
+    {
+        let transaction_id = self.event_add_subgroup(packet_id)?;
+        let writer = &mut self.capture.endpoint_writers[EVENT_EP_ID];
+        let ep_transaction_id =
+            writer.transaction_ids.push(transaction_id)?;
+        let ep_group_id =
+            writer.group_index.push(ep_transaction_id)?;
+        let group_start_id =
+            self.add_group_entry(EVENT_EP_ID, ep_group_id, start)?;
+        self.add_item(EVENT_EP_ID, group_start_id)
+    }
+
+    fn event_add_subgroup(&mut self, packet_id: PacketId)
+        -> Result<TransactionId, Error>
+    {
+        self.transaction_end(false, false)?;
+        self.capture.transaction_index.push(packet_id)
     }
 
     fn packet_endpoint(&mut self, pid: PID, packet: &[u8])
@@ -602,6 +745,14 @@ impl Decoder {
         use TransactionStatus::*;
         use TransactionStyle::*;
         use StartComplete::*;
+        // If a transaction was suspended, resume it now.
+        if let Some(transaction) = self.suspended_transaction.take() {
+            let endpoint_id = transaction.endpoint_id()?;
+            let writer = &mut self.capture.endpoint_writers[endpoint_id];
+            let transaction_id = self.capture.transaction_index.push(packet_id)?;
+            writer.transaction_ids.push(transaction_id)?;
+            self.transaction_state = Some(transaction);
+        };
         let (pid, status) = transaction_status(&self.transaction_state, packet)?;
         let success = status != Fail;
         let complete = match &self.transaction_state {
@@ -1029,13 +1180,15 @@ impl Decoder {
         for i in 0..endpoint_count {
             use EndpointState::*;
             self.last_endpoint_state[i] = {
+                let event = endpoint_id == EVENT_EP_ID;
                 let same = i == endpoint_id.value as usize;
                 let last = EndpointState::from(self.last_endpoint_state[i]);
-                match (same, start, last) {
-                    (true, true,  _)               => Starting,
-                    (true, false, _)               => Ending,
-                    (false, _, Starting | Ongoing) => Ongoing,
-                    (false, _, Ending | Idle)      => Idle,
+                match (same, event, start, last) {
+                    (true,  _,     true,  _                 ) => Starting,
+                    (true,  _,     false, _                 ) => Ending,
+                    (false, true,  _,     Starting | Ongoing) => Ending,
+                    (false, false, _,     Starting | Ongoing) => Ongoing,
+                    (false, _,     _,     Ending | Idle     ) => Idle,
                 }
             } as u8;
         }

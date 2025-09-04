@@ -14,6 +14,7 @@ use once_cell::sync::Lazy;
 use crate::capture::CaptureMetadata;
 use crate::util::handle_thread_panic;
 pub use crate::usb::Speed;
+pub use crate::event::EventType;
 
 pub mod cynthion;
 pub mod ice40usbtrace;
@@ -70,10 +71,23 @@ pub trait BackendDevice {
     fn open_as_generic(&self) -> Result<Box<dyn BackendHandle>, Error>;
 }
 
-/// A timestamped packet.
-pub struct TimestampedPacket {
-    pub timestamp_ns: u64,
-    pub bytes: Vec<u8>,
+/// A timestamped event.
+pub enum TimestampedEvent {
+    /// A packet was captured.
+    Packet {
+        /// Timestamp in nanoseconds.
+        timestamp_ns: u64,
+        /// The bytes of the packet.
+        bytes: Vec<u8>,
+    },
+    /// An event occured.
+    #[allow(dead_code)]
+    Event {
+        /// Timestamp in nanoseconds.
+        timestamp_ns: u64,
+        /// The type of event.
+        event_type: EventType,
+    }
 }
 
 /// Handle used to stop an ongoing capture.
@@ -82,8 +96,8 @@ pub struct BackendStop {
     worker: JoinHandle::<()>,
 }
 
-pub type PacketResult = Result<TimestampedPacket, Error>;
-pub trait PacketIterator: Iterator<Item=PacketResult> + Send {}
+pub type EventResult = Result<TimestampedEvent, Error>;
+pub trait EventIterator: Iterator<Item=EventResult> + Send {}
 
 /// Configuration for power control.
 #[derive(Clone)]
@@ -140,22 +154,21 @@ pub trait BackendHandle: Send + Sync {
     /// and should do any cleanup necessary before next use.
     fn post_capture(&mut self) -> Result<(), Error>;
 
-    /// Construct an iterator that produces timestamped packets from raw data.
+    /// Construct an iterator that produces timestamped events from raw data.
     ///
     /// This method must construct a suitable iterator type around `data_rx`
     /// and `reuse_tx`, which will parse the raw data in USB buffers from
-    /// the device to produce timestamped packets.
-    ///
-    /// Used buffers should be sent to `reuse_tx` for reuse.
+    /// the device to produce timestamped events. Used buffers should be sent
+    /// to `reuse_tx` for reuse.
     ///
     /// The iterator type must be `Send` so that it can be passed to a
     /// separate decoder thread.
     ///
-    fn timestamped_packets(
+    fn timestamped_events(
         &self,
         data_rx: mpsc::Receiver<Buffer>,
         reuse_tx: mpsc::Sender<Buffer>,
-    ) -> Box<dyn PacketIterator>;
+    ) -> Box<dyn EventIterator>;
 
     /// Duplicate this handle with Box::new(self.clone())
     ///
@@ -175,13 +188,13 @@ pub trait BackendHandle: Send + Sync {
     /// an error.
     ///
     /// Returns:
-    /// - an iterator over timestamped packets
+    /// - an iterator over timestamped events
     /// - a handle to stop the capture
     fn start(
         &self,
         speed: Speed,
         result_handler: Box<dyn FnOnce(Result<(), Error>) + Send>
-    ) -> Result<(Box<dyn PacketIterator>, BackendStop), Error> {
+    ) -> Result<(Box<dyn EventIterator>, BackendStop), Error> {
         // Channel to pass captured data to the decoder thread.
         let (data_tx, data_rx) = mpsc::channel();
 
@@ -199,13 +212,13 @@ pub trait BackendHandle: Send + Sync {
             handle.run_capture(speed, data_tx, reuse_rx, stop_rx)
         ));
 
-        // Iterator over timestamped packets.
-        let packets = self.timestamped_packets(data_rx, reuse_tx);
+        // Iterator over timestamped events.
+        let events = self.timestamped_events(data_rx, reuse_tx);
 
         // Handle to stop the worker thread.
         let stop_handle = BackendStop { worker, stop_tx };
 
-        Ok((packets, stop_handle))
+        Ok((events, stop_handle))
     }
 
     /// Worker that runs the whole lifecycle of a capture from start to finish.

@@ -16,6 +16,7 @@ pub mod built { include!(concat!(env!("OUT_DIR"), "/built.rs")); }
 mod capture;
 mod database;
 mod decoder;
+mod event;
 mod file;
 mod usb;
 mod util;

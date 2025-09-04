@@ -9,6 +9,7 @@ licensing = get_spdx_licensing()
 # We accept these licenses unconditionally.
 accepted_license_strings = (
     'MIT',
+    'MIT-0',
     'BSD-2-Clause',
     'BSD-3-Clause',
     'BSL-1.0',
@@ -126,6 +127,7 @@ for line in cargo_result.stdout.decode().rstrip().split("\n"):
             ['LICENSE.txt'],
             ['LICENSE.md'],
             ['COPYING'],
+            ['COPYRIGHT-RUST.txt'],
         )
         for src_dir in [
             package,

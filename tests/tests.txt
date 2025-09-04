@@ -10,6 +10,7 @@ hackrf-restart-failure
 iso-ambiguous
 iso-unambiguous
 ksolti-core-enum
+ls-keepalive-divided-transaction
 mouse
 split-enum
 split-poll
