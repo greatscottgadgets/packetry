@@ -30,13 +30,6 @@
               <object class="GtkSeparator"/>
             </child>
             <child type="start">
-              <object class="GtkButton" id="scan_button">
-                <property name="action-name">win.scan</property>
-                <property name="icon-name">view-refresh</property>
-                <property name="tooltip-text">Scan for devices</property>
-              </object>
-            </child>
-            <child type="start">
               <object class="GtkButton" id="capture_button">
                 <property name="action-name">win.capture</property>
                 <property name="icon-name">media-record</property>
