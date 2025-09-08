@@ -55,6 +55,13 @@ fn have_argument(name: &str) -> bool {
 }
 
 fn main() {
+    // Set RUST_BACKTRACE to 1 so we always get backtraces. Do this before
+    // spawning any further threads, since set_var is unsafe once there are
+    // multiple threads in the program.
+    unsafe {
+        std::env::set_var("RUST_BACKTRACE", "1");
+    }
+
     // On Windows, this env var will be set by the packetry-cli wrapper.
     #[cfg(windows)]
     if std::env::var("PACKETRY_ATTACH_CONSOLE").is_ok() {
