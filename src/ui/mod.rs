@@ -1,16 +1,17 @@
 //! The Packetry user interface.
 
+use std::backtrace::Backtrace;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::ffi::OsStr;
 use std::io::{Read, Write};
 use std::ops::Range;
-use std::panic::{UnwindSafe, catch_unwind};
+use std::panic::UnwindSafe;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{Sender, Receiver, channel};
 use std::sync::Arc;
-use std::thread::{JoinHandle, Result as ThreadResult};
+use std::thread::JoinHandle;
 use std::time::{Duration, Instant, SystemTime};
 
 #[cfg(feature="step-decoder")]
@@ -19,6 +20,7 @@ use std::net::TcpListener;
 use anyhow::{Context as ErrorContext, Error, bail};
 use chrono::{DateTime, Local};
 use bytemuck::bytes_of;
+use scoped_panic_hook::{Panic, catch_panic};
 
 use gtk::gio::{
     self,
@@ -92,7 +94,7 @@ use crate::file::{
     PcapNgSaver,
 };
 use crate::usb::{Descriptor, PacketFields, Speed, validate_packet};
-use crate::util::{rcu::SingleWriterRcu, fmt_count, fmt_size, handle_thread_panic};
+use crate::util::{rcu::SingleWriterRcu, fmt_count, fmt_size};
 use crate::version::{version, version_info};
 
 pub mod capture;
@@ -157,8 +159,8 @@ enum FileFormat {
 
 enum StopState {
     Disabled,
-    File(Cancellable, JoinHandle<ThreadResult<()>>),
-    Backend(BackendStop, JoinHandle<ThreadResult<()>>),
+    File(Cancellable, JoinHandle<Result<(), Panic>>),
+    Backend(BackendStop, JoinHandle<Result<(), Panic>>),
 }
 
 pub struct UserInterface {
@@ -916,19 +918,22 @@ fn add_extension(
 
 pub fn stop_operation() -> Result<(), Error> {
     with_ui(|ui| {
-        match std::mem::replace(&mut ui.stop_state, StopState::Disabled) {
-            StopState::Disabled => {},
+        let thread = match std::mem::replace(
+            &mut ui.stop_state, StopState::Disabled
+        ) {
+            StopState::Disabled => return Ok(()),
             StopState::File(cancel_handle, thread) => {
                 STOP.store(true, Ordering::Relaxed);
                 cancel_handle.cancel();
-                display_error(handle_thread_panic(thread.join().unwrap()));
+                thread
             },
             StopState::Backend(stop_handle, thread) => {
                 stop_handle.stop()?;
                 ui.power.stopped();
-                display_error(handle_thread_panic(thread.join().unwrap()));
+                thread
             }
         };
+        display_problem(thread.join().unwrap());
         Ok(())
     })
 }
@@ -1379,15 +1384,15 @@ pub fn save_settings() {
     });
 }
 
-pub fn spawn_thread<F>(
+fn spawn_thread<F>(
     description: &str, f: F
-) -> Result<JoinHandle<ThreadResult<()>>, Error>
+) -> Result<JoinHandle<Result<(), Panic>>, Error>
     where F: FnOnce() + Send + UnwindSafe + 'static
 {
     std::thread::Builder::new()
         .name(description.to_string())
         .spawn(|| {
-            let result = catch_unwind(f);
+            let result = catch_panic(f);
             if result.is_err() {
                 gtk::glib::idle_add_once(|| {
                     display_error(stop_operation());
@@ -1399,21 +1404,59 @@ pub fn spawn_thread<F>(
         .context(format!("Failed to start {description} thread"))
 }
 
-pub fn display_error(result: Result<(), Error>) {
-    #[cfg(not(test))]
-    if let Err(e) = result {
-        if let Some(g_error) = e.downcast_ref::<gtk::glib::Error>() {
-            if g_error.matches(gio::IOErrorEnum::Cancelled) {
-                // We cancelled a load/save operation. This isn't an error.
-                return;
-            }
-        }
+trait Problem {
+    fn message(&self) -> String;
+    #[allow(dead_code)]
+    fn backtrace(&self) -> &Backtrace;
+    fn is_ignorable(&self) -> bool;
+}
+
+impl Problem for Error {
+    fn message(&self) -> String {
         use std::fmt::Write;
-        let mut message = format!("{e}");
-        for cause in e.chain().skip(1) {
+        let mut message = format!("{self}");
+        for cause in self.chain().skip(1) {
             write!(message, "\ncaused by: {cause} ({cause:?})").unwrap();
         }
-        let backtrace_string = format!("{}", e.backtrace());
+        message
+    }
+
+    fn backtrace(&self) -> &Backtrace {
+        self.backtrace()
+    }
+
+    fn is_ignorable(&self) -> bool {
+        if let Some(g_error) = self.downcast_ref::<gtk::glib::Error>() {
+            // We cancelled a load/save operation. This isn't an error.
+            g_error.matches(gio::IOErrorEnum::Cancelled)
+        } else {
+            false
+        }
+    }
+}
+
+impl Problem for Panic {
+    fn message(&self) -> String {
+        self.message().to_string()
+    }
+
+    fn backtrace(&self) -> &Backtrace {
+        self.backtrace()
+    }
+
+    fn is_ignorable(&self) -> bool {
+        false
+    }
+}
+
+fn display_problem<P: Problem>(result: Result<(), P>) {
+    #[cfg(not(test))]
+    if let Err(problem) = result {
+        if problem.is_ignorable() {
+            return;
+        }
+        let message = problem.message();
+        let backtrace_string = format!("{}", problem.backtrace());
         let backtrace = match backtrace_string.as_str() {
             "disabled backtrace" => None,
             _ => Some(backtrace_string),
@@ -1449,8 +1492,7 @@ pub fn display_error(result: Result<(), Error>) {
                             );
                             message_area.append(
                                 &ScrolledWindow::builder()
-                                    .width_request(400)
-                                    .height_request(200)
+                                    .vexpand(true)
                                     .child(
                                         &TextView::builder()
                                             .buffer(
@@ -1463,6 +1505,8 @@ pub fn display_error(result: Result<(), Error>) {
                                     .build()
                             );
                         }
+                        dialog.set_width_request(600);
+                        dialog.set_height_request(400);
                         dialog.set_transient_for(Some(&ui.window));
                         dialog.set_modal(true);
                         dialog.connect_response(
@@ -1474,7 +1518,16 @@ pub fn display_error(result: Result<(), Error>) {
         });
     }
     #[cfg(test)]
-    result.unwrap();
+    if let Err(problem) = result {
+        if problem.is_ignorable() {
+            return;
+        }
+        panic!("{}", problem.message());
+    }
+}
+
+pub fn display_error(result: Result<(), Error>) {
+    display_problem(result)
 }
 
 impl Speed {
