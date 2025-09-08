@@ -35,7 +35,6 @@ use crate::ui::{
     FileAction,
     StopState,
     UserInterface,
-    detect_hardware,
     display_error,
     choose_capture_file,
     show_about,
@@ -93,7 +92,6 @@ impl PacketryWindow {
         window.add_action_entries([
             button_action!("open", open_button, choose_capture_file(Load)),
             button_action!("save", save_button, choose_capture_file(Save)),
-            button_action!("scan", scan_button, detect_hardware()),
             button_action!("capture", capture_button, start_capture()),
             button_action!("stop", stop_button, stop_operation()),
         ]);
@@ -102,7 +100,6 @@ impl PacketryWindow {
         {
             application.set_accels_for_action("win.open", &["<Ctrl>o"]);
             application.set_accels_for_action("win.save", &["<Ctrl>s"]);
-            application.set_accels_for_action("win.scan", &["<Ctrl>r", "F5"]);
             application.set_accels_for_action("win.capture", &["<Ctrl>b"]);
             application.set_accels_for_action("win.stop", &["<Ctrl>e"]);
         }
@@ -111,20 +108,17 @@ impl PacketryWindow {
         {
             application.set_accels_for_action("win.open", &["<Meta>o"]);
             application.set_accels_for_action("win.save", &["<Meta>s"]);
-            application.set_accels_for_action("win.scan", &["<Meta>r", "F5"]);
             application.set_accels_for_action("win.capture", &["<Meta>b"]);
             application.set_accels_for_action("win.stop", &["<Meta>e"]);
         }
 
         let open_button = window.imp().open_button.clone();
         let save_button = window.imp().save_button.clone();
-        let scan_button = window.imp().scan_button.clone();
         let capture_button = window.imp().capture_button.clone();
         let stop_button = window.imp().stop_button.clone();
 
         open_button.set_sensitive(true);
         save_button.set_sensitive(false);
-        scan_button.set_sensitive(true);
 
         let selector = DeviceSelector::new(
             window.imp().dev_dropdown.clone(),
@@ -216,7 +210,6 @@ impl PacketryWindow {
             separator,
             vbox,
             vertical_panes,
-            scan_button,
             open_button,
             save_button,
             capture_button,
@@ -264,8 +257,6 @@ mod imp {
         pub open_button: TemplateChild<Button>,
         #[template_child]
         pub save_button: TemplateChild<Button>,
-        #[template_child]
-        pub scan_button: TemplateChild<Button>,
         #[template_child]
         pub capture_button: TemplateChild<Button>,
         #[template_child]
