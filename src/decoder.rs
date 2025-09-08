@@ -538,40 +538,12 @@ impl Decoder {
 
         // Add the default device.
         let default_addr = DeviceAddr(0);
-        let default_device = Device { address: default_addr };
-        let default_id = decoder.capture.devices.push(&default_device)?;
-        let mut device_data = VecMap::new();
-        device_data.set(default_id, Arc::new(DeviceData::default()));
-        decoder.device_index.set(default_addr, default_id);
+        decoder.add_device(default_addr)?;
 
         // Add the special endpoints.
-        let mut endpoint_readers = VecMap::new();
         for ep_number in [EVENT_EP_NUM, INVALID_EP_NUM, FRAMING_EP_NUM] {
-            let (writer, reader) =
-                create_endpoint(&mut decoder.capture.counters)?;
-            let mut endpoint = Endpoint::default();
-            endpoint.set_device_id(default_id);
-            endpoint.set_device_address(default_addr);
-            endpoint.set_number(ep_number);
-            endpoint.set_direction(Direction::Out);
-            let endpoint_id = decoder.capture.endpoints.push(&endpoint)?;
-            decoder.capture.endpoint_writers.set(endpoint_id, writer);
-            let endpoint_addr =
-                EndpointAddr::from_parts(ep_number, Direction::Out);
-            decoder.endpoint_data.set(
-                endpoint_id,
-                EndpointData::new(default_id, endpoint_id, endpoint_addr)
-            );
-            let ep_state = EndpointState::Idle as u8;
-            decoder.last_endpoint_state.push(ep_state);
-            endpoint_readers.set(endpoint_id, Arc::new(reader));
+            decoder.add_endpoint(default_addr, ep_number, Direction::Out)?;
         }
-
-        // Push changes to shared state.
-        decoder.capture.shared.device_data
-            .swap(Arc::new(device_data));
-        decoder.capture.shared.endpoint_readers
-            .swap(Arc::new(endpoint_readers));
 
         Ok(decoder)
     }
