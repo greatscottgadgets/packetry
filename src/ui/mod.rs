@@ -1413,14 +1413,20 @@ pub fn display_error(result: Result<(), Error>) {
         for cause in e.chain().skip(1) {
             write!(message, "\ncaused by: {cause} ({cause:?})").unwrap();
         }
-        let backtrace = format!("{}", e.backtrace());
-        if backtrace != "disabled backtrace" {
-            write!(message, "\n\nBacktrace:\n{backtrace}").unwrap();
-        }
+        let backtrace_string = format!("{}", e.backtrace());
+        let backtrace = match backtrace_string.as_str() {
+            "disabled backtrace" => None,
+            _ => Some(backtrace_string),
+        };
         gtk::glib::idle_add_once(move || {
             UI.with(|ui_opt| {
                 match ui_opt.borrow().as_ref() {
-                    None => println!("{message}"),
+                    None => match backtrace {
+                        Some(backtrace) =>
+                            println!("{message}\n\nBacktrace:\n{backtrace}"),
+                        None =>
+                            println!("{message}")
+                    },
                     Some(ui) => {
                         let dialog = MessageDialog::new(
                             Some(&ui.window),
@@ -1429,6 +1435,34 @@ pub fn display_error(result: Result<(), Error>) {
                             ButtonsType::Close,
                             &message
                         );
+                        if let Some(backtrace) = backtrace {
+                            let message_area = dialog
+                                .message_area()
+                                .downcast::<gtk::Box>()
+                                .unwrap();
+                            message_area.append(
+                                &Label::builder()
+                                    .use_markup(true)
+                                    .label("<b>Backtrace:</b>")
+                                    .halign(Align::Start)
+                                    .build()
+                            );
+                            message_area.append(
+                                &ScrolledWindow::builder()
+                                    .width_request(400)
+                                    .height_request(200)
+                                    .child(
+                                        &TextView::builder()
+                                            .buffer(
+                                                &TextBuffer::builder()
+                                                    .text(backtrace)
+                                                    .build()
+                                            )
+                                            .build()
+                                    )
+                                    .build()
+                            );
+                        }
                         dialog.set_transient_for(Some(&ui.window));
                         dialog.set_modal(true);
                         dialog.connect_response(
