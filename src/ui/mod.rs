@@ -5,10 +5,12 @@ use std::collections::BTreeMap;
 use std::ffi::OsStr;
 use std::io::{Read, Write};
 use std::ops::Range;
+use std::panic::{UnwindSafe, catch_unwind};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{Sender, Receiver, channel};
 use std::sync::Arc;
+use std::thread::{JoinHandle, Result as ThreadResult};
 use std::time::{Duration, Instant, SystemTime};
 
 #[cfg(feature="step-decoder")]
@@ -90,7 +92,7 @@ use crate::file::{
     PcapNgSaver,
 };
 use crate::usb::{Descriptor, PacketFields, Speed, validate_packet};
-use crate::util::{rcu::SingleWriterRcu, fmt_count, fmt_size};
+use crate::util::{rcu::SingleWriterRcu, fmt_count, fmt_size, handle_thread_panic};
 use crate::version::{version, version_info};
 
 pub mod capture;
@@ -155,8 +157,8 @@ enum FileFormat {
 
 enum StopState {
     Disabled,
-    File(Cancellable),
-    Backend(BackendStop),
+    File(Cancellable, JoinHandle<ThreadResult<()>>),
+    Backend(BackendStop, JoinHandle<ThreadResult<()>>),
 }
 
 pub struct UserInterface {
@@ -725,7 +727,6 @@ fn start_file(action: FileAction, file: gio::File) -> Result<(), Error> {
         ui.selector.set_sensitive(false);
         ui.capture_button.set_sensitive(false);
         ui.stop_button.set_sensitive(true);
-        ui.stop_state = StopState::File(cancel_handle.clone());
         ui.vbox.insert_child_after(&ui.separator, Some(&ui.vertical_panes));
         ui.vbox.insert_child_after(&ui.progress_bar, Some(&ui.separator));
         ui.show_progress = Some(action);
@@ -738,7 +739,12 @@ fn start_file(action: FileAction, file: gio::File) -> Result<(), Error> {
             Load => 0,
             Save => packet_count,
         }, Ordering::Relaxed);
-        std::thread::spawn(move || {
+        let thread_description = match action {
+            Load => "file loading",
+            Save => "file saving",
+        };
+        let stop_handle = cancel_handle.clone();
+        let thread = spawn_thread(thread_description, move || {
             let start_time = Instant::now();
             let result = match action {
                 Load => load_file(
@@ -758,7 +764,8 @@ fn start_file(action: FileAction, file: gio::File) -> Result<(), Error> {
             }
             display_error(result);
             gtk::glib::idle_add_once(|| display_error(rearm()));
-        });
+        })?;
+        ui.stop_state = StopState::File(stop_handle, thread);
         gtk::glib::timeout_add_once(
             UPDATE_INTERVAL,
             || display_error(update_view()));
@@ -911,13 +918,15 @@ pub fn stop_operation() -> Result<(), Error> {
     with_ui(|ui| {
         match std::mem::replace(&mut ui.stop_state, StopState::Disabled) {
             StopState::Disabled => {},
-            StopState::File(cancel_handle) => {
+            StopState::File(cancel_handle, thread) => {
                 STOP.store(true, Ordering::Relaxed);
                 cancel_handle.cancel();
+                display_error(handle_thread_panic(thread.join().unwrap()));
             },
-            StopState::Backend(stop_handle) => {
+            StopState::Backend(stop_handle, thread) => {
                 stop_handle.stop()?;
                 ui.power.stopped();
+                display_error(handle_thread_panic(thread.join().unwrap()));
             }
         };
         Ok(())
@@ -985,7 +994,6 @@ pub fn start_capture() -> Result<(), Error> {
         ui.selector.set_sensitive(false);
         ui.capture_button.set_sensitive(false);
         ui.stop_button.set_sensitive(true);
-        ui.stop_state = StopState::Backend(stop_handle);
         let read_packets = move || {
             let mut decoder = Decoder::new(writer)?;
             for result in stream_handle {
@@ -1014,10 +1022,11 @@ pub fn start_capture() -> Result<(), Error> {
             });
             Ok(())
         };
-        std::thread::spawn(move || {
+        let thread = spawn_thread("decoder", move || {
             display_error(read_packets());
             gtk::glib::idle_add_once(|| display_error(rearm()));
-        });
+        })?;
+        ui.stop_state = StopState::Backend(stop_handle, thread);
         gtk::glib::timeout_add_once(
             UPDATE_INTERVAL,
             || display_error(update_view()));
@@ -1368,6 +1377,26 @@ pub fn save_settings() {
         ui.settings.save();
         Ok(())
     });
+}
+
+pub fn spawn_thread<F>(
+    description: &str, f: F
+) -> Result<JoinHandle<ThreadResult<()>>, Error>
+    where F: FnOnce() + Send + UnwindSafe + 'static
+{
+    std::thread::Builder::new()
+        .name(description.to_string())
+        .spawn(|| {
+            let result = catch_unwind(f);
+            if result.is_err() {
+                gtk::glib::idle_add_once(|| {
+                    display_error(stop_operation());
+                    display_error(rearm());
+                });
+            }
+            result
+        })
+        .context(format!("Failed to start {description} thread"))
 }
 
 pub fn display_error(result: Result<(), Error>) {
