@@ -1150,28 +1150,24 @@ pub trait CaptureReaderOps {
 
     /// Fetch the SETUP packet fields for a control transaction.
     fn transaction_fields(&mut self, transaction: &Transaction)
-        -> Result<SetupFields, Error>
+        -> Result<Option<SetupFields>, Error>
     {
-        match transaction.data_packet_id {
-            None => bail!("Transaction has no data packet"),
+        Ok(match transaction.data_packet_id {
+            None => None,
             Some(data_packet_id) => {
                 let data_packet = self.packet(data_packet_id)?;
-                match data_packet.first() {
-                    None => bail!("Found empty packet instead of setup data"),
-                    Some(byte) => {
-                        let pid = PID::from(byte);
-                        if pid != PID::DATA0 {
-                            bail!("Found {pid} packet instead of setup data")
-                        } else if data_packet.len() != 11 {
-                            bail!("Found DATA0 with packet length {} \
-                                   instead of setup data", data_packet.len())
+                match data_packet.first().map(PID::from) {
+                    None => None,
+                    Some(pid) => {
+                        if pid != PID::DATA0 || data_packet.len() != 11 {
+                            None
                         } else {
-                            Ok(SetupFields::from_data_packet(&data_packet))
+                            Some(SetupFields::from_data_packet(&data_packet))
                         }
                     }
                 }
             }
-        }
+        })
     }
 
     /// Fetch the payload bytes for a transaction.
@@ -1304,10 +1300,10 @@ pub trait CaptureReaderOps {
             EndpointType::Normal(usb::EndpointType::Control) => {
                 let addr = endpoint.device_address();
                 match self.control_transfer(
-                    device_id, addr, endpoint_id, &range)
+                    device_id, addr, endpoint_id, &range)?
                 {
-                    Ok(transfer) => GroupContent::Request(transfer),
-                    Err(_) => GroupContent::IncompleteRequest,
+                    Some(transfer) => GroupContent::Request(transfer),
+                    None => GroupContent::IncompleteRequest
                 }
             },
             _ => {
@@ -1353,7 +1349,7 @@ pub trait CaptureReaderOps {
                         address: DeviceAddr,
                         endpoint_id: EndpointId,
                         range: &Range<EndpointTransactionId>)
-        -> Result<ControlTransfer, Error>
+        -> Result<Option<ControlTransfer>, Error>
     {
         let ep_traf = self.endpoint_traffic(endpoint_id)?;
         let transaction_ids = ep_traf.transaction_id_range(range)?;
@@ -1363,7 +1359,10 @@ pub trait CaptureReaderOps {
             .try_into()?;
         let data = self.transfer_bytes(endpoint_id, &data_range, data_length)?;
         let setup_transaction = self.transaction(transaction_ids[0])?;
-        let fields = self.transaction_fields(&setup_transaction)?;
+        let fields = match self.transaction_fields(&setup_transaction)? {
+            Some(fields) => fields,
+            None => return Ok(None)
+        };
         let direction = fields.type_fields.direction();
         let last = transaction_ids.len() - 1;
         let last_transaction = self.transaction(transaction_ids[last])?;
@@ -1394,13 +1393,13 @@ pub trait CaptureReaderOps {
             }
             _ => None,
         };
-        Ok(ControlTransfer {
+        Ok(Some(ControlTransfer {
             address,
             fields,
             data,
             result,
             recipient_class,
-        })
+        }))
     }
 
     /// Check whether a transaction group is ongoing at the end of the capture.
