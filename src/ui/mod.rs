@@ -1437,7 +1437,12 @@ impl Problem for Error {
 
 impl Problem for Panic {
     fn message(&self) -> String {
-        self.message().to_string()
+        format!("Panic in worker thread:\n{}\nat {}",
+            self.message(),
+            self.location()
+                .map(|location| format!("{}", location))
+                .unwrap_or("<unknown location>".to_string())
+        )
     }
 
     fn backtrace(&self) -> &Backtrace {
