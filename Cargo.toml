@@ -9,8 +9,8 @@ keywords = ["cynthion", "luna", "usb"]
 homepage = "https://github.com/greatscottgadgets/packetry"
 repository = "https://github.com/greatscottgadgets/packetry"
 documentation = "https://packetry.readthedocs.io"
-edition = "2021"
-rust-version = "1.83"
+edition = "2024"
+rust-version = "1.85"
 build = "src/build.rs"
 default-run = "packetry"
 
