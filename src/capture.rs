@@ -724,6 +724,9 @@ impl Transaction {
                     return Incomplete
                 }
             },
+            // A lone ACK is possible after LS keepalive.
+            (_, ACK, _) => return Completed,
+
             _ => return if self.end_pid == STALL { Stalled } else { Incomplete }
         };
         if end_pid == STALL {
