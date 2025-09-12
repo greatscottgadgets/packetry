@@ -7,7 +7,6 @@ use std::ffi::OsStr;
 use std::io::{Read, Write};
 use std::ops::Range;
 use std::panic::UnwindSafe;
-use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{Sender, Receiver, channel};
 use std::sync::Arc;
@@ -607,6 +606,7 @@ pub fn update_view() -> Result<(), Error> {
 fn choose_file<F>(
     action: FileAction,
     description: &str,
+    extension: &'static str,
     handler: F
 ) -> Result<(), Error>
     where F: Fn(gio::File) -> Result<(), Error> + 'static
@@ -657,8 +657,12 @@ fn choose_file<F>(
                 if let Some(file) = dialog.file() {
                     if let Some(name) = file.basename() {
                         if action == Save && name.extension().is_none() {
-                            // Automatically add the ".pcapng" extension.
-                            let (file, _) = add_extension(file, name, "pcapng");
+                            // Automatically add the extension.
+                            let name = name.with_extension(extension);
+                            let file = match file.parent() {
+                                Some(parent) => parent.child(&name),
+                                None => gio::File::for_path(&name),
+                            };
                             // Check whether the new filename already exists.
                             if file.query_exists(Cancellable::NONE) {
                                 // The file already exists.
@@ -691,7 +695,8 @@ fn choose_file<F>(
 }
 
 fn choose_capture_file(action: FileAction) -> Result<(), Error> {
-    choose_file(action, "capture file", move |file| start_file(action, file))
+    choose_file(action, "capture file", "pcapng",
+        move |file| start_file(action, file))
 }
 
 fn start_file(action: FileAction, file: gio::File) -> Result<(), Error> {
@@ -891,29 +896,6 @@ fn save_file(file: gio::File,
         Pcap => save::<_, PcapSaver<_>>(capture, dest),
         PcapNg => save::<_, PcapNgSaver<_>>(capture, dest),
     }
-}
-
-fn add_extension_if_missing(file: gio::File, extension: &str) -> gio::File {
-    match file.basename() {
-        Some(name) if name.extension().is_none() => {
-            let (file, _name) = add_extension(file, name, extension);
-            file
-        },
-        _ => file
-    }
-}
-
-fn add_extension(
-    file: gio::File,
-    name: PathBuf,
-    extension: &str
-) -> (gio::File, PathBuf) {
-    let name = name.with_extension(extension);
-    let file = match file.parent() {
-        Some(parent) => parent.child(&name),
-        None => gio::File::for_path(&name),
-    };
-    (file, name)
 }
 
 pub fn stop_operation() -> Result<(), Error> {
@@ -1171,7 +1153,7 @@ fn choose_data_transfer_payload_file(
     data_range: Range<EndpointDataEvent>
 ) -> Result<(), Error> {
     use FileAction::Save;
-    choose_file(Save, "data transfer payload file", move |file|
+    choose_file(Save, "data transfer payload file", "bin", move |file|
         save_data_transfer_payload(file, endpoint_id, data_range.clone()))
 }
 
@@ -1182,7 +1164,6 @@ fn save_data_transfer_payload(
 ) -> Result<(), Error> {
     with_ui(|ui| {
         let cap = &mut ui.capture.reader;
-        let file = add_extension_if_missing(file, "bin");
         let mut dest = file
             .replace(None, false, FileCreateFlags::NONE, Cancellable::NONE)?
             .into_write();
@@ -1212,7 +1193,7 @@ fn choose_data_file(
     description: &'static str,
     data: Vec<u8>,
 ) -> Result<(), Error> {
-    choose_file(FileAction::Save, &format!("{description} file"),
+    choose_file(FileAction::Save, &format!("{description} file"), "bin",
         move |file| save_data(file, description, data.clone()))
 }
 
@@ -1221,7 +1202,6 @@ fn save_data(
     description: &'static str,
     data: Vec<u8>,
 ) -> Result<(), Error> {
-    let file = add_extension_if_missing(file, "bin");
     let mut dest = file
         .replace(None, false, FileCreateFlags::NONE, Cancellable::NONE)?
         .into_write();
