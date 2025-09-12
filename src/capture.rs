@@ -1266,6 +1266,10 @@ pub trait CaptureReaderOps {
                 // must be two packets earlier.
                 (None, Some(start_packet_id - 2))
             },
+            DATA0 | DATA1 => {
+                // Also split by LS keepalive, but the data is right here.
+                (None, Some(start_packet_id))
+            },
             _ => (None, None)
         };
         let payload_byte_range = if let Some(packet_id) = data_packet_id {
