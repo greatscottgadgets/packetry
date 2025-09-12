@@ -1260,6 +1260,12 @@ pub trait CaptureReaderOps {
                 };
                 (Some((split_fields, token_pid)), data_packet_id)
             },
+            ACK => {
+                // A transaction can't normally start with an ACK, so this one
+                // must have been split by an LS keepalive. The data packet
+                // must be two packets earlier.
+                (None, Some(start_packet_id - 2))
+            },
             _ => (None, None)
         };
         let payload_byte_range = if let Some(packet_id) = data_packet_id {
