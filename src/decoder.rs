@@ -718,11 +718,13 @@ impl Decoder {
         use TransactionStyle::*;
         use StartComplete::*;
         // If a transaction was suspended, resume it now.
-        if let Some(transaction) = self.suspended_transaction.take() {
+        if let Some(mut transaction) = self.suspended_transaction.take() {
             let endpoint_id = transaction.endpoint_id()?;
             let writer = &mut self.capture.endpoint_writers[endpoint_id];
-            let transaction_id = self.capture.transaction_index.push(packet_id)?;
-            writer.transaction_ids.push(transaction_id)?;
+            transaction.id = self.capture.transaction_index.push(packet_id)?;
+            transaction.ep_transaction_id = Some(
+                writer.transaction_ids.push(transaction.id)?
+            );
             self.transaction_state = Some(transaction);
         };
         let (pid, status) = transaction_status(&self.transaction_state, packet)?;
