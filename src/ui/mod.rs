@@ -93,7 +93,7 @@ use crate::file::{
     PcapNgSaver,
 };
 use crate::usb::{Descriptor, PacketFields, Speed, validate_packet};
-use crate::util::{rcu::SingleWriterRcu, fmt_count, fmt_size};
+use crate::util::{dump::Dump, rcu::SingleWriterRcu, fmt_count, fmt_size};
 use crate::version::{version, version_info};
 
 pub mod capture;
@@ -1215,6 +1215,20 @@ fn save_data(
                 |path| path.to_string_lossy().to_string())
     );
     Ok(())
+}
+
+pub fn choose_dump_dir() -> Result<(), Error> {
+    choose_file(FileAction::Save, "dump directory", "dump", dump_database)
+}
+
+fn dump_database(file: gio::File) -> Result<(), Error> {
+    let path_buf = file
+        .path()
+        .context("Destination has no local path")?;
+    file.make_directory(Cancellable::NONE)?;
+    with_ui(|ui| {
+        ui.capture.reader.dump(path_buf.as_path())
+    })
 }
 
 fn show_metadata() -> Result<(), Error> {

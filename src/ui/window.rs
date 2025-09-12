@@ -37,6 +37,7 @@ use crate::ui::{
     UserInterface,
     display_error,
     choose_capture_file,
+    choose_dump_dir,
     show_about,
     show_metadata,
     start_capture,
@@ -129,8 +130,10 @@ impl PacketryWindow {
 
         let menu = Menu::new();
         let meta_item = MenuItem::new(Some("Metadata..."), Some("actions.metadata"));
+        let dump_item = MenuItem::new(Some("Dump database..."), Some("actions.dump"));
         let about_item = MenuItem::new(Some("About..."), Some("actions.about"));
         menu.append_item(&meta_item);
+        menu.append_item(&dump_item);
         menu.append_item(&about_item);
         let menu_button = window.imp().menu_button.clone();
         menu_button.set_menu_model(Some(&menu));
@@ -138,10 +141,13 @@ impl PacketryWindow {
         let action_metadata = ActionEntry::builder("metadata")
             .activate(|_, _, _| display_error(show_metadata()))
             .build();
+        let action_dump = ActionEntry::builder("dump")
+            .activate(|_, _, _| display_error(choose_dump_dir()))
+            .build();
         let action_about = ActionEntry::builder("about")
             .activate(|_, _, _| display_error(show_about()))
             .build();
-        action_group.add_action_entries([action_metadata, action_about]);
+        action_group.add_action_entries([action_metadata, action_dump, action_about]);
         window.insert_action_group("actions", Some(&action_group));
         let metadata_action = action_group.lookup_action("metadata").unwrap();
         metadata_action.set_property("enabled", false);
