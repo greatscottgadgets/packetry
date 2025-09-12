@@ -1255,14 +1255,16 @@ pub trait CaptureReaderOps {
                 };
                 (Some((split_fields, token_pid)), data_packet_id)
             },
-            ACK => {
-                // A transaction can't normally start with an ACK, so this one
-                // must have been split by an LS keepalive. The data packet
-                // must be two packets earlier.
+            ACK if start_packet_id.value >= 2 &&
+                self.ls_keepalive_at(start_packet_id - 1)? =>
+            {
+                // DATA0/DATA1, LS keepalive, ACK. Data is two packets earlier.
                 (None, Some(start_packet_id - 2))
             },
-            DATA0 | DATA1 => {
-                // Also split by LS keepalive, but the data is right here.
+            DATA0 | DATA1 if start_packet_id.value >= 1 &&
+                self.ls_keepalive_at(start_packet_id - 1)? =>
+            {
+                // IN/OUT/SETUP, LS keepalive, DATA0/DATA1. Data is right here.
                 (None, Some(start_packet_id))
             },
             _ => (None, None)
