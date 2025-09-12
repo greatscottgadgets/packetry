@@ -1150,23 +1150,29 @@ pub trait CaptureReaderOps {
     fn transaction_fields(&mut self, transaction: &Transaction)
         -> Result<SetupFields, Error>
     {
-        match transaction.data_packet_id {
-            None => bail!("Transaction has no data packet"),
-            Some(data_packet_id) => {
-                let data_packet = self.packet(data_packet_id)?;
-                match data_packet.first() {
-                    None => bail!("Found empty packet instead of setup data"),
-                    Some(byte) => {
-                        let pid = PID::from(byte);
-                        if pid != PID::DATA0 {
-                            bail!("Found {pid} packet instead of setup data")
-                        } else if data_packet.len() != 11 {
-                            bail!("Found DATA0 with packet length {} \
-                                   instead of setup data", data_packet.len())
-                        } else {
-                            Ok(SetupFields::from_data_packet(&data_packet))
-                        }
-                    }
+        let data_packet_id = match transaction.data_packet_id {
+            Some(data_packet_id) => data_packet_id,
+            None => {
+                let start_packet_id = transaction.packet_id_range.start;
+                if self.ls_keepalive_at(start_packet_id + 1)? {
+                    start_packet_id + 2
+                } else {
+                    bail!("No data packet for SETUP transaction")
+                }
+            }
+        };
+        let data_packet = self.packet(data_packet_id)?;
+        match data_packet.first() {
+            None => bail!("Found empty packet instead of setup data"),
+            Some(byte) => {
+                let pid = PID::from(byte);
+                if pid != PID::DATA0 {
+                    bail!("Found {pid} packet instead of setup data")
+                } else if data_packet.len() != 11 {
+                    bail!("Found DATA0 with packet length {} \
+                           instead of setup data", data_packet.len())
+                } else {
+                    Ok(SetupFields::from_data_packet(&data_packet))
                 }
             }
         }

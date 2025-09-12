@@ -1639,7 +1639,7 @@
     │     ├── IN packet on 58.0, CRC 16
     │     ├── DATA1 packet with CRC 0000 and no data
     │     └── ACK packet
-   ○┼── Incomplete control transfer on device 58
+   ○┼── Getting HID report descriptor #0 for interface 58.1, reading 166 bytes
    ├┼──── SETUP transaction on 58.0
    ││     └── SETUP packet on 58.0, CRC 16
    ├┼──── Continuing SETUP transaction on 58.0, DATA0
