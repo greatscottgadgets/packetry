@@ -148,7 +148,11 @@ macro_rules! model {
                 };
                 match result {
                     Ok(string) => string,
-                    Err(e) => format!("Error: {e:?}")
+                    Err(e) => if detail {
+                        format!("Error: {e:?}")
+                    } else {
+                        format!("Error: {e}")
+                    }
                 }
             }
 
@@ -175,7 +179,7 @@ macro_rules! model {
                 };
                 match result {
                     Ok(string) => string,
-                    Err(e) => format!("Error: {e:?}")
+                    Err(e) => format!("Error: {e}")
                 }
             }
         }

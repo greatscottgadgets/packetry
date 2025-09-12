@@ -121,6 +121,7 @@ for line in cargo_result.stdout.decode().rstrip().split("\n"):
         file_paths = (
             ['LICENSE-MIT'],
             ['LICENSE-MIT.md'],
+            ['LICENSE-MIT.txt'],
             ['license-mit'],
             ['LICENSES', 'MIT.txt'],
             ['LICENSE'],

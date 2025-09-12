@@ -1,6 +1,7 @@
 //! The backend API for USB capture devices.
 
 use std::collections::BTreeMap;
+use std::panic::UnwindSafe;
 use std::sync::mpsc;
 use std::thread::{JoinHandle, spawn, sleep};
 use std::time::Duration;
@@ -97,7 +98,7 @@ pub struct BackendStop {
 }
 
 pub type EventResult = Result<TimestampedEvent, Error>;
-pub trait EventIterator: Iterator<Item=EventResult> + Send {}
+pub trait EventIterator: Iterator<Item=EventResult> + Send + UnwindSafe {}
 
 /// Configuration for power control.
 #[derive(Clone)]
