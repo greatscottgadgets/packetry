@@ -752,7 +752,6 @@ impl Transaction {
     ) -> Result<String, Error> {
         use PID::*;
         use StartComplete::*;
-        use EventType::LsKeepalive;
         Ok(match (self.start_pid, &self.split) {
             (SOF, _) => format!(
                 "{} SOF packets", self.packet_count()),
@@ -768,11 +767,7 @@ impl Transaction {
                 // We don't expect these packets to start a transaction. Maybe
                 // a previous transaction was interrupted by an LS keepalive.
                 if self.id.value >= 2 &&
-                    match capture.event(self.packet_id_range.start - 1)? {
-                        Some(event_id) =>
-                            capture.event_type(event_id)? == LsKeepalive,
-                        None => false,
-                    }
+                    capture.ls_keepalive_at(self.packet_id_range.start - 1)?
                 {
                     let previous_transaction = capture.transaction(self.id - 2)?;
                     if detail {
@@ -1428,6 +1423,15 @@ pub trait CaptureReaderOps {
         Ok(match state.get(endpoint_id.value as usize) {
             Some(ep_state) => EndpointState::from(*ep_state) == Ongoing,
             None => false
+        })
+    }
+
+    /// Check for an LS keepalive at a specific packet ID.
+    fn ls_keepalive_at(&mut self, packet_id: PacketId) -> Result<bool, Error> {
+        Ok(match self.event(packet_id)? {
+            Some(event_id) =>
+                self.event_type(event_id)? == EventType::LsKeepalive,
+            None => false,
         })
     }
 }
