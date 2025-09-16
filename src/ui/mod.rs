@@ -635,19 +635,44 @@ fn choose_file<F>(
                 .map(gio::File::for_path)
                 .as_ref()
         );
-        let all = gtk::FileFilter::new();
-        let pcap = gtk::FileFilter::new();
-        let pcapng = gtk::FileFilter::new();
-        all.add_suffix("pcap");
-        all.add_suffix("pcapng");
-        pcap.add_suffix("pcap");
-        pcapng.add_suffix("pcapng");
-        all.set_name(Some("All captures (*.pcap, *.pcapng)"));
-        pcap.set_name(Some("pcap (*.pcap)"));
-        pcapng.set_name(Some("pcap-NG (*.pcapng)"));
-        chooser.add_filter(&all);
-        chooser.add_filter(&pcap);
-        chooser.add_filter(&pcapng);
+        match extension {
+            "pcapng" => {
+                let all = gtk::FileFilter::new();
+                let pcap = gtk::FileFilter::new();
+                let pcapng = gtk::FileFilter::new();
+                all.add_suffix("pcap");
+                all.add_suffix("pcapng");
+                pcap.add_suffix("pcap");
+                pcapng.add_suffix("pcapng");
+                all.set_name(Some("All captures (*.pcap, *.pcapng)"));
+                pcap.set_name(Some("pcap (*.pcap)"));
+                pcapng.set_name(Some("pcap-NG (*.pcapng)"));
+                chooser.add_filter(&all);
+                chooser.add_filter(&pcap);
+                chooser.add_filter(&pcapng);
+            },
+            "bin" => {
+                let bin = gtk::FileFilter::new();
+                let all = gtk::FileFilter::new();
+                bin.add_suffix("bin");
+                all.add_pattern("*");
+                bin.set_name(Some("Binary files (*.bin)"));
+                all.set_name(Some("All files (*)"));
+                chooser.add_filter(&bin);
+                chooser.add_filter(&all);
+            },
+            "zip" => {
+                let zip = gtk::FileFilter::new();
+                let all = gtk::FileFilter::new();
+                zip.add_suffix("zip");
+                all.add_pattern("*");
+                zip.set_name(Some("Zip files (*.zip)"));
+                all.set_name(Some("All files (*)"));
+                chooser.add_filter(&zip);
+                chooser.add_filter(&all);
+            }
+            _ => bail!("Filters not defined for extension '.{extension}'")
+        }
         chooser.connect_response(move |dialog, response| {
             let _ = with_ui(|ui| {
                 ui.settings.last_used_directory = dialog
