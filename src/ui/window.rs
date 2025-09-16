@@ -37,7 +37,7 @@ use crate::ui::{
     UserInterface,
     display_error,
     choose_capture_file,
-    choose_dump_dir,
+    choose_dump_file,
     show_about,
     show_metadata,
     start_capture,
@@ -142,7 +142,7 @@ impl PacketryWindow {
             .activate(|_, _, _| display_error(show_metadata()))
             .build();
         let action_dump = ActionEntry::builder("dump")
-            .activate(|_, _, _| display_error(choose_dump_dir()))
+            .activate(|_, _, _| display_error(choose_dump_file()))
             .build();
         let action_about = ActionEntry::builder("about")
             .activate(|_, _, _| display_error(show_about()))

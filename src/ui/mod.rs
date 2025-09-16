@@ -20,6 +20,8 @@ use anyhow::{Context as ErrorContext, Error, bail};
 use chrono::{DateTime, Local};
 use bytemuck::bytes_of;
 use scoped_panic_hook::{Panic, catch_panic};
+use tempfile::tempdir;
+use zip_extensions::write::zip_create_from_directory;
 
 use gtk::gio::{
     self,
@@ -1217,17 +1219,23 @@ fn save_data(
     Ok(())
 }
 
-pub fn choose_dump_dir() -> Result<(), Error> {
-    choose_file(FileAction::Save, "dump directory", "dump", dump_database)
+pub fn choose_dump_file() -> Result<(), Error> {
+    choose_file(FileAction::Save, "database dump file", "zip", dump_database)
 }
 
 fn dump_database(file: gio::File) -> Result<(), Error> {
-    let path_buf = file
+    let zip_path = file
         .path()
         .context("Destination has no local path")?;
-    file.make_directory(Cancellable::NONE)?;
+    let dump_dir = tempdir()
+        .context("Failed to create temporary directory")?;
+    let dump_path = dump_dir
+        .path()
+        .to_path_buf();
     with_ui(|ui| {
-        ui.capture.reader.dump(path_buf.as_path())
+        ui.capture.reader.dump(&dump_path)?;
+        zip_create_from_directory(&zip_path, &dump_path)?;
+        Ok(())
     })
 }
 
