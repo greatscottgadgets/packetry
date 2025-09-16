@@ -1148,34 +1148,33 @@ pub trait CaptureReaderOps {
 
     /// Fetch the SETUP packet fields for a control transaction.
     fn transaction_fields(&mut self, transaction: &Transaction)
-        -> Result<SetupFields, Error>
+        -> Result<Option<SetupFields>, Error>
     {
         let data_packet_id = match transaction.data_packet_id {
+            // If the SETUP transaction has a data packet, use it.
             Some(data_packet_id) => data_packet_id,
+            // If not, also look for one after an LS keepalive.
             None => {
                 let start_packet_id = transaction.packet_id_range.start;
                 if self.ls_keepalive_at(start_packet_id + 1)? {
+                    // SETUP, LS keepalive, DATA0
                     start_packet_id + 2
                 } else {
-                    bail!("No data packet for SETUP transaction")
+                    return Ok(None)
                 }
             }
         };
         let data_packet = self.packet(data_packet_id)?;
-        match data_packet.first() {
-            None => bail!("Found empty packet instead of setup data"),
-            Some(byte) => {
-                let pid = PID::from(byte);
-                if pid != PID::DATA0 {
-                    bail!("Found {pid} packet instead of setup data")
-                } else if data_packet.len() != 11 {
-                    bail!("Found DATA0 with packet length {} \
-                           instead of setup data", data_packet.len())
+        Ok(match data_packet.first().map(PID::from) {
+            None => None,
+            Some(pid) => {
+                if pid != PID::DATA0 || data_packet.len() != 11 {
+                    None
                 } else {
-                    Ok(SetupFields::from_data_packet(&data_packet))
+                    Some(SetupFields::from_data_packet(&data_packet))
                 }
             }
-        }
+        })
     }
 
     /// Fetch the payload bytes for a transaction.
@@ -1320,10 +1319,10 @@ pub trait CaptureReaderOps {
             EndpointType::Normal(usb::EndpointType::Control) => {
                 let addr = endpoint.device_address();
                 match self.control_transfer(
-                    device_id, addr, endpoint_id, &range)
+                    device_id, addr, endpoint_id, &range)?
                 {
-                    Ok(transfer) => GroupContent::Request(transfer),
-                    Err(_) => GroupContent::IncompleteRequest,
+                    Some(transfer) => GroupContent::Request(transfer),
+                    None => GroupContent::IncompleteRequest
                 }
             },
             _ => {
@@ -1369,7 +1368,7 @@ pub trait CaptureReaderOps {
                         address: DeviceAddr,
                         endpoint_id: EndpointId,
                         range: &Range<EndpointTransactionId>)
-        -> Result<ControlTransfer, Error>
+        -> Result<Option<ControlTransfer>, Error>
     {
         let ep_traf = self.endpoint_traffic(endpoint_id)?;
         let transaction_ids = ep_traf.transaction_id_range(range)?;
@@ -1379,7 +1378,10 @@ pub trait CaptureReaderOps {
             .try_into()?;
         let data = self.transfer_bytes(endpoint_id, &data_range, data_length)?;
         let setup_transaction = self.transaction(transaction_ids[0])?;
-        let fields = self.transaction_fields(&setup_transaction)?;
+        let fields = match self.transaction_fields(&setup_transaction)? {
+            Some(fields) => fields,
+            None => return Ok(None)
+        };
         let direction = fields.type_fields.direction();
         let last = transaction_ids.len() - 1;
         let last_transaction = self.transaction(transaction_ids[last])?;
@@ -1410,13 +1412,13 @@ pub trait CaptureReaderOps {
             }
             _ => None,
         };
-        Ok(ControlTransfer {
+        Ok(Some(ControlTransfer {
             address,
             fields,
             data,
             result,
             recipient_class,
-        })
+        }))
     }
 
     /// Check whether a transaction group is ongoing at the end of the capture.

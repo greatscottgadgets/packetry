@@ -1,14 +1,17 @@
 //! The Packetry user interface.
 
+use std::backtrace::Backtrace;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::ffi::OsStr;
 use std::io::{Read, Write};
 use std::ops::Range;
+use std::panic::UnwindSafe;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{Sender, Receiver, channel};
 use std::sync::Arc;
+use std::thread::JoinHandle;
 use std::time::{Duration, Instant, SystemTime};
 
 #[cfg(feature="step-decoder")]
@@ -17,6 +20,7 @@ use std::net::TcpListener;
 use anyhow::{Context as ErrorContext, Error, bail};
 use chrono::{DateTime, Local};
 use bytemuck::bytes_of;
+use scoped_panic_hook::{Panic, catch_panic};
 
 use gtk::gio::{
     self,
@@ -155,8 +159,8 @@ enum FileFormat {
 
 enum StopState {
     Disabled,
-    File(Cancellable),
-    Backend(BackendStop),
+    File(Cancellable, JoinHandle<Result<(), Panic>>),
+    Backend(BackendStop, JoinHandle<Result<(), Panic>>),
 }
 
 pub struct UserInterface {
@@ -725,7 +729,6 @@ fn start_file(action: FileAction, file: gio::File) -> Result<(), Error> {
         ui.selector.set_sensitive(false);
         ui.capture_button.set_sensitive(false);
         ui.stop_button.set_sensitive(true);
-        ui.stop_state = StopState::File(cancel_handle.clone());
         ui.vbox.insert_child_after(&ui.separator, Some(&ui.vertical_panes));
         ui.vbox.insert_child_after(&ui.progress_bar, Some(&ui.separator));
         ui.show_progress = Some(action);
@@ -738,7 +741,12 @@ fn start_file(action: FileAction, file: gio::File) -> Result<(), Error> {
             Load => 0,
             Save => packet_count,
         }, Ordering::Relaxed);
-        std::thread::spawn(move || {
+        let thread_description = match action {
+            Load => "file loading",
+            Save => "file saving",
+        };
+        let stop_handle = cancel_handle.clone();
+        let thread = spawn_thread(thread_description, move || {
             let start_time = Instant::now();
             let result = match action {
                 Load => load_file(
@@ -758,7 +766,8 @@ fn start_file(action: FileAction, file: gio::File) -> Result<(), Error> {
             }
             display_error(result);
             gtk::glib::idle_add_once(|| display_error(rearm()));
-        });
+        })?;
+        ui.stop_state = StopState::File(stop_handle, thread);
         gtk::glib::timeout_add_once(
             UPDATE_INTERVAL,
             || display_error(update_view()));
@@ -909,17 +918,22 @@ fn add_extension(
 
 pub fn stop_operation() -> Result<(), Error> {
     with_ui(|ui| {
-        match std::mem::replace(&mut ui.stop_state, StopState::Disabled) {
-            StopState::Disabled => {},
-            StopState::File(cancel_handle) => {
+        let thread = match std::mem::replace(
+            &mut ui.stop_state, StopState::Disabled
+        ) {
+            StopState::Disabled => return Ok(()),
+            StopState::File(cancel_handle, thread) => {
                 STOP.store(true, Ordering::Relaxed);
                 cancel_handle.cancel();
+                thread
             },
-            StopState::Backend(stop_handle) => {
+            StopState::Backend(stop_handle, thread) => {
                 stop_handle.stop()?;
                 ui.power.stopped();
+                thread
             }
         };
+        display_problem(thread.join().unwrap());
         Ok(())
     })
 }
@@ -985,7 +999,6 @@ pub fn start_capture() -> Result<(), Error> {
         ui.selector.set_sensitive(false);
         ui.capture_button.set_sensitive(false);
         ui.stop_button.set_sensitive(true);
-        ui.stop_state = StopState::Backend(stop_handle);
         let read_packets = move || {
             let mut decoder = Decoder::new(writer)?;
             for result in stream_handle {
@@ -1014,10 +1027,11 @@ pub fn start_capture() -> Result<(), Error> {
             });
             Ok(())
         };
-        std::thread::spawn(move || {
+        let thread = spawn_thread("decoder", move || {
             display_error(read_packets());
             gtk::glib::idle_add_once(|| display_error(rearm()));
-        });
+        })?;
+        ui.stop_state = StopState::Backend(stop_handle, thread);
         gtk::glib::timeout_add_once(
             UPDATE_INTERVAL,
             || display_error(update_view()));
@@ -1370,28 +1384,97 @@ pub fn save_settings() {
     });
 }
 
-pub fn display_error(result: Result<(), Error>) {
-    #[cfg(not(test))]
-    if let Err(e) = result {
-        if let Some(g_error) = e.downcast_ref::<gtk::glib::Error>() {
-            if g_error.matches(gio::IOErrorEnum::Cancelled) {
-                // We cancelled a load/save operation. This isn't an error.
-                return;
+fn spawn_thread<F>(
+    description: &str, f: F
+) -> Result<JoinHandle<Result<(), Panic>>, Error>
+    where F: FnOnce() + Send + UnwindSafe + 'static
+{
+    std::thread::Builder::new()
+        .name(description.to_string())
+        .spawn(|| {
+            let result = catch_panic(f);
+            if result.is_err() {
+                gtk::glib::idle_add_once(|| {
+                    display_error(stop_operation());
+                    display_error(rearm());
+                });
             }
-        }
+            result
+        })
+        .context(format!("Failed to start {description} thread"))
+}
+
+trait Problem {
+    fn message(&self) -> String;
+    #[allow(dead_code)]
+    fn backtrace(&self) -> &Backtrace;
+    fn is_ignorable(&self) -> bool;
+}
+
+impl Problem for Error {
+    fn message(&self) -> String {
         use std::fmt::Write;
-        let mut message = format!("{e}");
-        for cause in e.chain().skip(1) {
+        let mut message = format!("{self}");
+        for cause in self.chain().skip(1) {
             write!(message, "\ncaused by: {cause} ({cause:?})").unwrap();
         }
-        let backtrace = format!("{}", e.backtrace());
-        if backtrace != "disabled backtrace" {
-            write!(message, "\n\nBacktrace:\n{backtrace}").unwrap();
+        message
+    }
+
+    fn backtrace(&self) -> &Backtrace {
+        self.backtrace()
+    }
+
+    fn is_ignorable(&self) -> bool {
+        if let Some(g_error) = self.downcast_ref::<gtk::glib::Error>() {
+            // We cancelled a load/save operation. This isn't an error.
+            g_error.matches(gio::IOErrorEnum::Cancelled)
+        } else {
+            false
         }
+    }
+}
+
+impl Problem for Panic {
+    fn message(&self) -> String {
+        format!("Panic in worker thread:\n{}\nat {}",
+            self.message(),
+            self.location()
+                .map(|location| format!("{}", location))
+                .unwrap_or("<unknown location>".to_string())
+        )
+    }
+
+    fn backtrace(&self) -> &Backtrace {
+        self.backtrace()
+    }
+
+    fn is_ignorable(&self) -> bool {
+        false
+    }
+}
+
+fn display_problem<P: Problem>(result: Result<(), P>) {
+    #[cfg(not(test))]
+    if let Err(problem) = result {
+        if problem.is_ignorable() {
+            return;
+        }
+        let message = problem.message();
+        let backtrace_string = format!("{}", problem.backtrace());
+        let backtrace = match backtrace_string.as_str() {
+            "disabled backtrace" => None,
+            _ => Some(backtrace_string),
+        };
         gtk::glib::idle_add_once(move || {
             UI.with(|ui_opt| {
                 match ui_opt.borrow().as_ref() {
-                    None => println!("{message}"),
+                    None => match backtrace {
+                        Some(backtrace) =>
+                            println!("{message}\n\nBacktrace:\n{backtrace}"),
+                        None =>
+                            println!("{message}")
+                    },
                     Some(ui) => {
                         let dialog = MessageDialog::new(
                             Some(&ui.window),
@@ -1400,6 +1483,35 @@ pub fn display_error(result: Result<(), Error>) {
                             ButtonsType::Close,
                             &message
                         );
+                        if let Some(backtrace) = backtrace {
+                            let message_area = dialog
+                                .message_area()
+                                .downcast::<gtk::Box>()
+                                .unwrap();
+                            message_area.append(
+                                &Label::builder()
+                                    .use_markup(true)
+                                    .label("<b>Backtrace:</b>")
+                                    .halign(Align::Start)
+                                    .build()
+                            );
+                            message_area.append(
+                                &ScrolledWindow::builder()
+                                    .vexpand(true)
+                                    .child(
+                                        &TextView::builder()
+                                            .buffer(
+                                                &TextBuffer::builder()
+                                                    .text(backtrace)
+                                                    .build()
+                                            )
+                                            .build()
+                                    )
+                                    .build()
+                            );
+                        }
+                        dialog.set_width_request(600);
+                        dialog.set_height_request(400);
                         dialog.set_transient_for(Some(&ui.window));
                         dialog.set_modal(true);
                         dialog.connect_response(
@@ -1411,7 +1523,16 @@ pub fn display_error(result: Result<(), Error>) {
         });
     }
     #[cfg(test)]
-    result.unwrap();
+    if let Err(problem) = result {
+        if problem.is_ignorable() {
+            return;
+        }
+        panic!("{}", problem.message());
+    }
+}
+
+pub fn display_error(result: Result<(), Error>) {
+    display_problem(result)
 }
 
 impl Speed {
