@@ -724,6 +724,9 @@ impl Transaction {
                     return Incomplete
                 }
             },
+            // A lone ACK is possible after LS keepalive.
+            (_, ACK, _) => return Completed,
+
             _ => return if self.end_pid == STALL { Stalled } else { Incomplete }
         };
         if end_pid == STALL {
@@ -752,7 +755,6 @@ impl Transaction {
     ) -> Result<String, Error> {
         use PID::*;
         use StartComplete::*;
-        use EventType::LsKeepalive;
         Ok(match (self.start_pid, &self.split) {
             (SOF, _) => format!(
                 "{} SOF packets", self.packet_count()),
@@ -768,11 +770,7 @@ impl Transaction {
                 // We don't expect these packets to start a transaction. Maybe
                 // a previous transaction was interrupted by an LS keepalive.
                 if self.id.value >= 2 &&
-                    match capture.event(self.packet_id_range.start - 1)? {
-                        Some(event_id) =>
-                            capture.event_type(event_id)? == LsKeepalive,
-                        None => false,
-                    }
+                    capture.ls_keepalive_at(self.packet_id_range.start - 1)?
                 {
                     let previous_transaction = capture.transaction(self.id - 2)?;
                     if detail {
@@ -1152,19 +1150,28 @@ pub trait CaptureReaderOps {
     fn transaction_fields(&mut self, transaction: &Transaction)
         -> Result<Option<SetupFields>, Error>
     {
-        Ok(match transaction.data_packet_id {
+        let data_packet_id = match transaction.data_packet_id {
+            // If the SETUP transaction has a data packet, use it.
+            Some(data_packet_id) => data_packet_id,
+            // If not, also look for one after an LS keepalive.
+            None => {
+                let start_packet_id = transaction.packet_id_range.start;
+                if self.ls_keepalive_at(start_packet_id + 1)? {
+                    // SETUP, LS keepalive, DATA0
+                    start_packet_id + 2
+                } else {
+                    return Ok(None)
+                }
+            }
+        };
+        let data_packet = self.packet(data_packet_id)?;
+        Ok(match data_packet.first().map(PID::from) {
             None => None,
-            Some(data_packet_id) => {
-                let data_packet = self.packet(data_packet_id)?;
-                match data_packet.first().map(PID::from) {
-                    None => None,
-                    Some(pid) => {
-                        if pid != PID::DATA0 || data_packet.len() != 11 {
-                            None
-                        } else {
-                            Some(SetupFields::from_data_packet(&data_packet))
-                        }
-                    }
+            Some(pid) => {
+                if pid != PID::DATA0 || data_packet.len() != 11 {
+                    None
+                } else {
+                    Some(SetupFields::from_data_packet(&data_packet))
                 }
             }
         })
@@ -1255,6 +1262,18 @@ pub trait CaptureReaderOps {
                     (..) => None
                 };
                 (Some((split_fields, token_pid)), data_packet_id)
+            },
+            ACK if start_packet_id.value >= 2 &&
+                self.ls_keepalive_at(start_packet_id - 1)? =>
+            {
+                // DATA0/DATA1, LS keepalive, ACK. Data is two packets earlier.
+                (None, Some(start_packet_id - 2))
+            },
+            DATA0 | DATA1 if start_packet_id.value >= 1 &&
+                self.ls_keepalive_at(start_packet_id - 1)? =>
+            {
+                // IN/OUT/SETUP, LS keepalive, DATA0/DATA1. Data is right here.
+                (None, Some(start_packet_id))
             },
             _ => (None, None)
         };
@@ -1417,6 +1436,15 @@ pub trait CaptureReaderOps {
         Ok(match state.get(endpoint_id.value as usize) {
             Some(ep_state) => EndpointState::from(*ep_state) == Ongoing,
             None => false
+        })
+    }
+
+    /// Check for an LS keepalive at a specific packet ID.
+    fn ls_keepalive_at(&mut self, packet_id: PacketId) -> Result<bool, Error> {
+        Ok(match self.event(packet_id)? {
+            Some(event_id) =>
+                self.event_type(event_id)? == EventType::LsKeepalive,
+            None => false,
         })
     }
 }
