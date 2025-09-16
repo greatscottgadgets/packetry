@@ -15,6 +15,7 @@ accepted_license_strings = (
     'BSL-1.0',
     'Unicode-DFS-2016',
     'Unicode-3.0',
+    'Zlib',
 )
 
 # We accept these licenses with manual validation.
