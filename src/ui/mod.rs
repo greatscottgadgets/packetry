@@ -7,7 +7,6 @@ use std::ffi::OsStr;
 use std::io::{Read, Write};
 use std::ops::Range;
 use std::panic::UnwindSafe;
-use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{Sender, Receiver, channel};
 use std::sync::Arc;
@@ -21,6 +20,8 @@ use anyhow::{Context as ErrorContext, Error, bail};
 use chrono::{DateTime, Local};
 use bytemuck::bytes_of;
 use scoped_panic_hook::{Panic, catch_panic};
+use tempfile::tempdir;
+use zip_extensions::write::zip_create_from_directory;
 
 use gtk::gio::{
     self,
@@ -94,7 +95,7 @@ use crate::file::{
     PcapNgSaver,
 };
 use crate::usb::{Descriptor, PacketFields, Speed, validate_packet};
-use crate::util::{rcu::SingleWriterRcu, fmt_count, fmt_size};
+use crate::util::{dump::Dump, rcu::SingleWriterRcu, fmt_count, fmt_size};
 use crate::version::{version, version_info};
 
 pub mod capture;
@@ -607,6 +608,7 @@ pub fn update_view() -> Result<(), Error> {
 fn choose_file<F>(
     action: FileAction,
     description: &str,
+    extension: &'static str,
     handler: F
 ) -> Result<(), Error>
     where F: Fn(gio::File) -> Result<(), Error> + 'static
@@ -633,19 +635,44 @@ fn choose_file<F>(
                 .map(gio::File::for_path)
                 .as_ref()
         );
-        let all = gtk::FileFilter::new();
-        let pcap = gtk::FileFilter::new();
-        let pcapng = gtk::FileFilter::new();
-        all.add_suffix("pcap");
-        all.add_suffix("pcapng");
-        pcap.add_suffix("pcap");
-        pcapng.add_suffix("pcapng");
-        all.set_name(Some("All captures (*.pcap, *.pcapng)"));
-        pcap.set_name(Some("pcap (*.pcap)"));
-        pcapng.set_name(Some("pcap-NG (*.pcapng)"));
-        chooser.add_filter(&all);
-        chooser.add_filter(&pcap);
-        chooser.add_filter(&pcapng);
+        match extension {
+            "pcapng" => {
+                let all = gtk::FileFilter::new();
+                let pcap = gtk::FileFilter::new();
+                let pcapng = gtk::FileFilter::new();
+                all.add_suffix("pcap");
+                all.add_suffix("pcapng");
+                pcap.add_suffix("pcap");
+                pcapng.add_suffix("pcapng");
+                all.set_name(Some("All captures (*.pcap, *.pcapng)"));
+                pcap.set_name(Some("pcap (*.pcap)"));
+                pcapng.set_name(Some("pcap-NG (*.pcapng)"));
+                chooser.add_filter(&all);
+                chooser.add_filter(&pcap);
+                chooser.add_filter(&pcapng);
+            },
+            "bin" => {
+                let bin = gtk::FileFilter::new();
+                let all = gtk::FileFilter::new();
+                bin.add_suffix("bin");
+                all.add_pattern("*");
+                bin.set_name(Some("Binary files (*.bin)"));
+                all.set_name(Some("All files (*)"));
+                chooser.add_filter(&bin);
+                chooser.add_filter(&all);
+            },
+            "zip" => {
+                let zip = gtk::FileFilter::new();
+                let all = gtk::FileFilter::new();
+                zip.add_suffix("zip");
+                all.add_pattern("*");
+                zip.set_name(Some("Zip files (*.zip)"));
+                all.set_name(Some("All files (*)"));
+                chooser.add_filter(&zip);
+                chooser.add_filter(&all);
+            }
+            _ => bail!("Filters not defined for extension '.{extension}'")
+        }
         chooser.connect_response(move |dialog, response| {
             let _ = with_ui(|ui| {
                 ui.settings.last_used_directory = dialog
@@ -657,8 +684,12 @@ fn choose_file<F>(
                 if let Some(file) = dialog.file() {
                     if let Some(name) = file.basename() {
                         if action == Save && name.extension().is_none() {
-                            // Automatically add the ".pcapng" extension.
-                            let (file, _) = add_extension(file, name, "pcapng");
+                            // Automatically add the extension.
+                            let name = name.with_extension(extension);
+                            let file = match file.parent() {
+                                Some(parent) => parent.child(&name),
+                                None => gio::File::for_path(&name),
+                            };
                             // Check whether the new filename already exists.
                             if file.query_exists(Cancellable::NONE) {
                                 // The file already exists.
@@ -691,7 +722,8 @@ fn choose_file<F>(
 }
 
 fn choose_capture_file(action: FileAction) -> Result<(), Error> {
-    choose_file(action, "capture file", move |file| start_file(action, file))
+    choose_file(action, "capture file", "pcapng",
+        move |file| start_file(action, file))
 }
 
 fn start_file(action: FileAction, file: gio::File) -> Result<(), Error> {
@@ -891,29 +923,6 @@ fn save_file(file: gio::File,
         Pcap => save::<_, PcapSaver<_>>(capture, dest),
         PcapNg => save::<_, PcapNgSaver<_>>(capture, dest),
     }
-}
-
-fn add_extension_if_missing(file: gio::File, extension: &str) -> gio::File {
-    match file.basename() {
-        Some(name) if name.extension().is_none() => {
-            let (file, _name) = add_extension(file, name, extension);
-            file
-        },
-        _ => file
-    }
-}
-
-fn add_extension(
-    file: gio::File,
-    name: PathBuf,
-    extension: &str
-) -> (gio::File, PathBuf) {
-    let name = name.with_extension(extension);
-    let file = match file.parent() {
-        Some(parent) => parent.child(&name),
-        None => gio::File::for_path(&name),
-    };
-    (file, name)
 }
 
 pub fn stop_operation() -> Result<(), Error> {
@@ -1171,7 +1180,7 @@ fn choose_data_transfer_payload_file(
     data_range: Range<EndpointDataEvent>
 ) -> Result<(), Error> {
     use FileAction::Save;
-    choose_file(Save, "data transfer payload file", move |file|
+    choose_file(Save, "data transfer payload file", "bin", move |file|
         save_data_transfer_payload(file, endpoint_id, data_range.clone()))
 }
 
@@ -1182,7 +1191,6 @@ fn save_data_transfer_payload(
 ) -> Result<(), Error> {
     with_ui(|ui| {
         let cap = &mut ui.capture.reader;
-        let file = add_extension_if_missing(file, "bin");
         let mut dest = file
             .replace(None, false, FileCreateFlags::NONE, Cancellable::NONE)?
             .into_write();
@@ -1212,7 +1220,7 @@ fn choose_data_file(
     description: &'static str,
     data: Vec<u8>,
 ) -> Result<(), Error> {
-    choose_file(FileAction::Save, &format!("{description} file"),
+    choose_file(FileAction::Save, &format!("{description} file"), "bin",
         move |file| save_data(file, description, data.clone()))
 }
 
@@ -1221,7 +1229,6 @@ fn save_data(
     description: &'static str,
     data: Vec<u8>,
 ) -> Result<(), Error> {
-    let file = add_extension_if_missing(file, "bin");
     let mut dest = file
         .replace(None, false, FileCreateFlags::NONE, Cancellable::NONE)?
         .into_write();
@@ -1235,6 +1242,26 @@ fn save_data(
                 |path| path.to_string_lossy().to_string())
     );
     Ok(())
+}
+
+pub fn choose_dump_file() -> Result<(), Error> {
+    choose_file(FileAction::Save, "database dump file", "zip", dump_database)
+}
+
+fn dump_database(file: gio::File) -> Result<(), Error> {
+    let zip_path = file
+        .path()
+        .context("Destination has no local path")?;
+    let dump_dir = tempdir()
+        .context("Failed to create temporary directory")?;
+    let dump_path = dump_dir
+        .path()
+        .to_path_buf();
+    with_ui(|ui| {
+        ui.capture.reader.dump(&dump_path)?;
+        zip_create_from_directory(&zip_path, &dump_path)?;
+        Ok(())
+    })
 }
 
 fn show_metadata() -> Result<(), Error> {
