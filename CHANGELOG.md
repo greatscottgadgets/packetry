@@ -5,9 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-<!--
 ## [Unreleased]
--->
+
+### Added
+
+- Add support for non-packet events from Cynthion analyzer.
+- Add support for VBUS power control with Cynthion analyzer.
+- Add support for the PcapNG file format with custom non-packet blocks.
+- Add decoding of HID report descriptors.
+- Add facility to dump the capture database for debugging.
+
+### Changed
+
+- The device list is maintained automatically and the scan button is removed.
+- USB capture devices are kept open whilst selected for use.
+- Filename extensions are added automatically when saving.
+- File dialogs remember the last used directory.
+- Backtraces are always captured when an error occurs.
+- Panics in worker threads result in an error dialog rather than a crash.
+- UI updates are made from a snapshot of the database state.
+- Capture backends have been ported to the nusb 0.2 API.
+- Most of the UI is now defined in XML and editable with Cambalache.
+- Source code has been significantly reorganised.
+
+### Fixed
+
+- Stop descriptors from being intermingled when a device address is reused.
+- Fix a decoder crash when a double SETUP packet is seen.
+- Fix crashes in GTK where the view could get out of sync with the model.
+- Fix descriptions of invalid groups leaking internal details.
+- Fix inconsistent pane sizing when window is first shown.
+- Fix units in text shown in progress bar.
+- Handle runtime GTK version mismatches gracefully.
+
 
 ## [0.4.0] - 2024-10-29
 
