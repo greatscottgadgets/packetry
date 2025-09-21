@@ -41,7 +41,7 @@ Install Packetry
 
                 yum install rust cargo make gcc gcc-c++ gtk4-devel pango-devel git
 
-        Note that Packetry requires a minimum Rust version of 1.74. If your distribution's packages are older than this, use `rustup <https://rustup.rs/>`__ to get the latest Rust toolchain and manage your Rust installation.
+        Note that Packetry requires a minimum Rust version of 1.85. If your distribution's packages are older than this, use `rustup <https://rustup.rs/>`__ to get the latest Rust toolchain and manage your Rust installation.
 
         **Download Packetry Source Code**
 
@@ -184,9 +184,7 @@ Run the Packetry executable. The Packetry window should appear.
 Start Capturing USB Traffic
 ---------------------------
 
-Make sure that "Cynthion" is selected in the Device Drop-down. If this list is empty, use the Scan Button to search for a capture device.
-
-Select the target device speed from the Speed Drop-down. If you don't know the target speed, try each speed until you find the one that works for your device. (Automatic speed detection coming soon!)
+Make sure that "Cynthion" is selected in the Device Drop-down. If this list is empty, check that your Cynthion is connected via its CONTROL port and is running the USB analyzer gateware.
 
 Click the Capture Button.
 

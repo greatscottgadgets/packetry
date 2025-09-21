@@ -12,12 +12,15 @@ Across the top of the Packetry window is the Action Bar used to control Packetry
 
 - **Open Button**: Clears Traffic Pane and Device Pane and loads a ``.pcap`` file with the ``LINKTYPE_USB_2_0`` link-layer header type.
 - **Save Button**: Saves a ``.pcap`` file with the ``LINKTYPE_USB_2_0`` link-layer header type.
-- **Scan Button**: Searches for a capture device such as a Cynthion running analyzer gateware.
 - **Capture Button**: Clears Traffic Pane and Device Pane and starts capturing USB data with the connected capture device.
 - **Stop Button**: Stops capturing USB data. Stops reading USB data from file.
-- **Device Drop-down**: Selects a capture device. If you don't see a device listed here, try using the Scan button.
+- **Device Drop-down**: Selects a capture device. This list is updated automatically as devices are attached or unplugged.
 - **Speed Drop-down**: Selects the target device speed for live capture.
+- **Target Power Switch**: Turns on or off power to the target device (requires a Cynthion analyzer and suitable gateware).
+- **Power Menu**: Where target power control is available, opens a menu for additional power control settings.
 
+.. image:: ../images/power-menu.png
+   :alt: Power Menu
 
 Traffic Pane
 ------------
