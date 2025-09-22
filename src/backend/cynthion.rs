@@ -34,6 +34,7 @@ use super::{
     PowerConfig,
     TimestampedEvent,
     TransferQueue,
+    claim_interface,
 };
 
 use crate::capture::CaptureMetadata;
@@ -168,10 +169,8 @@ impl CynthionDevice {
                 }
 
                 // Try to claim the interface.
-                let interface = device
-                    .claim_interface(interface_number)
-                    .await
-                    .context("Failed to claim interface")?;
+                let interface =
+                    claim_interface(&device, interface_number).await?;
 
                 // Select the required alternate, if not the default.
                 if alt_setting_number != 0 {

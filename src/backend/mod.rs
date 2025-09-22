@@ -11,7 +11,7 @@ use async_trait::async_trait;
 use futures_channel::oneshot;
 use futures_lite::future::block_on;
 use futures_util::{stream::iter, StreamExt};
-use nusb::{self, DeviceInfo, transfer::Buffer};
+use nusb::{self, Device, DeviceInfo, Interface, transfer::Buffer};
 use once_cell::sync::Lazy;
 use portable_async_sleep::async_sleep;
 
@@ -285,5 +285,32 @@ impl BackendStop {
         let _ = self.stop_tx.send(());
         handle_thread_panic(self.worker.join())?;
         Ok(())
+    }
+}
+
+#[cfg(not(target_os="windows"))]
+async fn claim_interface(device: &Device, interface: u8)
+    -> Result<Interface, Error>
+{
+    device
+        .claim_interface(interface)
+        .await
+        .context("Failed to claim interface")
+}
+
+#[cfg(target_os="windows")]
+async fn claim_interface(device: &Device, interface: u8)
+    -> Result<Interface, Error>
+{
+    let mut attempts = 0;
+    loop {
+        match device.claim_interface(interface).await {
+            Err(_) if attempts < 5 => {
+                async_sleep(Duration::from_millis(50)).await;
+                attempts += 1;
+                continue
+            },
+            result => return result.context("Failed to claim interface")
+        }
     }
 }

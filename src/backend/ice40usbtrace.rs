@@ -32,6 +32,7 @@ use super::{
     Speed,
     TimestampedEvent,
     TransferQueue,
+    claim_interface,
 };
 
 pub const VID_PID: (u16, u16) = (0x1d50, 0x617e);
@@ -84,10 +85,7 @@ impl BackendDevice for Ice40UsbtraceDevice {
             .open()
             .await
             .context("Failed to open device")?;
-        let interface = device
-            .claim_interface(INTERFACE)
-            .await
-            .context("Failed to claim interface")?;
+        let interface = claim_interface(&device, INTERFACE).await?;
         let metadata = CaptureMetadata {
             iface_desc: Some("iCE40-usbtrace".to_string()),
             .. Default::default()
