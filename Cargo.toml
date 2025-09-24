@@ -10,7 +10,7 @@ homepage = "https://github.com/greatscottgadgets/packetry"
 repository = "https://github.com/greatscottgadgets/packetry"
 documentation = "https://packetry.readthedocs.io"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.85.1"
 build = "src/build.rs"
 default-run = "packetry"
 
