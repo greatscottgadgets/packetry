@@ -1860,9 +1860,11 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "701a6a7ed08d280343b136da239b8d62d2f0733866541dff3a0d6bfa9be50139"
 dependencies = [
+ "blocking",
  "core-foundation",
  "core-foundation-sys",
  "futures-core",
+ "futures-io",
  "io-kit-sys",
  "linux-raw-sys 0.9.4",
  "log",
