@@ -1,7 +1,7 @@
 //! UI for selecting and displaying info about capture devices.
 
 use std::cell::{RefCell, Ref, RefMut};
-use std::ops::{Deref, DerefMut};
+use std::ops::Deref;
 
 use gtk::{
     glib::{self, prelude::*},
@@ -18,7 +18,7 @@ use gtk::{
 };
 
 use anyhow::{bail, Error};
-use futures_lite::StreamExt;
+use futures_lite::{future::block_on, StreamExt};
 use indexmap::IndexMap;
 use nusb::{DeviceId, hotplug::{HotplugEvent, HotplugWatch}};
 
@@ -64,8 +64,13 @@ impl DeviceSelector {
     }
 
     pub fn connect_signals(&self, f: fn()) {
-        self.dev_dropdown.connect_selected_item_notify(move |_| f());
-        self.dev_dropdown.set_model(Some(&self.devices));
+        // Defer connection until UI setup has finished.
+        let devices = self.devices.clone();
+        let dev_dropdown = self.dev_dropdown.clone();
+        glib::idle_add_local_once(move || {
+            dev_dropdown.connect_selected_item_notify(move |_| f());
+            dev_dropdown.set_model(Some(&devices))
+        });
     }
 
     pub fn device_available(&self) -> bool {
@@ -105,35 +110,24 @@ impl DeviceSelector {
         }
     }
 
-    pub fn open_device(&mut self) -> Result<(), Error> {
+    pub fn update_device(
+        &mut self,
+        result: Option<Result<Box<dyn BackendHandle>, String>>
+    ) {
         let mut speed_strings: Vec<&str> = Vec::new();
-        self.active = if let Some(device) = self.selected_device() {
-            if let Ok(backend_device) = &device
-                .probe_result_mut()
-                .deref_mut()
-                .result
-            {
-                match backend_device.open_as_generic() {
-                    Ok(handle) => {
-                        let speeds = handle.supported_speeds().to_vec();
-                        speed_strings.extend(
-                            speeds.iter().map(Speed::description)
-                        );
-                        Some(Ok(ActiveDevice { handle, speeds }))
-                    },
-                    Err(error) => {
-                        Some(Err(format!("{error}")))
-                    }
-                }
-            } else {
-                None
-            }
-        } else {
-            None
+        self.active = match result {
+            Some(Ok(handle)) => {
+                let speeds = handle.supported_speeds().to_vec();
+                speed_strings.extend(
+                    speeds.iter().map(Speed::description)
+                );
+                Some(Ok(ActiveDevice { handle, speeds }))
+            },
+            Some(Err(msg)) => Some(Err(msg)),
+            _ => None,
         };
         self.replace_dropdown(&self.speed_dropdown, &speed_strings);
         self.speed_dropdown.set_sensitive(!speed_strings.is_empty());
-        Ok(())
     }
 
     pub fn handle(&mut self) -> Option<&mut Box<dyn BackendHandle>> {
@@ -208,7 +202,7 @@ async fn maintain_device_list(mut watch: HotplugWatch) {
     loop {
         match watch.next().await {
             Some(HotplugEvent::Connected(info)) => {
-                if let Some(probe_result) = probe(info) {
+                if let Some(probe_result) = probe(info).await {
                     let (index, prev) = list.imp().devices
                         .borrow_mut()
                         .insert_full(
@@ -253,7 +247,7 @@ impl Device {
         Ref::map(self.imp().probe_result.borrow(), |optref| optref.as_ref().unwrap())
     }
 
-    fn probe_result_mut(&self) -> RefMut<'_, ProbeResult> {
+    pub fn probe_result_mut(&self) -> RefMut<'_, ProbeResult> {
         RefMut::map(self.imp().probe_result.borrow_mut(), |optref| optref.as_mut().unwrap())
     }
 }
@@ -290,7 +284,7 @@ impl DeviceList {
                         nusb::watch_devices()?
                     )
                 );
-                *list.imp().devices.borrow_mut() = scan()?
+                *list.imp().devices.borrow_mut() = block_on(scan())?
                     .into_iter()
                     .map(|probe| (probe.info.id(), Device::new(probe)))
                     .collect();

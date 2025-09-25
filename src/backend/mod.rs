@@ -3,14 +3,17 @@
 use std::collections::BTreeMap;
 use std::panic::UnwindSafe;
 use std::sync::mpsc;
-use std::thread::{JoinHandle, spawn, sleep};
+use std::thread::{JoinHandle, spawn};
 use std::time::Duration;
 
 use anyhow::{Context, Error};
+use async_trait::async_trait;
 use futures_channel::oneshot;
 use futures_lite::future::block_on;
-use nusb::{self, DeviceInfo, MaybeFuture, transfer::Buffer};
+use futures_util::{stream::iter, StreamExt};
+use nusb::{self, DeviceInfo, transfer::Buffer};
 use once_cell::sync::Lazy;
+use portable_async_sleep::async_sleep;
 
 use crate::capture::CaptureMetadata;
 use crate::util::handle_thread_panic;
@@ -44,7 +47,7 @@ pub struct ProbeResult {
 }
 
 /// Probe a USB device.
-pub fn probe(info: DeviceInfo) -> Option<ProbeResult> {
+pub async fn probe(info: DeviceInfo) -> Option<ProbeResult> {
     SUPPORTED_DEVICES
         .get(&(info.vendor_id(), info.product_id()))
         .map(|(name, probe)| (name, probe(info.clone())))
@@ -58,18 +61,22 @@ pub fn probe(info: DeviceInfo) -> Option<ProbeResult> {
 }
 
 /// Scan for supported devices.
-pub fn scan() -> Result<Vec<ProbeResult>, Error> {
-    Ok(nusb::list_devices()
-        .wait()?
+pub async fn scan() -> Result<Vec<ProbeResult>, Error> {
+    let devices = nusb::list_devices().await?;
+    Ok(iter(devices)
         .filter_map(probe)
-        .collect()
-    )
+        .collect::<Vec<_>>()
+        .await)
 }
 
 /// A capture device connected to the system, not currently opened.
+#[async_trait]
 pub trait BackendDevice {
     /// Open this device to use it as a generic capture device.
-    fn open_as_generic(&self) -> Result<Box<dyn BackendHandle>, Error>;
+    async fn open_as_generic(&self) -> Result<Box<dyn BackendHandle>, Error>;
+
+    /// Duplicate this device with Box::new(self.clone()).
+    fn duplicate(&self) -> Box<dyn BackendDevice>;
 }
 
 /// A timestamped event.
@@ -114,6 +121,7 @@ pub struct PowerConfig {
 }
 
 /// A handle to an open capture device.
+#[async_trait(?Send)]
 pub trait BackendHandle: Send + Sync {
 
     /// Which speeds this device supports.
@@ -126,17 +134,18 @@ pub trait BackendHandle: Send + Sync {
     fn power_sources(&self) -> Option<&[&str]>;
 
     /// The last known power configuration of this device.
-    fn power_config(&self) -> Option<PowerConfig>;
+    async fn power_config(&self) -> Option<PowerConfig>;
 
     /// Set power configuration.
-    fn set_power_config(&mut self, config: PowerConfig) -> Result<(), Error>;
+    async fn set_power_config(&mut self, config: PowerConfig)
+        -> Result<(), Error>;
 
     /// Begin capture.
     ///
     /// This method should send whatever control requests etc are necessary to
     /// start capture, then set up and return a `TransferQueue` that sends the
     /// raw data from the device to `data_tx`.
-    fn begin_capture(
+    async fn begin_capture(
         &mut self,
         speed: Speed,
         data_tx: mpsc::Sender<Buffer>)
@@ -147,13 +156,13 @@ pub trait BackendHandle: Send + Sync {
     /// This method should send whatever control requests etc are necessary to
     /// stop the capture. The transfer queue will be kept running for a short
     /// while afterwards to receive data that is still queued in the device.
-    fn end_capture(&mut self) -> Result<(), Error>;
+    async fn end_capture(&mut self) -> Result<(), Error>;
 
     /// Post-capture cleanup.
     ///
     /// This method will be called after the transfer queue has been shut down,
     /// and should do any cleanup necessary before next use.
-    fn post_capture(&mut self) -> Result<(), Error>;
+    async fn post_capture(&mut self) -> Result<(), Error>;
 
     /// Construct an iterator that produces timestamped events from raw data.
     ///
@@ -210,7 +219,7 @@ pub trait BackendHandle: Send + Sync {
 
         // Start worker thread to run the capture.
         let worker = spawn(move || result_handler(
-            handle.run_capture(speed, data_tx, reuse_rx, stop_rx)
+            block_on(handle.run_capture(speed, data_tx, reuse_rx, stop_rx))
         ));
 
         // Iterator over timestamped events.
@@ -223,7 +232,7 @@ pub trait BackendHandle: Send + Sync {
     }
 
     /// Worker that runs the whole lifecycle of a capture from start to finish.
-    fn run_capture(
+    async fn run_capture(
         &mut self,
         speed: Speed,
         data_tx: mpsc::Sender<Buffer>,
@@ -234,7 +243,7 @@ pub trait BackendHandle: Send + Sync {
         let (queue_stop_tx, queue_stop_rx) = oneshot::channel();
 
         // Begin capture and set up transfer queue.
-        let mut transfer_queue = self.begin_capture(speed, data_tx)?;
+        let mut transfer_queue = self.begin_capture(speed, data_tx).await?;
         println!("Capture enabled, speed: {}", speed.description());
 
         // Spawn a worker thread to process the transfer queue until stopped.
@@ -244,14 +253,14 @@ pub trait BackendHandle: Send + Sync {
 
         // Wait until this thread is signalled to stop, or the stop request
         // sender is dropped.
-        let _ = block_on(stop_rx);
+        let _ = stop_rx.await;
 
         // End capture.
-        self.end_capture()?;
+        self.end_capture().await?;
         println!("Capture disabled");
 
         // Leave queue worker running briefly to receive flushed data.
-        sleep(Duration::from_millis(100));
+        async_sleep(Duration::from_millis(100)).await;
 
         // Signal queue processing to stop, then join the worker thread. If
         // sending fails, assume the thread is already stopping.
@@ -261,7 +270,7 @@ pub trait BackendHandle: Send + Sync {
             .context("Error in queue worker thread")?;
 
         // Run any post-capture cleanup required by the device.
-        self.post_capture()?;
+        self.post_capture().await?;
 
         Ok(())
     }
