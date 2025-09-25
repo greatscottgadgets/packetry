@@ -42,7 +42,7 @@ jobs:
 
       - name: Install toolchain
         run: |
-          rustup toolchain install stable
+          rustup toolchain install stable --component clippy
           rustup default stable
 
       - uses: Swatinem/rust-cache@v2
