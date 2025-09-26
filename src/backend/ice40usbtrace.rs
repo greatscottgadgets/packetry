@@ -5,6 +5,7 @@ use std::sync::mpsc;
 use std::time::Duration;
 
 use anyhow::{Context, Error, anyhow, bail};
+use async_trait::async_trait;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use nusb::{
     self,
@@ -16,7 +17,7 @@ use nusb::{
         Recipient,
         TransferError
     },
-    DeviceInfo, Interface, MaybeFuture,
+    DeviceInfo, Interface,
 };
 
 use crate::capture::CaptureMetadata;
@@ -31,6 +32,7 @@ use super::{
     Speed,
     TimestampedEvent,
     TransferQueue,
+    claim_interface,
 };
 
 pub const VID_PID: (u16, u16) = (0x1d50, 0x617e);
@@ -51,6 +53,7 @@ enum Command {
 }
 
 /// An iCE40-usbtrace device attached to the system.
+#[derive(Clone)]
 pub struct Ice40UsbtraceDevice {
     pub device_info: DeviceInfo,
 }
@@ -75,24 +78,27 @@ pub fn probe(device_info: DeviceInfo) -> Result<Box<dyn BackendDevice>, Error> {
     Ok(Box::new(Ice40UsbtraceDevice { device_info }))
 }
 
+#[async_trait]
 impl BackendDevice for Ice40UsbtraceDevice {
-    fn open_as_generic(&self) -> Result<Box<dyn BackendHandle>, Error> {
+    async fn open_as_generic(&self) -> Result<Box<dyn BackendHandle>, Error> {
         let device = self.device_info
             .open()
-            .wait()
+            .await
             .context("Failed to open device")?;
-        let interface = device
-            .claim_interface(INTERFACE)
-            .wait()
-            .context("Failed to claim interface")?;
+        let interface = claim_interface(&device, INTERFACE).await?;
         let metadata = CaptureMetadata {
             iface_desc: Some("iCE40-usbtrace".to_string()),
             .. Default::default()
         };
         Ok(Box::new(Ice40UsbtraceHandle { interface, metadata }))
     }
+
+    fn duplicate(&self) -> Box<dyn BackendDevice> {
+        Box::new(self.clone())
+    }
 }
 
+#[async_trait(?Send)]
 impl BackendHandle for Ice40UsbtraceHandle {
     fn supported_speeds(&self) -> &[Speed] {
         &FS_ONLY
@@ -106,15 +112,17 @@ impl BackendHandle for Ice40UsbtraceHandle {
         None
     }
 
-    fn power_config(&self) -> Option<PowerConfig> {
+    async fn power_config(&self) -> Option<PowerConfig> {
         None
     }
 
-    fn set_power_config(&mut self, _config: PowerConfig) -> Result<(), Error> {
+    async fn set_power_config(&mut self, _config: PowerConfig)
+        -> Result<(), Error>
+    {
         Ok(())
     }
 
-    fn begin_capture(
+    async fn begin_capture(
         &mut self,
         speed: Speed,
         data_tx: mpsc::Sender<Buffer>,
@@ -129,22 +137,22 @@ impl BackendHandle for Ice40UsbtraceHandle {
         };
 
         // Stop the device if it was left running before and ignore any errors
-        self.write_request(Command::CaptureStop)?;
-        self.write_request(Command::BufferFlush)?;
+        self.write_request(Command::CaptureStop).await?;
+        self.write_request(Command::BufferFlush).await?;
 
         // Start capture.
-        self.write_request(Command::CaptureStart)?;
+        self.write_request(Command::CaptureStart).await?;
 
         // Set up transfer queue.
         Ok(TransferQueue::new(endpoint, data_tx, NUM_TRANSFERS, READ_LEN))
     }
 
-    fn end_capture(&mut self) -> Result<(), Error> {
-        self.write_request(Command::CaptureStop)
+    async fn end_capture(&mut self) -> Result<(), Error> {
+        self.write_request(Command::CaptureStop).await
     }
 
-    fn post_capture(&mut self) -> Result<(), Error> {
-        self.write_request(Command::BufferFlush)
+    async fn post_capture(&mut self) -> Result<(), Error> {
+        self.write_request(Command::BufferFlush).await
     }
 
     fn timestamped_events(
@@ -168,7 +176,7 @@ impl BackendHandle for Ice40UsbtraceHandle {
 }
 
 impl Ice40UsbtraceHandle {
-    fn write_request(&mut self, request: Command) -> Result<(), Error> {
+    async fn write_request(&mut self, request: Command) -> Result<(), Error> {
         use Command::*;
         let control = ControlOut {
             control_type: ControlType::Vendor,
@@ -179,7 +187,7 @@ impl Ice40UsbtraceHandle {
             data: &[],
         };
         let timeout = Duration::from_secs(1);
-        match self.interface.control_out(control, timeout).wait() {
+        match self.interface.control_out(control, timeout).await {
             Ok(_) => Ok(()),
             Err(err) => match (request, err) {
                 (CaptureStop | BufferFlush, TransferError::Stall) => {
