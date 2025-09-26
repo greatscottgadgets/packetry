@@ -5,9 +5,11 @@ use std::collections::VecDeque;
 use std::num::NonZeroU32;
 use std::ops::DerefMut;
 use std::time::Duration;
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{mpsc, Arc};
 
 use anyhow::{Context as ErrorContext, Error, bail};
+use async_lock::Mutex;
+use async_trait::async_trait;
 use nusb::{
     self,
     transfer::{
@@ -20,7 +22,6 @@ use nusb::{
     },
     DeviceInfo,
     Interface,
-    MaybeFuture,
 };
 
 use super::{
@@ -81,6 +82,7 @@ impl TestConfig {
 }
 
 /// A Cynthion device attached to the system.
+#[derive(Clone)]
 pub struct CynthionDevice {
     pub device_info: DeviceInfo,
 }
@@ -125,13 +127,13 @@ pub fn probe(device_info: DeviceInfo) -> Result<Box<dyn BackendDevice>, Error> {
 
 impl CynthionDevice {
     /// Open this device.
-    pub fn open(&self) -> Result<CynthionHandle, Error> {
+    pub async fn open(&self) -> Result<CynthionHandle, Error> {
         use Speed::*;
 
         // Check we can open the device.
         let device = self.device_info
             .open()
-            .wait()
+            .await
             .context("Failed to open device")?;
 
         // Read the active configuration.
@@ -168,23 +170,23 @@ impl CynthionDevice {
                 // Try to claim the interface.
                 let interface = device
                     .claim_interface(interface_number)
-                    .wait()
+                    .await
                     .context("Failed to claim interface")?;
 
                 // Select the required alternate, if not the default.
                 if alt_setting_number != 0 {
                     interface
                         .set_alt_setting(alt_setting_number)
-                        .wait()
+                        .await
                         .context("Failed to select alternate setting")?;
                 }
 
                 // Read the state register.
-                let mut state = State(read_byte(&interface, 0)?);
+                let mut state = State(read_byte(&interface, 0).await?);
 
                 // Fetch the available speeds.
                 let mut speeds = Vec::new();
-                let speed_byte = read_byte(&interface, 2)?;
+                let speed_byte = read_byte(&interface, 2).await?;
                 for speed in [Auto, High, Full, Low] {
                     if speed_byte & speed.mask() != 0 {
                         speeds.push(speed);
@@ -192,7 +194,9 @@ impl CynthionDevice {
                 }
 
                 // Fetch the minor protocol version.
-                let protocol_minor = read_byte(&interface, 4).unwrap_or(0);
+                let protocol_minor = read_byte(&interface, 4)
+                    .await
+                    .unwrap_or(0);
 
                 let metadata = CaptureMetadata {
                     iface_desc: Some("Cynthion USB Analyzer".to_string()),
@@ -270,12 +274,18 @@ impl CynthionDevice {
     }
 }
 
+#[async_trait]
 impl BackendDevice for CynthionDevice {
-    fn open_as_generic(&self) -> Result<Box<dyn BackendHandle>, Error> {
-        Ok(Box::new(self.open()?))
+    async fn open_as_generic(&self) -> Result<Box<dyn BackendHandle>, Error> {
+        Ok(Box::new(self.open().await?))
+    }
+
+    fn duplicate(&self) -> Box<dyn BackendDevice> {
+        Box::new(self.clone())
     }
 }
 
+#[async_trait(?Send)]
 impl BackendHandle for CynthionHandle {
     fn supported_speeds(&self) -> &[Speed] {
         &self.speeds
@@ -289,37 +299,48 @@ impl BackendHandle for CynthionHandle {
         self.power_sources
     }
 
-    fn power_config(&self) -> Option<PowerConfig> {
-        self.inner().power.clone()
+    async fn power_config(&self) -> Option<PowerConfig> {
+        self.inner()
+            .await
+            .power
+            .clone()
     }
 
-    fn set_power_config(&mut self, power: PowerConfig) -> Result<(), Error> {
-        self.inner().set_power_config(power)
+    async fn set_power_config(&mut self, power: PowerConfig)
+        -> Result<(), Error>
+    {
+        self.inner()
+            .await
+            .set_power_config(power)
+            .await
     }
 
-    fn begin_capture(
+    async fn begin_capture(
         &mut self,
         speed: Speed,
         data_tx: mpsc::Sender<Buffer>,
     ) -> Result<TransferQueue, Error>
     {
-        let mut inner = self.inner();
+        let mut inner = self.inner().await;
 
         let endpoint = match inner.interface.endpoint::<Bulk, In>(ENDPOINT) {
             Ok(endpoint) => endpoint,
             Err(_) => bail!("Failed to claim endpoint {ENDPOINT}")
         };
 
-        inner.start_capture(speed)?;
+        inner.start_capture(speed).await?;
 
         Ok(TransferQueue::new(endpoint, data_tx, NUM_TRANSFERS, READ_LEN))
     }
 
-    fn end_capture(&mut self) -> Result<(), Error> {
-        self.inner().stop_capture()
+    async fn end_capture(&mut self) -> Result<(), Error> {
+        self.inner()
+            .await
+            .stop_capture()
+            .await
     }
 
-    fn post_capture(&mut self) -> Result<(), Error> {
+    async fn post_capture(&mut self) -> Result<(), Error> {
         Ok(())
     }
 
@@ -345,7 +366,7 @@ impl BackendHandle for CynthionHandle {
 }
 
 impl CynthionInner {
-    fn start_capture (&mut self, speed: Speed) -> Result<(), Error> {
+    async fn start_capture (&mut self, speed: Speed) -> Result<(), Error> {
         self.state.set_speed(speed);
         self.state.set_enable(true);
         if let Some(power) = &mut self.power {
@@ -358,10 +379,10 @@ impl CynthionInner {
                 power.on_now = true;
             }
         }
-        self.write_request(1, self.state.0)
+        self.write_request(1, self.state.0).await
     }
 
-    fn stop_capture(&mut self) -> Result<(), Error> {
+    async fn stop_capture(&mut self) -> Result<(), Error> {
         self.state.set_enable(false);
         if let Some(power) = &mut self.power {
             if power.stop_off {
@@ -372,10 +393,12 @@ impl CynthionInner {
                 power.on_now = false;
             }
         }
-        self.write_request(1, self.state.0)
+        self.write_request(1, self.state.0).await
     }
 
-    fn set_power_config(&mut self, power: PowerConfig) -> Result<(), Error> {
+    async fn set_power_config(&mut self, power: PowerConfig)
+        -> Result<(), Error>
+    {
         let index = power.source_index;
         let on = power.on_now;
         self.state.set_power_control_enable(true);
@@ -384,10 +407,12 @@ impl CynthionInner {
         self.state.set_aux_vbus_en(on && index == 2);
         self.state.set_target_a_discharge(!on);
         self.power = Some(power);
-        self.write_request(1, self.state.0)
+        self.write_request(1, self.state.0).await
     }
 
-    fn write_request(&mut self, request: u8, value: u8) -> Result<(), Error> {
+    async fn write_request(&mut self, request: u8, value: u8)
+        -> Result<(), Error>
+    {
         let control = ControlOut {
             control_type: ControlType::Vendor,
             recipient: Recipient::Interface,
@@ -399,28 +424,30 @@ impl CynthionInner {
         let timeout = Duration::from_secs(1);
         self.interface
             .control_out(control, timeout)
-            .wait()
+            .await
             .context("Write request failed")?;
         Ok(())
     }
 }
 
 impl CynthionHandle {
-    fn inner(&self) -> impl DerefMut<Target=CynthionInner> + use<'_> {
-        self.inner.lock().unwrap()
+    async fn inner(&self) -> impl DerefMut<Target=CynthionInner> + use<'_> {
+        self.inner.lock().await
     }
 
-    pub fn configure_test_device(&mut self, speed: Option<Speed>)
+    pub async fn configure_test_device(&mut self, speed: Option<Speed>)
         -> Result<(), Error>
     {
         let test_config = TestConfig::new(speed);
         self.inner()
+            .await
             .write_request(3, test_config.0)
+            .await
             .context("Failed to set test device configuration")
     }
 }
 
-fn read_byte(interface: &Interface, request: u8) -> Result<u8, Error> {
+async fn read_byte(interface: &Interface, request: u8) -> Result<u8, Error> {
     let control = ControlIn {
         control_type: ControlType::Vendor,
         recipient: Recipient::Interface,
@@ -432,7 +459,7 @@ fn read_byte(interface: &Interface, request: u8) -> Result<u8, Error> {
     let timeout = Duration::from_secs(1);
     let buf = interface
         .control_in(control, timeout)
-        .wait()
+        .await
         .context("Failed retrieving supported speeds from device")?;
     let size = buf.len();
     if size != 1 {

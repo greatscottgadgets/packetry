@@ -41,7 +41,7 @@ Install Packetry
 
                 yum install rust cargo make gcc gcc-c++ gtk4-devel pango-devel git
 
-        Note that Packetry requires a minimum Rust version of 1.85. If your distribution's packages are older than this, use `rustup <https://rustup.rs/>`__ to get the latest Rust toolchain and manage your Rust installation.
+        Note that Packetry requires a minimum Rust version of 1.85.1. If your distribution's packages are older than this, use `rustup <https://rustup.rs/>`__ to get the latest Rust toolchain and manage your Rust installation.
 
         **Download Packetry Source Code**
 

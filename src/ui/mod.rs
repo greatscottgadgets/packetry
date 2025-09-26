@@ -5,7 +5,7 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::ffi::OsStr;
 use std::io::{Read, Write};
-use std::ops::Range;
+use std::ops::{DerefMut, Range};
 use std::panic::UnwindSafe;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{Sender, Receiver, channel};
@@ -70,7 +70,9 @@ use gtk::{
 };
 
 use crate::backend::{
+    BackendDevice,
     BackendStop,
+    ProbeResult,
     TimestampedEvent,
 };
 
@@ -195,8 +197,8 @@ pub struct UserInterface {
     pub recording: Rc<RefCell<Recording>>,
 }
 
-pub fn with_ui<F>(f: F) -> Result<(), Error>
-    where F: FnOnce(&mut UserInterface) -> Result<(), Error>
+pub fn with_ui<F, R>(f: F) -> Result<R, Error>
+    where F: FnOnce(&mut UserInterface) -> Result<R, Error>
 {
     UI.with(|cell| {
         if let Some(ui) = cell.borrow_mut().as_mut() {
@@ -210,17 +212,9 @@ pub fn with_ui<F>(f: F) -> Result<(), Error>
 pub fn activate(application: &Application) -> Result<(), Error> {
 
     let ui = PacketryWindow::setup(application)?;
-    ui.power.connect_signals(|| {
-        gtk::glib::idle_add_once(||
-            display_error(power_changed())
-        );
-    });
 
-    ui.selector.connect_signals(|| {
-        glib::idle_add_once(||
-            display_error(device_selection_changed())
-        );
-    });
+    ui.power.connect_signals(|| display_error(power_changed()));
+    ui.selector.connect_signals(|| display_error(device_selection_changed()));
 
     #[cfg(not(test))]
     ui.window.show();
@@ -966,20 +960,73 @@ pub fn rearm() -> Result<(), Error> {
 }
 
 fn device_selection_changed() -> Result<(), Error> {
-    with_ui(|ui| {
-        ui.selector.open_device()?;
-        ui.capture_button.set_sensitive(ui.selector.device_available());
-        ui.warning.update(ui.selector.device_unusable());
-        ui.power.update_controls(ui.selector.handle());
+    let selected_device = with_ui(|ui| {
+        ui.capture_button.set_sensitive(false);
+        ui.warning.update(None);
+        ui.power.update_controls(None, None);
+        Ok(ui.selector.selected_device())
+    })?;
+
+    let device = match selected_device {
+        None => return with_ui(|ui| {
+            ui.selector.update_device(None);
+            Ok(())
+        }),
+        Some(device) => match device.probe_result_mut().deref_mut() {
+            ProbeResult { result: Ok(device), .. } => device.duplicate(),
+            ProbeResult { result: Err(msg), .. } => return with_ui(|ui| {
+                ui.selector.update_device(Some(Err(msg.clone())));
+                Ok(())
+            })
+        }
+    };
+
+    glib::spawn_future_local(open_device(device));
+
+    Ok(())
+}
+
+async fn open_device(device: Box<dyn BackendDevice>) {
+    let result = device
+        .open_as_generic()
+        .await
+        .context("Failed to open device")
+        .map_err(|e| format!("{e}"));
+
+    let power_config = if let Ok(handle) = &result {
+        handle.power_config().await
+    } else {
+        None
+    };
+
+    display_error(with_ui(|ui| {
+        ui.selector.update_device(Some(result));
+        ui.capture_button.set_sensitive(
+            ui.selector.device_available());
+        ui.warning.update(
+            ui.selector.device_unusable());
+        ui.power.update_controls(
+            ui.selector.handle(), power_config);
         Ok(())
-    })
+    }))
 }
 
 fn power_changed() -> Result<(), Error> {
-    with_ui(|ui| {
-        ui.power.update_device(ui.selector.handle())?;
-        Ok(())
-    })
+    let parameters = with_ui(|ui| {
+        let handle = ui.selector
+            .handle()
+            .map(|handle| handle.duplicate());
+        let config = ui.power.config();
+        Ok((handle, config))
+    })?;
+
+    if let (Some(mut device), config) = parameters {
+        let closure = async move ||
+            display_error(device.set_power_config(config).await);
+        glib::spawn_future_local(closure());
+    }
+
+    Ok(())
 }
 
 pub fn start_capture() -> Result<(), Error> {

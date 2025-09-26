@@ -9,11 +9,11 @@ use crate::item::{ItemSource, TrafficViewMode};
 
 use anyhow::{Context, Error, bail, ensure};
 use futures_lite::future::block_on;
-use nusb::{MaybeFuture, transfer::{Interrupt, In}};
+use nusb::{transfer::{Interrupt, In}};
+use portable_async_sleep::async_sleep;
 
 use std::fs::File;
 use std::path::PathBuf;
-use std::thread::sleep;
 use std::time::{Duration, Instant};
 
 const US: Duration = Duration::from_micros(1);
@@ -30,14 +30,14 @@ pub fn test_cynthion(save_captures: bool) {
 
     for (bus_speed, ep_addr, length, sof) in speeds {
         for speed_selection in [bus_speed, Auto] {
-            if let Err(e) = test(
+            if let Err(e) = block_on(test(
                 save_captures,
                 bus_speed,
                 speed_selection,
                 ep_addr,
                 length,
                 sof
-            ) {
+            )) {
                 eprintln!("\nTest failed: {e}");
                 std::process::exit(1);
             }
@@ -45,14 +45,14 @@ pub fn test_cynthion(save_captures: bool) {
     }
 }
 
-fn test(save_capture: bool,
-        bus_speed: Speed,
-        speed_selection: Speed,
-        ep_addr: u8,
-        length: usize,
-        sof: Option<(Duration, Duration)>)
-    -> Result<(), Error>
-{
+async fn test(
+    save_capture: bool,
+    bus_speed: Speed,
+    speed_selection: Speed,
+    ep_addr: u8,
+    length: usize,
+    sof: Option<(Duration, Duration)>
+) -> Result<(), Error> {
     use Speed::*;
 
     println!("\nTesting capture at {} with {} speed selected:\n",
@@ -67,7 +67,7 @@ fn test(save_capture: bool,
     // Open analyzer device.
     println!("Opening analyzer device");
     let mut candidates = nusb::list_devices()
-        .wait()
+        .await
         .context("Failed to list USB devices")?
         .filter(|info| (info.vendor_id(), info.product_id()) == VID_PID)
         .collect::<Vec<_>>();
@@ -78,12 +78,13 @@ fn test(save_capture: bool,
     };
     let mut analyzer = CynthionDevice { device_info }
         .open()
+        .await
         .context("Failed to open analyzer")?;
 
     // Tell analyzer to disconnect test device.
     println!("Disabling test device");
-    analyzer.configure_test_device(None)?;
-    sleep(Duration::from_millis(100));
+    analyzer.configure_test_device(None).await?;
+    async_sleep(Duration::from_millis(100)).await;
 
     // Start capture.
     let analyzer_start_time = Instant::now();
@@ -94,7 +95,7 @@ fn test(save_capture: bool,
 
     // Attempt to open and read data from the test device.
     let test_device_result = read_test_device(
-        &mut analyzer, bus_speed, ep_addr, length);
+        &mut analyzer, bus_speed, ep_addr, length).await;
 
     // Stop analyzer.
     stop_handle.stop()
@@ -275,7 +276,7 @@ fn test(save_capture: bool,
     Ok(())
 }
 
-fn read_test_device(
+async fn read_test_device(
     analyzer: &mut CynthionHandle,
     speed: Speed,
     ep_addr: u8,
@@ -284,21 +285,21 @@ fn read_test_device(
 {
     // Tell analyzer to connect test device, then wait for it to enumerate.
     println!("Enabling test device");
-    analyzer.configure_test_device(Some(speed))?;
-    sleep(Duration::from_millis(2000));
+    analyzer.configure_test_device(Some(speed)).await?;
+    async_sleep(Duration::from_millis(2000)).await;
 
     // Open test device on AUX port.
     let test_device = nusb::list_devices()
-        .wait()
+        .await
         .context("Failed to list USB devices")?
         .find(|dev| dev.vendor_id() == 0x1209 && dev.product_id() == 0x000A)
         .context("Test device not found")?
         .open()
-        .wait()
+        .await
         .context("Failed to open test device")?;
     let test_interface = test_device
         .claim_interface(0)
-        .wait()
+        .await
         .context("Failed to claim interface 0 on test device")?;
     let mut test_endpoint = match test_interface
         .endpoint::<Interrupt, In>(ep_addr)
@@ -310,7 +311,7 @@ fn read_test_device(
     println!("Starting read from test device");
     let request = test_endpoint.allocate(length);
     test_endpoint.submit(request);
-    let completion = block_on(test_endpoint.next_complete());
+    let completion = test_endpoint.next_complete().await;
     completion.status.context("Transfer from test device failed")?;
     println!("Read {} bytes from test device", completion.buffer.len());
     ensure!(completion.buffer.len() == length, "Did not complete reading data");

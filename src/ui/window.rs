@@ -166,6 +166,7 @@ impl PacketryWindow {
             source_strings: window.imp().power_source_strings.clone(),
             start_on: window.imp().power_start_on.clone(),
             stop_off: window.imp().power_stop_off.clone(),
+            signals: None,
         };
 
         let mut traffic_windows = BTreeMap::new();
