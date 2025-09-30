@@ -123,7 +123,7 @@ WORKDIR $HOME
 ENV GTK_SOURCE="$HOME/gtk-$GTK_VERSION"
 
 # install meson & ninja
-RUN pip install meson ninja
+RUN pip install meson==1.8.1 ninja==1.11.1.4
 
 # download gtk-4 sources
 RUN A=`echo $GTK_VERSION | cut -d. -f1,2` B=$GTK_VERSION && \
@@ -170,7 +170,7 @@ RUN patch -p1 < ./gtk-4.14.4-gcc-lt-9.patch
 USER $RUNNER
 WORKDIR $GTK_SOURCE/builddir
 
-RUN ninja
+RUN ninja -v
 
 
 # - install gtk-4 -------------------------------------------------------------
