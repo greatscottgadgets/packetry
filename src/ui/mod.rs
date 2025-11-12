@@ -102,6 +102,7 @@ use crate::version::{version, version_info};
 
 pub mod capture;
 pub mod device;
+pub mod item_connector;
 pub mod item_widget;
 pub mod model;
 pub mod power;
