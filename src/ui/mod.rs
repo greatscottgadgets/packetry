@@ -369,6 +369,7 @@ fn create_view<Item, Model, RowData, ViewMode>(
 
     let view = ColumnView::new(Some(selection_model.clone()));
     let column = ColumnViewColumn::new(Some(title), Some(factory));
+    column.set_expand(true);
     view.append_column(&column);
     view.add_css_class("data-table");
 
