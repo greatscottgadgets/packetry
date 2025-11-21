@@ -16,9 +16,11 @@ use gtk::{
         MenuItem,
         SimpleActionGroup,
     },
+    gdk::Display,
     Application,
     ApplicationWindow,
     Buildable,
+    CssProvider,
     Orientation,
     Widget,
     Window,
@@ -85,6 +87,20 @@ impl PacketryWindow {
     {
         use FileAction::*;
         use TrafficViewMode::*;
+
+        let style_css = "
+.data-table cell {
+	padding-top: 0;
+	padding-bottom: 0;
+}";
+        let provider = CssProvider::new();
+        // NOTE: load_from_data is deprecated in v4.12 and should be replaced with load_from_string
+        provider.load_from_data(style_css);
+        gtk::style_context_add_provider_for_display(
+            &Display::default().expect("Could not connect to a display."),
+            &provider,
+            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+        );
 
         let window: PacketryWindow = Object::builder()
             .property("application", application)
