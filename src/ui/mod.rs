@@ -1,5 +1,8 @@
 //! The Packetry user interface.
 
+// We use a number of deprecated GTK4 APIs.
+#![allow(deprecated)]
+
 use std::backtrace::Backtrace;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -270,7 +273,8 @@ fn create_view<Item, Model, RowData, ViewMode>(
         )).expect("Failed to create model");
     let selection_model = SingleSelection::new(Some(model.clone()));
     let factory = SignalListItemFactory::new();
-    factory.connect_setup(move |_, list_item| {
+    factory.connect_setup(move |_, list_item: &Object| {
+        let list_item: &ListItem = list_item.downcast_ref().unwrap();
         let widget = ItemWidget::new();
         list_item.set_child(Some(&widget));
     });
@@ -364,8 +368,14 @@ fn create_view<Item, Model, RowData, ViewMode>(
 
         Ok(())
     };
-    factory.connect_bind(move |_, item| display_error(bind(item)));
-    factory.connect_unbind(move |_, item| display_error(unbind(item)));
+    factory.connect_bind(move |_, item: &Object| {
+        let item: &ListItem = item.downcast_ref().unwrap();
+        display_error(bind(item))
+    });
+    factory.connect_unbind(move |_, item: &Object| {
+        let item: &ListItem = item.downcast_ref().unwrap();
+        display_error(unbind(item));
+    });
 
     let view = ColumnView::new(Some(selection_model.clone()));
     let column = ColumnViewColumn::new(Some(title), Some(factory));
@@ -375,7 +385,8 @@ fn create_view<Item, Model, RowData, ViewMode>(
     if Model::HAS_TIMES {
         let model = model.clone();
         let factory = SignalListItemFactory::new();
-        factory.connect_setup(move |_, list_item| {
+        factory.connect_setup(move |_, list_item: &Object| {
+            let list_item: &ListItem = list_item.downcast_ref().unwrap();
             let label = Label::new(None);
             list_item.set_child(Some(&label));
         });
@@ -405,7 +416,10 @@ fn create_view<Item, Model, RowData, ViewMode>(
             Ok(())
         };
 
-        factory.connect_bind(move |_, item| display_error(bind(item)));
+        factory.connect_bind(move |_, item: &Object| {
+            let item: &ListItem = item.downcast_ref().unwrap();
+            display_error(bind(item))
+        });
 
         let timestamp_column =
             ColumnViewColumn::new(Some("Time"), Some(factory));

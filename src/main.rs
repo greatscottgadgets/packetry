@@ -137,7 +137,7 @@ fn main() {
                 window.set_child(Some(&vbox));
                 vbox.append(&label);
                 vbox.append(&button);
-                window.show();
+                window.set_visible(true);
             });
             application.run();
         } else {
