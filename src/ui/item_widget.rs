@@ -17,6 +17,7 @@ use gtk::{
     Orientation,
     PopoverMenu,
 };
+use crate::ui::item_connector::*;
 
 glib::wrapper! {
     /// The outer type exposed to our Rust code.
@@ -59,11 +60,13 @@ impl ItemWidget {
         wrapper.add_controller(right_click);
         wrapper.imp().text_label.replace(
             Label::builder()
+                .margin_top(2)
+                .margin_bottom(2)
                 .ellipsize(EllipsizeMode::End)
                 .build());
-        wrapper.imp().conn_label.replace(Label::new(None));
+        wrapper.imp().connector.replace(ItemConnector::new(None));
         wrapper.imp().expander.replace(Expander::new(None));
-        wrapper.append(&wrapper.imp().conn_label.borrow().clone());
+        wrapper.append(&wrapper.imp().connector.borrow().clone());
         wrapper.append(&wrapper.imp().expander.borrow().clone());
         wrapper.append(&wrapper.imp().text_label.borrow().clone());
         wrapper.set_orientation(Orientation::Horizontal);
@@ -93,8 +96,7 @@ impl ItemWidget {
 
     /// Set the connecting lines on this widget.
     pub fn set_connectors(&self, connectors: String) {
-        self.imp().conn_label.borrow_mut().set_markup(
-                format!("<tt>{connectors}</tt>").as_str());
+        self.imp().connector.borrow_mut().set_shapes(parse_connectors_to_shapes(connectors));
     }
 
     /// Set the function to build the context menu for this widget.
@@ -123,6 +125,7 @@ mod imp {
         PopoverMenu,
     };
     use std::cell::RefCell;
+    use crate::ui::item_connector::ItemConnector;
 
     type PopoverFn = dyn FnMut() -> Option<PopoverMenu>;
 
@@ -130,7 +133,7 @@ mod imp {
     #[derive(Default)]
     pub struct ItemWidget {
         pub text_label: RefCell<Label>,
-        pub conn_label: RefCell<Label>,
+        pub connector: RefCell<ItemConnector>,
         pub expander: RefCell<Expander>,
         pub handler: RefCell<Option<SignalHandlerId>>,
         pub context_menu_fn: RefCell<Option<Box<PopoverFn>>>,
