@@ -60,6 +60,8 @@ impl ItemWidget {
         wrapper.add_controller(right_click);
         wrapper.imp().text_label.replace(
             Label::builder()
+                .margin_top(2)
+                .margin_bottom(2)
                 .ellipsize(EllipsizeMode::End)
                 .build());
         wrapper.imp().connector.replace(ItemConnector::new(None));
