@@ -61,7 +61,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     env:
-      VCPKG_COMMIT: ef7dbf94b9198bc58f45951adcf1f041fcbc5ea0 # 2025.06.13 release
+      VCPKG_COMMIT: 2041718d8942de33c7d10e9e2fbf22b5e24d352e # vcpkg PR 48711
       VCPKG_INSTALLED_DIR: ${{ github.workspace }}/vcpkg/installed
 
     steps:
