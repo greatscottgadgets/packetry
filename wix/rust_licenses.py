@@ -27,7 +27,7 @@ conditional_license_strings = (
 
 # These packages have been validated for conditionally accepted licenses.
 validated = (
-    ('target-lexicon', '0.12.14'),
+    ('target-lexicon', '0.13.3'),
     ('unicode-ident', '1.0.12'),
 )
 

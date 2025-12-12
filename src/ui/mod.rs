@@ -276,7 +276,7 @@ fn create_view<Item, Model, RowData, ViewMode>(
         let widget = ItemWidget::new();
         list_item.set_child(Some(&widget));
     });
-    let bind = clone!(@strong model => move |list_item: &ListItem| {
+    let bind = clone!(#[strong] model, move |list_item: &ListItem| {
         let row = list_item
             .item()
             .context("ListItem has no item")?
@@ -304,7 +304,10 @@ fn create_view<Item, Model, RowData, ViewMode>(
                           feature="record-ui-test"))]
                 let recording = expand_rec.clone();
                 let handler = expander.connect_expanded_notify(
-                    clone!(@strong model, @strong node_ref, @strong list_item =>
+                    clone!(
+                        #[strong] model,
+                        #[strong] node_ref,
+                        #[strong] list_item,
                         move |expander| {
                             let position = list_item.position();
                             let expanded = expander.is_expanded();

@@ -3,12 +3,17 @@ use gtk::{
     subclass::prelude::*,
     prelude::WidgetExt,
     glib::{self},
+    Accessible,
+    Buildable,
+    ConstraintTarget,
+    Widget,
 };
 
 glib::wrapper! {
     /// The outer type exposed to our Rust code.
     pub struct ItemConnector(ObjectSubclass<imp::ItemConnector>)
-    @extends gtk::Widget;
+    @extends Widget,
+    @implements Accessible, Buildable, ConstraintTarget;
 }
 
 #[repr(u8)]

@@ -11,17 +11,23 @@ use gtk::{
     glib::{self, Object},
     gio::{
         ActionEntry,
+        ActionGroup,
         ActionMap,
         Menu,
         MenuItem,
         SimpleActionGroup,
     },
     gdk::Display,
+    Accessible,
     Application,
     ApplicationWindow,
     Buildable,
+    ConstraintTarget,
     CssProvider,
+    Native,
     Orientation,
+    Root,
+    ShortcutManager,
     Widget,
     Window,
 };
@@ -57,7 +63,8 @@ glib::wrapper! {
     /// The outer type exposed to our Rust code.
     pub struct PacketryWindow(ObjectSubclass<imp::PacketryWindow>)
     @extends ApplicationWindow, Window, Widget,
-    @implements ActionMap, Buildable;
+    @implements Accessible, ActionGroup, ActionMap, Buildable, ConstraintTarget,
+        Native, Root, ShortcutManager;
 }
 
 impl Default for PacketryWindow {
