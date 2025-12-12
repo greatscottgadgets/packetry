@@ -256,11 +256,15 @@ pub trait BackendHandle: Send + Sync {
         let _ = stop_rx.await;
 
         // End capture.
-        self.end_capture().await?;
-        println!("Capture disabled");
+        let end_capture_result = self.end_capture().await;
+        if end_capture_result.is_ok() {
+            println!("Capture disabled");
 
-        // Leave queue worker running briefly to receive flushed data.
-        async_sleep(Duration::from_millis(100)).await;
+            // Leave queue worker running briefly to receive flushed data.
+            async_sleep(Duration::from_millis(100)).await;
+        } else {
+            println!("Disabling capture failed");
+        }
 
         // Signal queue processing to stop, then join the worker thread. If
         // sending fails, assume the thread is already stopping.
@@ -269,10 +273,12 @@ pub trait BackendHandle: Send + Sync {
         handle_thread_panic(queue_worker.join())?
             .context("Error in queue worker thread")?;
 
-        // Run any post-capture cleanup required by the device.
-        self.post_capture().await?;
+        if end_capture_result.is_ok() {
+            // Run any post-capture cleanup required by the device.
+            self.post_capture().await?;
+        }
 
-        Ok(())
+        end_capture_result
     }
 }
 
