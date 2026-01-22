@@ -1007,7 +1007,7 @@ async fn open_device(device: Box<dyn BackendDevice>) {
         .open_as_generic()
         .await
         .context("Failed to open device")
-        .map_err(|e| format!("{e}"));
+        .map_err(|e| format!("{e:#}"));
 
     let power_config = if let Ok(handle) = &result {
         handle.power_config().await
