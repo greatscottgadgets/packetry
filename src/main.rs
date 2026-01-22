@@ -130,7 +130,7 @@ fn main() {
                     .label("OK")
                     .build();
                 button.connect_clicked(
-                    clone!(@strong app => move |_| app.quit()));
+                    clone!(#[strong] app, move |_| app.quit()));
                 let vbox = gtk::Box::builder()
                     .orientation(Orientation::Vertical)
                     .build();

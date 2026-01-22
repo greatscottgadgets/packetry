@@ -10,20 +10,25 @@ use gtk::{
     gdk::Rectangle,
     glib::{self, SignalHandlerId, clone},
     pango::EllipsizeMode,
+    Accessible,
+    Buildable,
+    ConstraintTarget,
     EventSequenceState,
     Expander,
     GestureClick,
     Label,
+    Orientable,
     Orientation,
     PopoverMenu,
+    Widget,
 };
 use crate::ui::item_connector::*;
 
 glib::wrapper! {
     /// The outer type exposed to our Rust code.
     pub struct ItemWidget(ObjectSubclass<imp::ItemWidget>)
-    @extends gtk::Box, gtk::Widget,
-    @implements gtk::Orientable;
+    @extends gtk::Box, Widget,
+    @implements Accessible, Buildable, ConstraintTarget, Orientable;
 }
 
 impl ItemWidget {
@@ -32,7 +37,7 @@ impl ItemWidget {
         let wrapper: ItemWidget = glib::Object::new::<ItemWidget>();
         let right_click = GestureClick::new();
         right_click.set_button(3);
-        right_click.connect_released(clone!(@strong wrapper =>
+        right_click.connect_released(clone!(#[strong] wrapper,
             move |gesture, _n, x, y| {
                 if let Some(context_menu_fn) = wrapper
                     .imp()
