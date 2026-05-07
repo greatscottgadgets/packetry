@@ -495,7 +495,7 @@ checksum = "46f3dc39cda960e9f5594a713c0a4687f85c25f591c67862f107cb009cdd6c46"
 dependencies = [
  "atomic-waker",
  "logwise",
- "thiserror 2.0.16",
+ "thiserror 2.0.18",
  "wasm-bindgen",
 ]
 
@@ -1891,9 +1891,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.19.0"
+version = "1.21.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3fdb12b2476b595f9358c5161aa467c2438859caa136dec86c26fdd2efe17b92"
+checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
 name = "ordered-multimap"
@@ -1951,7 +1951,7 @@ dependencies = [
  "nusb",
  "once_cell",
  "page_size",
- "pcap-file-gsg",
+ "pcap-file",
  "portable_async_sleep",
  "preferences",
  "procspawn",
@@ -2007,15 +2007,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bb813b8af86854136c6922af0598d719255ecb2179515e6e7730d468f05c9cae"
 
 [[package]]
-name = "pcap-file-gsg"
-version = "3.0.0-rc4"
+name = "pcap-file"
+version = "3.0.0-rc.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4858768db6391d3b1ed6cc9bd3360f797f712d480b417b90cb52dd5bbe416b61"
+checksum = "9552aee583a05913b6c6345e3c5f69a746787fd60c8fd39ca82ef882de0613b4"
 dependencies = [
  "byteorder_slice",
  "derive-into-owned",
  "once_cell",
- "thiserror 1.0.61",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
@@ -2592,11 +2592,11 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "2.0.16"
+version = "2.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3467d614147380f2e4e374161426ff399c91084acd2363eaf549172b3d5e60c0"
+checksum = "4288b5bcbc7920c07a1149a35cf9590a2aa808e0bc1eafaade0b80947865fbc4"
 dependencies = [
- "thiserror-impl 2.0.16",
+ "thiserror-impl 2.0.18",
 ]
 
 [[package]]
@@ -2612,9 +2612,9 @@ dependencies = [
 
 [[package]]
 name = "thiserror-impl"
-version = "2.0.16"
+version = "2.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c5e1be1c48b9172ee610da68fd9cd2770e7a4056cb3fc98710ee6906f0c7960"
+checksum = "ebc4ee7f67670e9b64d05fa4253e753e016c6c95ff35b89b7941d6b856dec1d5"
 dependencies = [
  "proc-macro2",
  "quote",

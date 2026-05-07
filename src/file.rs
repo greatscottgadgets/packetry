@@ -8,14 +8,19 @@ use std::time::Duration;
 use anyhow::{Context, Error, anyhow};
 use byteorder_slice::{
     byteorder::{ReadBytesExt, WriteBytesExt},
-    ByteOrder
+    ByteOrder,
+    BigEndian,
+    LittleEndian,
 };
 use pcap_file::{
     pcap::{PcapReader, PcapHeader, PcapWriter, RawPcapPacket},
     pcapng::{
-        PcapNgReader, PcapNgWriter, PcapNgState,
+        PcapNgReader, PcapNgWriter, PcapNgState, PcapNgBlock,
         blocks::{
             Block,
+            opt_common:: {
+                CommonOption,
+            },
             section_header:: {
                 SectionHeaderBlock,
                 SectionHeaderOption,
@@ -29,9 +34,10 @@ use pcap_file::{
                 InterfaceStatisticsOption,
             },
             enhanced_packet::EnhancedPacketBlock,
-            custom::{CustomBlock, PcapNgCustom},
+            custom::CustomNonCopiable,
         },
     },
+    Endianness,
     DataLink,
     TsResolution,
     PcapError,
@@ -247,6 +253,7 @@ where Source: Read
         let initial_metadata = Some({
             let mut meta = CaptureMetadata::default();
             for option in &section_header.options {
+                use CommonOption::Comment;
                 use SectionHeaderOption::*;
                 match option {
                     UserApplication(application) => {
@@ -258,7 +265,7 @@ where Source: Read
                     Hardware(hardware) => {
                         meta.hardware.replace(hardware.to_string());
                     },
-                    Comment(comment) => {
+                    Common(Comment(comment)) => {
                         meta.comment.replace(comment.to_string());
                     },
                     _ => {}
@@ -480,8 +487,10 @@ where Self: Sized, Dest: Write
         };
         if let Some(comment) = &meta.comment {
             section.options.push(
-                SectionHeaderOption::Comment(
-                    Cow::from(comment.clone())
+                SectionHeaderOption::Common(
+                    CommonOption::Comment(
+                        Cow::from(comment.clone())
+                    )
                 )
             );
         }
@@ -525,9 +534,9 @@ where Self: Sized, Dest: Write
             event_type,
         };
         self.pcap.write_block(
-            &Block::CustomNonCopiable(
-                CustomBlock::new(GSG_PEN, &event_block, self.pcap.state())?
-            )
+            &event_block
+                .into_custom_block(self.pcap.state())?
+                .into_block()
         )?;
         Ok(())
     }
@@ -568,9 +577,38 @@ pub struct UsbEventBlock {
     pub event_type: EventType,
 }
 
-impl PcapNgCustom<'_> for UsbEventBlock {
+impl CustomNonCopiable<'_> for UsbEventBlock {
+    const PEN: u32 = GSG_PEN;
+    type State = PcapNgState;
+    type FromSliceError = PcapError;
+    type WriteToError = PcapError;
 
-    fn from_slice<B: ByteOrder>(state: &PcapNgState, mut slice: &[u8])
+    fn from_slice(state: &PcapNgState, slice: &[u8])
+        -> Result<Option<Self>, PcapError>
+    {
+        match state.section().endianness {
+            Endianness::Big =>
+                Self::from_slice_endian::<BigEndian>(state, slice),
+            Endianness::Little =>
+                Self::from_slice_endian::<LittleEndian>(state, slice),
+        }
+    }
+
+    fn write_to<W: Write>(&self, state: &PcapNgState, writer: &mut W)
+        -> Result<(), PcapError>
+    {
+        match state.section().endianness {
+            Endianness::Big =>
+                self.write_to_endian::<BigEndian, W>(state, writer),
+            Endianness::Little =>
+                self.write_to_endian::<LittleEndian, W>(state, writer),
+        }
+    }
+}
+
+impl UsbEventBlock {
+
+    fn from_slice_endian<B: ByteOrder>(state: &PcapNgState, mut slice: &[u8])
         -> Result<Option<Self>, PcapError>
     {
         let word = slice.read_u32::<B>()?;
@@ -595,15 +633,17 @@ impl PcapNgCustom<'_> for UsbEventBlock {
         )
     }
 
-    fn write_to<B: ByteOrder, W: Write>(&self, state: &PcapNgState, writer: &mut W)
-        -> Result<usize, PcapError>
-    {
+    fn write_to_endian<B: ByteOrder, W: Write>(
+        &self,
+        state: &PcapNgState,
+        writer: &mut W
+    ) -> Result<(), PcapError> {
         let prefix = (FORMAT_ID as u32) << 16 | (FORMAT_VERSION as u32) << 8;
         let code = self.event_type.code() as u32;
         writer.write_u32::<B>(prefix | code)?;
         writer.write_u32::<B>(self.interface_id)?;
         state.encode_timestamp::<B, W>(
             self.interface_id, self.timestamp, writer)?;
-        Ok(16)
+        Ok(())
     }
 }
