@@ -368,29 +368,25 @@ impl CynthionInner {
     async fn start_capture (&mut self, speed: Speed) -> Result<(), Error> {
         self.state.set_speed(speed);
         self.state.set_enable(true);
-        if let Some(power) = &mut self.power {
-            if power.start_on {
-                let index = power.source_index;
-                self.state.set_target_c_vbus_en(index == 0);
-                self.state.set_control_vbus_en(index == 1);
-                self.state.set_aux_vbus_en(index == 2);
-                self.state.set_target_a_discharge(false);
-                power.on_now = true;
-            }
+        if let Some(power) = &mut self.power && power.start_on {
+            let index = power.source_index;
+            self.state.set_target_c_vbus_en(index == 0);
+            self.state.set_control_vbus_en(index == 1);
+            self.state.set_aux_vbus_en(index == 2);
+            self.state.set_target_a_discharge(false);
+            power.on_now = true;
         }
         self.write_request(1, self.state.0).await
     }
 
     async fn stop_capture(&mut self) -> Result<(), Error> {
         self.state.set_enable(false);
-        if let Some(power) = &mut self.power {
-            if power.stop_off {
-                self.state.set_target_c_vbus_en(false);
-                self.state.set_control_vbus_en(false);
-                self.state.set_aux_vbus_en(false);
-                self.state.set_target_a_discharge(true);
-                power.on_now = false;
-            }
+        if let Some(power) = &mut self.power && power.stop_off {
+            self.state.set_target_c_vbus_en(false);
+            self.state.set_control_vbus_en(false);
+            self.state.set_aux_vbus_en(false);
+            self.state.set_target_a_discharge(true);
+            power.on_now = false;
         }
         self.write_request(1, self.state.0).await
     }

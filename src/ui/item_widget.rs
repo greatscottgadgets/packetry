@@ -45,21 +45,20 @@ impl ItemWidget {
                     .context_menu_fn
                     .borrow_mut()
                     .as_mut()
+                    && let Some(new_popover) = context_menu_fn()
                 {
-                    if let Some(new_popover) = context_menu_fn() {
-                        gesture.set_state(EventSequenceState::Claimed);
-                        let mut current_popover =
-                            wrapper.imp().popover.borrow_mut();
-                        if let Some(old_popover) = current_popover.take() {
-                            old_popover.unparent();
-                        }
-                        new_popover.set_parent(&wrapper.clone());
-                        new_popover.set_pointing_to(
-                            Some(&Rectangle::new(x as i32, y as i32, 1, 1))
-                        );
-                        new_popover.popup();
-                        current_popover.replace(new_popover);
+                    gesture.set_state(EventSequenceState::Claimed);
+                    let mut current_popover =
+                        wrapper.imp().popover.borrow_mut();
+                    if let Some(old_popover) = current_popover.take() {
+                        old_popover.unparent();
                     }
+                    new_popover.set_parent(&wrapper.clone());
+                    new_popover.set_pointing_to(
+                        Some(&Rectangle::new(x as i32, y as i32, 1, 1))
+                    );
+                    new_popover.popup();
+                    current_popover.replace(new_popover);
                 }
             }
         ));

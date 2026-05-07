@@ -439,26 +439,26 @@ impl DeviceData {
     }
 
     pub fn update_endpoint_details(&self) {
-        if let Some(number) = self.config_number.load().as_ref() {
-            if let Some(config) = &self.configurations.load().get(**number) {
-                let iface_settings = self.interface_settings.load();
-                self.endpoint_details.update(|endpoint_details| {
-                    for ((num, alt), iface) in config.interfaces.iter() {
-                        if iface_settings.get(*num) == Some(alt) {
-                            for endpoint in &iface.endpoints {
-                                let ep_desc = &endpoint.descriptor;
-                                let ep_addr = ep_desc.endpoint_address;
-                                let ep_type = ep_desc.attributes.endpoint_type();
-                                let ep_max = ep_desc.max_packet_size as usize;
-                                endpoint_details.set(
-                                    ep_addr,
-                                    (ep_type, Some(ep_max))
-                                );
-                            }
+        if let Some(number) = self.config_number.load().as_ref()
+            && let Some(config) = &self.configurations.load().get(**number)
+        {
+            let iface_settings = self.interface_settings.load();
+            self.endpoint_details.update(|endpoint_details| {
+                for ((num, alt), iface) in config.interfaces.iter() {
+                    if iface_settings.get(*num) == Some(alt) {
+                        for endpoint in &iface.endpoints {
+                            let ep_desc = &endpoint.descriptor;
+                            let ep_addr = ep_desc.endpoint_address;
+                            let ep_type = ep_desc.attributes.endpoint_type();
+                            let ep_max = ep_desc.max_packet_size as usize;
+                            endpoint_details.set(
+                                ep_addr,
+                                (ep_type, Some(ep_max))
+                            );
                         }
                     }
-                });
-            }
+                }
+            });
         }
     }
 
@@ -1043,11 +1043,11 @@ impl CaptureReader {
                 let packet_id = PacketId::from(id);
                 let timestamp = ts?;
                 let data_range = start?..end?;
-                if data_range.is_empty() {
-                    if let Some(event_id) = self.event(packet_id)? {
-                        let event_type = self.event_type(event_id)?;
-                        return Ok((timestamp, Event(event_type)))
-                    }
+                if data_range.is_empty()
+                    && let Some(event_id) = self.event(packet_id)?
+                {
+                    let event_type = self.event_type(event_id)?;
+                    return Ok((timestamp, Event(event_type)))
                 }
                 let packet = packet_data.get_range(&data_range)?;
                 Ok((timestamp, Packet(packet)))

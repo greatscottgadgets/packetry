@@ -414,13 +414,11 @@ impl EndpointData {
             // This can be either a data transfer, or a polling
             // group used to collect NAKed transactions.
             (_, None, IN | OUT) => {
-                if success {
-                    if let Some(data) = payload {
-                        if split_sc == Some(Start) && next == OUT {
-                            effect = PendingData(data);
-                        } else {
-                            effect = IndexData(length, id);
-                        }
+                if success && let Some(data) = payload {
+                    if split_sc == Some(Start) && next == OUT {
+                        effect = PendingData(data);
+                    } else {
+                        effect = IndexData(length, id);
                     }
                 }
                 if complete {
@@ -441,13 +439,11 @@ impl EndpointData {
             // IN or OUT may then be repeated.
             (_, Some(GroupState { first: IN,  ..}), IN) |
             (_, Some(GroupState { first: OUT, ..}), OUT) => {
-                if success {
-                    if let Some(data) = payload {
-                        if split_sc == Some(Start) && next == OUT {
-                            effect = PendingData(data);
-                        } else if complete {
-                            effect = IndexData(length, id);
-                        }
+                if success && let Some(data) = payload {
+                    if split_sc == Some(Start) && next == OUT {
+                        effect = PendingData(data);
+                    } else if complete {
+                        effect = IndexData(length, id);
                     }
                 }
                 if complete {
@@ -736,10 +732,8 @@ impl Decoder {
             Some(TransactionState { style: Split(Complete, ..), .. }) =>
                 status != Retry,
         };
-        if status != Invalid {
-            if let Some(state) = &mut self.transaction_state {
-                state.extract_payload(pid, packet);
-            }
+        if status != Invalid && let Some(state) = &mut self.transaction_state {
+            state.extract_payload(pid, packet);
         }
         match status {
             New => {
@@ -841,10 +835,10 @@ impl Decoder {
     fn transaction_end(&mut self, success: bool, complete: bool)
         -> Result<(), Error>
     {
-        if let Some(mut state) = self.transaction_state.take() {
-            if state.endpoint_id.is_some() {
-                self.group_update(&mut state, success, complete)?;
-            }
+        if let Some(mut state) = self.transaction_state.take()
+            && state.endpoint_id.is_some()
+        {
+            self.group_update(&mut state, success, complete)?;
         }
         Ok(())
     }

@@ -514,10 +514,10 @@ pub fn update_view() -> Result<(), Error> {
     use FileAction::*;
     with_ui(|ui| {
         SNAPSHOT_REQ.store(true, Ordering::Relaxed);
-        if let Some(snapshot_rx) = &mut ui.snapshot_rx {
-            if let Ok(snapshot) = snapshot_rx.try_recv() {
-                ui.capture.set_snapshot(snapshot);
-            }
+        if let Some(snapshot_rx) = &mut ui.snapshot_rx
+            && let Ok(snapshot) = snapshot_rx.try_recv()
+        {
+            ui.capture.set_snapshot(snapshot);
         }
         let (devices, endpoints, transactions, packets) =
             match &mut ui.capture.state
@@ -692,33 +692,33 @@ fn choose_file<F>(
             });
             if response == gtk::ResponseType::Accept {
                 if let Some(file) = dialog.file() {
-                    if let Some(name) = file.basename() {
-                        if action == Save && name.extension().is_none() {
-                            // Automatically add the extension.
-                            let name = name.with_extension(extension);
-                            let file = match file.parent() {
-                                Some(parent) => parent.child(&name),
-                                None => gio::File::for_path(&name),
-                            };
-                            // Check whether the new filename already exists.
-                            if file.query_exists(Cancellable::NONE) {
-                                // The file already exists.
-                                // Set the new filename in the dialog.
-                                let _ = dialog.set_file(&file);
-                                // Re-emit the response signal, so that the
-                                // dialog will show its usual warning message
-                                // about an existing file.
-                                dialog.response(response);
-                                // Return without closing the dialog.
-                                return
-                            } else {
-                                // The file doesn't exist. Proceed normally, but
-                                // with the amended destination file.
-                                display_error(handler(file));
-                                // Return after closing the dialog.
-                                dialog.destroy();
-                                return
-                            }
+                    if let Some(name) = file.basename()
+                        && action == Save && name.extension().is_none()
+                    {
+                        // Automatically add the extension.
+                        let name = name.with_extension(extension);
+                        let file = match file.parent() {
+                            Some(parent) => parent.child(&name),
+                            None => gio::File::for_path(&name),
+                        };
+                        // Check whether the new filename already exists.
+                        if file.query_exists(Cancellable::NONE) {
+                            // The file already exists.
+                            // Set the new filename in the dialog.
+                            let _ = dialog.set_file(&file);
+                            // Re-emit the response signal, so that the
+                            // dialog will show its usual warning message
+                            // about an existing file.
+                            dialog.response(response);
+                            // Return without closing the dialog.
+                            return
+                        } else {
+                            // The file doesn't exist. Proceed normally, but
+                            // with the amended destination file.
+                            display_error(handler(file));
+                            // Return after closing the dialog.
+                            dialog.destroy();
+                            return
                         }
                     }
                     display_error(handler(file));
