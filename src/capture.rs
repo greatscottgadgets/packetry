@@ -502,13 +502,12 @@ impl DeviceData {
         let desc_type = DescriptorType::from((fields.value >> 8) as u8);
         let length = payload.len();
         match (recipient, desc_type) {
-            (Recipient::Device, DescriptorType::Device) => {
-                if length == size_of::<DeviceDescriptor>() {
+            (Recipient::Device, DescriptorType::Device)
+                if length == size_of::<DeviceDescriptor>() => {
                     let descriptor = DeviceDescriptor::from_bytes(payload);
                     self.device_descriptor.swap(Some(Arc::new(descriptor)));
                     self.increment_version();
-                }
-            },
+                },
             (Recipient::Device, DescriptorType::Configuration) => {
                 let size = size_of::<ConfigDescriptor>();
                 if length >= size {
@@ -524,8 +523,8 @@ impl DeviceData {
                     }
                 }
             },
-            (Recipient::Device, DescriptorType::String) => {
-                if length >= 2 {
+            (Recipient::Device, DescriptorType::String)
+                if length >= 2 => {
                     let string = UTF16ByteVec(payload[2..length].to_vec());
                     let string_id =
                         StringId::from((fields.value & 0xFF) as u8);
@@ -533,8 +532,7 @@ impl DeviceData {
                         strings.set(string_id, string)
                     });
                     self.increment_version();
-                }
-            },
+                },
             _ => {}
         };
         Ok(())
