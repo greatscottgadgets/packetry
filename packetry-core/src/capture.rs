@@ -1,0 +1,2221 @@
+//! Capture database implementation for USB 2.0
+
+use std::cmp::min;
+use std::fmt::{Debug, Write};
+use std::iter::once;
+use std::num::NonZeroU32;
+use std::ops::Range;
+use std::path::Path;
+use std::str::FromStr;
+use std::sync::atomic::{AtomicBool, AtomicU32};
+use std::sync::atomic::Ordering::{Acquire, Release};
+use std::sync::Arc;
+use std::time::Duration;
+use std::mem::size_of;
+
+use packetry_db::{
+    Counter,
+    CounterSet,
+    CompactReader,
+    CompactWriter,
+    CompactSnapshot,
+    CompactReaderOps,
+    compact_index,
+    DataReader,
+    DataWriter,
+    DataSnapshot,
+    DataReaderOps,
+    data_stream,
+    data_stream_with_block_size,
+    Snapshot,
+};
+use crate::event::EventType;
+use crate::usb::{self, prelude::*};
+use crate::util::{Bytes, RangeLength};
+use packetry_db::util::{
+    dump::{Dump, restore},
+    id::Id,
+    rcu::SingleWriterRcu,
+    vec_map::VecMap,
+    fmt_count,
+    fmt_size,
+};
+
+use anyhow::{Context, Error, bail};
+use arc_swap::{ArcSwap, ArcSwapOption};
+use bitfield::bitfield;
+use bytemuck_derive::{Pod, Zeroable};
+use itertools::Itertools;
+use merge::Merge;
+use num_enum::{IntoPrimitive, FromPrimitive};
+
+// Use 2MB block size for packet data, which is a large page size on x86_64.
+const PACKET_DATA_BLOCK_SIZE: usize = 0x200000;
+
+/// Metadata about the capture.
+#[derive(Clone, Default, Merge)]
+pub struct CaptureMetadata {
+    // Fields corresponding to PCapNG section header.
+    pub application: Option<String>,
+    pub os: Option<String>,
+    pub hardware: Option<String>,
+    pub comment: Option<String>,
+
+    // Fields corresponding to PcapNG interface description.
+    pub iface_desc: Option<String>,
+    pub iface_hardware: Option<String>,
+    pub iface_os: Option<String>,
+    pub iface_speed: Option<Speed>,
+    pub iface_snaplen: Option<NonZeroU32>,
+
+    // Fields corresponding to PcapNG interface statistics.
+    pub start_time: Option<Duration>,
+    pub end_time: Option<Duration>,
+    pub dropped: Option<u64>,
+}
+
+/// Capture state shared between readers and writers.
+pub struct CaptureShared {
+    pub metadata: ArcSwap<CaptureMetadata>,
+    pub device_data: ArcSwap<VecMap<DeviceId, Arc<DeviceData>>>,
+    pub endpoint_index: ArcSwap<VecMap<DeviceAddr, VecMap<EndpointAddr, EndpointId>>>,
+    pub endpoint_readers: ArcSwap<VecMap<EndpointId, Arc<EndpointReader>>>,
+    pub complete: AtomicBool,
+}
+
+/// Unique handle for write access to a capture.
+pub struct CaptureWriter {
+    pub counters: CounterSet,
+    pub shared: Arc<CaptureShared>,
+    pub endpoint_writers: VecMap<EndpointId, EndpointWriter>,
+    pub packet_data: DataWriter<u8, PACKET_DATA_BLOCK_SIZE>,
+    pub packet_index: CompactWriter<PacketId, PacketByteId, 2>,
+    pub packet_times: CompactWriter<PacketId, Timestamp, 3>,
+    pub event_index: CompactWriter<EventId, PacketId>,
+    pub event_codes: DataWriter<u8>,
+    pub transaction_index: CompactWriter<TransactionId, PacketId>,
+    pub group_index: DataWriter<GroupIndexEntry>,
+    pub item_index: CompactWriter<TrafficItemId, GroupId>,
+    pub devices: DataWriter<Device>,
+    pub endpoints: DataWriter<Endpoint>,
+    pub endpoint_states: DataWriter<u8>,
+    pub endpoint_state_index: CompactWriter<GroupId, Id<u8>>,
+    #[allow(dead_code)]
+    pub end_index: CompactWriter<GroupId, TrafficItemId>,
+}
+
+/// Cloneable handle for read access to a capture.
+#[derive(Clone)]
+pub struct CaptureReader {
+    pub shared: Arc<CaptureShared>,
+    endpoint_readers: VecMap<EndpointId, EndpointReader>,
+    pub packet_data: DataReader<u8, PACKET_DATA_BLOCK_SIZE>,
+    pub packet_index: CompactReader<PacketId, PacketByteId>,
+    pub packet_times: CompactReader<PacketId, Timestamp>,
+    pub event_index: CompactReader<EventId, PacketId>,
+    pub event_codes: DataReader<u8>,
+    pub transaction_index: CompactReader<TransactionId, PacketId>,
+    pub group_index: DataReader<GroupIndexEntry>,
+    pub item_index: CompactReader<TrafficItemId, GroupId>,
+    pub devices: DataReader<Device>,
+    pub endpoints: DataReader<Endpoint>,
+    pub endpoint_states: DataReader<u8>,
+    pub endpoint_state_index: CompactReader<GroupId, Id<u8>>,
+    #[allow(dead_code)]
+    pub end_index: CompactReader<GroupId, TrafficItemId>,
+}
+
+/// Create a capture reader-writer pair.
+pub fn create_capture()
+    -> Result<(CaptureWriter, CaptureReader), Error>
+{
+    let mut counters = CounterSet::new();
+    let db = &mut counters;
+    // Create all the required streams.
+    let (data_writer, data_reader) =
+        data_stream_with_block_size::<_, PACKET_DATA_BLOCK_SIZE>(db)?;
+    let (packets_writer, packets_reader) = compact_index(db)?;
+    let (timestamp_writer, timestamp_reader) = compact_index(db)?;
+    let (event_index_writer, event_index_reader) = compact_index(db)?;
+    let (event_codes_writer, event_codes_reader) = data_stream(db)?;
+    let (transactions_writer, transactions_reader) = compact_index(db)?;
+    let (groups_writer, groups_reader) = data_stream(db)?;
+    let (items_writer, items_reader) = compact_index(db)?;
+    let (devices_writer, devices_reader) = data_stream(db)?;
+    let (endpoints_writer, endpoints_reader) = data_stream(db)?;
+    let (endpoint_state_writer, endpoint_state_reader) = data_stream(db)?;
+    let (state_index_writer, state_index_reader) = compact_index(db)?;
+    let (end_writer, end_reader) = compact_index(db)?;
+
+    // Create the state shared by readers and writer.
+    let shared = Arc::new(CaptureShared {
+        metadata: ArcSwap::new(Arc::new(CaptureMetadata::default())),
+        device_data: ArcSwap::new(Arc::new(VecMap::new())),
+        endpoint_index: ArcSwap::new(Arc::new(VecMap::new())),
+        endpoint_readers: ArcSwap::new(Arc::new(VecMap::new())),
+        complete: AtomicBool::from(false),
+    });
+
+    // Create the write handle.
+    let writer = CaptureWriter {
+        counters,
+        shared: shared.clone(),
+        endpoint_writers: VecMap::new(),
+        packet_data: data_writer,
+        packet_index: packets_writer,
+        packet_times: timestamp_writer,
+        event_index: event_index_writer,
+        event_codes: event_codes_writer,
+        transaction_index: transactions_writer,
+        group_index: groups_writer,
+        item_index: items_writer,
+        devices: devices_writer,
+        endpoints: endpoints_writer,
+        endpoint_states: endpoint_state_writer,
+        endpoint_state_index: state_index_writer,
+        end_index: end_writer,
+    };
+
+    // Create the first read handle.
+    let reader = CaptureReader {
+        shared,
+        endpoint_readers: VecMap::new(),
+        packet_data: data_reader,
+        packet_index: packets_reader,
+        packet_times: timestamp_reader,
+        event_index: event_index_reader,
+        event_codes: event_codes_reader,
+        transaction_index: transactions_reader,
+        group_index: groups_reader,
+        item_index: items_reader,
+        devices: devices_reader,
+        endpoints: endpoints_reader,
+        endpoint_states: endpoint_state_reader,
+        endpoint_state_index: state_index_reader,
+        end_index: end_reader,
+    };
+
+    // Return the pair.
+    Ok((writer, reader))
+}
+
+/// Per-endpoint state shared between readers and writers.
+pub struct EndpointShared {
+    pub total_data: Counter,
+    #[allow(dead_code)]
+    pub first_item_id: ArcSwapOption<TrafficItemId>,
+}
+
+/// Unique handle for write access to endpoint data.
+pub struct EndpointWriter {
+    pub shared: Arc<EndpointShared>,
+    pub transaction_ids: CompactWriter<EndpointTransactionId, TransactionId>,
+    pub group_index: CompactWriter<EndpointGroupId, EndpointTransactionId>,
+    pub data_transactions: CompactWriter<EndpointDataEvent, EndpointTransactionId>,
+    pub data_byte_counts: CompactWriter<EndpointDataEvent, EndpointByteCount>,
+    pub end_index: CompactWriter<EndpointGroupId, TrafficItemId>,
+}
+
+/// Cloneable handle for read access to endpoint data.
+#[derive(Clone)]
+pub struct EndpointReader {
+    pub shared: Arc<EndpointShared>,
+    pub transaction_ids: CompactReader<EndpointTransactionId, TransactionId>,
+    pub group_index: CompactReader<EndpointGroupId, EndpointTransactionId>,
+    pub data_transactions: CompactReader<EndpointDataEvent, EndpointTransactionId>,
+    pub data_byte_counts: CompactReader<EndpointDataEvent, EndpointByteCount>,
+    pub end_index: CompactReader<EndpointGroupId, TrafficItemId>,
+}
+
+/// Create a per-endpoint reader-writer pair.
+pub fn create_endpoint(db: &mut CounterSet)
+    -> Result<(EndpointWriter, EndpointReader), Error>
+{
+    // Create all the required streams.
+    let (transactions_writer, transactions_reader) = compact_index(db)?;
+    let (groups_writer, groups_reader) = compact_index(db)?;
+    let (data_transaction_writer, data_transaction_reader) = compact_index(db)?;
+    let (data_byte_count_writer, data_byte_count_reader) = compact_index(db)?;
+    let (end_writer, end_reader) = compact_index(db)?;
+
+    // Create the shared state.
+    let shared = Arc::new(EndpointShared {
+        total_data: db.new_counter(),
+        first_item_id: ArcSwapOption::const_empty(),
+    });
+
+    // Create the write handle.
+    let writer = EndpointWriter {
+        shared: shared.clone(),
+        transaction_ids: transactions_writer,
+        group_index: groups_writer,
+        data_transactions: data_transaction_writer,
+        data_byte_counts: data_byte_count_writer,
+        end_index: end_writer,
+    };
+
+    // Create the read handle.
+    let reader = EndpointReader {
+        shared,
+        transaction_ids: transactions_reader,
+        group_index: groups_reader,
+        data_transactions: data_transaction_reader,
+        data_byte_counts: data_byte_count_reader,
+        end_index: end_reader,
+    };
+
+    // Return the pair.
+    Ok((writer, reader))
+}
+
+pub type PacketByteId = Id<u8>;
+pub type PacketId = Id<PacketByteId>;
+pub type EventId = Id<u8>;
+pub type Timestamp = u64;
+pub type TransactionId = Id<PacketId>;
+pub type GroupId = Id<GroupIndexEntry>;
+pub type EndpointTransactionId = Id<TransactionId>;
+pub type EndpointGroupId = Id<EndpointTransactionId>;
+pub type TrafficItemId = Id<GroupId>;
+pub type DeviceId = Id<Device>;
+pub type EndpointId = Id<Endpoint>;
+pub type EndpointDataEvent = u64;
+pub type EndpointByteCount = u64;
+pub type DeviceVersion = u32;
+
+#[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
+#[repr(C)]
+pub struct Device {
+    pub address: DeviceAddr,
+}
+
+bitfield! {
+    #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
+    #[repr(C)]
+    pub struct Endpoint(u64);
+    pub u64, from into DeviceId, device_id, set_device_id: 50, 0;
+    pub u8, from into DeviceAddr, device_address, set_device_address: 57, 51;
+    pub u8, from into EndpointNum, number, set_number: 62, 58;
+    pub u8, from into Direction, direction, set_direction: 63, 63;
+}
+
+impl Endpoint {
+    fn address(&self) -> EndpointAddr {
+        EndpointAddr::from_parts(self.number(), self.direction())
+    }
+}
+
+impl std::fmt::Display for Endpoint {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}.{} {}",
+               self.device_address(),
+               self.number(),
+               self.direction()
+               )
+    }
+}
+
+bitfield! {
+    #[derive(Copy, Clone, Debug, Default, Pod, Zeroable)]
+    #[repr(C)]
+    pub struct GroupIndexEntry(u64);
+    pub u64, from into EndpointGroupId, group_id, set_group_id: 51, 0;
+    pub u64, from into EndpointId, endpoint_id, set_endpoint_id: 62, 52;
+    pub u8, _is_start, _set_is_start: 63, 63;
+}
+
+impl GroupIndexEntry {
+    pub fn is_start(&self) -> bool {
+        self._is_start() != 0
+    }
+
+    pub fn set_is_start(&mut self, value: bool) {
+        self._set_is_start(value as u8)
+    }
+}
+
+#[derive(Copy, Clone, IntoPrimitive, FromPrimitive, PartialEq, Eq)]
+#[repr(u8)]
+pub enum EndpointState {
+    #[default]
+    Idle = 0,
+    Starting = 1,
+    Ongoing = 2,
+    Ending = 3,
+}
+
+pub const CONTROL_EP_NUM: EndpointNum = EndpointNum(0);
+pub const EVENT_EP_NUM:   EndpointNum = EndpointNum(0x10);
+pub const INVALID_EP_NUM: EndpointNum = EndpointNum(0x11);
+pub const FRAMING_EP_NUM: EndpointNum = EndpointNum(0x12);
+
+pub const EVENT_EP_ID:   EndpointId = EndpointId::constant(0);
+pub const INVALID_EP_ID: EndpointId = EndpointId::constant(1);
+pub const FRAMING_EP_ID: EndpointId = EndpointId::constant(2);
+pub const FIRST_EP_ID:   EndpointId = EndpointId::constant(3);
+
+pub const NUM_SPECIAL_DEVICES:   u64 = 1;
+pub const NUM_SPECIAL_ENDPOINTS: u64 = 3;
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum EndpointType {
+    Unidentified,
+    Framing,
+    Invalid,
+    Normal(usb::EndpointType)
+}
+
+impl std::fmt::Display for EndpointType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        use EndpointType::*;
+        match self {
+            Normal(usb_type) => std::fmt::Display::fmt(&usb_type, f),
+            Unidentified => write!(f, "unidentified"),
+            Framing => write!(f, "framing"),
+            Invalid => write!(f, "invalid"),
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+// #[repr(C, packed)]
+pub struct EndpointDetails {
+    pub endpoint_type: EndpointType,
+    pub max_packet_size: Option<usize>,
+}
+
+#[derive(Default)]
+pub struct DeviceData {
+    pub device_descriptor: ArcSwapOption<DeviceDescriptor>,
+    pub configurations: ArcSwap<VecMap<ConfigNum, Arc<Configuration>>>,
+    pub config_number: ArcSwapOption<ConfigNum>,
+    pub interface_settings: ArcSwap<VecMap<InterfaceNum, InterfaceAlt>>,
+    pub endpoint_details: ArcSwap<VecMap<EndpointAddr, EndpointDetails>>,
+    pub strings: ArcSwap<VecMap<StringId, UTF16ByteVec>>,
+    pub version: AtomicU32,
+}
+
+impl DeviceData {
+    pub fn description(&self) -> String {
+        match self.device_descriptor.load().as_ref() {
+            None => "Unknown".to_string(),
+            Some(descriptor) => {
+                let str_id = descriptor.product_str_id;
+                if let Some(utf16) = self.strings.load().get(str_id) {
+                    let chars = utf16.chars();
+                    if let Ok(string) = String::from_utf16(&chars) {
+                        return format!("{}", string.escape_default());
+                    }
+                }
+                format!(
+                    "{:04X}:{:04X}",
+                    descriptor.vendor_id,
+                    descriptor.product_id)
+            }
+        }
+    }
+
+    pub fn configuration(&self, number: ConfigNum)
+        -> Result<Arc<Configuration>, Error>
+    {
+        match self.configurations.load().get(number) {
+            Some(config) => Ok(config.clone()),
+            None => bail!("No descriptor for config {number}")
+        }
+    }
+
+    pub fn endpoint_details(&self, addr: EndpointAddr)
+        -> (EndpointType, Option<usize>)
+    {
+        use EndpointType::*;
+        match addr.number() {
+            INVALID_EP_NUM => (Invalid, None),
+            FRAMING_EP_NUM => (Framing, None),
+            CONTROL_EP_NUM => (
+                Normal(usb::EndpointType::Control),
+                self.device_descriptor.load().as_ref().map(|desc| {
+                    desc.max_packet_size_0 as usize
+                })
+            ),
+            _ => match self.endpoint_details.load().get(addr) {
+                Some(details) => (details.endpoint_type, details.max_packet_size),
+                None => (Unidentified, None)
+            }
+        }
+    }
+
+    pub fn update_endpoint_details(&self) {
+        if let Some(number) = self.config_number.load().as_ref() {
+            if let Some(config) = &self.configurations.load().get(**number) {
+                let iface_settings = self.interface_settings.load();
+                self.endpoint_details.update(|endpoint_details| {
+                    for ((num, alt), iface) in config.interfaces.iter() {
+                        if iface_settings.get(*num) == Some(alt) {
+                            for endpoint in &iface.endpoints {
+                                let ep_desc = &endpoint.descriptor;
+                                let ep_addr = ep_desc.endpoint_address;
+                                let ep_details = EndpointDetails {
+                                    endpoint_type: EndpointType::Normal(ep_desc.attributes.endpoint_type()),
+                                    max_packet_size: Some(ep_desc.max_packet_size as usize),
+                                };
+                                endpoint_details.set(
+                                    ep_addr,
+                                    ep_details
+                                );
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    }
+
+    pub fn set_endpoint_type(&self,
+                             addr: EndpointAddr,
+                             ep_type: usb::EndpointType)
+    {
+        self.endpoint_details.maybe_update(|endpoint_details| {
+            if endpoint_details.get(addr).is_none() {
+                let ep_details = EndpointDetails {
+                    endpoint_type: EndpointType::Normal(ep_type),
+                    max_packet_size: None,
+                };
+                endpoint_details.set(addr, ep_details);
+                true
+            } else {
+                false
+            }
+        });
+    }
+
+    pub fn decode_request(&self, fields: &SetupFields, payload: &[u8])
+        -> Result<(), Error>
+    {
+        let req_type = fields.type_fields.request_type();
+        let request = StandardRequest::from(fields.request);
+        match (req_type, request) {
+            (RequestType::Standard, StandardRequest::GetDescriptor)
+                => self.decode_descriptor_read(fields, payload)?,
+            (RequestType::Standard, StandardRequest::SetConfiguration)
+                => self.decode_configuration_set(fields)?,
+            (RequestType::Standard, StandardRequest::SetInterface)
+                => self.decode_interface_set(fields)?,
+            _ => ()
+        }
+        Ok(())
+    }
+
+    pub fn decode_descriptor_read(&self,
+                                  fields: &SetupFields,
+                                  payload: &[u8])
+        -> Result<(), Error>
+    {
+        let recipient = fields.type_fields.recipient();
+        let desc_type = DescriptorType::from((fields.value >> 8) as u8);
+        let length = payload.len();
+        match (recipient, desc_type) {
+            (Recipient::Device, DescriptorType::Device) => {
+                if length == size_of::<DeviceDescriptor>() {
+                    let descriptor = DeviceDescriptor::from_bytes(payload);
+                    self.device_descriptor.swap(Some(Arc::new(descriptor)));
+                    self.increment_version();
+                }
+            },
+            (Recipient::Device, DescriptorType::Configuration) => {
+                let size = size_of::<ConfigDescriptor>();
+                if length >= size {
+                    let configuration = Configuration::from_bytes(payload);
+                    if let Some(config) = configuration {
+                        let config_num = ConfigNum::from(
+                            config.descriptor.config_value);
+                        self.configurations.update(|configurations| {
+                            configurations.set(config_num, Arc::new(config));
+                        });
+                        self.update_endpoint_details();
+                        self.increment_version();
+                    }
+                }
+            },
+            (Recipient::Device, DescriptorType::String) => {
+                if length >= 2 {
+                    let string = UTF16ByteVec(payload[2..length].to_vec());
+                    let string_id =
+                        StringId::from((fields.value & 0xFF) as u8);
+                    self.strings.update(|strings| {
+                        strings.set(string_id, string)
+                    });
+                    self.increment_version();
+                }
+            },
+            _ => {}
+        };
+        Ok(())
+    }
+
+    fn decode_configuration_set(&self, fields: &SetupFields)
+        -> Result<(), Error>
+    {
+        let config_number = ConfigNum(fields.value.try_into()?);
+        self.config_number.swap(Some(Arc::new(config_number)));
+        let mut interface_settings = VecMap::new();
+        if let Some(config) = self.configurations.load().get(config_number) {
+            // All interfaces are reset to setting zero.
+            for (num, _alt) in config.interfaces
+                .keys()
+                .unique_by(|(num, _alt)| num)
+            {
+                interface_settings.set(*num, InterfaceAlt(0));
+            }
+        }
+        self.interface_settings.swap(Arc::new(interface_settings));
+        self.update_endpoint_details();
+        self.increment_version();
+        Ok(())
+    }
+
+    fn decode_interface_set(&self, fields: &SetupFields)
+        -> Result<(), Error>
+    {
+        let iface_num = InterfaceNum(fields.index.try_into()?);
+        let iface_alt = InterfaceAlt(fields.value.try_into()?);
+        self.interface_settings.update(|interface_settings|
+            interface_settings.set(iface_num, iface_alt)
+        );
+        self.update_endpoint_details();
+        self.increment_version();
+        Ok(())
+    }
+
+    fn increment_version(&self) {
+        self.version.fetch_add(1, Release);
+    }
+
+    pub fn version(&self) -> DeviceVersion {
+        self.version.load(Acquire)
+    }
+}
+
+impl Configuration {
+    pub fn function(&self, number: usize) -> Result<&Function, Error> {
+        match self.functions.values().nth(number) {
+            Some(function) => Ok(function),
+            _ => bail!("Configuration has no function with index {number}")
+        }
+    }
+
+    pub fn interface(&self, key: InterfaceKey)
+        -> Result<&Interface, Error>
+    {
+        self.interfaces
+            .get(&key)
+            .context("Configuration has no interface matching {key:?}")
+    }
+
+    pub fn associated_interfaces(&self, desc: &InterfaceAssociationDescriptor)
+        -> impl Iterator<Item=&Interface>
+    {
+        self.interfaces.range(desc.interface_range()).map(|(_k, v)| v)
+    }
+
+    pub fn unassociated_interfaces(&self)  -> impl Iterator<Item=&Interface> {
+        let associated_ranges = self.functions
+            .values()
+            .map(|f| f.descriptor.interface_range())
+            .collect::<Vec<_>>();
+        self.interfaces
+            .iter()
+            .filter_map(move |(key, interface)| {
+                if associated_ranges.iter().any(|range| range.contains(key)) {
+                    None
+                } else {
+                    Some(interface)
+                }
+            })
+    }
+
+    pub fn other_descriptor(&self, number: usize)
+        -> Result<&Descriptor, Error>
+    {
+        match self.other_descriptors.get(number) {
+            Some(desc) => Ok(desc),
+            _ => bail!("Configuration has no other descriptor {number}")
+        }
+    }
+}
+
+impl Interface {
+    pub fn endpoint(&self, number: InterfaceEpNum)
+        -> Result<&usb::Endpoint, Error>
+    {
+        match self.endpoints.get(number.0 as usize) {
+            Some(ep) => Ok(ep),
+            _ => bail!("Interface has no endpoint {number}")
+        }
+    }
+
+    pub fn other_descriptor(&self, number: usize)
+        -> Result<&Descriptor, Error>
+    {
+        match self.other_descriptors.get(number) {
+            Some(desc) => Ok(desc),
+            _ => bail!("Interface has no other descriptor {number}")
+        }
+    }
+}
+
+pub struct Transaction {
+    id: TransactionId,
+    start_pid: PID,
+    end_pid: PID,
+    split: Option<(SplitFields, PID)>,
+    pub packet_id_range: Range<PacketId>,
+    data_packet_id: Option<PacketId>,
+    pub payload_byte_range: Option<Range<Id<u8>>>,
+}
+
+#[derive(PartialEq)]
+pub enum TransactionResult {
+    Success,
+    Failure,
+    Ambiguous
+}
+
+impl Transaction {
+    fn packet_count(&self) -> u64 {
+        self.packet_id_range.len()
+    }
+
+    fn payload_size(&self) -> Option<u64> {
+        self.payload_byte_range.as_ref().map(|range| range.len())
+    }
+
+    fn result(&self, ep_type: EndpointType) -> TransactionResult {
+        use PID::*;
+        use EndpointType::*;
+        use usb::EndpointType::*;
+        use TransactionResult::*;
+        match (self.start_pid, self.end_pid) {
+
+            // SPLIT is successful if it ends with DATA0/DATA1/ACK/NYET.
+            (SPLIT, DATA0 | DATA1 | ACK | NYET) => Success,
+
+            // SETUP/IN/OUT is successful if it ends with ACK/NYET.
+            (SETUP | IN | OUT, ACK | NYET) => Success,
+
+            // IN/OUT followed by DATA0/DATA1 depends on endpoint type.
+            (IN | OUT, DATA0 | DATA1) => match ep_type {
+                // For an isochronous endpoint this is a success.
+                Normal(Isochronous) => Success,
+                // For an unidentified endpoint this is ambiguous.
+                Unidentified => Ambiguous,
+                // For any other endpoint type this is a failure (no handshake).
+                _ => Failure,
+            },
+
+            (..) => Failure
+        }
+    }
+
+    fn control_result(&self, direction: Direction) -> ControlResult {
+        use ControlResult::*;
+        use StartComplete::*;
+        use Direction::*;
+        use PID::*;
+        use EndpointType::*;
+        use usb::EndpointType::*;
+        use TransactionResult::*;
+        let end_pid = match (direction, self.start_pid, self.split.as_ref()) {
+            (In,  OUT,   None) |
+            (Out, IN,    None) =>
+                self.end_pid,
+            (In,  SPLIT, Some((split_fields, OUT))) |
+            (Out, SPLIT, Some((split_fields, IN ))) => {
+                if split_fields.sc() == Complete {
+                    self.end_pid
+                } else {
+                    return Incomplete
+                }
+            },
+            // A lone ACK is possible after LS keepalive.
+            (_, ACK, _) => return Completed,
+
+            _ => return if self.end_pid == STALL { Stalled } else { Incomplete }
+        };
+        if end_pid == STALL {
+            Stalled
+        } else if self.result(Normal(Control)) == Success {
+            Completed
+        } else {
+            Incomplete
+        }
+    }
+
+    fn outcome(&self) -> Option<PID> {
+        use PID::*;
+        match self.end_pid {
+            // Any handshake response should be displayed as an outcome.
+            ACK | NAK | NYET | STALL | ERR => Some(self.end_pid),
+            _ => None
+        }
+    }
+
+    pub fn description<C: CaptureReaderOps>(
+        &self,
+        capture: &mut C,
+        endpoint: &Endpoint,
+        detail: bool
+    ) -> Result<String, Error> {
+        use PID::*;
+        use StartComplete::*;
+        Ok(match (self.start_pid, &self.split) {
+            (SOF, _) => format!(
+                "{} SOF packets", self.packet_count()),
+            (SPLIT, Some((split_fields, token_pid))) => format!(
+                "{} {}",
+                match split_fields.sc() {
+                    Start => "Starting",
+                    Complete => "Completing",
+                },
+                self.inner_description(capture, endpoint, *token_pid, detail)?
+            ),
+            (ACK | NAK | STALL | DATA0 | DATA1, _) => {
+                // We don't expect these packets to start a transaction. Maybe
+                // a previous transaction was interrupted by an LS keepalive.
+                if self.id.value >= 2 &&
+                    capture.ls_keepalive_at(self.packet_id_range.start - 1)?
+                {
+                    let previous_transaction = capture.transaction(self.id - 2)?;
+                    if detail {
+                        format!(
+                            "Continuing {} transaction on device {}, endpoint {}, {} response",
+                            previous_transaction.start_pid,
+                            endpoint.device_address(),
+                            endpoint.number(),
+                            self.start_pid)
+                    } else {
+                        format!("Continuing {} transaction on {}.{}, {}",
+                            previous_transaction.start_pid,
+                            endpoint.device_address(),
+                            endpoint.number(),
+                            self.start_pid)
+                    }
+                } else {
+                    self.inner_description(capture, endpoint, self.start_pid, detail)?
+                }
+            },
+            (pid, _) => self.inner_description(capture, endpoint, pid, detail)?
+        })
+    }
+
+    fn inner_description<C: CaptureReaderOps>(
+        &self,
+        capture: &mut C,
+        endpoint: &Endpoint,
+        pid: PID,
+        detail: bool
+    ) -> Result<String, Error> {
+        if endpoint.number() == INVALID_EP_NUM {
+            return Ok(format!("{pid} transaction"));
+        }
+        let mut s = String::new();
+        if detail {
+            write!(s, "{} transaction on device {}, endpoint {}",
+                pid, endpoint.device_address(), endpoint.number())
+        } else {
+            write!(s, "{} transaction on {}.{}",
+                pid, endpoint.device_address(), endpoint.number())
+        }?;
+        match (self.payload_size(), self.outcome(), detail) {
+            (None, None, _) => Ok(()),
+            (None, Some(outcome), false) => write!(s,
+                ", {outcome}"),
+            (None, Some(outcome), true) => write!(s,
+                ", {outcome} response"),
+            (Some(0), None, _) => write!(s,
+                " with no data"),
+            (Some(0), Some(outcome), false) => write!(s,
+                " with no data, {outcome}"),
+            (Some(0), Some(outcome), true) => write!(s,
+                " with no data, {outcome} response"),
+            (Some(size), None, false) => write!(s,
+                " with {size} data bytes: {}",
+                Bytes::first(100, &capture.transaction_bytes(self)?)),
+            (Some(size), None, true) => write!(s,
+                " with {size} data bytes\nPayload: {}",
+                Bytes::first(1024, &capture.transaction_bytes(self)?)),
+            (Some(size), Some(outcome), false) => write!(s,
+                " with {size} data bytes, {outcome}: {}",
+                Bytes::first(100, &capture.transaction_bytes(self)?)),
+            (Some(size), Some(outcome), true) => write!(s,
+                " with {size} data bytes, {outcome} response\nPayload: {}",
+                Bytes::first(1024, &capture.transaction_bytes(self)?)),
+        }?;
+        Ok(s)
+    }
+}
+
+pub struct Group {
+    pub endpoint_id: EndpointId,
+    pub endpoint: Endpoint,
+    pub endpoint_type: EndpointType,
+    pub range: Range<EndpointTransactionId>,
+    pub count: u64,
+    pub content: GroupContent,
+}
+
+pub enum GroupContent {
+    Request(ControlTransfer),
+    Data(Range<EndpointDataEvent>),
+    Polling(u64),
+    Ambiguous(Range<EndpointDataEvent>, u64),
+    IncompleteRequest,
+    Framing,
+    Invalid,
+}
+
+
+impl CaptureWriter {
+    pub fn device_data(&self, id: DeviceId)
+        -> Result<Arc<DeviceData>, Error>
+    {
+        Ok(self.shared.device_data
+            .load()
+            .get(id)
+            .context("Capture has no device with ID {id}")?
+            .clone())
+    }
+
+    pub fn print_storage_summary(&self) {
+        let mut overhead: u64 =
+            self.packet_index.size() +
+            self.transaction_index.size() +
+            self.group_index.size() +
+            self.endpoint_states.size() +
+            self.endpoint_state_index.size();
+        let mut trx_count = 0;
+        let mut trx_size = 0;
+        let mut xfr_count = 0;
+        let mut xfr_size = 0;
+        for ep_traf in self.shared.endpoint_readers.load().as_ref() {
+            trx_count += ep_traf.transaction_ids.len();
+            trx_size += ep_traf.transaction_ids.size();
+            xfr_count += ep_traf.group_index.len();
+            xfr_size += ep_traf.group_index.size();
+            overhead += trx_size + xfr_size;
+        }
+        let ratio = (overhead as f32) / (self.packet_data.size() as f32);
+        let percentage = ratio * 100.0;
+        print!(concat!(
+            "Storage summary:\n",
+            "  Packet data: {}\n",
+            "  Packet index: {}\n",
+            "  Transaction index: {}\n",
+            "  Transaction group index: {}\n",
+            "  Endpoint states: {}\n",
+            "  Endpoint state index: {}\n",
+            "  Endpoint transaction indices: {} values, {}\n",
+            "  Endpoint transaction group indices: {} values, {}\n",
+            "Total overhead: {:.1}% ({})\n"),
+            fmt_size(self.packet_data.size()),
+            &self.packet_index,
+            &self.transaction_index,
+            &self.group_index,
+            &self.endpoint_states,
+            &self.endpoint_state_index,
+            fmt_count(trx_count), fmt_size(trx_size),
+            fmt_count(xfr_count), fmt_size(xfr_size),
+            percentage, fmt_size(overhead),
+        )
+    }
+
+    pub fn snapshot(&mut self) -> CaptureSnapshot {
+        CaptureSnapshot {
+            db: self.counters.snapshot(),
+            device_data: self.shared.device_data.load_full(),
+            endpoint_index: self.shared.endpoint_index.load_full(),
+            complete: self.shared.complete.load(Acquire),
+        }
+    }
+}
+
+/// Snapshot of a capture.
+#[derive(Clone)]
+pub struct CaptureSnapshot {
+    db: Snapshot,
+    device_data: Arc<VecMap<DeviceId, Arc<DeviceData>>>,
+    endpoint_index: Arc<VecMap<DeviceAddr, VecMap<EndpointAddr, EndpointId>>>,
+    complete: bool,
+}
+
+/// Handle for access to a capture at a snapshot.
+pub struct CaptureSnapshotReader<'r, 's> {
+    endpoint_snapshots: VecMap<EndpointId, EndpointSnapshotReader<'r, 's>>,
+    device_data: &'s Arc<VecMap<DeviceId, Arc<DeviceData>>>,
+    endpoint_index: &'s Arc<VecMap<DeviceAddr, VecMap<EndpointAddr, EndpointId>>>,
+    packet_data: DataSnapshot<'r, 's, u8, PACKET_DATA_BLOCK_SIZE>,
+    packet_index: CompactSnapshot<'r, 's, PacketId, PacketByteId>,
+    packet_times: CompactSnapshot<'r, 's, PacketId, Timestamp>,
+    event_index: CompactSnapshot<'r, 's, EventId, PacketId>,
+    event_codes: DataSnapshot<'r, 's, u8>,
+    transaction_index: CompactSnapshot<'r, 's, TransactionId, PacketId>,
+    group_index: DataSnapshot<'r, 's, GroupIndexEntry>,
+    item_index: CompactSnapshot<'r, 's, TrafficItemId, GroupId>,
+    devices: DataSnapshot<'r, 's, Device>,
+    endpoints: DataSnapshot<'r, 's, Endpoint>,
+    endpoint_states: DataSnapshot<'r, 's, u8>,
+    endpoint_state_index: CompactSnapshot<'r, 's, GroupId, Id<u8>>,
+    #[allow(dead_code)]
+    end_index: CompactSnapshot<'r, 's, GroupId, TrafficItemId>,
+    complete: bool,
+}
+
+pub enum PacketOrEvent {
+    Packet(Vec<u8>),
+    Event(EventType),
+}
+
+impl CaptureReader {
+    /// Create a handle to access this capture at a snapshot.
+    pub fn at<'r, 's>(&'r mut self, snapshot: &'s CaptureSnapshot)
+        -> CaptureSnapshotReader<'r, 's>
+    {
+        let endpoints = self.endpoints.at(&snapshot.db);
+        let shared_readers = self.shared.endpoint_readers.load();
+        // For each endpoint in the snapshot, first ensure that we have an
+        // EndpointReader for it in this CaptureReader.
+        for i in 0..endpoints.len() {
+            let endpoint_id = EndpointId::from(i);
+            if self.endpoint_readers.get(endpoint_id).is_none() {
+                let reader = shared_readers
+                    .get(endpoint_id)
+                    .unwrap()
+                    .as_ref()
+                    .clone();
+                self.endpoint_readers.set(endpoint_id, reader);
+            }
+        }
+        // Now construct an EndpointSnapshotReader referencing each reader.
+        let mut endpoint_snapshots = VecMap::new();
+        for i in 0..endpoints.len() {
+            let endpoint_id = EndpointId::from(i);
+            // SAFETY:
+            // self.endpoint_readers is only ever modified above, and by the
+            // method self.endpoint_traffic(&mut self), which can't be called
+            // while we hold a &'r mut self reference. So it's safe to keep a
+            // reference to one of its elements for lifetime 'r.
+            let mut opt = self.endpoint_readers.get_mut(endpoint_id);
+            let reader: &'_ mut EndpointReader = opt.as_mut().unwrap();
+            let reader: &'r mut EndpointReader = unsafe {
+                std::mem::transmute(reader)
+            };
+            endpoint_snapshots.set(endpoint_id, reader.at(&snapshot.db));
+        }
+        CaptureSnapshotReader {
+            endpoint_snapshots,
+            device_data: &snapshot.device_data,
+            endpoint_index: &snapshot.endpoint_index,
+            packet_data: self.packet_data.at(&snapshot.db),
+            packet_index: self.packet_index.at(&snapshot.db),
+            packet_times: self.packet_times.at(&snapshot.db),
+            event_index: self.event_index.at(&snapshot.db),
+            event_codes: self.event_codes.at(&snapshot.db),
+            transaction_index: self.transaction_index.at(&snapshot.db),
+            group_index: self.group_index.at(&snapshot.db),
+            item_index: self.item_index.at(&snapshot.db),
+            devices: self.devices.at(&snapshot.db),
+            endpoints,
+            endpoint_states: self.endpoint_states.at(&snapshot.db),
+            endpoint_state_index: self.endpoint_state_index.at(&snapshot.db),
+            end_index: self.end_index.at(&snapshot.db),
+            complete: snapshot.complete,
+        }
+    }
+
+    pub fn timestamped_packets_and_events(&mut self) ->
+        Result <
+            impl Iterator <
+                Item=Result<(u64, PacketOrEvent), Error>
+            > + use<'_>,
+            Error
+        >
+    {
+        use PacketOrEvent::*;
+        let packet_count = self.packet_index.len();
+        let packet_ids = PacketId::from(0)..PacketId::from(packet_count);
+        let timestamps = self.packet_times.iter(&packet_ids)?;
+        let packet_starts = self.packet_index.iter(&packet_ids)?;
+        let packet_ends = self.packet_index
+            .iter(&packet_ids)?
+            .skip(1)
+            .chain(once(Ok(PacketByteId::from(self.packet_data.len()))));
+        let data_ranges = packet_starts.zip(packet_ends);
+        let mut packet_data = self.packet_data.clone();
+        Ok(timestamps
+            .zip(0..packet_count)
+            .zip(data_ranges)
+            .map(move |((ts, id), (start, end))| {
+                let packet_id = PacketId::from(id);
+                let timestamp = ts?;
+                let data_range = start?..end?;
+                if data_range.is_empty() {
+                    if let Some(event_id) = self.event(packet_id)? {
+                        let event_type = self.event_type(event_id)?;
+                        return Ok((timestamp, Event(event_type)))
+                    }
+                }
+                let packet = packet_data.get_range(&data_range)?;
+                Ok((timestamp, Packet(packet)))
+            })
+        )
+    }
+}
+
+/// Operations supported by both `CaptureReader` and `CaptureSnapshotReader`.
+pub trait CaptureReaderOps {
+    /// Access data about the specified device.
+    fn device_data(&self, device_id: DeviceId)
+        -> Result<Arc<DeviceData>, Error>;
+
+    /// Access traffic for the specified endpoint.
+    fn endpoint_traffic(&mut self, endpoint_id: EndpointId)
+        -> Result<&mut impl EndpointReaderOps, Error>;
+
+    /// Fetch a specific packet byte.
+    fn byte(&mut self, id: PacketByteId) -> Result<u8, Error>;
+
+    /// Fetch a range of packet bytes.
+    fn bytes(&mut self, range: &Range<PacketByteId>) -> Result<Vec<u8>, Error>;
+
+    /// Get the number of packets in the capture.
+    fn packet_count(&self) -> u64;
+
+    /// Get the position of the first byte of a packet in the packet data stream.
+    fn packet_start(&mut self, id: PacketId) -> Result<PacketByteId, Error>;
+
+    /// Get the position of a packet's bytes in the packet data stream.
+    fn packet_byte_range(&mut self, id: PacketId)
+        -> Result<Range<PacketByteId>, Error>;
+
+    /// Get the timestamp of a packet.
+    fn packet_time(&mut self, id: PacketId) -> Result<Timestamp, Error>;
+
+    /// Get the event ID associated with a packet ID, if there is one.
+    fn event(&mut self, id: PacketId) -> Result<Option<EventId>, Error>;
+
+    /// Get the event ID associated with a packet ID, unconditionally.
+    fn event_id(&mut self, packet_id: PacketId) -> Result<EventId, Error>;
+
+    /// Get the type of an event.
+    fn event_type(&mut self, event_id: EventId) -> Result<EventType, Error>;
+
+    /// Get the number of transactions in the capture.
+    fn transaction_count(&self) -> u64;
+
+    /// Find the packet ID of the first packet in a transaction.
+    fn transaction_start(&mut self, id: TransactionId) -> Result<PacketId, Error>;
+
+    /// Find the range of packet IDs in a transaction.
+    fn transaction_packet_range(&mut self, id: TransactionId)
+        -> Result<Range<PacketId>, Error>;
+
+    /// Get the number of top-level items in a capture.
+    fn item_count(&self) -> u64;
+
+    /// Fetch the transaction group associated with a top-level item.
+    fn item_group(&mut self, id: TrafficItemId) -> Result<GroupId, Error>;
+
+    /// Get the number of transaction groups in the capture.
+    fn group_count(&self) -> u64;
+
+    /// Fetch the index entry for a transaction group.
+    fn group_entry(&mut self, id: GroupId) -> Result<GroupIndexEntry, Error>;
+
+    /// Get the number of devices in the capture.
+    fn device_count(&self) -> u64;
+
+    /// Fetch a specific device.
+    fn device(&mut self, id: DeviceId) -> Result<Device, Error>;
+
+    /// Get the number of endpoints in the capture.
+    fn endpoint_count(&self) -> u64;
+
+    /// Fetch a specific endpoint.
+    fn endpoint(&mut self, id: EndpointId) -> Result<Endpoint, Error>;
+
+    /// Fetch endpoint state data at the start of a transaction group.
+    fn endpoint_state(&mut self, group_id: GroupId) -> Result<Vec<u8>, Error>;
+
+    /// Whether the capture is complete.
+    fn complete(&self) -> bool;
+
+    /// Find the range of endpoint transaction IDs for a transaction group.
+    fn group_range(
+        &mut self,
+        endpoint_id: EndpointId,
+        ep_group_id: EndpointGroupId
+    ) -> Result<Range<EndpointTransactionId>, Error> {
+        let ep_traf = self.endpoint_traffic(endpoint_id)?;
+        ep_traf.group_range(ep_group_id)
+    }
+
+    /// Fetch the SETUP packet fields for a control transaction.
+    fn transaction_fields(&mut self, transaction: &Transaction)
+        -> Result<Option<SetupFields>, Error>
+    {
+        let data_packet_id = match transaction.data_packet_id {
+            // If the SETUP transaction has a data packet, use it.
+            Some(data_packet_id) => data_packet_id,
+            // If not, also look for one after an LS keepalive.
+            None => {
+                let start_packet_id = transaction.packet_id_range.start;
+                if self.ls_keepalive_at(start_packet_id + 1)? {
+                    // SETUP, LS keepalive, DATA0
+                    start_packet_id + 2
+                } else {
+                    return Ok(None)
+                }
+            }
+        };
+        let data_packet = self.packet(data_packet_id)?;
+        Ok(match data_packet.first().map(PID::from) {
+            None => None,
+            Some(pid) => {
+                if pid != PID::DATA0 || data_packet.len() != 11 {
+                    None
+                } else {
+                    Some(SetupFields::from_data_packet(&data_packet))
+                }
+            }
+        })
+    }
+
+    /// Fetch the payload bytes for a transaction.
+    fn transaction_bytes(&mut self, transaction: &Transaction)
+        -> Result<Vec<u8>, Error>
+    {
+        let data_packet_id = transaction.data_packet_id
+            .context("Transaction has no data packet")?;
+        let packet_byte_range = self.packet_byte_range(data_packet_id)?;
+        let data_byte_range =
+            packet_byte_range.start + 1 .. packet_byte_range.end - 2;
+        self.bytes(&data_byte_range)
+    }
+
+    /// Fetch the payload bytes for a transfer.
+    fn transfer_bytes(
+        &mut self,
+        endpoint_id: EndpointId,
+        data_range: &Range<EndpointDataEvent>,
+        length: usize,
+    ) -> Result<Vec<u8>, Error> {
+        let mut transfer_bytes = Vec::with_capacity(length);
+        let mut data_range = data_range.clone();
+        while transfer_bytes.len() < length {
+            let data_id = data_range.next().with_context(|| format!(
+                "Ran out of data events after fetching {}/{} requested bytes",
+                transfer_bytes.len(), length))?;
+            let ep_traf = self.endpoint_traffic(endpoint_id)?;
+            let ep_transaction_id = ep_traf.data_transaction(data_id)?;
+            let transaction_id = ep_traf.transaction_id(ep_transaction_id)?;
+            let transaction = self.transaction(transaction_id)?;
+            let transaction_bytes = self.transaction_bytes(&transaction)?;
+            let required = min(
+                length - transfer_bytes.len(),
+                transaction_bytes.len()
+            );
+            transfer_bytes.extend(&transaction_bytes[..required]);
+        }
+        Ok(transfer_bytes)
+    }
+
+    /// Fetch all the bytes of a packet.
+    fn packet(&mut self, id: PacketId)
+        -> Result<Vec<u8>, Error>
+    {
+        let range = self.packet_byte_range(id)?;
+        self.bytes(&range)
+    }
+
+    /// Fetch the PID of a packet.
+    fn packet_pid(&mut self, id: PacketId)
+        -> Result<PID, Error>
+    {
+        let byte_id = self.packet_start(id)?;
+        Ok(PID::from(self.byte(byte_id)?))
+    }
+
+    /// Fetch information about a transaction.
+    fn transaction(&mut self, id: TransactionId)
+        -> Result<Transaction, Error>
+    {
+        let packet_id_range = self.transaction_packet_range(id)?;
+        let packet_count = packet_id_range.len();
+        let start_packet_id = packet_id_range.start;
+        let start_pid = self.packet_pid(start_packet_id)?;
+        let end_pid = self.packet_pid(packet_id_range.end - 1)?;
+        use PID::*;
+        use StartComplete::*;
+        let (split, data_packet_id) = match start_pid {
+            SETUP | IN | OUT if packet_count >= 2 =>
+                (None, Some(start_packet_id + 1)),
+            SPLIT => {
+                let token_packet_id = start_packet_id + 1;
+                let split_packet = self.packet(start_packet_id)?;
+                let token_pid = self.packet_pid(token_packet_id)?;
+                let split_fields = SplitFields::from_packet(&split_packet);
+                let data_packet_id = match (split_fields.sc(), token_pid) {
+                    (Start, SETUP | OUT) | (Complete, IN) => {
+                        if packet_count >= 3 {
+                            Some(start_packet_id + 2)
+                        } else {
+                            None
+                        }
+                    },
+                    (..) => None
+                };
+                (Some((split_fields, token_pid)), data_packet_id)
+            },
+            ACK if start_packet_id.value >= 2 &&
+                self.ls_keepalive_at(start_packet_id - 1)? =>
+            {
+                // DATA0/DATA1, LS keepalive, ACK. Data is two packets earlier.
+                (None, Some(start_packet_id - 2))
+            },
+            DATA0 | DATA1 if start_packet_id.value >= 1 &&
+                self.ls_keepalive_at(start_packet_id - 1)? =>
+            {
+                // IN/OUT/SETUP, LS keepalive, DATA0/DATA1. Data is right here.
+                (None, Some(start_packet_id))
+            },
+            _ => (None, None)
+        };
+        let payload_byte_range = if let Some(packet_id) = data_packet_id {
+            let packet_byte_range = self.packet_byte_range(packet_id)?;
+            let pid = self.byte(packet_byte_range.start)?;
+            match PID::from(pid) {
+                DATA0 | DATA1 => Some({
+                    packet_byte_range.start + 1 .. packet_byte_range.end - 2
+                }),
+                _ => None
+            }
+        } else {
+            None
+        };
+        Ok(Transaction {
+            id,
+            start_pid,
+            end_pid,
+            split,
+            data_packet_id,
+            packet_id_range,
+            payload_byte_range,
+        })
+    }
+
+    /// Fetch information about a transaction group.
+    fn group(
+        &mut self,
+        endpoint_id: EndpointId,
+        ep_group_id: EndpointGroupId
+    ) -> Result<Group, Error> {
+        let endpoint = self.endpoint(endpoint_id)?;
+        let device_id = endpoint.device_id();
+        let dev_data = self.device_data(device_id)?;
+        let ep_addr = endpoint.address();
+        let (endpoint_type, _) = dev_data.endpoint_details(ep_addr);
+        let range = self.group_range(endpoint_id, ep_group_id)?;
+        let count = range.len();
+        let content = match endpoint_type {
+            EndpointType::Invalid => GroupContent::Invalid,
+            EndpointType::Framing => GroupContent::Framing,
+            EndpointType::Normal(usb::EndpointType::Control) => {
+                let addr = endpoint.device_address();
+                match self.control_transfer(
+                    device_id, addr, endpoint_id, &range)?
+                {
+                    Some(transfer) => GroupContent::Request(transfer),
+                    None => GroupContent::IncompleteRequest
+                }
+            },
+            _ => {
+                let ep_traf = self.endpoint_traffic(endpoint_id)?;
+                let range = ep_traf.group_range(ep_group_id)?;
+                let first_transaction_id =
+                    ep_traf.transaction_id(range.start)?;
+                let first_transaction =
+                    self.transaction(first_transaction_id)?;
+                let count = if first_transaction.split.is_some() {
+                    count.div_ceil(2)
+                } else {
+                    count
+                };
+                match first_transaction.result(endpoint_type) {
+                    TransactionResult::Success => {
+                        let ep_traf = self.endpoint_traffic(endpoint_id)?;
+                        let data_range = ep_traf.transfer_data_range(&range)?;
+                        GroupContent::Data(data_range)
+                    },
+                    TransactionResult::Ambiguous => {
+                        let ep_traf = self.endpoint_traffic(endpoint_id)?;
+                        let data_range = ep_traf.transfer_data_range(&range)?;
+                        GroupContent::Ambiguous(data_range, count)
+                    },
+                    TransactionResult::Failure => GroupContent::Polling(count),
+                }
+            }
+        };
+        Ok(Group {
+            endpoint_id,
+            endpoint,
+            endpoint_type,
+            range,
+            count,
+            content,
+        })
+    }
+
+    /// Fetch information about a control transfer.
+    fn control_transfer(&mut self,
+                        device_id: DeviceId,
+                        address: DeviceAddr,
+                        endpoint_id: EndpointId,
+                        range: &Range<EndpointTransactionId>)
+        -> Result<Option<ControlTransfer>, Error>
+    {
+        let ep_traf = self.endpoint_traffic(endpoint_id)?;
+        let transaction_ids = ep_traf.transaction_id_range(range)?;
+        let data_range = ep_traf.transfer_data_range(range)?;
+        let data_length = ep_traf
+            .transfer_data_length(&data_range)?
+            .try_into()?;
+        let data = self.transfer_bytes(endpoint_id, &data_range, data_length)?;
+        let setup_transaction = self.transaction(transaction_ids[0])?;
+        let fields = match self.transaction_fields(&setup_transaction)? {
+            Some(fields) => fields,
+            None => return Ok(None)
+        };
+        let direction = fields.type_fields.direction();
+        let last = transaction_ids.len() - 1;
+        let last_transaction = self.transaction(transaction_ids[last])?;
+        let result = last_transaction.control_result(direction);
+        let recipient = fields.type_fields.recipient();
+        let dev_data = self.device_data(device_id)?;
+        let recipient_class = match recipient {
+            Recipient::Device => dev_data.device_descriptor
+                .load()
+                .as_ref()
+                .map(|desc| desc.device_class),
+            Recipient::Interface => {
+                let iface_num = InterfaceNum(fields.index as u8);
+                if let (Some(config_num), Some(iface_alt)) = (
+                    dev_data.config_number.load().as_ref(),
+                    dev_data.interface_settings.load().get(iface_num))
+                {
+                    let iface_key = (iface_num, *iface_alt);
+                    dev_data
+                        .configurations
+                        .load()
+                        .get(**config_num)
+                        .and_then(|config| config.interfaces.get(&iface_key))
+                        .map(|interface| interface.descriptor.interface_class)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        };
+        Ok(Some(ControlTransfer {
+            address,
+            fields,
+            data,
+            result,
+            recipient_class,
+        }))
+    }
+
+    /// Check whether a transaction group is ongoing at the end of the capture.
+    fn group_extended(
+        &mut self,
+        endpoint_id: EndpointId,
+        group_id: GroupId
+    ) -> Result<bool, Error> {
+        use EndpointState::*;
+        let count = self.group_count();
+        if group_id.value + 1 >= count {
+            return Ok(false);
+        };
+        let state = self.endpoint_state(group_id + 1)?;
+        Ok(match state.get(endpoint_id.value as usize) {
+            Some(ep_state) => EndpointState::from(*ep_state) == Ongoing,
+            None => false
+        })
+    }
+
+    /// Check for an LS keepalive at a specific packet ID.
+    fn ls_keepalive_at(&mut self, packet_id: PacketId) -> Result<bool, Error> {
+        Ok(match self.event(packet_id)? {
+            Some(event_id) =>
+                self.event_type(event_id)? == EventType::LsKeepalive,
+            None => false,
+        })
+    }
+}
+
+pub trait EndpointLookup {
+
+    fn endpoint_lookup(
+        &self,
+        dev_addr: DeviceAddr,
+        ep_addr: EndpointAddr,
+    ) -> Option<EndpointId>;
+
+    fn packet_endpoint(&self, pid: PID, packet: &[u8])
+        -> Result<EndpointId, (DeviceAddr, EndpointAddr)>
+    {
+        match PacketFields::from_packet(packet) {
+            PacketFields::SOF(_) => Ok(FRAMING_EP_ID),
+            PacketFields::Token(token) => {
+                let dev_addr = token.device_address();
+                let ep_num = token.endpoint_number();
+                let direction = match (ep_num.0, pid) {
+                    (0, _)          => Direction::Out,
+                    (_, PID::SETUP) => Direction::Out,
+                    (_, PID::IN)    => Direction::In,
+                    (_, PID::OUT)   => Direction::Out,
+                    (_, PID::PING)  => Direction::Out,
+                    _ => panic!("PID {pid} does not indicate a direction")
+                };
+                let ep_addr = EndpointAddr::from_parts(ep_num, direction);
+                match self.endpoint_lookup(dev_addr, ep_addr) {
+                    Some(id) => Ok(id),
+                    None => Err((dev_addr, ep_addr)),
+                }
+            },
+            _ => Ok(INVALID_EP_ID),
+        }
+    }
+}
+
+impl EndpointLookup for CaptureWriter {
+    fn endpoint_lookup(
+        &self,
+        dev_addr: DeviceAddr,
+        ep_addr: EndpointAddr
+    ) -> Option<EndpointId> {
+        self.shared.endpoint_index
+            .load()
+            .get(dev_addr)
+            .and_then(|ep_index| ep_index.get(ep_addr))
+            .copied()
+    }
+}
+
+impl EndpointLookup for CaptureReader {
+    fn endpoint_lookup(
+        &self,
+        dev_addr: DeviceAddr,
+        ep_addr: EndpointAddr
+    ) -> Option<EndpointId> {
+        self.shared.endpoint_index
+            .load()
+            .get(dev_addr)
+            .and_then(|ep_index| ep_index.get(ep_addr))
+            .copied()
+    }
+}
+
+impl EndpointLookup for CaptureSnapshotReader<'_, '_> {
+    fn endpoint_lookup(
+        &self,
+        dev_addr: DeviceAddr,
+        ep_addr: EndpointAddr
+    ) -> Option<EndpointId> {
+        self.endpoint_index
+            .get(dev_addr)
+            .and_then(|ep_index| ep_index.get(ep_addr))
+            .copied()
+    }
+}
+
+/// Handle for access to an endpoint at a snapshot.
+pub struct EndpointSnapshotReader<'r, 's> {
+    transaction_ids: CompactSnapshot<'r, 's, EndpointTransactionId, TransactionId>,
+    group_index: CompactSnapshot<'r, 's, EndpointGroupId, EndpointTransactionId>,
+    data_transactions: CompactSnapshot<'r, 's, EndpointDataEvent, EndpointTransactionId>,
+    data_byte_counts: CompactSnapshot<'r, 's, EndpointDataEvent, EndpointByteCount>,
+    end_index: CompactSnapshot<'r, 's, EndpointGroupId, TrafficItemId>,
+    total_data: u64,
+}
+
+impl EndpointReader {
+    /// Create a handle to access this endpoint at a snapshot.
+    pub fn at<'r, 's>(&'r mut self, snapshot: &'s Snapshot)
+        -> EndpointSnapshotReader<'r, 's>
+    {
+        EndpointSnapshotReader {
+            transaction_ids: self.transaction_ids.at(snapshot),
+            group_index: self.group_index.at(snapshot),
+            data_transactions: self.data_transactions.at(snapshot),
+            data_byte_counts: self.data_byte_counts.at(snapshot),
+            end_index: self.end_index.at(snapshot),
+            total_data: self.shared.as_ref().total_data.load_at(snapshot),
+        }
+    }
+}
+
+/// Operations supported by both `EndpointReader` and `EndpointSnapshotReader`.
+pub trait EndpointReaderOps {
+
+    /// Get the number of transactions on this endpoint.
+    fn transaction_count(&self) -> u64;
+
+    /// Get the ID of a transaction on this endpoint.
+    fn transaction_id(&mut self, ep_id: EndpointTransactionId)
+        -> Result<TransactionId, Error>;
+
+    /// Get the IDs of a range of transactions on this endpoint.
+    fn transaction_id_range(&mut self, ep_id_range: &Range<EndpointTransactionId>)
+        -> Result<Vec<TransactionId>, Error>;
+
+    /// Find the first transaction of a transaction group on this endpoint.
+    fn group_start(&mut self, ep_group_id: EndpointGroupId)
+        -> Result<EndpointTransactionId, Error>;
+
+    /// Find the rane of transactions for a transaction group on this endpoint.
+    fn group_range(&mut self, ep_group_id: EndpointGroupId)
+        -> Result<Range<EndpointTransactionId>, Error>;
+
+    /// Find the transaction for a data event on this endpoint.
+    fn data_transaction(&mut self, data_id: EndpointDataEvent)
+        -> Result<EndpointTransactionId, Error>;
+
+    /// Find the data event for a transaction on this endpoint.
+    fn data_for_transaction(&mut self, ep_id: EndpointTransactionId)
+        -> Result<EndpointDataEvent, Error>;
+
+    /// Get the total number of data events on this endpoint.
+    fn data_event_count(&self) -> u64;
+
+    /// Get the number of bytes transferred in a data event.
+    fn data_event_byte_count(&mut self, data_id: EndpointDataEvent)
+        -> Result<EndpointByteCount, Error>;
+
+    /// Get the number of ended transaction groups on this endpoint.
+    fn end_count(&self) -> u64;
+
+    /// Get the total number of bytes transferred on this endpoint.
+    fn total_data(&self) -> u64;
+
+    /// Get the range of data events associated with a range of transactions.
+    fn transfer_data_range(&mut self, range: &Range<EndpointTransactionId>)
+        -> Result<Range<EndpointDataEvent>, Error>
+    {
+        let first_data_id = self.data_for_transaction(range.start)?;
+        let last_data_id = self.data_for_transaction(range.end)?;
+        Ok(first_data_id..last_data_id)
+    }
+
+    /// Get the length of data associated with a range of data events.
+    fn transfer_data_length(&mut self, range: &Range<EndpointDataEvent>)
+        -> Result<u64, Error>
+    {
+        if range.start == range.end {
+            return Ok(0);
+        }
+        let num_data_events = self.data_event_count();
+        let first_byte_count = self.data_event_byte_count(range.start)?;
+        let last_byte_count = if range.end >= num_data_events {
+            self.total_data()
+        } else {
+            self.data_event_byte_count(range.end)?
+        };
+        Ok(last_byte_count - first_byte_count)
+    }
+}
+
+impl EndpointReaderOps for EndpointReader {
+
+    fn transaction_count(&self) -> u64 {
+        self.transaction_ids.len()
+    }
+
+    fn transaction_id(&mut self, ep_id: EndpointTransactionId)
+        -> Result<TransactionId, Error>
+    {
+        self.transaction_ids.get(ep_id)
+    }
+
+    fn transaction_id_range(&mut self, ep_id_range: &Range<EndpointTransactionId>)
+        -> Result<Vec<TransactionId>, Error>
+    {
+        self.transaction_ids.get_range(ep_id_range)
+    }
+
+    fn group_start(&mut self, ep_group_id: EndpointGroupId)
+        -> Result<EndpointTransactionId, Error>
+    {
+        self.group_index.get(ep_group_id)
+    }
+
+    fn group_range(&mut self, ep_group_id: EndpointGroupId)
+        -> Result<Range<EndpointTransactionId>, Error>
+    {
+        let transaction_count = self.transaction_count();
+        self.group_index.target_range(ep_group_id, transaction_count)
+    }
+
+    fn data_transaction(&mut self, data_id: EndpointDataEvent)
+        -> Result<EndpointTransactionId, Error>
+    {
+        self.data_transactions.get(data_id)
+    }
+
+    fn data_for_transaction(&mut self, ep_id: EndpointTransactionId)
+        -> Result<EndpointDataEvent, Error>
+    {
+        self.data_transactions.bisect_left(&ep_id)
+    }
+
+    fn data_event_count(&self) -> u64 {
+        self.data_byte_counts.len()
+    }
+
+    fn data_event_byte_count(&mut self, data_id: EndpointDataEvent)
+        -> Result<EndpointByteCount, Error>
+    {
+        self.data_byte_counts.get(data_id)
+    }
+
+    fn end_count(&self) -> u64 {
+        self.end_index.len()
+    }
+
+    fn total_data(&self) -> u64 {
+        self.shared.as_ref().total_data.load()
+    }
+}
+
+impl EndpointReaderOps for EndpointSnapshotReader<'_, '_> {
+
+    fn transaction_count(&self) -> u64 {
+        self.transaction_ids.len()
+    }
+
+    fn transaction_id(&mut self, ep_id: EndpointTransactionId)
+        -> Result<TransactionId, Error>
+    {
+        self.transaction_ids.get(ep_id)
+    }
+
+    fn transaction_id_range(&mut self, ep_id_range: &Range<EndpointTransactionId>)
+        -> Result<Vec<TransactionId>, Error>
+    {
+        self.transaction_ids.get_range(ep_id_range)
+    }
+
+    fn group_start(&mut self, ep_group_id: EndpointGroupId)
+        -> Result<EndpointTransactionId, Error>
+    {
+        self.group_index.get(ep_group_id)
+    }
+
+    fn group_range(&mut self, ep_group_id: EndpointGroupId)
+        -> Result<Range<EndpointTransactionId>, Error>
+    {
+        let transaction_count = self.transaction_count();
+        self.group_index.target_range(ep_group_id, transaction_count)
+    }
+
+    fn data_transaction(&mut self, data_id: EndpointDataEvent)
+        -> Result<EndpointTransactionId, Error>
+    {
+        self.data_transactions.get(data_id)
+    }
+
+    fn data_for_transaction(&mut self, ep_id: EndpointTransactionId)
+        -> Result<EndpointDataEvent, Error>
+    {
+        self.data_transactions.bisect_left(&ep_id)
+    }
+
+    fn data_event_count(&self) -> u64 {
+        self.data_byte_counts.len()
+    }
+
+    fn data_event_byte_count(&mut self, data_id: EndpointDataEvent)
+        -> Result<EndpointByteCount, Error>
+    {
+        self.data_byte_counts.get(data_id)
+    }
+
+    fn end_count(&self) -> u64 {
+        self.end_index.len()
+    }
+
+    fn total_data(&self) -> u64 {
+        self.total_data
+    }
+}
+
+impl CaptureReaderOps for CaptureReader {
+
+    fn device_data(&self, id: DeviceId)
+        -> Result<Arc<DeviceData>, Error>
+    {
+        Ok(self.shared.device_data
+            .load()
+            .get(id)
+            .with_context(|| format!("Capture has no device with ID {id}"))?
+            .clone()
+        )
+    }
+
+    fn endpoint_traffic(&mut self, endpoint_id: EndpointId)
+        -> Result<&mut impl EndpointReaderOps, Error>
+    {
+        if self.shared.endpoint_readers.load().get(endpoint_id).is_none() {
+            bail!("Capture has no endpoint ID {endpoint_id}")
+        }
+
+        if self.endpoint_readers.get(endpoint_id).is_none() {
+            let reader = self.shared.endpoint_readers
+                .load()
+                .get(endpoint_id)
+                .unwrap()
+                .as_ref()
+                .clone();
+            self.endpoint_readers.set(endpoint_id, reader);
+        }
+
+        Ok(self.endpoint_readers.get_mut(endpoint_id).unwrap())
+    }
+
+    fn byte(&mut self, id: PacketByteId) -> Result<u8, Error> {
+        self.packet_data.get(id)
+    }
+
+    fn bytes(&mut self, range: &Range<PacketByteId>) -> Result<Vec<u8>, Error> {
+        self.packet_data.get_range(range)
+    }
+
+    fn packet_count(&self) -> u64 {
+        self.packet_index.len()
+    }
+
+    fn packet_start(&mut self, id: PacketId) -> Result<PacketByteId, Error> {
+        self.packet_index.get(id)
+    }
+
+    fn packet_byte_range(&mut self, id: PacketId)
+        -> Result<Range<PacketByteId>, Error>
+    {
+        let total_packet_data = self.packet_data.len();
+        self.packet_index.target_range(id, total_packet_data)
+    }
+
+    fn packet_time(&mut self, id: PacketId) -> Result<Timestamp, Error> {
+        self.packet_times.get(id)
+    }
+
+    fn event(&mut self, packet_id: PacketId) -> Result<Option<EventId>, Error> {
+        let event_id = self.event_id(packet_id)?;
+        if event_id.value >= self.event_index.len() {
+            Ok(None)
+        } else if self.event_index.get(event_id)? == packet_id {
+            Ok(Some(event_id))
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn event_id(&mut self, packet_id: PacketId) -> Result<EventId, Error> {
+        self.event_index.bisect_left(&packet_id)
+    }
+
+    fn event_type(&mut self, event_id: EventId) -> Result<EventType, Error> {
+        let event_code = self.event_codes.get(event_id)?;
+        EventType::from_code(event_code)
+            .context("Event has no type")
+    }
+
+    fn transaction_count(&self) -> u64 {
+        self.transaction_index.len()
+    }
+
+    fn transaction_start(&mut self, id: TransactionId) -> Result<PacketId, Error> {
+        self.transaction_index.get(id)
+    }
+
+    fn transaction_packet_range(&mut self, id: TransactionId)
+        -> Result<Range<PacketId>, Error>
+    {
+        let total_packets = self.packet_index.len();
+        self.transaction_index.target_range(id, total_packets)
+    }
+
+    fn item_count(&self) -> u64 {
+        self.item_index.len()
+    }
+
+    fn item_group(&mut self, id: TrafficItemId) -> Result<GroupId, Error> {
+        self.item_index.get(id)
+    }
+
+    fn group_count(&self) -> u64 {
+        self.group_index.len()
+    }
+
+    fn group_entry(&mut self, id: GroupId) -> Result<GroupIndexEntry, Error> {
+        self.group_index.get(id)
+    }
+
+    fn device_count(&self) -> u64 {
+        self.devices.len()
+    }
+
+    fn device(&mut self, id: DeviceId) -> Result<Device, Error> {
+        self.devices.get(id)
+    }
+
+    fn endpoint_count(&self) -> u64 {
+        self.endpoints.len()
+    }
+
+    fn endpoint(&mut self, id: EndpointId) -> Result<Endpoint, Error> {
+        self.endpoints.get(id)
+    }
+
+    fn endpoint_state(&mut self, group_id: GroupId) -> Result<Vec<u8>, Error> {
+        let total_endpoint_states = self.endpoint_states.len();
+        let range = self.endpoint_state_index
+            .target_range(group_id, total_endpoint_states)?;
+        self.endpoint_states.get_range(&range)
+    }
+
+    fn complete(&self) -> bool {
+        self.shared.complete.load(Acquire)
+    }
+}
+
+impl CaptureReaderOps for CaptureSnapshotReader<'_, '_> {
+
+    fn device_data(&self, id: DeviceId)
+        -> Result<Arc<DeviceData>, Error>
+    {
+        self.device_data
+            .get(id)
+            .with_context(|| format!("Snapshot has no device with ID {id}"))
+            .cloned()
+    }
+
+    fn endpoint_traffic(&mut self, endpoint_id: EndpointId)
+        -> Result<&mut impl EndpointReaderOps, Error>
+    {
+        match self.endpoint_snapshots.get_mut(endpoint_id) {
+            None => bail!("Snapshot has no endpoint ID {endpoint_id}"),
+            Some(reader) => Ok(reader),
+        }
+    }
+
+    fn byte(&mut self, id: PacketByteId) -> Result<u8, Error> {
+        self.packet_data.get(id)
+    }
+
+    fn bytes(&mut self, range: &Range<PacketByteId>) -> Result<Vec<u8>, Error> {
+        self.packet_data.get_range(range)
+    }
+
+    fn packet_count(&self) -> u64 {
+        self.packet_index.len()
+    }
+
+    fn packet_start(&mut self, id: PacketId) -> Result<PacketByteId, Error> {
+        self.packet_index.get(id)
+    }
+
+    fn packet_byte_range(&mut self, id: PacketId)
+        -> Result<Range<PacketByteId>, Error>
+    {
+        let total_packet_data = self.packet_data.len();
+        self.packet_index.target_range(id, total_packet_data)
+    }
+
+    fn packet_time(&mut self, id: PacketId) -> Result<Timestamp, Error> {
+        self.packet_times.get(id)
+    }
+
+    fn event(&mut self, packet_id: PacketId) -> Result<Option<EventId>, Error> {
+        let event_id = self.event_id(packet_id)?;
+        if event_id.value >= self.event_index.len() {
+            Ok(None)
+        } else if self.event_index.get(event_id)? == packet_id {
+            Ok(Some(event_id))
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn event_id(&mut self, packet_id: PacketId) -> Result<EventId, Error> {
+        self.event_index.bisect_left(&packet_id)
+    }
+
+    fn event_type(&mut self, event_id: EventId) -> Result<EventType, Error> {
+        let event_code = self.event_codes.get(event_id)?;
+        EventType::from_code(event_code)
+            .context("Event has no type")
+    }
+
+    fn transaction_count(&self) -> u64 {
+        self.transaction_index.len()
+    }
+
+    fn transaction_start(&mut self, id: TransactionId) -> Result<PacketId, Error> {
+        self.transaction_index.get(id)
+    }
+
+    fn transaction_packet_range(&mut self, id: TransactionId)
+        -> Result<Range<PacketId>, Error>
+    {
+        let total_packets = self.packet_index.len();
+        self.transaction_index.target_range(id, total_packets)
+    }
+
+    fn item_count(&self) -> u64 {
+        self.item_index.len()
+    }
+
+    fn item_group(&mut self, id: TrafficItemId) -> Result<GroupId, Error> {
+        self.item_index.get(id)
+    }
+
+    fn group_count(&self) -> u64 {
+        self.group_index.len()
+    }
+
+    fn group_entry(&mut self, id: GroupId) -> Result<GroupIndexEntry, Error> {
+        self.group_index.get(id)
+    }
+
+    fn device_count(&self) -> u64 {
+        self.devices.len()
+    }
+
+    fn device(&mut self, id: DeviceId) -> Result<Device, Error> {
+        self.devices.get(id)
+    }
+
+    fn endpoint_count(&self) -> u64 {
+        self.endpoints.len()
+    }
+
+    fn endpoint(&mut self, id: EndpointId) -> Result<Endpoint, Error> {
+        self.endpoints.get(id)
+    }
+
+    fn endpoint_state(&mut self, group_id: GroupId) -> Result<Vec<u8>, Error> {
+        let total_endpoint_states = self.endpoint_states.len();
+        let range = self.endpoint_state_index
+            .target_range(group_id, total_endpoint_states)?;
+        self.endpoint_states.get_range(&range)
+    }
+
+    fn complete(&self) -> bool {
+        self.complete
+    }
+}
+
+impl Dump for CaptureReader {
+    fn dump(&self, dest: &Path) -> Result<(), Error> {
+        let _ = std::fs::remove_dir_all(dest);
+        std::fs::create_dir_all(dest)?;
+        self.packet_data.dump(&dest.join("packet_data"))?;
+        self.packet_index.dump(&dest.join("packet_index"))?;
+        self.packet_times.dump(&dest.join("packet_times"))?;
+        self.event_index.dump(&dest.join("event_index"))?;
+        self.event_codes.dump(&dest.join("event_codes"))?;
+        self.transaction_index.dump(&dest.join("transaction_index"))?;
+        self.group_index.dump(&dest.join("group_index"))?;
+        self.item_index.dump(&dest.join("item_index"))?;
+        self.devices.dump(&dest.join("devices"))?;
+        self.endpoints.dump(&dest.join("endpoints"))?;
+        self.endpoint_states.dump(&dest.join("endpoint_states"))?;
+        self.endpoint_state_index.dump(&dest.join("endpoint_state_index"))?;
+        self.end_index.dump(&dest.join("end_index"))?;
+        self.shared.endpoint_readers.load().dump(&dest.join("endpoint_readers"))?;
+        self.shared.device_data.load().dump(&dest.join("device_data"))?;
+        Ok(())
+    }
+
+    fn restore(db: &mut CounterSet, src: &Path) -> Result<Self, Error> {
+        let endpoint_readers =
+            VecMap::<EndpointId, EndpointReader>::restore(
+                db, &src.join("endpoint_readers"))?;
+        Ok(CaptureReader {
+            shared: Arc::new(CaptureShared {
+                metadata: ArcSwap::new(Arc::new(CaptureMetadata::default())),
+                device_data: restore(db, &src.join("device_data"))?,
+                endpoint_index: ArcSwap::new(Arc::new(VecMap::new())),
+                endpoint_readers: ArcSwap::new(Arc::new({
+                    let mut map = VecMap::new();
+                    for reader in endpoint_readers.into_iter() {
+                        map.push(Arc::new(reader.clone()));
+                    }
+                    map
+                })),
+                complete: AtomicBool::from(false),
+            }),
+            endpoint_readers,
+            packet_data: restore(db, &src.join("packet_data"))?,
+            packet_index: restore(db, &src.join("packet_index"))?,
+            packet_times: restore(db, &src.join("packet_times"))?,
+            event_index: restore(db, &src.join("event_index"))?,
+            event_codes: restore(db, &src.join("event_codes"))?,
+            transaction_index: restore(db, &src.join("transaction_index"))?,
+            group_index: restore(db, &src.join("group_index"))?,
+            item_index: restore(db, &src.join("item_index"))?,
+            devices: restore(db, &src.join("devices"))?,
+            endpoints: restore(db, &src.join("endpoints"))?,
+            endpoint_states: restore(db, &src.join("endpoint_states"))?,
+            endpoint_state_index: restore(db, &src.join("endpoint_state_index"))?,
+            end_index: restore(db, &src.join("end_index"))?,
+        })
+    }
+}
+
+impl Dump for EndpointReader {
+    fn dump(&self, dest: &Path) -> Result<(), Error> {
+        std::fs::create_dir_all(dest)?;
+        self.shared.total_data.dump(&dest.join("total_data"))?;
+        self.shared.first_item_id.dump(&dest.join("first_item_id"))?;
+        self.transaction_ids.dump(&dest.join("transaction_ids"))?;
+        self.group_index.dump(&dest.join("group_index"))?;
+        self.data_transactions.dump(&dest.join("data_transactions"))?;
+        self.data_byte_counts.dump(&dest.join("data_byte_counts"))?;
+        self.end_index.dump(&dest.join("end_index"))?;
+        Ok(())
+    }
+
+    fn restore(db: &mut CounterSet, src: &Path) -> Result<Self, Error> {
+        Ok(EndpointReader {
+            shared: Arc::new(
+                EndpointShared {
+                    total_data: restore(db, &src.join("total_data"))?,
+                    first_item_id: restore(db, &src.join("first_item_id"))?,
+                }
+            ),
+            transaction_ids: restore(db, &src.join("transaction_ids"))?,
+            group_index: restore(db, &src.join("group_index"))?,
+            data_transactions: restore(db, &src.join("data_transactions"))?,
+            data_byte_counts: restore(db, &src.join("data_byte_counts"))?,
+            end_index: restore(db, &src.join("end_index"))?,
+        })
+    }
+}
+
+impl Dump for DeviceData {
+    fn dump(&self, dest: &Path) -> Result<(), Error> {
+        std::fs::create_dir_all(dest)?;
+        self.device_descriptor.dump(&dest.join("device_descriptor"))?;
+        self.configurations.dump(&dest.join("configurations"))?;
+        self.config_number.dump(&dest.join("config_number"))?;
+        self.interface_settings.dump(&dest.join("interface_settings"))?;
+        self.endpoint_details.dump(&dest.join("endpoint_details"))?;
+        self.strings.dump(&dest.join("strings"))?;
+        self.version.dump(&dest.join("version"))?;
+        Ok(())
+    }
+
+    fn restore(db: &mut CounterSet, src: &Path) -> Result<Self, Error> {
+        Ok(DeviceData {
+            device_descriptor: restore(db, &src.join("device_descriptor"))?,
+            configurations: restore(db, &src.join("configurations"))?,
+            config_number: restore(db, &src.join("config_number"))?,
+            interface_settings: restore(db, &src.join("interface_settings"))?,
+            endpoint_details: restore(db, &src.join("endpoint_details"))?,
+            strings: restore(db, &src.join("strings"))?,
+            version: restore(db, &src.join("version"))?,
+        })
+    }
+}
+
+impl Dump for EndpointType {
+    fn dump(&self, dest: &Path) -> Result<(), Error> {
+        std::fs::create_dir_all(dest)?;
+        std::fs::write(dest, format!("{:?}", self))?;
+        Ok(())
+    }
+
+    fn restore(_db: &mut CounterSet, src: &Path) -> Result<Self, Error> {
+        let content = std::fs::read_to_string(src)?;
+        Ok(match content.as_str() {
+            "Unidentified" => EndpointType::Unidentified,
+            "Framing" => EndpointType::Framing,
+            "Invalid" => EndpointType::Invalid,
+            _ => EndpointType::Normal(usb::EndpointType::from_str(content.as_str())?),
+        })
+    }
+}
+
+impl Dump for EndpointDetails {
+    fn dump(&self, dest: &Path) -> Result<(), Error> {
+        std::fs::create_dir_all(dest)?;
+
+        self.endpoint_type.dump(&dest.join("endpoint_type"))?;
+        self.max_packet_size.dump(&dest.join("max_packet_size"))?;
+        Ok(())
+    }
+
+    fn restore(db: &mut CounterSet, src: &Path) -> Result<Self, Error> {
+        Ok(EndpointDetails {
+            endpoint_type: restore(db, &src.join("endpoint_type"))?,
+            max_packet_size: restore(db, &src.join("max_packet_size"))?,
+        })
+    }
+}
+
+pub mod prelude {
+    #[allow(unused_imports)]
+    pub use super::{
+        create_capture,
+        create_endpoint,
+        CaptureReader,
+        CaptureReaderOps,
+        CaptureSnapshot,
+        CaptureWriter,
+        CaptureMetadata,
+        Device,
+        DeviceId,
+        DeviceData,
+        DeviceVersion,
+        Endpoint,
+        EndpointDataEvent,
+        EndpointId,
+        EndpointLookup,
+        EndpointType,
+        EndpointState,
+        EndpointReader,
+        EndpointReaderOps,
+        EndpointWriter,
+        EndpointTransactionId,
+        EndpointGroupId,
+        EventId,
+        PacketId,
+        PacketOrEvent,
+        Timestamp,
+        TrafficItemId,
+        TransactionId,
+        GroupId,
+        Group,
+        GroupContent,
+        GroupIndexEntry,
+        EVENT_EP_NUM,
+        INVALID_EP_NUM,
+        FRAMING_EP_NUM,
+        EVENT_EP_ID,
+        INVALID_EP_ID,
+        FRAMING_EP_ID,
+        FIRST_EP_ID,
+        NUM_SPECIAL_DEVICES,
+        NUM_SPECIAL_ENDPOINTS,
+    };
+}
