@@ -23,7 +23,7 @@ use hidreport::{
     ReportCount,
     ReportDescriptor,
 };
-use itertools::{Itertools, Position};
+use itertools::Itertools;
 use num_enum::{IntoPrimitive, FromPrimitive};
 use derive_more::{From, Into, Display};
 use usb_ids::FromId;
@@ -1448,7 +1448,7 @@ fn write_report(f: &mut Formatter<'_>, kind: &str, report: &impl Report)
     -> Result<(), std::fmt::Error>
 {
     use Field::*;
-    use Position::*;
+
     write!(f, "\n○ {kind} report ")?;
     match (report.report_id(), report.size_in_bytes()) {
         (Some(id), 1) => writeln!(f, "#{id} (1 byte):")?,
@@ -1456,11 +1456,13 @@ fn write_report(f: &mut Formatter<'_>, kind: &str, report: &impl Report)
         (None,     1) => writeln!(f, "(1 byte):")?,
         (None,     n) => writeln!(f, "({n} bytes):")?,
     }
+
     for (position, field) in report.fields().iter().with_position() {
-        match position {
-            First | Middle => write!(f, "├── ")?,
-            Last  | Only   => write!(f, "└── ")?,
-        };
+        if position.is_first() || position.is_middle() {
+            write!(f, "├── ")?;
+        }else {
+            write!(f, "└── ")?;
+        }
         match &field {
             Array(array) => {
                 write!(f, "Array of {} {}: ",

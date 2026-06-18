@@ -10,9 +10,9 @@ use itertools::assert_equal;
 use serde_json::Deserializer;
 
 use packetry_core::capture::CaptureReaderOps;
-use crate::decoder::Decoder;
+use packetry_core::decoder::Decoder;
+use packetry_core::file::{GenericPacket, GenericLoader, LoaderItem, PcapLoader};
 use crate::item::TrafficViewMode;
-use crate::file::{GenericPacket, GenericLoader, LoaderItem, PcapLoader};
 use crate::ui::{
     model::GenericModel,
     row_data::{GenericRowData, TrafficRowData, DeviceRowData},

@@ -21,7 +21,7 @@ use chrono::{DateTime, Local};
 use bytemuck::bytes_of;
 use scoped_panic_hook::{Panic, catch_panic};
 use tempfile::tempdir;
-use zip_extensions::write::zip_create_from_directory;
+use zip_extensions::deflate::zip_writer::zip_create_from_directory;
 
 use gtk::gio::{
     self,
@@ -77,16 +77,8 @@ use packetry_core::backend::{
 };
 
 use packetry_core::capture::prelude::*;
-use crate::item::{
-    ItemSource,
-    TrafficItem,
-    TrafficViewMode::{self,*},
-    DeviceItem,
-    DeviceItemContent,
-    DeviceViewMode,
-};
-use crate::decoder::Decoder;
-use crate::file::{
+use packetry_core::decoder::Decoder;
+use packetry_core::file::{
     GenericPacket,
     GenericLoader,
     GenericSaver,
@@ -95,6 +87,14 @@ use crate::file::{
     PcapSaver,
     PcapNgLoader,
     PcapNgSaver,
+};
+use crate::item::{
+    ItemSource,
+    TrafficItem,
+    TrafficViewMode::{self,*},
+    DeviceItem,
+    DeviceItemContent,
+    DeviceViewMode,
 };
 use packetry_core::usb::{Descriptor, PacketFields, Speed, validate_packet};
 use packetry_db::util::{dump::Dump, rcu::SingleWriterRcu, fmt_count, fmt_size};

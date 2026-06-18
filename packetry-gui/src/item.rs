@@ -1175,15 +1175,15 @@ mod tests {
     use std::path::{PathBuf, Path};
     use itertools::Itertools;
     use packetry_core::capture::{CaptureReader, create_capture};
-    use packetry_db::CounterSet;
-    use crate::decoder::Decoder;
-    use crate::file::{
+    use packetry_core::decoder::Decoder;
+    use packetry_core::file::{
         GenericLoader,
         GenericPacket,
         LoaderItem,
         PcapLoader,
         PcapNgLoader,
     };
+    use packetry_db::CounterSet;
     use packetry_db::util::dump::Dump;
 
     fn summarize_item<Item, ViewMode>(

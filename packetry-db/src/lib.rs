@@ -1,4 +1,5 @@
 //! Storage primitives for the capture database.
+#![warn(unused_crate_dependencies)]
 
 pub mod counter;
 pub mod stream;

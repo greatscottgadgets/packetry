@@ -8,9 +8,9 @@ use std::sync::Arc;
 use anyhow::{Context, Error, bail};
 use merge::Merge;
 
-use packetry_core::capture::prelude::*;
-use packetry_core::event::{EventType, LineState};
-use packetry_core::usb::{self, prelude::*, validate_packet};
+use crate::capture::prelude::*;
+use crate::event::{EventType, LineState};
+use crate::usb::{self, prelude::*, validate_packet};
 use packetry_db::util::{
     rcu::SingleWriterRcu,
     vec_map::VecMap,

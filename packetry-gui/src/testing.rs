@@ -2,8 +2,8 @@
 use packetry_core::backend::{BackendHandle, TimestampedEvent, Speed};
 use packetry_core::backend::cynthion::{CynthionDevice, CynthionHandle, VID_PID};
 use packetry_core::capture::prelude::*;
-use crate::decoder::Decoder;
-use crate::file::{GenericSaver, PcapNgSaver};
+use packetry_core::decoder::Decoder;
+use packetry_core::file::{GenericSaver, PcapNgSaver};
 use crate::item::{ItemSource, TrafficViewMode};
 
 use anyhow::{Context, Error, bail, ensure};

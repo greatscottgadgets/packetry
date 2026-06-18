@@ -54,6 +54,7 @@ const PACKET_DATA_BLOCK_SIZE: usize = 0x200000;
 
 /// Metadata about the capture.
 #[derive(Clone, Default, Merge)]
+#[merge(strategy = merge::option::overwrite_none)]
 pub struct CaptureMetadata {
     // Fields corresponding to PCapNG section header.
     pub application: Option<String>,
