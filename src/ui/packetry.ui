@@ -167,6 +167,7 @@ CONTROL</property>
                   <object class="GtkBox">
                     <property name="orientation">vertical</property>
                     <property name="vexpand">True</property>
+                    <property name="width-request">320</property>
                     <child>
                       <object class="GtkStackSwitcher" id="switcher">
                         <property name="hexpand">True</property>
@@ -218,11 +219,16 @@ CONTROL</property>
                 </child>
                 <child>
                   <object class="GtkScrolledWindow" id="device_window">
+                    <property name="width-request">200</property>
                     <property name="child">
                       <object class="GtkListView"/>
                     </property>
                   </object>
                 </child>
+                <property name="shrink-start-child">False</property>
+                <property name="shrink-end-child">False</property>
+                <property name="resize-start-child">True</property>
+                <property name="resize-end-child">False</property>
               </object>
             </child>
             <child>
