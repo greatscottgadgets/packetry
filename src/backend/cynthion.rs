@@ -479,15 +479,12 @@ impl Iterator for CynthionStream {
                 // Yes; return the event.
                 Some(event) => return Some(Ok(event)),
                 // No; wait for more data from the capture thread.
-                None => match self.data_rx.recv().ok() {
+                None => {
+                    let buffer = self.data_rx.recv().ok()?;
                     // Received more data; add it to the buffer and retry.
-                    Some(buffer) => {
-                        self.buffer.extend(buffer.iter());
-                        // Buffer can now be reused.
-                        let _ = self.reuse_tx.send(buffer);
-                    },
-                    // Capture has ended, there are no more packets.
-                    None => return None
+                    self.buffer.extend(buffer.iter());
+                    // Buffer can now be reused.
+                    let _ = self.reuse_tx.send(buffer);
                 }
             }
         }
