@@ -134,6 +134,12 @@ impl PacketryWindow {
             application.set_accels_for_action("win.save", &["<Meta>s"]);
             application.set_accels_for_action("win.capture", &["<Meta>b"]);
             application.set_accels_for_action("win.stop", &["<Meta>e"]);
+
+            application.add_action_entries([
+                ActionEntry::builder("quit")
+                    .activate(|app: &Application, _, _| app.quit())
+                    .build(),
+            ]);
         }
 
         let open_button = window.imp().open_button.clone();
