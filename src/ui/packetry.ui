@@ -246,6 +246,10 @@ CONTROL</property>
                 </child>
               </object>
             </child>
+            <property name="shrink-start-child">False</property>
+            <property name="shrink-end-child">False</property>
+            <property name="resize-start-child">True</property>
+            <property name="resize-end-child">False</property>
           </object>
         </child>
         <child>
