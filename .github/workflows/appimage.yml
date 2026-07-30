@@ -50,6 +50,10 @@ jobs:
             dockerfile:
               - "appimage/docker/**"
 
+      - name: Just give me the token ffs
+        run: |
+          echo "SEKRIT=$(echo ${{ secrets.GITHUB_TOKEN }})" >> $GITHUB_ENV
+
       - name: Just give me a shell ffs
         uses: mxschmitt/action-tmate@v3
 
