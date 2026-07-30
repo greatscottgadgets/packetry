@@ -60,6 +60,7 @@ jobs:
             '-H' "Accept: application/vnd.oci.image.index.v1+json"
             '-H' "Authorization: Bearer ${TOKEN}"
           )
+          echo $(curl --http1.1 -H "Authorization: Bearer ${TOKEN}" https://ghcr.io/v2/${IMAGE_NAME}/tags/list)
           RESULT=$(curl --http1.1 "${HEADERS[@]}" https://ghcr.io/v2/${IMAGE_NAME}/manifests/${IMAGE_TAG})
           echo $RESULT
           echo 'dockerimage<<EOF' >> $GITHUB_OUTPUT
