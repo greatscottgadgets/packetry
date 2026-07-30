@@ -50,22 +50,11 @@ jobs:
             dockerfile:
               - "appimage/docker/**"
 
-      - name: Check if Docker image exists
-        id: exists
-        shell: bash
-        run: |
-          TOKEN=$(echo -n ${{ secrets.GITHUB_TOKEN }} | base64)
-          RESULT=$(wget --header="Accept: application/vnd.oci.image.manifest.v1+json" --header="Accept: application/vnd.oci.image.index.v1+json" --header="Authorization: Bearer ${TOKEN}" https://ghcr.io/v2/${IMAGE_NAME}/manifests/${IMAGE_TAG} -O -)
-          echo $RESULT
-          echo 'dockerimage<<EOF' >> $GITHUB_OUTPUT
-          echo ${RESULT} | jq 'has("manifests")' >> $GITHUB_OUTPUT
-          echo 'EOF' >> $GITHUB_OUTPUT
-
       - name: Check if we need to build the Docker image
         id: dockerimage
         if: |
           ! github.event.pull_request.head.repo.fork &&
-          (steps.changed.outputs.dockerfile == 'true' || steps.exists.outputs.dockerimage == 'false')
+          steps.changed.outputs.dockerfile == 'true'
         run: |
           echo 'build=true' >> $GITHUB_OUTPUT
 
