@@ -54,10 +54,11 @@ jobs:
         id: exists
         shell: bash
         run: |
+          AUTH=$(echo -n ${{ secrets.GITHUB_TOKEN}} | base64 -w 0)
           declare -a HEADERS=(
             '-H' "Accept: application/vnd.oci.image.manifest.v1+json"
             '-H' "Accept: application/vnd.oci.image.index.v1+json"
-            '-H' "Authorization: Bearer $(echo ${{ secrets.GITHUB_TOKEN }} | base64)"
+            '-H' "Authorization: Bearer ${AUTH}"
           )
           RESULT=$(curl "${HEADERS[@]}" https://ghcr.io/v2/${IMAGE_NAME}/manifests/${IMAGE_TAG})
           echo 'dockerimage<<EOF' >> $GITHUB_OUTPUT
