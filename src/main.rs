@@ -78,7 +78,7 @@ fn main() {
         settings.set_gtk_application_prefer_dark_theme(
             matches!(
                 dark_light::detect(),
-                dark_light::Mode::Dark
+                Ok(dark_light::Mode::Dark)
             )
         );
     }
