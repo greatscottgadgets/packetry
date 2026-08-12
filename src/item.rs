@@ -197,24 +197,24 @@ ItemSource<TrafficItem, TrafficViewMode> for T
                         self.transaction_packet_range(transaction_id)?;
                     let packet_id = packet_range.start;
                     let data_range = self.packet_byte_range(packet_id)?;
-                    if data_range.is_empty() {
-                        if let Some(event_id) = self.event(packet_id)? {
-                            return Ok(if packet_range.len() > 1 {
-                                EventSubgroup(None, transaction_id)
-                            } else {
-                                Event(None, None, packet_id, event_id)
-                            })
-                        }
+                    if data_range.is_empty()
+                        && let Some(event_id) = self.event(packet_id)?
+                    {
+                        return Ok(if packet_range.len() > 1 {
+                            EventSubgroup(None, transaction_id)
+                        } else {
+                            Event(None, None, packet_id, event_id)
+                        })
                     }
                     Transaction(None, transaction_id)
                 },
                 Packets => {
                     let packet_id = PacketId::from(index);
                     let data_range = self.packet_byte_range(packet_id)?;
-                    if data_range.is_empty() {
-                        if let Some(event_id) = self.event(packet_id)? {
-                            return Ok(Event(None, None, packet_id, event_id))
-                        }
+                    if data_range.is_empty()
+                        && let Some(event_id) = self.event(packet_id)?
+                    {
+                        return Ok(Event(None, None, packet_id, event_id))
                     }
                     Packet(None, None, packet_id)
                 }
