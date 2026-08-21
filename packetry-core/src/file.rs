@@ -8,14 +8,20 @@ use std::time::Duration;
 use anyhow::{Context, Error, anyhow};
 use byteorder_slice::{
     byteorder::{ReadBytesExt, WriteBytesExt},
-    ByteOrder
+    ByteOrder,
+    BigEndian,
+    LittleEndian,
 };
 use pcap_file::{
-    pcap::{PcapReader, PcapHeader, PcapWriter, RawPcapPacket},
+    pcap::{PcapReader, PcapHeader, PcapWriter, RawPcapPacket, PcapTsResolution},
     pcapng::{
-        PcapNgReader, PcapNgWriter, PcapNgState,
+        PcapNgReader, PcapNgWriter, PcapNgState, PcapNgBlock,
+        ContentValidationError,
         blocks::{
             Block,
+            opt_common:: {
+                CommonOption,
+            },
             section_header:: {
                 SectionHeaderBlock,
                 SectionHeaderOption,
@@ -23,18 +29,21 @@ use pcap_file::{
             interface_description::{
                 InterfaceDescriptionBlock,
                 InterfaceDescriptionOption,
+                InterfaceTsResolution
             },
             interface_statistics::{
                 InterfaceStatisticsBlock,
                 InterfaceStatisticsOption,
             },
             enhanced_packet::EnhancedPacketBlock,
-            custom::{CustomBlock, PcapNgCustom},
+            custom::{
+                CustomBlockPayload,
+                CustomPayloadNonCopiable,
+            },
         },
     },
+    Endianness,
     DataLink,
-    TsResolution,
-    PcapError,
 };
 
 use crate::capture::CaptureMetadata;
@@ -133,8 +142,8 @@ where Source: Read
         let header = pcap.header();
         let bytes_read = size_of::<PcapHeader>() as u64;
         let frac_ns = match header.ts_resolution {
-            TsResolution::MicroSecond => 1_000,
-            TsResolution::NanoSecond => 1,
+            PcapTsResolution::MicroSecond => 1_000,
+            PcapTsResolution::NanoSecond => 1,
         };
         let start_time = None;
         Ok(PcapLoader{pcap, bytes_read, frac_ns, start_time})
@@ -177,7 +186,7 @@ where Self: Sized, Dest: Write
         let writer = BufWriter::new(dest);
         let header = PcapHeader {
             datalink: DataLink::USB_2_0,
-            ts_resolution: TsResolution::NanoSecond,
+            ts_resolution: PcapTsResolution::NanoSecond,
             .. PcapHeader::default()
         };
         Ok(PcapSaver { pcap: PcapWriter::with_header(writer, header)? })
@@ -209,7 +218,7 @@ where Self: Sized, Dest: Write
     }
 
     fn close(self) -> Result<(), Error> {
-        self.pcap.into_writer().flush()?;
+        self.pcap.into_inner().flush()?;
         Ok(())
     }
 }
@@ -247,6 +256,7 @@ where Source: Read
         let initial_metadata = Some({
             let mut meta = CaptureMetadata::default();
             for option in &section_header.options {
+                use CommonOption::Comment;
                 use SectionHeaderOption::*;
                 match option {
                     UserApplication(application) => {
@@ -258,7 +268,7 @@ where Source: Read
                     Hardware(hardware) => {
                         meta.hardware.replace(hardware.to_string());
                     },
-                    Comment(comment) => {
+                    Common(Comment(comment)) => {
                         meta.comment.replace(comment.to_string());
                     },
                     _ => {}
@@ -281,7 +291,7 @@ where Source: Read
             return Metadata(Box::new(meta))
         }
         let total_bytes_read = self.pcap.bytes_parsed();
-        let (block, state) = match self.pcap.next_block_and_state() {
+        let (block, state) = match self.pcap.next_block() {
             Some(Ok(x)) => x,
             Some(Err(e)) => return LoadError(anyhow!(e)),
             None => return End,
@@ -437,7 +447,7 @@ fn iface_options(meta: &CaptureMetadata)
 {
     use InterfaceDescriptionOption::*;
     // Always store nanosecond resolution.
-    let mut opt = vec![IfTsResol(9)];
+    let mut opt = vec![IfTsResol(InterfaceTsResolution::NANO)];
     option!(meta, opt, iface_desc, IfDescription, string);
     option!(meta, opt, iface_hardware, IfHardware, string);
     option!(meta, opt, iface_os, IfOs, string);
@@ -480,8 +490,10 @@ where Self: Sized, Dest: Write
         };
         if let Some(comment) = &meta.comment {
             section.options.push(
-                SectionHeaderOption::Comment(
-                    Cow::from(comment.clone())
+                SectionHeaderOption::Common(
+                    CommonOption::Comment(
+                        Cow::from(comment.clone())
+                    )
                 )
             );
         }
@@ -525,9 +537,9 @@ where Self: Sized, Dest: Write
             event_type,
         };
         self.pcap.write_block(
-            &Block::CustomNonCopiable(
-                CustomBlock::new(GSG_PEN, &event_block, self.pcap.state())?
-            )
+            &event_block
+                .into_custom_block_non_copiable(self.pcap.state())?
+                .into_block()
         )?;
         Ok(())
     }
@@ -568,21 +580,61 @@ pub struct UsbEventBlock {
     pub event_type: EventType,
 }
 
-impl PcapNgCustom<'_> for UsbEventBlock {
+impl CustomBlockPayload<'_> for UsbEventBlock {}
 
-    fn from_slice<B: ByteOrder>(state: &PcapNgState, mut slice: &[u8])
-        -> Result<Option<Self>, PcapError>
+impl CustomPayloadNonCopiable<'_> for UsbEventBlock {
+    const PEN: u32 = GSG_PEN;
+    type State = PcapNgState;
+    type FromSliceError = UsbBlockError;
+    type WriteToError = UsbBlockError;
+
+    fn from_slice(state: &PcapNgState, slice: &[u8])
+        -> Result<Option<Self>, UsbBlockError>
     {
-        let word = slice.read_u32::<B>()?;
+        match state.section().endianness {
+            Endianness::Big =>
+                Self::from_slice_endian::<BigEndian>(state, slice),
+            Endianness::Little =>
+                Self::from_slice_endian::<LittleEndian>(state, slice),
+        }
+    }
+
+    fn write_to<W: Write>(&self, state: &PcapNgState, writer: &mut W)
+        -> Result<(), UsbBlockError>
+    {
+        match state.section().endianness {
+            Endianness::Big =>
+                self.write_to_endian::<BigEndian, W>(state, writer),
+            Endianness::Little =>
+                self.write_to_endian::<LittleEndian, W>(state, writer),
+        }
+    }
+}
+
+impl UsbEventBlock {
+
+    #[allow(clippy::result_large_err)]
+    fn from_slice_endian<B: ByteOrder>(state: &PcapNgState, mut slice: &[u8])
+        -> Result<Option<Self>, UsbBlockError>
+    {
+        if slice.len() < 16 {
+            return Err(UsbBlockError::Incomplete(slice.len(), 16))
+        }
+
+        let word = slice.read_u32::<B>().unwrap();
 
         if (word >> 8) != (FORMAT_ID as u32) << 8 | FORMAT_VERSION as u32 {
             return Ok(None)
         }
 
-        let interface_id = slice.read_u32::<B>()?;
+        let interface_id = slice.read_u32::<B>().unwrap();
+
+        let timestamp_high = slice.read_u32::<B>().unwrap();
+        let timestamp_low = slice.read_u32::<B>().unwrap();
 
         let timestamp =
-            state.decode_timestamp::<B>(interface_id, &mut slice)?;
+            state.decode_timestamp(
+                interface_id, timestamp_high, timestamp_low)?;
 
         Ok(EventType::from_code(word as u8)
             .map(|event_type|
@@ -595,15 +647,32 @@ impl PcapNgCustom<'_> for UsbEventBlock {
         )
     }
 
-    fn write_to<B: ByteOrder, W: Write>(&self, state: &PcapNgState, writer: &mut W)
-        -> Result<usize, PcapError>
-    {
+    #[allow(clippy::result_large_err)]
+    fn write_to_endian<B: ByteOrder, W: Write>(
+        &self,
+        state: &PcapNgState,
+        writer: &mut W
+    ) -> Result<(), UsbBlockError> {
         let prefix = (FORMAT_ID as u32) << 16 | (FORMAT_VERSION as u32) << 8;
         let code = self.event_type.code() as u32;
+        let (timestamp_high, timestamp_low) =
+            state.encode_timestamp(self.interface_id, self.timestamp)?;
         writer.write_u32::<B>(prefix | code)?;
         writer.write_u32::<B>(self.interface_id)?;
-        state.encode_timestamp::<B, W>(
-            self.interface_id, self.timestamp, writer)?;
-        Ok(16)
+        writer.write_u32::<B>(timestamp_high)?;
+        writer.write_u32::<B>(timestamp_low)?;
+        Ok(())
     }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum UsbBlockError {
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+
+    #[error("The buffer is too small: need {0}B, got {1}B")]
+    Incomplete(usize, usize),
+
+    #[error(transparent)]
+    TimestampContent(#[from] ContentValidationError),
 }

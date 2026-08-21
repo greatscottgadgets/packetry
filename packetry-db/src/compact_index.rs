@@ -434,7 +434,15 @@ where
         let segment_starts = self.segment_start_reader.iter(&seg_range);
         let base_values = self.segment_base_reader.iter(&seg_range);
         let data_offsets = self.segment_offset_reader.iter(&seg_range);
-        let segment_widths = self.segment_width_reader.iter(&seg_range);
+        // A segment only gets a width when its first delta is written. The
+        // final committed segment can therefore have a base value but no
+        // corresponding width entry yet.
+        let width_end = min(
+            seg_range.end,
+            SegmentId::from(self.segment_width_reader.len())
+        );
+        let width_range = seg_range.start..width_end;
+        let segment_widths = self.segment_width_reader.iter(&width_range);
         // Construct the iterator.
         Ok(CompactIterator {
             range: range.clone(),
@@ -858,5 +866,41 @@ mod tests {
         let big = expected[(n - 1) as usize] + 1;
         let bl = reader.bisect_left(&big).unwrap();
         assert!(bl == end);
+    }
+
+    #[test]
+    fn test_iter_with_final_base_only_segment() {
+        let mut db = CounterSet::new();
+        let (mut writer, mut reader) =
+            compact_index::<Id<u8>, Id<u8>, 1>(&mut db).unwrap();
+        let mut expected = Vec::new();
+        let mut base = 0_u64;
+
+        // Produce 18 segments but only 17 widths. Each small delta establishes
+        // the current segment's width, then the larger delta starts the next
+        // segment. The final segment contains only its base value.
+        expected.push(Id::<u8>::from(base));
+        writer.push(*expected.last().unwrap()).unwrap();
+        for _ in 0..17 {
+            let value = Id::<u8>::from(base + 1);
+            expected.push(value);
+            writer.push(value).unwrap();
+
+            base += 0x100;
+            let value = Id::<u8>::from(base);
+            expected.push(value);
+            writer.push(value).unwrap();
+        }
+
+        assert_eq!(writer.segment_start_writer.len(), 18);
+        assert_eq!(writer.segment_width_writer.len(), 17);
+
+        let range = Id::<u8>::from(0)..Id::<u8>::from(expected.len() as u64);
+        let actual = reader
+            .iter(&range)
+            .unwrap()
+            .collect::<Result<Vec<_>, Error>>()
+            .unwrap();
+        assert_eq!(actual, expected);
     }
 }

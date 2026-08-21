@@ -10,7 +10,7 @@ homepage = "https://github.com/greatscottgadgets/packetry"
 repository = "https://github.com/greatscottgadgets/packetry"
 documentation = "https://packetry.readthedocs.io"
 edition = "2024"
-rust-version = "1.85.1"
+rust-version = "1.93"
 build = "src/build.rs"
 default-run = "packetry"
 
@@ -28,7 +28,7 @@ built = { version = "0.8.1", features = ["cargo-lock", "git2"] }
 
 [dependencies]
 bytemuck = "1.14.1"
-gtk = { version = "0.11.3", package = "gtk4", features = ["v4_4"] }
+gtk = { version = "0.11.4", package = "gtk4", features = ["v4_12"] }
 tempfile = "3.9.0"
 bitfield = "0.19"
 derive_more = { version = "2.1", features = ["add_assign"] }

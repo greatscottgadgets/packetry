@@ -64,7 +64,7 @@ fn run_test() {
 }
 
 fn check_replays() {
-    let test_dir = PathBuf::from("./tests/ui/");
+    let test_dir = PathBuf::from("../tests/ui/");
     let mut list_path = test_dir.clone();
     list_path.push("tests.txt");
     let list_file = File::open(list_path)

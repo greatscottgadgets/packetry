@@ -221,15 +221,12 @@ impl Iterator for Ice40UsbtraceStream {
                 // Parsed something we ignored, try again.
                 Ignored => continue,
                 // Need more data; block until we get it.
-                NeedMoreData => match self.data_rx.recv().ok() {
+                NeedMoreData => {
+                    let buffer = self.data_rx.recv().ok()?;
                     // Received more data; add it to the buffer and retry.
-                    Some(buffer) => {
-                        self.buffer.extend(buffer.iter());
-                        // Buffer can now be reused.
-                        let _ = self.reuse_tx.send(buffer);
-                    },
-                    // Capture has ended, there are no more packets.
-                    None => return None,
+                    self.buffer.extend(buffer.iter());
+                    // Buffer can now be reused.
+                    let _ = self.reuse_tx.send(buffer);
                 },
                 // Error; an invalid header was seen.
                 ParseError(e) => return Some(Err(e)),

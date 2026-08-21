@@ -15,6 +15,7 @@ use gtk::{
     ConstraintTarget,
     EventSequenceState,
     Expander,
+    Align,
     GestureClick,
     Label,
     Orientable,
@@ -44,21 +45,20 @@ impl ItemWidget {
                     .context_menu_fn
                     .borrow_mut()
                     .as_mut()
+                    && let Some(new_popover) = context_menu_fn()
                 {
-                    if let Some(new_popover) = context_menu_fn() {
-                        gesture.set_state(EventSequenceState::Claimed);
-                        let mut current_popover =
-                            wrapper.imp().popover.borrow_mut();
-                        if let Some(old_popover) = current_popover.take() {
-                            old_popover.unparent();
-                        }
-                        new_popover.set_parent(&wrapper.clone());
-                        new_popover.set_pointing_to(
-                            Some(&Rectangle::new(x as i32, y as i32, 1, 1))
-                        );
-                        new_popover.popup();
-                        current_popover.replace(new_popover);
+                    gesture.set_state(EventSequenceState::Claimed);
+                    let mut current_popover =
+                        wrapper.imp().popover.borrow_mut();
+                    if let Some(old_popover) = current_popover.take() {
+                        old_popover.unparent();
                     }
+                    new_popover.set_parent(&wrapper.clone());
+                    new_popover.set_pointing_to(
+                        Some(&Rectangle::new(x as i32, y as i32, 1, 1))
+                    );
+                    new_popover.popup();
+                    current_popover.replace(new_popover);
                 }
             }
         ));
@@ -71,6 +71,7 @@ impl ItemWidget {
                 .build());
         wrapper.imp().connector.replace(ItemConnector::new(None));
         wrapper.imp().expander.replace(Expander::new(None));
+        wrapper.imp().expander.borrow().set_valign(Align::Center);
         wrapper.append(&wrapper.imp().connector.borrow().clone());
         wrapper.append(&wrapper.imp().expander.borrow().clone());
         wrapper.append(&wrapper.imp().text_label.borrow().clone());

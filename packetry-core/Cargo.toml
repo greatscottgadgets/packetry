@@ -3,6 +3,7 @@
 name = "packetry-core"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.93"
 
 [build-dependencies]
 built = { version = "0.8.1", features = ["cargo-lock", "git2"] }
@@ -27,11 +28,12 @@ itertools            = "0.15"
 merge                = "0.2.0"
 nusb                 = { version = "0.2", features = ["smol"] }
 num_enum             = "0.7"
-once_cell            = "1"
-pcap-file-gsg        = "3.0.0-rc4"
+once_cell            = "1.19.0"
+pcap-file            = "=3.0.0-rc.3"
 portable_async_sleep = { version = "0.1", default-features = false }
 serde                = { version = "1", features = ["derive"] }
 serde_json           = { version = "1", optional = true }
+thiserror            = "2.0.19"
 usb-ids              = "1.2"
 
 packetry-db             = { path = "../packetry-db" }

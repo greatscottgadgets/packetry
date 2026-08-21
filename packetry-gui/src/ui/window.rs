@@ -134,6 +134,12 @@ impl PacketryWindow {
             application.set_accels_for_action("win.save", &["<Meta>s"]);
             application.set_accels_for_action("win.capture", &["<Meta>b"]);
             application.set_accels_for_action("win.stop", &["<Meta>e"]);
+
+            application.add_action_entries([
+                ActionEntry::builder("quit")
+                    .activate(|app: &Application, _, _| app.quit())
+                    .build(),
+            ]);
         }
 
         let open_button = window.imp().open_button.clone();
@@ -258,6 +264,7 @@ mod imp {
     use std::cell::Cell;
     use gtk::{
         self,
+        prelude::*,
         subclass::prelude::*,
         glib::{self, subclass::InitializingObject},
         ActionBar,
@@ -281,6 +288,13 @@ mod imp {
     #[template(file="packetry.ui")]
     pub struct PacketryWindow {
         panes_initialised: Cell<bool>,
+        // Set while we move the dividers ourselves, so the notify handlers skip those changes.
+        resizing: Cell<bool>,
+        // Each split's end-child size (far edge to divider); source of truth for reversible resizing.
+        horizontal_offset: Cell<i32>,
+        vertical_offset: Cell<i32>,
+        last_width: Cell<i32>,
+        last_height: Cell<i32>,
         #[template_child]
         pub action_bar: TemplateChild<ActionBar>,
         #[template_child]
@@ -348,17 +362,66 @@ mod imp {
         }
     }
 
-    impl ObjectImpl for PacketryWindow {}
+    impl ObjectImpl for PacketryWindow {
+        fn constructed(&self) {
+            self.parent_constructed();
+
+            let weak = self.obj().downgrade();
+            self.horizontal_panes.connect_position_notify(move |paned| {
+                let Some(window) = weak.upgrade() else { return };
+                let imp = window.imp();
+                if imp.resizing.get() {
+                    return;
+                }
+                let size = paned.width();
+                if size > 0 {
+                    imp.horizontal_offset.set(size - paned.position());
+                }
+            });
+
+            let weak = self.obj().downgrade();
+            self.vertical_panes.connect_position_notify(move |paned| {
+                let Some(window) = weak.upgrade() else { return };
+                let imp = window.imp();
+                if imp.resizing.get() {
+                    return;
+                }
+                let size = paned.height();
+                if size > 0 {
+                    imp.vertical_offset.set(size - paned.position());
+                }
+            });
+        }
+    }
 
     impl WidgetImpl for PacketryWindow {
-        // Set the traffic window to 3/4 of initial height and width.
         fn size_allocate(&self, width: i32, height: i32, baseline: i32) {
+            self.resizing.set(true);
             self.parent_size_allocate(width, height, baseline);
-            if !self.panes_initialised.get() {
-                self.vertical_panes.set_position(3 * height / 4);
-                self.horizontal_panes.set_position(3 * width / 4);
+
+            let h_size = self.horizontal_panes.width();
+            let v_size = self.vertical_panes.height();
+
+            // Start with the traffic pane taking 3/4 of each split.
+            if !self.panes_initialised.get() && h_size > 0 && v_size > 0 {
+                self.horizontal_offset.set(h_size / 4);
+                self.vertical_offset.set(v_size / 4);
                 self.panes_initialised.set(true);
             }
+
+            // Reapply the offset only on a real resize, so drags stick and we avoid a relayout loop.
+            if self.panes_initialised.get() {
+                if h_size > 0 && h_size != self.last_width.get() {
+                    self.horizontal_panes.set_position(h_size - self.horizontal_offset.get());
+                    self.last_width.set(h_size);
+                }
+                if v_size > 0 && v_size != self.last_height.get() {
+                    self.vertical_panes.set_position(v_size - self.vertical_offset.get());
+                    self.last_height.set(v_size);
+                }
+            }
+
+            self.resizing.set(false);
         }
     }
 

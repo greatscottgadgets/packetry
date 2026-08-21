@@ -529,7 +529,7 @@ mod tests {
     use std::time::Duration;
     use std::thread::{spawn, sleep};
     use rand_xorshift::XorShiftRng;
-    use rand::{Rng, SeedableRng};
+    use rand::{RngExt, SeedableRng};
 
     #[test]
     fn test_stream() {
@@ -566,8 +566,8 @@ mod tests {
 
                     // Generate a random range to request.
                     if limit < 2 { continue }
-                    let req_start = prng.gen_range(0..(limit - 1));
-                    let req_end = prng.gen_range((req_start + 1)..limit);
+                    let req_start = prng.random_range(0..(limit - 1));
+                    let req_end = prng.random_range((req_start + 1)..limit);
                     let req_range = req_start..req_end;
 
                     // Access the generated range.
@@ -600,7 +600,7 @@ mod tests {
         while start < reference.len() {
             // Choose a random length to write.
             let end = start + min(
-                prng.gen_range(1..12345),
+                prng.random_range(1..12345),
                 reference.len() - start
             );
 
