@@ -1355,7 +1355,8 @@ pub struct UTF16Bytes<'b>(&'b [u8]);
 
 impl UTF16Bytes<'_> {
     fn chars(&self) -> Vec<u16> {
-        self.0.chunks_exact(2)
+        self.0.as_chunks::<2>().0
+              .iter()
               .map(|a| u16::from_le_bytes([a[0], a[1]]))
               .collect()
     }
