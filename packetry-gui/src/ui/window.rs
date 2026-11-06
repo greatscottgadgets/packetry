@@ -1,0 +1,431 @@
+//! GObject subclass for the application window.
+
+use std::collections::BTreeMap;
+
+use anyhow::Error;
+
+use gtk::{
+    self,
+    prelude::*,
+    subclass::prelude::*,
+    glib::{self, Object},
+    gio::{
+        ActionEntry,
+        ActionGroup,
+        ActionMap,
+        Menu,
+        MenuItem,
+        SimpleActionGroup,
+    },
+    gdk::Display,
+    Accessible,
+    Application,
+    ApplicationWindow,
+    Buildable,
+    ConstraintTarget,
+    CssProvider,
+    Native,
+    Orientation,
+    Root,
+    ShortcutManager,
+    Widget,
+    Window,
+};
+
+use packetry_core::capture::create_capture;
+use crate::item::TrafficViewMode;
+use crate::ui::{
+    capture::{Capture, CaptureState},
+    power::PowerControl,
+    settings::Settings,
+    DeviceSelector,
+    DeviceWarning,
+    FileAction,
+    StopState,
+    UserInterface,
+    display_error,
+    choose_capture_file,
+    choose_dump_file,
+    show_about,
+    show_metadata,
+    start_capture,
+    stop_operation,
+    with_ui,
+};
+
+#[cfg(any(test, feature="record-ui-test"))]
+use {
+    std::{rc::Rc, cell::RefCell},
+    crate::ui::Recording,
+};
+
+glib::wrapper! {
+    /// The outer type exposed to our Rust code.
+    pub struct PacketryWindow(ObjectSubclass<imp::PacketryWindow>)
+    @extends ApplicationWindow, Window, Widget,
+    @implements Accessible, ActionGroup, ActionMap, Buildable, ConstraintTarget,
+        Native, Root, ShortcutManager;
+}
+
+impl Default for PacketryWindow {
+    fn default() -> Self {
+        glib::Object::new::<PacketryWindow>()
+    }
+}
+
+macro_rules! button_action {
+    ($name:literal, $button:ident, $body:expr) => {
+        ActionEntry::builder($name)
+            .activate(|_: &PacketryWindow, _, _| {
+                let mut enabled = false;
+                display_error(with_ui(|ui| {
+                    enabled = ui.$button.get_sensitive(); Ok(())
+                }));
+                if enabled {
+                    display_error($body);
+                }
+            })
+            .build()
+    }
+}
+
+impl PacketryWindow {
+    pub fn setup(application: &Application) -> Result<UserInterface, Error>
+    {
+        use FileAction::*;
+        use TrafficViewMode::*;
+
+        let style_css = "
+.data-table cell {
+	padding-top: 0;
+	padding-bottom: 0;
+}";
+        let provider = CssProvider::new();
+        // NOTE: load_from_data is deprecated in v4.12 and should be replaced with load_from_string
+        provider.load_from_data(style_css);
+        gtk::style_context_add_provider_for_display(
+            &Display::default().expect("Could not connect to a display."),
+            &provider,
+            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+        );
+
+        let window: PacketryWindow = Object::builder()
+            .property("application", application)
+            .build();
+
+        window.add_action_entries([
+            button_action!("open", open_button, choose_capture_file(Load)),
+            button_action!("save", save_button, choose_capture_file(Save)),
+            button_action!("capture", capture_button, start_capture()),
+            button_action!("stop", stop_button, stop_operation()),
+        ]);
+
+        #[cfg(not(target_os="macos"))]
+        {
+            application.set_accels_for_action("win.open", &["<Ctrl>o"]);
+            application.set_accels_for_action("win.save", &["<Ctrl>s"]);
+            application.set_accels_for_action("win.capture", &["<Ctrl>b"]);
+            application.set_accels_for_action("win.stop", &["<Ctrl>e"]);
+        }
+
+        #[cfg(target_os="macos")]
+        {
+            application.set_accels_for_action("win.open", &["<Meta>o"]);
+            application.set_accels_for_action("win.save", &["<Meta>s"]);
+            application.set_accels_for_action("win.capture", &["<Meta>b"]);
+            application.set_accels_for_action("win.stop", &["<Meta>e"]);
+
+            application.add_action_entries([
+                ActionEntry::builder("quit")
+                    .activate(|app: &Application, _, _| app.quit())
+                    .build(),
+            ]);
+        }
+
+        let open_button = window.imp().open_button.clone();
+        let save_button = window.imp().save_button.clone();
+        let capture_button = window.imp().capture_button.clone();
+        let stop_button = window.imp().stop_button.clone();
+
+        open_button.set_sensitive(true);
+        save_button.set_sensitive(false);
+
+        let selector = DeviceSelector::new(
+            window.imp().dev_dropdown.clone(),
+            window.imp().speed_dropdown.clone(),
+        )?;
+
+        capture_button.set_sensitive(selector.device_available());
+
+        let menu = Menu::new();
+        let meta_item = MenuItem::new(Some("Metadata..."), Some("actions.metadata"));
+        let dump_item = MenuItem::new(Some("Dump database..."), Some("actions.dump"));
+        let about_item = MenuItem::new(Some("About..."), Some("actions.about"));
+        menu.append_item(&meta_item);
+        menu.append_item(&dump_item);
+        menu.append_item(&about_item);
+        let menu_button = window.imp().menu_button.clone();
+        menu_button.set_menu_model(Some(&menu));
+        let action_group = SimpleActionGroup::new();
+        let action_metadata = ActionEntry::builder("metadata")
+            .activate(|_, _, _| display_error(show_metadata()))
+            .build();
+        let action_dump = ActionEntry::builder("dump")
+            .activate(|_, _, _| display_error(choose_dump_file()))
+            .build();
+        let action_about = ActionEntry::builder("about")
+            .activate(|_, _, _| display_error(show_about()))
+            .build();
+        action_group.add_action_entries([action_metadata, action_dump, action_about]);
+        window.insert_action_group("actions", Some(&action_group));
+        let metadata_action = action_group.lookup_action("metadata").unwrap();
+        metadata_action.set_property("enabled", false);
+
+        let warning = DeviceWarning::new(
+            window.imp().info_bar.clone(),
+            window.imp().info_label.clone()
+        );
+        warning.update(selector.device_unusable());
+
+        let power = PowerControl {
+            action_bar: window.imp().action_bar.clone(),
+            controls: window.imp().power_controls.clone(),
+            switch: window.imp().power_switch.clone(),
+            source_dropdown: window.imp().power_source_dropdown.clone(),
+            source_strings: window.imp().power_source_strings.clone(),
+            start_on: window.imp().power_start_on.clone(),
+            stop_off: window.imp().power_stop_off.clone(),
+            signals: None,
+        };
+
+        let mut traffic_windows = BTreeMap::new();
+        traffic_windows.insert(Hierarchical, window.imp().hierarchical.clone());
+        traffic_windows.insert(Transactions, window.imp().transactions.clone());
+        traffic_windows.insert(Packets, window.imp().packets.clone());
+
+        let device_window = window.imp().device_window.clone();
+        let detail_text = window.imp().detail_text.clone();
+        let vertical_panes = window.imp().vertical_panes.clone();
+
+        let separator = gtk::Separator::new(Orientation::Horizontal);
+
+        let progress_bar = gtk::ProgressBar::builder()
+            .show_text(true)
+            .text("")
+            .hexpand(true)
+            .build();
+
+        let status_label = window.imp().status_label.clone();
+        let vbox = window.imp().vbox.clone();
+
+        let (_, reader) = create_capture()?;
+
+        let ui = UserInterface {
+            window,
+            settings: Settings::load(),
+            #[cfg(any(test, feature="record-ui-test"))]
+            recording: Rc::new(RefCell::new(
+                Recording::new(reader.clone()))),
+            capture: Capture {
+                reader,
+                state: CaptureState::Complete,
+            },
+            snapshot_rx: None,
+            selector,
+            power,
+            file_name: None,
+            stop_state: StopState::Disabled,
+            traffic_windows,
+            device_window,
+            traffic_models: BTreeMap::new(),
+            device_model: None,
+            detail_text,
+            endpoint_count: 2,
+            show_progress: None,
+            progress_bar,
+            separator,
+            vbox,
+            vertical_panes,
+            open_button,
+            save_button,
+            capture_button,
+            stop_button,
+            status_label,
+            warning,
+            metadata_action,
+        };
+
+        Ok(ui)
+    }
+}
+
+/// The internal implementation module.
+mod imp {
+    use std::cell::Cell;
+    use gtk::{
+        self,
+        prelude::*,
+        subclass::prelude::*,
+        glib::{self, subclass::InitializingObject},
+        ActionBar,
+        ApplicationWindow,
+        Button,
+        CheckButton,
+        CompositeTemplate,
+        DropDown,
+        InfoBar,
+        Label,
+        MenuButton,
+        Paned,
+        ScrolledWindow,
+        StringList,
+        Switch,
+        TextBuffer,
+    };
+
+    /// The inner type to be used in the GObject type system.
+    #[derive(Default, CompositeTemplate)]
+    #[template(file="packetry.ui")]
+    pub struct PacketryWindow {
+        panes_initialised: Cell<bool>,
+        // Set while we move the dividers ourselves, so the notify handlers skip those changes.
+        resizing: Cell<bool>,
+        // Each split's end-child size (far edge to divider); source of truth for reversible resizing.
+        horizontal_offset: Cell<i32>,
+        vertical_offset: Cell<i32>,
+        last_width: Cell<i32>,
+        last_height: Cell<i32>,
+        #[template_child]
+        pub action_bar: TemplateChild<ActionBar>,
+        #[template_child]
+        pub open_button: TemplateChild<Button>,
+        #[template_child]
+        pub save_button: TemplateChild<Button>,
+        #[template_child]
+        pub capture_button: TemplateChild<Button>,
+        #[template_child]
+        pub stop_button: TemplateChild<Button>,
+        #[template_child]
+        pub dev_dropdown: TemplateChild<DropDown>,
+        #[template_child]
+        pub speed_dropdown: TemplateChild<DropDown>,
+        #[template_child]
+        pub menu_button: TemplateChild<MenuButton>,
+        #[template_child]
+        pub info_bar: TemplateChild<InfoBar>,
+        #[template_child]
+        pub info_label: TemplateChild<Label>,
+        #[template_child]
+        pub hierarchical: TemplateChild<ScrolledWindow>,
+        #[template_child]
+        pub transactions: TemplateChild<ScrolledWindow>,
+        #[template_child]
+        pub packets: TemplateChild<ScrolledWindow>,
+        #[template_child]
+        pub device_window: TemplateChild<ScrolledWindow>,
+        #[template_child]
+        pub detail_text: TemplateChild<TextBuffer>,
+        #[template_child]
+        pub vertical_panes: TemplateChild<Paned>,
+        #[template_child]
+        pub horizontal_panes: TemplateChild<Paned>,
+        #[template_child]
+        pub status_label: TemplateChild<Label>,
+        #[template_child]
+        pub vbox: TemplateChild<gtk::Box>,
+        #[template_child]
+        pub power_controls: TemplateChild<gtk::Box>,
+        #[template_child]
+        pub power_switch: TemplateChild<Switch>,
+        #[template_child]
+        pub power_source_dropdown: TemplateChild<DropDown>,
+        #[template_child]
+        pub power_source_strings: TemplateChild<StringList>,
+        #[template_child]
+        pub power_start_on: TemplateChild<CheckButton>,
+        #[template_child]
+        pub power_stop_off: TemplateChild<CheckButton>,
+    }
+
+    #[glib::object_subclass]
+    impl ObjectSubclass for PacketryWindow {
+        const NAME: &'static str = "PacketryWindow";
+        type Type = super::PacketryWindow;
+        type ParentType = ApplicationWindow;
+
+        fn class_init(cls: &mut Self::Class) {
+            cls.bind_template();
+        }
+
+        fn instance_init(obj: &InitializingObject<Self>) {
+            obj.init_template();
+        }
+    }
+
+    impl ObjectImpl for PacketryWindow {
+        fn constructed(&self) {
+            self.parent_constructed();
+
+            let weak = self.obj().downgrade();
+            self.horizontal_panes.connect_position_notify(move |paned| {
+                let Some(window) = weak.upgrade() else { return };
+                let imp = window.imp();
+                if imp.resizing.get() {
+                    return;
+                }
+                let size = paned.width();
+                if size > 0 {
+                    imp.horizontal_offset.set(size - paned.position());
+                }
+            });
+
+            let weak = self.obj().downgrade();
+            self.vertical_panes.connect_position_notify(move |paned| {
+                let Some(window) = weak.upgrade() else { return };
+                let imp = window.imp();
+                if imp.resizing.get() {
+                    return;
+                }
+                let size = paned.height();
+                if size > 0 {
+                    imp.vertical_offset.set(size - paned.position());
+                }
+            });
+        }
+    }
+
+    impl WidgetImpl for PacketryWindow {
+        fn size_allocate(&self, width: i32, height: i32, baseline: i32) {
+            self.resizing.set(true);
+            self.parent_size_allocate(width, height, baseline);
+
+            let h_size = self.horizontal_panes.width();
+            let v_size = self.vertical_panes.height();
+
+            // Start with the traffic pane taking 3/4 of each split.
+            if !self.panes_initialised.get() && h_size > 0 && v_size > 0 {
+                self.horizontal_offset.set(h_size / 4);
+                self.vertical_offset.set(v_size / 4);
+                self.panes_initialised.set(true);
+            }
+
+            // Reapply the offset only on a real resize, so drags stick and we avoid a relayout loop.
+            if self.panes_initialised.get() {
+                if h_size > 0 && h_size != self.last_width.get() {
+                    self.horizontal_panes.set_position(h_size - self.horizontal_offset.get());
+                    self.last_width.set(h_size);
+                }
+                if v_size > 0 && v_size != self.last_height.get() {
+                    self.vertical_panes.set_position(v_size - self.vertical_offset.get());
+                    self.last_height.set(v_size);
+                }
+            }
+
+            self.resizing.set(false);
+        }
+    }
+
+    impl WindowImpl for PacketryWindow {}
+
+    impl ApplicationWindowImpl for PacketryWindow {}
+}

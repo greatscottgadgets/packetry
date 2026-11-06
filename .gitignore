@@ -1,10 +1,10 @@
 /docs/build/
 /target
-/tests/*/dump
-/tests/*/output.txt
-/tests/*/devices-output.txt
-/tests/ui/*/output.txt
-/tests/hid/*/output.txt
+/test-data/tests/*/dump
+/test-data/tests/*/output.txt
+/test-data/tests/*/devices-output.txt
+/test-data/tests/ui/*/output.txt
+/test-data/tests/hid/*/output.txt
 /vcpkg
 /wix/LICENSE-dynamic-libraries.txt
 /wix/LICENSE-packetry.txt
