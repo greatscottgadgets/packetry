@@ -1144,13 +1144,12 @@ impl Decoder {
                           start: bool)
         -> Result<GroupId, Error>
     {
-        let endpoint_count = self.capture.endpoints.len() as usize;
-        for i in 0..endpoint_count {
+        for (i, endpoint_state) in self.last_endpoint_state.iter_mut().enumerate() {
             use EndpointState::*;
-            self.last_endpoint_state[i] = {
+            *endpoint_state = {
                 let event = endpoint_id == EVENT_EP_ID;
                 let same = i == endpoint_id.value as usize;
-                let last = EndpointState::from(self.last_endpoint_state[i]);
+                let last = EndpointState::from(*endpoint_state);
                 match (same, event, start, last) {
                     (true,  _,     true,  _                 ) => Starting,
                     (true,  _,     false, _                 ) => Ending,
